@@ -1,0 +1,9 @@
+[profile.default]
+src = 'src'
+out = 'out'
+libs = ['lib']
+
+[fmt]
+number_underscore = 'thousands'
+
+# See more config options https://github.com/foundry-rs/foundry/tree/master/config

@@ -1,0 +1,11 @@
+ds-test/=lib/forge-std/lib/ds-test/src/
+forge-std/=lib/forge-std/src/
+
+@arbitrum/token-bridge-contracts/=lib/token-bridge-contracts/contracts/
+@arbitrum/nitro-contracts/=lib/nitro/contracts/
+
+@openzeppelin/contracts-upgradeable-0.8/=lib/openzeppelin-contracts-upgradeable/contracts/
+@openzeppelin/contracts-0.8/=lib/openzeppelin-contracts/contracts/
+
+@openzeppelin/contracts-upgradeable/=lib/openzeppelin-contracts-upgradeable-v3.4.2/contracts/
+@openzeppelin/contracts/=lib/openzeppelin-contracts-v3.4.2/contracts/
