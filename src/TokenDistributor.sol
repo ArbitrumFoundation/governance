@@ -10,7 +10,7 @@ import "@openzeppelin/contracts-upgradeable-0.8/token/ERC20/IERC20Upgradeable.so
 /// @notice The L2 counterparty of the Arbitrum token.
 contract TokenDistributor is OwnableUpgradeable {
     IERC20Upgradeable public token;
-    address public unclaimedTokensReciever;
+    address payable public unclaimedTokensReciever;
     mapping(address => uint256) public claimableTokens;
     uint256 public claimPeriodStart;
     uint256 public claimPeriodEnd;
@@ -23,7 +23,7 @@ contract TokenDistributor is OwnableUpgradeable {
     }
 
     /// @param _token token to be distributed (assumed to be an OZ implementation)
-    function initialize(IERC20Upgradeable _token, address _unclaimedTokensReciever) external initializer {
+    function initialize(IERC20Upgradeable _token, address payable _unclaimedTokensReciever) external initializer {
         token = _token;
         unclaimedTokensReciever = _unclaimedTokensReciever;
     }
@@ -63,5 +63,6 @@ contract TokenDistributor is OwnableUpgradeable {
         require(block.timestamp >= claimPeriodEnd, "not ended");
         uint256 leftovers = token.balanceOf(address(this));
         require(token.transfer(unclaimedTokensReciever, leftovers), "fail transfer");
+        selfdestruct(unclaimedTokensReciever);
     }
 }
