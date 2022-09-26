@@ -15,9 +15,6 @@ import "./TransferAndCallToken.sol";
 /// @dev    ERC20 with additional functionality:
 ///         * Permit - single step transfers via sig
 ///         * Votes - delegation and voting compatible with OZ governance
-///         * BridgeTransferOut - This functions trusts the custom gateway, and allow it
-///             to transfer funds to itself without requiring an approve making withdrawing
-///             from L2 to L1 a single step process for users
 ///         * Burnable - user's can burn their own tokens. Can be used by the airdrop distributor
 ///             after the claim period ends
 ///         * Mint - allows the owner to mint a maximum of 2% per year
