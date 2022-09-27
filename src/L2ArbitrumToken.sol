@@ -38,32 +38,20 @@ contract L2ArbitrumToken is
     /// @notice The maximum amount that can be can be minted - denominator
     uint256 public constant MINT_CAP_DENOMINATOR = 10_000;
 
-    /// @notice The address of the L2 custom gateway used for bridging these tokens
-    address public l2Gateway;
     /// @notice The address of the L1 counterparty of this token
     address public l1Address;
     /// @notice The time at which the next mint is allowed - timestamp
     uint256 public nextMint;
-
-    modifier onlyGateway() {
-        require(msg.sender == l2Gateway, "ARB: ONLY_L2GATEWAY");
-        _;
-    }
 
     constructor() {
         _disableInitializers();
     }
 
     /// @notice Initialise the L2 token
-    /// @param _l2Gateway The L2 gateway used to transfer tokens to/from L1
     /// @param _l1TokenAddress The address of the counterparty L1 token
     /// @param _initialSupply The amount of initial supply to mint
     /// @param _owner The owner of this contract - controls minting, not upgradeability
-    function initialize(address _l2Gateway, address _l1TokenAddress, uint256 _initialSupply, address _owner)
-        public
-        initializer
-    {
-        require(_l2Gateway != address(0), "ARB: ZERO_L2GATEWAY");
+    function initialize(address _l1TokenAddress, uint256 _initialSupply, address _owner) public initializer {
         require(_l1TokenAddress != address(0), "ARB: ZERO_L1TOKEN_ADDRESS");
         require(_initialSupply != 0, "ARB: ZERO_INITIAL_SUPPLY");
         require(_owner != address(0), "ARB: ZERO_OWNER");
@@ -76,7 +64,6 @@ contract L2ArbitrumToken is
 
         _mint(_owner, _initialSupply);
         nextMint = block.timestamp + MIN_MINT_INTERVAL;
-        l2Gateway = _l2Gateway;
         l1Address = _l1TokenAddress;
         _transferOwnership(_owner);
     }

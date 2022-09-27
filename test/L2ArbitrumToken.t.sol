@@ -13,61 +13,50 @@ contract L2ArbitrumTokenTest is Test {
     address user = address(4);
     uint256 initialSupply = 10 * 1_000_000_000 * (10 ** 18);
 
-    function deploy() private returns (L2ArbitrumToken l2Token, address l2Gateway) {
+    function deploy() private returns (L2ArbitrumToken l2Token) {
         address proxy = TestUtil.deployProxy(address(new L2ArbitrumToken()));
         l2Token = L2ArbitrumToken(proxy);
-
-        l2Gateway = deployCode("L2ReverseCustomGateway.sol:L2ReverseCustomGateway");
     }
 
-    function deployAndInit() private returns (L2ArbitrumToken l2Token, address l2Gateway) {
-        (l2Token, l2Gateway) = deploy();
-
-        l2Token.initialize(l2Gateway, l1Token, initialSupply, owner);
+    function deployAndInit() private returns (L2ArbitrumToken l2Token) {
+        l2Token = deploy();
+        l2Token.initialize(l1Token, initialSupply, owner);
     }
 
     function testIsInitialised() public {
-        (L2ArbitrumToken l2Token, address l2Gateway) = deployAndInit();
+        L2ArbitrumToken l2Token = deployAndInit();
 
         assertEq(l2Token.name(), "Arbitrum", "Invalid name");
         assertEq(l2Token.symbol(), "ARB", "Invalid symbol");
-        assertEq(l2Token.l2Gateway(), l2Gateway, "Invalid l2Gateway");
         assertEq(l2Token.l1Address(), l1Token, "Invalid l1Address");
         assertEq(l2Token.nextMint(), block.timestamp + l2Token.MIN_MINT_INTERVAL(), "Invalid nextMint");
         assertEq(l2Token.totalSupply(), 1e28, "Invalid totalSupply");
         assertEq(l2Token.owner(), owner, "Invalid owner");
     }
 
-    function testDoesNotInitialiseZeroL2Gateway() public {
-        (L2ArbitrumToken l2Token,) = deploy();
-
-        vm.expectRevert("ARB: ZERO_L2GATEWAY");
-        l2Token.initialize(address(0), l1Token, initialSupply, owner);
-    }
-
     function testDoesNotInitialiseZeroL1Token() public {
-        (L2ArbitrumToken l2Token, address l2Gateway) = deploy();
+        L2ArbitrumToken l2Token = deploy();
 
         vm.expectRevert("ARB: ZERO_L1TOKEN_ADDRESS");
-        l2Token.initialize(l2Gateway, address(0), initialSupply, owner);
+        l2Token.initialize(address(0), initialSupply, owner);
     }
 
     function testDoesNotInitialiseZeroInitialSup() public {
-        (L2ArbitrumToken l2Token, address l2Gateway) = deploy();
+        L2ArbitrumToken l2Token = deploy();
 
         vm.expectRevert("ARB: ZERO_INITIAL_SUPPLY");
-        l2Token.initialize(l2Gateway, l1Token, 0, owner);
+        l2Token.initialize(l1Token, 0, owner);
     }
 
     function testDoesNotInitialiseZeroOwner() public {
-        (L2ArbitrumToken l2Token, address l2Gateway) = deploy();
+        L2ArbitrumToken l2Token = deploy();
 
         vm.expectRevert("ARB: ZERO_OWNER");
-        l2Token.initialize(l2Gateway, l1Token, initialSupply, address(0));
+        l2Token.initialize(l1Token, initialSupply, address(0));
     }
 
     function validMint(uint256 supplyNumerator, string memory revertReason, bool warp, address minter) public {
-        (L2ArbitrumToken l2Token,) = deployAndInit();
+        L2ArbitrumToken l2Token = deployAndInit();
 
         uint256 additionalSupply = initialSupply * supplyNumerator / 100_000;
 
