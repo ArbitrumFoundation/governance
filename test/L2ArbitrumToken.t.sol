@@ -3,6 +3,8 @@ pragma solidity 0.8.16;
 
 import "../src/L2ArbitrumToken.sol";
 
+import "./MockTransferAndCallReceiver.sol";
+import "./Reverter.sol";
 import "./TestUtil.sol";
 import "forge-std/Test.sol";
 
@@ -11,10 +13,11 @@ contract L2ArbitrumTokenTest is Test {
     address l1Token = address(2);
     address mintRecipient = address(3);
     address user = address(4);
+    address emptyAddr = address(5);
     uint256 initialSupply = 10 * 1_000_000_000 * (10 ** 18);
 
     function deploy() private returns (L2ArbitrumToken l2Token) {
-        address proxy = TestUtil.deployProxy(address(new L2ArbitrumToken()));
+        address proxy = deployProxy(address(new L2ArbitrumToken()));
         l2Token = L2ArbitrumToken(proxy);
     }
 
@@ -108,5 +111,47 @@ contract L2ArbitrumTokenTest is Test {
     function testCanMintTwiceWithWarp() public {
         validMint(1357, "", true, owner);
         validMint(1357, "", true, owner);
+    }
+
+    function testCanBurn() public {
+        L2ArbitrumToken l2Token = deployAndInit();
+        vm.prank(owner);
+        l2Token.burn(105);
+    }
+
+    function testCanTransferAndCallContract() public {
+        L2ArbitrumToken l2Token = deployAndInit();
+        MockTransferAndCallReceiver receiver = new MockTransferAndCallReceiver();
+        vm.prank(owner);
+        l2Token.transferAndCall(address(receiver), 105, "");
+    }
+
+    function testCanTransferAndCallEOA() public {
+        L2ArbitrumToken l2Token = deployAndInit();
+        vm.prank(owner);
+        l2Token.transferAndCall(address(1), 105, "");
+    }
+
+    function testCannotTransferAndCallNonReceiver() public {
+        L2ArbitrumToken l2Token = deployAndInit();
+        vm.prank(owner);
+        // function sig not implemented in the token, so it should revert w/o a error string
+        vm.expectRevert();
+        l2Token.transferAndCall(address(l2Token), 105, "");
+    }
+
+    function testCannotTransferAndCallReverter() public {
+        L2ArbitrumToken l2Token = deployAndInit();
+        Reverter reverter = new Reverter();
+        vm.prank(owner);
+        vm.expectRevert("REVERTER_FAIL");
+        l2Token.transferAndCall(address(reverter), 105, "");
+    }
+
+    function testCannotTransferAndCallEmpty() public {
+        L2ArbitrumToken l2Token = deployAndInit();
+        vm.prank(owner);
+        // doesn't revert, but nothing happens
+        l2Token.transferAndCall(address(emptyAddr), 105, "");
     }
 }
