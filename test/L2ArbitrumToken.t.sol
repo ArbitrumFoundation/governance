@@ -126,10 +126,11 @@ contract L2ArbitrumTokenTest is Test {
         l2Token.transferAndCall(address(receiver), 105, "");
     }
 
-    function testCanTransferAndCallEOA() public {
+    function testCanTransferAndCallEmpty() public {
         L2ArbitrumToken l2Token = deployAndInit();
         vm.prank(owner);
-        l2Token.transferAndCall(address(1), 105, "");
+        // doesn't revert, but nothing happens
+        l2Token.transferAndCall(emptyAddr, 105, "");
     }
 
     function testCannotTransferAndCallNonReceiver() public {
@@ -146,12 +147,5 @@ contract L2ArbitrumTokenTest is Test {
         vm.prank(owner);
         vm.expectRevert("REVERTER_FAIL");
         l2Token.transferAndCall(address(reverter), 105, "");
-    }
-
-    function testCannotTransferAndCallEmpty() public {
-        L2ArbitrumToken l2Token = deployAndInit();
-        vm.prank(owner);
-        // doesn't revert, but nothing happens
-        l2Token.transferAndCall(address(emptyAddr), 105, "");
     }
 }
