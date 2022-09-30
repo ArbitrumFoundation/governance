@@ -24,6 +24,7 @@ contract TokenDistributor is Initializable, OwnableUpgradeable, PausableUpgradea
 
     constructor() {
         _disableInitializers();
+        _pause();
     }
 
     /// @param _token token to be distributed (assumed to be an OZ implementation)
@@ -55,6 +56,7 @@ contract TokenDistributor is Initializable, OwnableUpgradeable, PausableUpgradea
         for (uint256 i = 0; i < _recipients.length; uncheckedInc(i)) {
             require(claimableTokens[_recipients[i]] == 0, "TokenDistributor: recipient already set");
             claimableTokens[_recipients[i]] = _claimableAmount[i];
+            emit RecipientClaimableSet(_recipients[i], _claimableAmount[i]);
             unchecked {
                 sum += _claimableAmount[i];
             }
