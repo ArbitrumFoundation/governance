@@ -18,12 +18,12 @@ contract TokenDistributor is Initializable, OwnableUpgradeable, PausableUpgradea
     mapping(address => uint256) public claimableTokens;
     /// @notice total amount of tokens claimable by recipients of this contract
     uint256 public totalClaimable;
-    /// @notice block timestamp at which claiming starts
+    /// @notice block number at which claiming starts
     uint256 public claimPeriodStart;
-    /// @notice block timestamp at which claiming ends
+    /// @notice block number at which claiming ends
     uint256 public claimPeriodEnd;
 
-    /// @notice time period (measured using block timestamp) in which claiming may happen
+    /// @notice range of blocks in which claiming may happen
     event ClaimPeriodUpdated(uint256 start, uint256 end);
     /// @notice recipient can claim this amount of tokens
     event CanClaim(address recipient, uint256 amount);
@@ -96,10 +96,10 @@ contract TokenDistributor is Initializable, OwnableUpgradeable, PausableUpgradea
         require(token.balanceOf(address(this)) >= sum, "TokenDistributor: not enough balance");
     }
 
-    /// @notice allows admin to set time period in which tokens can be claimed
-    /// @dev uses block timestamp for validation
+    /// @notice allows admin to set the block range in which tokens can be claimed
+    /// @dev uses block number for validation instead of block timestamp to keep consistent with the Governor
     function setClaimPeriod(uint256 start, uint256 end) external onlyOwner whenPaused {
-        require(start > block.timestamp, "TokenDistributor: start should be in the future");
+        require(start > block.number, "TokenDistributor: start should be in the future");
         require(end > start, "TokenDistributor: start should be before end");
         claimPeriodStart = start;
         claimPeriodEnd = end;
@@ -119,7 +119,7 @@ contract TokenDistributor is Initializable, OwnableUpgradeable, PausableUpgradea
 
     /// @notice sends leftover funds to unclaimed tokens reciever once the claiming period is over
     function sweep() external whenNotPaused {
-        require(block.timestamp >= claimPeriodEnd, "TokenDistributor: not ended");
+        require(block.number >= claimPeriodEnd, "TokenDistributor: not ended");
         uint256 leftovers = token.balanceOf(address(this));
         require(token.transfer(unclaimedTokensReciever, leftovers), "TokenDistributor: fail token transfer");
 
@@ -137,8 +137,8 @@ contract TokenDistributor is Initializable, OwnableUpgradeable, PausableUpgradea
 
     /// @notice allows a recipient to claim their tokens
     function claim() public whenNotPaused {
-        require(block.timestamp >= claimPeriodStart, "TokenDistributor: not started");
-        require(block.timestamp < claimPeriodEnd, "TokenDistributor: ended");
+        require(block.number >= claimPeriodStart, "TokenDistributor: not started");
+        require(block.number < claimPeriodEnd, "TokenDistributor: ended");
 
         uint256 amount = claimableTokens[msg.sender];
         require(amount > 0, "TokenDistributor: no value");
