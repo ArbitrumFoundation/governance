@@ -50,7 +50,11 @@ contract TokenDistributor is Initializable, OwnableUpgradeable, PausableUpgradea
         require(token.transferFrom(address(this), msg.sender, amount), "TokenDistributor: fail transfer token");
     }
 
-    function setRecipients(address[] calldata _recipients, uint256[] calldata _claimableAmount) external onlyOwner whenPaused {
+    function setRecipients(address[] calldata _recipients, uint256[] calldata _claimableAmount)
+        external
+        onlyOwner
+        whenPaused
+    {
         require(_recipients.length == _claimableAmount.length, "TokenDistributor: invalid array length");
         uint256 sum = 0;
         for (uint256 i = 0; i < _recipients.length; uncheckedInc(i)) {
@@ -76,7 +80,10 @@ contract TokenDistributor is Initializable, OwnableUpgradeable, PausableUpgradea
     }
 
     /// @dev different implementations may handle validation/fail delegateBySig differently. here a OZ v4.6.0 impl is assumed
-    function claimAndDelegate(address delegatee, uint256 expiry, uint8 v, bytes32 r, bytes32 s) external whenNotPaused {
+    function claimAndDelegate(address delegatee, uint256 expiry, uint8 v, bytes32 r, bytes32 s)
+        external
+        whenNotPaused
+    {
         claim();
         // TODO: can we pack into tighter calldata?
         token.delegateBySig(delegatee, 0, expiry, v, r, s);
