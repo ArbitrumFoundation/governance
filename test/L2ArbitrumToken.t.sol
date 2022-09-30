@@ -2,13 +2,13 @@
 pragma solidity 0.8.16;
 
 import "../src/L2ArbitrumToken.sol";
+import "../src/L2GovernanceFactory.sol";
 
 import "./MockTransferAndCallReceiver.sol";
 import "./Reverter.sol";
-import "./TestUtil.sol";
 import "forge-std/Test.sol";
 
-contract L2ArbitrumTokenTest is Test {
+contract L2ArbitrumTokenTest is L2GovernanceFactory, Test {
     address owner = address(1);
     address l1Token = address(2);
     address mintRecipient = address(3);
@@ -16,14 +16,21 @@ contract L2ArbitrumTokenTest is Test {
     address emptyAddr = address(5);
     uint256 initialSupply = 10 * 1_000_000_000 * (10 ** 18);
 
+    /// @dev deploys but does not init the contract
     function deploy() private returns (L2ArbitrumToken l2Token) {
-        address proxy = deployProxy(address(new L2ArbitrumToken()));
-        l2Token = L2ArbitrumToken(proxy);
+        l2Token = deployToken(new ProxyAdmin());
     }
 
     function deployAndInit() private returns (L2ArbitrumToken l2Token) {
-        l2Token = deploy();
-        l2Token.initialize(l1Token, initialSupply, owner);
+        L2GovernanceFactory factory = new L2GovernanceFactory();
+        (l2Token,,,) = factory.deploy(0, l1Token, initialSupply, owner);
+    }
+
+    function testNoLogicContractInit() public {
+        L2ArbitrumToken token = new L2ArbitrumToken();
+
+        vm.expectRevert("Initializable: contract is already initialized");
+        token.initialize(l1Token, initialSupply, owner);
     }
 
     function testIsInitialised() public {
