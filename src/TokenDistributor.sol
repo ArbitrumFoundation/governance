@@ -42,6 +42,8 @@ contract TokenDistributor is Initializable, OwnableUpgradeable, PausableUpgradea
     /// @param _token token to be distributed (assumed to be an OZ implementation)
     /// @param _unclaimedTokensReciever address to receive leftover tokens after claiming period is over
     function initialize(IERC20VotesUpgradeable _token, address payable _unclaimedTokensReciever) external initializer {
+        __Pausable_init();
+        __Ownable_init();
         _pause();
         token = _token;
         unclaimedTokensReciever = _unclaimedTokensReciever;
