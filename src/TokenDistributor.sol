@@ -3,12 +3,13 @@ pragma solidity 0.8.16;
 
 import {uncheckedInc, IERC20VotesUpgradeable} from "./Util.sol";
 
+import "@openzeppelin/contracts-upgradeable-0.8/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable-0.8/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable-0.8/proxy/utils/Initializable.sol";
 
 /// @title  Token Distributor
 /// @notice A contract responsible for distributing tokens
-contract TokenDistributor is Initializable, OwnableUpgradeable {
+contract TokenDistributor is Initializable, OwnableUpgradeable, PausableUpgradeable {
     IERC20VotesUpgradeable public token;
     address payable public unclaimedTokensReciever;
     mapping(address => uint256) public claimableTokens;
@@ -29,13 +30,26 @@ contract TokenDistributor is Initializable, OwnableUpgradeable {
     function initialize(IERC20VotesUpgradeable _token, address payable _unclaimedTokensReciever) external initializer {
         token = _token;
         unclaimedTokensReciever = _unclaimedTokensReciever;
+        _pause();
     }
 
-    function depositToken(uint256 amount) external {
+    function pause() external onlyOwner whenNotPaused {
+        _pause();
+    }
+
+    function unpause() external onlyOwner whenPaused {
+        _unpause();
+    }
+
+    function deposit(uint256 amount) external whenPaused {
         require(token.transferFrom(msg.sender, address(this), amount), "TokenDistributor: fail transfer token");
     }
 
-    function setRecipients(address[] calldata _recipients, uint256[] calldata _claimableAmount) external onlyOwner {
+    function withdraw(uint256 amount) external onlyOwner whenPaused {
+        require(token.transferFrom(address(this), msg.sender, amount), "TokenDistributor: fail transfer token");
+    }
+
+    function setRecipients(address[] calldata _recipients, uint256[] calldata _claimableAmount) external onlyOwner whenPaused {
         require(_recipients.length == _claimableAmount.length, "TokenDistributor: invalid array length");
         uint256 sum = 0;
         for (uint256 i = 0; i < _recipients.length; uncheckedInc(i)) {
@@ -51,7 +65,7 @@ contract TokenDistributor is Initializable, OwnableUpgradeable {
         require(token.balanceOf(address(this)) >= sum, "TokenDistributor: not enough balance");
     }
 
-    function setClaimPeriod(uint256 start, uint256 end) external onlyOwner {
+    function setClaimPeriod(uint256 start, uint256 end) external onlyOwner whenPaused {
         require(start > block.timestamp, "TokenDistributor: start should be in the future");
         require(end > start, "TokenDistributor: start should be before end");
         claimPeriodStart = start;
@@ -60,13 +74,13 @@ contract TokenDistributor is Initializable, OwnableUpgradeable {
     }
 
     /// @dev different implementations may handle validation/fail delegateBySig differently. here a OZ v4.6.0 impl is assumed
-    function claimAndDelegate(address delegatee, uint256 expiry, uint8 v, bytes32 r, bytes32 s) external {
+    function claimAndDelegate(address delegatee, uint256 expiry, uint8 v, bytes32 r, bytes32 s) external whenNotPaused {
         claim();
         // TODO: can we pack into tighter calldata?
         token.delegateBySig(delegatee, 0, expiry, v, r, s);
     }
 
-    function sweep() external {
+    function sweep() external whenNotPaused {
         require(block.timestamp >= claimPeriodEnd, "TokenDistributor: not ended");
         uint256 leftovers = token.balanceOf(address(this));
         require(token.transfer(unclaimedTokensReciever, leftovers), "TokenDistributor: fail token transfer");
@@ -83,7 +97,7 @@ contract TokenDistributor is Initializable, OwnableUpgradeable {
         selfdestruct(payable(address(0)));
     }
 
-    function claim() public {
+    function claim() public whenNotPaused {
         require(block.timestamp >= claimPeriodStart, "TokenDistributor: not started");
         require(block.timestamp < claimPeriodEnd, "TokenDistributor: ended");
 
