@@ -36,7 +36,10 @@ contract L2GovernanceFactory {
         address[] memory proposers;
         address[] memory executors;
         timelock.initialize(_minTimelockDelay, proposers, executors);
-        timelock.renounceRole(timelock.TIMELOCK_ADMIN_ROLE(), address(this));
+
+        // the timelock itself and deployer are admins
+        timelock.revokeRole(timelock.TIMELOCK_ADMIN_ROLE(), address(this));
+        timelock.revokeRole(timelock.TIMELOCK_ADMIN_ROLE(), address(timelock));
 
         gov = deployGovernor(proxyAdmin);
         gov.initialize(token, timelock);
