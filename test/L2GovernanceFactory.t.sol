@@ -11,7 +11,7 @@ contract L2GovernanceFactoryTest is Test {
 
     function testDoesDeployGovernanceFactory() external {
         L2GovernanceFactory factory = new L2GovernanceFactory();
-        (L2ArbitrumToken token, L2ArbitrumGovernor gov, L2ArbitrumTimelock timelock, ProxyAdmin proxyAdmin) =
+        (L2ArbitrumToken token, L2ArbitrumGovernor gov, ArbitrumTimelock timelock, ProxyAdmin proxyAdmin) =
             factory.deploy(0, l1Addr, initialSupply, address(this));
 
         assertGt(address(token).code.length, 0, "no token deployed");

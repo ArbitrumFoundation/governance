@@ -3,7 +3,7 @@ pragma solidity 0.8.16;
 
 import "@openzeppelin/contracts-upgradeable-0.8/governance/TimelockControllerUpgradeable.sol";
 
-contract L2ArbitrumTimelock is TimelockControllerUpgradeable {
+contract ArbitrumTimelock is TimelockControllerUpgradeable {
     function initialize(
         uint256 minDelay,
         address[] memory proposers,
