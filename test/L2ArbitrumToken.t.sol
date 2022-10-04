@@ -4,8 +4,8 @@ pragma solidity 0.8.16;
 import "../src/L2ArbitrumToken.sol";
 import "../src/L2GovernanceFactory.sol";
 
-import "./MockTransferAndCallReceiver.sol";
-import "./Reverter.sol";
+import "./util/MockTransferAndCallReceiver.sol";
+import "./util/Reverter.sol";
 import "forge-std/Test.sol";
 
 contract L2ArbitrumTokenTest is L2GovernanceFactory, Test {

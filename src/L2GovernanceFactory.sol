@@ -11,21 +11,13 @@ import "@openzeppelin/contracts-0.8/proxy/transparent/ProxyAdmin.sol";
 
 /// @title Factory contract that deploys the L2 components for Arbitrum governance
 contract L2GovernanceFactory {
-    event Deployed(L2ArbitrumToken _token, ArbitrumTimelock timelock, L2ArbitrumGovernor governor, ProxyAdmin _proxyAdmin);
+    event Deployed(
+        L2ArbitrumToken _token, ArbitrumTimelock timelock, L2ArbitrumGovernor governor, ProxyAdmin _proxyAdmin
+    );
 
-    function deploy(
-        uint256 _minTimelockDelay,
-        address _l1TokenAddress,
-        uint256 _initialSupply,
-        address _owner
-    )
+    function deploy(uint256 _minTimelockDelay, address _l1TokenAddress, uint256 _initialSupply, address _owner)
         external
-        returns (
-            L2ArbitrumToken token,
-            L2ArbitrumGovernor gov,
-            ArbitrumTimelock timelock,
-            ProxyAdmin proxyAdmin
-        )
+        returns (L2ArbitrumToken token, L2ArbitrumGovernor gov, ArbitrumTimelock timelock, ProxyAdmin proxyAdmin)
     {
         proxyAdmin = new ProxyAdmin();
 

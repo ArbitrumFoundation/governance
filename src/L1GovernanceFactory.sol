@@ -13,17 +13,7 @@ import "@openzeppelin/contracts-0.8/proxy/transparent/ProxyAdmin.sol";
 contract L1GovernanceFactory {
     event Deployed(ArbitrumTimelock timelock, ProxyAdmin _proxyAdmin);
 
-    function deploy(
-        uint256 _minTimelockDelay,
-        address _l1TokenAddress,
-        uint256 _initialSupply
-    )
-        external
-        returns (
-            ArbitrumTimelock timelock,
-            ProxyAdmin proxyAdmin
-        )
-    {
+    function deploy(uint256 _minTimelockDelay) external returns (ArbitrumTimelock timelock, ProxyAdmin proxyAdmin) {
         proxyAdmin = new ProxyAdmin();
 
         timelock = deployTimelock(proxyAdmin);
