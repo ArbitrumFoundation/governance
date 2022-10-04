@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.16;
 
-import "@openzeppelin/contracts-upgradeable-0.8/access/OwnableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable-0.8/token/ERC20/ERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable-0.8/token/ERC20/extensions/ERC20BurnableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable-0.8/token/ERC20/extensions/draft-ERC20PermitUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable-0.8/token/ERC20/extensions/ERC20VotesUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable-0.8/proxy/utils/Initializable.sol";
-import "@arbitrum/token-bridge-contracts/tokenbridge/arbitrum/IReverseArbToken.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20BurnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/draft-ERC20PermitUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20VotesUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "./TransferAndCallToken.sol";
 
 /// @title  L2 Arbitrum Token
@@ -26,8 +25,7 @@ contract L2ArbitrumToken is
     ERC20PermitUpgradeable,
     ERC20VotesUpgradeable,
     OwnableUpgradeable,
-    TransferAndCallToken,
-    IReverseArbToken
+    TransferAndCallToken
 {
     string private constant NAME = "Arbitrum";
     string private constant SYMBOL = "ARB";

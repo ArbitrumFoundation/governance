@@ -5,9 +5,9 @@ import "./L2ArbitrumToken.sol";
 import "./L2ArbitrumGovernor.sol";
 import "./ArbitrumTimelock.sol";
 
-// @openzeppelin-contracts-upgradeable-0.8 doesn't contain transparent proxies
-import "@openzeppelin/contracts-0.8/proxy/transparent/TransparentUpgradeableProxy.sol";
-import "@openzeppelin/contracts-0.8/proxy/transparent/ProxyAdmin.sol";
+// @openzeppelin-contracts-upgradeable doesn't contain transparent proxies
+import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 
 /// @title Factory contract that deploys the L2 components for Arbitrum governance
 contract L2GovernanceFactory {
