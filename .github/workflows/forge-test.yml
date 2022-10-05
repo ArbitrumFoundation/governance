@@ -17,4 +17,7 @@ jobs:
           version: nightly
 
       - name: Run tests
-        run: forge test -vvv
+        run: make test
+
+      - name: Check gas snapshot
+        run: make gas-check
