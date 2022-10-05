@@ -4,7 +4,7 @@ pragma solidity 0.8.16;
 import "../src/L1GovernanceFactory.sol";
 import "../src/L2GovernanceFactory.sol";
 
-import "forge-std/Test.sol";
+import "./util/XChainTest.sol";
 
 contract GovernanceXChainTest is Test {
     uint256 initialSupply = 10 * 10 ** 9;
