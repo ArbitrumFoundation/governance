@@ -93,6 +93,7 @@ contract TokenDistributor is Initializable, OwnableUpgradeable, PausableUpgradea
             }
         }
 
+        // we assign sum in this order to avoid an extra sload (optimiser doesn't seem to catch this)
         sum += totalClaimable;
         totalClaimable = sum;
         require(token.balanceOf(address(this)) >= sum, "TokenDistributor: not enough balance");
@@ -128,13 +129,14 @@ contract TokenDistributor is Initializable, OwnableUpgradeable, PausableUpgradea
         emit Swept(leftovers);
 
         if (address(this).balance > 0) {
-            // we transfer eth using an explicit call to make sure the receiver's fallback function is triggered
+            // this address shouldn't hold any eth. but if it does, we transfer eth using an
+            // explicit call to make sure the receiver's fallback function is triggered
             (bool success,) = unclaimedTokensReciever.call{value: address(this).balance}("");
-            require(success, "TokenDistributor: fail eth transfer");
+            // if this fails, we continue regardless and funds will be transfered through self destruct
         }
-        // no funds should be sent because of previous step
+        // no funds should be sent because of previous step (unless the contract doesnt have a payable fallback func)
         // contract is destroyed to clean up storage
-        selfdestruct(payable(address(0)));
+        selfdestruct(payable(unclaimedTokensReciever));
     }
 
     /// @notice allows a recipient to claim their tokens
