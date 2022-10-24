@@ -1,5 +1,5 @@
 import { ethers } from 'ethers'
-import { setupNetworks, config, getSigner } from './testSetup'
+import { setupNetworks, config, getSigner } from '../test-ts/testSetup'
 import * as fs from 'fs'
 
 async function main() {
@@ -9,6 +9,7 @@ async function main() {
   const ethDeployer = getSigner(ethProvider, config.ethKey)
   const arbDeployer = getSigner(arbProvider, config.arbKey)
 
+  console.log("genning network???")
   const { l1Network, l2Network } = await setupNetworks(
     ethDeployer,
     arbDeployer,

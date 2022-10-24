@@ -42,6 +42,7 @@ describe("Lock", function () {
     const { l1Signer, l2Signer } = await testSetup();
     // CHRIS: TODO: move these into test setup
     await fundL1(l1Signer, parseEther("1"))
+
     await fundL2(l2Signer, parseEther("1"))
 
     
@@ -81,12 +82,17 @@ describe("Lock", function () {
 
     // deploy all the governance
     // new L2GovernanceFactory__factory(
-
     // )
 
     const l1GovernanceFac = await new L1GovernanceFactory__factory(
       l1Signer
     ).deploy();
+
+
+    // const l2GovernanceFac = await new L2GovernanceFactory__factory(
+    //   l2Signer
+    // ).deploy();
+
     // const l1Governance = await l1GovernanceFac.deploy();
     // const deployReceipt = await (
     //   await l1Governance.deploy(l1TimeLockDelay)
