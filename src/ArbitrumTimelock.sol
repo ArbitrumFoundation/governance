@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.16;
 
-import "@openzeppelin/contracts-upgradeable/governance/TimelockControllerUpgradeable.sol";
+// CHRIS: TODO: we changed to 0.8 everywhere - do we want to do that?
+import "@openzeppelin/contracts-upgradeable-0.8/governance/TimelockControllerUpgradeable.sol";
 
 contract ArbitrumTimelock is TimelockControllerUpgradeable {
     function initialize(uint256 minDelay, address[] memory proposers, address[] memory executors)

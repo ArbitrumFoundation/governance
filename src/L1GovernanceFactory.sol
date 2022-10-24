@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.16;
 
-import "./L2ArbitrumToken.sol";
-import "./L2ArbitrumGovernor.sol";
+// import "./L2ArbitrumToken.sol";
+// import "./L2ArbitrumGovernor.sol";
 import "./ArbitrumTimelock.sol";
 
 // @openzeppelin-contracts-upgradeable doesn't contain transparent proxies
-import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
-import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
+import "@openzeppelin/contracts-0.8/proxy/transparent/TransparentUpgradeableProxy.sol";
+import "@openzeppelin/contracts-0.8/proxy/transparent/ProxyAdmin.sol";
 
 /// @title Factory contract that deploys the L1 components for Arbitrum governance
 contract L1GovernanceFactory {
