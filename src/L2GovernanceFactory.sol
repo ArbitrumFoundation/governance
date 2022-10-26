@@ -12,48 +12,67 @@ import "@openzeppelin/contracts-0.8/proxy/transparent/ProxyAdmin.sol";
 /// @title Factory contract that deploys the L2 components for Arbitrum governance
 contract L2GovernanceFactory {
     event Deployed(
-        L2ArbitrumToken _token, ArbitrumTimelock timelock, L2ArbitrumGovernor governor, ProxyAdmin _proxyAdmin
+        L2ArbitrumToken token, ArbitrumTimelock timelock, L2ArbitrumGovernor governor, ProxyAdmin proxyAdmin
     );
 
-    function deploy(uint256 _minTimelockDelay, address _l1TokenAddress, uint256 _initialSupply, address _owner)
+    function deploy(
+        uint256 _minTimelockDelay,
+        address _l1TokenAddress,
+        address _l2TokenLogic,
+        uint256 _initialSupply,
+        address _owner,
+        address _l2TimeLockLogic,
+        address _l2GovernorLogic
+    )
         external
         returns (L2ArbitrumToken token, L2ArbitrumGovernor gov, ArbitrumTimelock timelock, ProxyAdmin proxyAdmin)
     {
+        // CHRIS: TODO: we dont want the owner of the proxy admin to be this address!
+        // CHRIS: TODO: in both this and the L1gov fac
         proxyAdmin = new ProxyAdmin();
 
-        token = deployToken(proxyAdmin);
+        token = deployToken(proxyAdmin, _l2TokenLogic);
         token.initialize(_l1TokenAddress, _initialSupply, _owner);
 
-        timelock = deployTimelock(proxyAdmin);
+        timelock = deployTimelock(proxyAdmin, _l2TimeLockLogic);
         address[] memory proposers;
         address[] memory executors;
         timelock.initialize(_minTimelockDelay, proposers, executors);
 
+        gov = deployGovernor(proxyAdmin, _l2GovernorLogic);
+        gov.initialize(token, timelock);
+
         // the timelock itself and deployer are admins
+        // CHRIS: TODO: set the same for the l1 contract?
+        timelock.grantRole(timelock.PROPOSER_ROLE(), address(gov));
+        timelock.grantRole(timelock.EXECUTOR_ROLE(), address(0));
         timelock.revokeRole(timelock.TIMELOCK_ADMIN_ROLE(), address(timelock));
         timelock.revokeRole(timelock.TIMELOCK_ADMIN_ROLE(), address(this));
-
-        gov = deployGovernor(proxyAdmin);
-        gov.initialize(token, timelock);
 
         emit Deployed(token, timelock, gov, proxyAdmin);
     }
 
-    function deployToken(ProxyAdmin _proxyAdmin) internal returns (L2ArbitrumToken token) {
-        address logic = address(new L2ArbitrumToken());
-        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(logic, address(_proxyAdmin), bytes(""));
+    function deployToken(ProxyAdmin _proxyAdmin, address _l2TokenLogic) internal returns (L2ArbitrumToken token) {
+        TransparentUpgradeableProxy proxy =
+            new TransparentUpgradeableProxy(_l2TokenLogic, address(_proxyAdmin), bytes(""));
         token = L2ArbitrumToken(address(proxy));
     }
 
-    function deployGovernor(ProxyAdmin _proxyAdmin) internal returns (L2ArbitrumGovernor gov) {
-        address logic = address(new L2ArbitrumGovernor());
-        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(logic, address(_proxyAdmin), bytes(""));
+    function deployGovernor(ProxyAdmin _proxyAdmin, address _l2GovernorLogic)
+        internal
+        returns (L2ArbitrumGovernor gov)
+    {
+        TransparentUpgradeableProxy proxy =
+            new TransparentUpgradeableProxy(_l2GovernorLogic, address(_proxyAdmin), bytes(""));
         gov = L2ArbitrumGovernor(payable(address(proxy)));
     }
 
-    function deployTimelock(ProxyAdmin _proxyAdmin) internal returns (ArbitrumTimelock timelock) {
-        address logic = address(new ArbitrumTimelock());
-        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(logic, address(_proxyAdmin), bytes(""));
+    function deployTimelock(ProxyAdmin _proxyAdmin, address _l2TimelockLogic)
+        internal
+        returns (ArbitrumTimelock timelock)
+    {
+        TransparentUpgradeableProxy proxy =
+            new TransparentUpgradeableProxy(_l2TimelockLogic, address(_proxyAdmin), bytes(""));
         timelock = ArbitrumTimelock(payable(address(proxy)));
     }
 }

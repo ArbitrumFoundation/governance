@@ -19,6 +19,7 @@ contract L2ArbitrumGovernor is
 {
     // TODO: should we use GovernorPreventLateQuorumUpgradeable?
     function initialize(IVotesUpgradeable _token, TimelockControllerUpgradeable _timelock) external initializer {
+        // CHRIS: TODO: we shouldnt use the unchained options here - we also should pass in these vars instead of hard coding
         __EIP712_init_unchained("L2ArbitrumGovernor", version());
         __Governor_init_unchained("L2ArbitrumGovernor");
         __GovernorTimelockControl_init_unchained(_timelock);
@@ -32,6 +33,7 @@ contract L2ArbitrumGovernor is
      * leave time for users to buy voting power, or delegate it, before the voting of a proposal starts.
      */
     function votingDelay() public pure override returns (uint256) {
+        // CHRIS: TODO: this should be specified in initializer
         return 1; // 1 block
     }
 
@@ -43,7 +45,8 @@ contract L2ArbitrumGovernor is
      * duration compared to the voting delay.
      */
     function votingPeriod() public pure override returns (uint256) {
-        return 45_818; // 1 week
+        // CHRIS: TODO: this should be specified in initializer, originally we had: 45_818
+        return 10; // 10 blocks
     }
 
     // The following functions are overrides required by Solidity.

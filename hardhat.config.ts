@@ -2,11 +2,18 @@ import { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
 
 const config: HardhatUserConfig = {
-  solidity: "0.8.16",
+  solidity: {
+    version: "0.8.16",
+    settings: {
+      optimizer: {
+        enabled: true
+      },
+    },
+  },
   paths: {
     sources: "./src",
-    tests: "./test-ts"
-  }
+    tests: "./test-ts",
+  },
 };
 
 export default config;

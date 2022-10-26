@@ -9,7 +9,6 @@ async function main() {
   const ethDeployer = getSigner(ethProvider, config.ethKey)
   const arbDeployer = getSigner(arbProvider, config.arbKey)
 
-  console.log("genning network???")
   const { l1Network, l2Network } = await setupNetworks(
     ethDeployer,
     arbDeployer,
