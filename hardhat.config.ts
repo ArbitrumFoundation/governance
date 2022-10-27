@@ -6,8 +6,9 @@ const config: HardhatUserConfig = {
     version: "0.8.16",
     settings: {
       optimizer: {
-        enabled: true
+        enabled: true,
       },
+      viaIR: true,
     },
   },
   paths: {

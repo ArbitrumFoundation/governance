@@ -14,18 +14,21 @@ import "@arbitrum/nitro-contracts/src/bridge/IInbox.sol";
 contract L1GovernanceFactory {
     event Deployed(L1ArbitrumTimelock timelock, ProxyAdmin proxyAdmin);
 
-    function deploy(uint256 _minTimelockDelay, address inbox, address l2Timelock) external returns (L1ArbitrumTimelock timelock, ProxyAdmin proxyAdmin) {
+    function deploy(uint256 _minTimelockDelay, address inbox, address l2Timelock, address l2Forwarder)
+        external
+        returns (L1ArbitrumTimelock timelock, ProxyAdmin proxyAdmin)
+    {
         proxyAdmin = new ProxyAdmin();
 
         timelock = deployTimelock(proxyAdmin);
         address[] memory proposers;
         address[] memory executors;
-        timelock.initialize(_minTimelockDelay, proposers, executors, inbox, l2Timelock);
-        
+        timelock.initialize(_minTimelockDelay, proposers, executors, inbox, l2Timelock, l2Forwarder);
 
         // CHRIS: TODO: we need to grant a role for the receiver
-        
+
         // CHRIS: TODO: review access control on each of the contracts, and defo the timelocks
+        timelock.grantRole(timelock.EXECUTOR_ROLE(), address(0));
 
         // the timelock itself and deployer are admins
         timelock.revokeRole(timelock.TIMELOCK_ADMIN_ROLE(), address(this));

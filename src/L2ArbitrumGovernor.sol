@@ -82,6 +82,7 @@ contract L2ArbitrumGovernor is
         return super.propose(targets, values, calldatas, description);
     }
 
+    // CHRIS: TODO: consider public access to this and removing the address(0) access control on the l2 timelock
     function _execute(
         uint256 proposalId,
         address[] memory targets,

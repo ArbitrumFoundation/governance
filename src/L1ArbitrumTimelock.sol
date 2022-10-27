@@ -4,6 +4,7 @@ pragma solidity 0.8.16;
 
 // CHRIS: TODO: we changed to 0.8 everywhere - do we want to do that?
 import "@openzeppelin/contracts-upgradeable-0.8/governance/TimelockControllerUpgradeable.sol";
+import "@arbitrum/nitro-contracts/src/bridge/IInbox.sol";
 import "./L1ArbitrumMessenger.sol";
 
 // CHRIS: TODO: if governance is upgradeable then what about the timelocks?
@@ -14,18 +15,21 @@ import "./L1ArbitrumMessenger.sol";
 contract L1ArbitrumTimelock is TimelockControllerUpgradeable, L1ArbitrumMessenger {
     address public inbox;
     address public l2Timelock;
+    address public l2Forwarder;
 
     function initialize(
         uint256 minDelay,
         address[] memory proposers,
         address[] memory executors,
         address _inbox,
-        address _l2Timelock
+        address _l2Timelock,
+        address _l2Forwarder
     ) external initializer {
         __TimelockController_init(minDelay, proposers, executors);
 
         inbox = _inbox;
         l2Timelock = _l2Timelock;
+        l2Forwarder = _l2Forwarder;
 
         // the bridge is allowed to create proposals
         // however we ensure that the actual caller is the l2timelock
@@ -71,5 +75,70 @@ contract L1ArbitrumTimelock is TimelockControllerUpgradeable, L1ArbitrumMessenge
         uint256 delay
     ) public virtual override (TimelockControllerUpgradeable) onlyCounterpartTimelock {
         TimelockControllerUpgradeable.schedule(target, value, data, predecessor, salt, delay);
+    }
+
+    // CHRIS: TODO: should we stop all other calls to the inbox?
+    // CHRIS: TODO: do this by overriding execute
+    // CHRIS: TODO: one reason to do this is because the other execute will update the proposal - which we dont want to happen
+    // CHRIS: TODO: this is unlikely/impossible because we wont be directly calling with any of the actual functions - our forwarder would need to look like our inbox
+    function executeCrossChain(
+        address target,
+        uint256 value,
+        bytes calldata payload,
+        bytes32 predecessor,
+        bytes32 salt,
+        uint256 maxSubmissionCost,
+        address excessFeeRefundAddress,
+        address callValueRefundAddress,
+        uint256 gasLimit,
+        uint256 maxFeePerGas
+    ) public payable onlyRoleOrOpenRole(EXECUTOR_ROLE) {
+        // CHRIS: TODO: clean up here
+        // we need the l2forwarder in the to here. Should it be in the payload?
+        // if it is we need to decode it... nasty
+        // ok, since instead the to address is already the l2 forwarder
+
+        // CHRIS: TODO: describe why it's safe always redirect calls to the inbox
+        // CHRIS: TODO: and what the limitations of doing this are
+        require(target == inbox, "ONLY_INBOX_CALLS");
+
+        // CHRIS: TODO: remove these comments
+        // when executing we store the hash of the stuff
+        // this will be different if we wrap up the data in this way
+        // we need to update the correct? no we want it to be forever executable?
+
+        bytes32 id = hashOperation(target, value, payload, predecessor, salt);
+        _beforeCrossChainCall(id, predecessor);
+
+        // form the crosschain payload
+        // CHRIS: TODO: should we use the return value from the createRetryableTicket?
+
+        IInbox(inbox).createRetryableTicket(
+            l2Forwarder, // we replace the to address with the forwarder
+            value,
+            maxSubmissionCost,
+            excessFeeRefundAddress,
+            callValueRefundAddress,
+            gasLimit,
+            maxFeePerGas,
+            payload
+        );
+
+        // CHRIS: TODO: not updating the status after executing opens us up to re-entrancy
+        // CHRIS: TODO: is this a problem? should we disallow that with an explicit re-entrancy guard?
+
+        emit CallExecuted(id, 0, target, value, payload);
+    }
+
+    // CHRIS: TODO: add the execute batch variant?
+
+    // CHRIS: TODO: this func below would have a naming conflict if not renamed - but why since it's private
+    // CHRIS: TODO: would be really nice to re-use the super though... otherwise document that this is a copy of the inherited private
+    /**
+     * @dev Checks before execution of an operation's calls.
+     */
+    function _beforeCrossChainCall(bytes32 id, bytes32 predecessor) private view {
+        require(isOperationReady(id), "TimelockController: operation is not ready");
+        require(predecessor == bytes32(0) || isOperationDone(predecessor), "TimelockController: missing dependency");
     }
 }
