@@ -6,8 +6,8 @@ pragma solidity 0.8.16;
 import "./L1ArbitrumTimelock.sol";
 
 // @openzeppelin-contracts-upgradeable doesn't contain transparent proxies
-import "@openzeppelin/contracts-0.8/proxy/transparent/TransparentUpgradeableProxy.sol";
-import "@openzeppelin/contracts-0.8/proxy/transparent/ProxyAdmin.sol";
+import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 import "@arbitrum/nitro-contracts/src/bridge/IInbox.sol";
 
 /// @title Factory contract that deploys the L1 components for Arbitrum governance

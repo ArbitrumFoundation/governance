@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.16;
 
-import "@openzeppelin/contracts-0.8/access/Ownable.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract Forwarder is Ownable {
     mapping(bytes32 => bool) nonces;

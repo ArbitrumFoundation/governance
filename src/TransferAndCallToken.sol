@@ -8,8 +8,8 @@ pragma solidity ^0.8.16;
 // But the version was updated from >0.6.0 <0.8.0 to ^0.8.16 and the
 // imports where made from upgradeable instead of 0.6
 
-import "@openzeppelin/contracts-upgradeable-0.8/token/ERC20/IERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable-0.8/token/ERC20/ERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 
 interface ITransferAndCall is IERC20Upgradeable {
     function transferAndCall(address to, uint256 value, bytes memory data) external returns (bool success);

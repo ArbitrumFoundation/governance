@@ -3,7 +3,7 @@
 pragma solidity 0.8.16;
 
 // CHRIS: TODO: we changed to 0.8 everywhere - do we want to do that?
-import "@openzeppelin/contracts-upgradeable-0.8/governance/TimelockControllerUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/governance/TimelockControllerUpgradeable.sol";
 import "@arbitrum/nitro-contracts/src/bridge/IInbox.sol";
 import "./L1ArbitrumMessenger.sol";
 
@@ -84,14 +84,14 @@ contract L1ArbitrumTimelock is TimelockControllerUpgradeable, L1ArbitrumMessenge
     function executeCrossChain(
         address target,
         uint256 value,
-        bytes calldata payload,
         bytes32 predecessor,
         bytes32 salt,
         uint256 maxSubmissionCost,
         address excessFeeRefundAddress,
         address callValueRefundAddress,
         uint256 gasLimit,
-        uint256 maxFeePerGas
+        uint256 maxFeePerGas,
+        bytes calldata payload
     ) public payable onlyRoleOrOpenRole(EXECUTOR_ROLE) {
         // CHRIS: TODO: clean up here
         // we need the l2forwarder in the to here. Should it be in the payload?

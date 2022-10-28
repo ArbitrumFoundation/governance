@@ -2,7 +2,7 @@
 pragma solidity 0.8.16;
 
 // we alias the import to workaround forge dependency resolution bug
-import "@arbitrum/nitro-contracts/precompiles/ArbSys.sol";
+import "@arbitrum/nitro-contracts/src/precompiles/ArbSys.sol";
 
 contract MockArbSys is ArbSys {
     /**
