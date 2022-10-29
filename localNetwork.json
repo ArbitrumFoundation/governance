@@ -14,11 +14,11 @@
     "chainID": 412346,
     "confirmPeriodBlocks": 20,
     "ethBridge": {
-      "bridge": "0x841eeff432d57dc55836c58cc855e7daa0ddd411",
-      "inbox": "0xbfe85e793b767faa9d65d1dda7334c8516c0c3bb",
-      "outbox": "0xc78FB57734846A4C9d4C8fC5d75b5E4c1a4f2E96",
-      "rollup": "0x2371ec903754cbd1f2525191a170e34eb9d4aaf7",
-      "sequencerInbox": "0x9dab29244dca82e0580fe6863c977049d7bb5e2a"
+      "bridge": "0x190f4118d858ecc909ab1eda04e1dd70a4851bb0",
+      "inbox": "0xcd1bb00b5dc51ca54c41201f10260296676aa9ff",
+      "outbox": "0xab26D5942d2bCec8a9ecae495FBD4439b5383548",
+      "rollup": "0xba43cabc975d1b932bc1c6c7851614b91d7422d5",
+      "sequencerInbox": "0x1b998c76d4533ed01c460adb47c73c18bb507661"
     },
     "explorerUrl": "",
     "isArbitrum": true,

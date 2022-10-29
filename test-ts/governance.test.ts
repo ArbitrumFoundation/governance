@@ -14,11 +14,12 @@ import {
   ProxyAdmin__factory,
   TestUpgrade__factory,
   TransparentUpgradeableProxy__factory,
+  UpgradeExecutor,
   UpgradeExecutor__factory,
 } from "../typechain-types";
 import { fundL1, fundL2, testSetup } from "./testSetup";
 import { defaultAbiCoder, Interface } from "@ethersproject/abi";
-import { BigNumber, constants, Signer, Wallet } from "ethers";
+import { BigNumber, BigNumberish, constants, Signer, Wallet } from "ethers";
 import { id, keccak256, parseEther } from "ethers/lib/utils";
 import {
   DeployedEvent as L1DeployedEvent,
@@ -81,6 +82,99 @@ describe("Governor", function () {
       if ((await l2GovernorContract.state(proposalId)) === state) break;
     }
   };
+
+  class UpgradeProposalGenerator {
+    private getProposalId(
+      to: string[],
+      value: BigNumberish[],
+      data: string[],
+      description: string
+    ) {
+      return keccak256(
+        defaultAbiCoder.encode(
+          ["address[]", "uint256[]", "bytes[]", "bytes32"],
+          [to, value, data, description]
+        )
+      );
+    }
+
+    public async l1Upgrade(
+      l1TimelockContract: L1ArbitrumTimelock,
+      l1UpgradeExecutor: UpgradeExecutor,
+      proposalDescription: string,
+      upgradeAddr: string,
+      upgradeValue: BigNumberish,
+      upgradeData: string
+    ) {
+      const l1ProposalData = l1UpgradeExecutor.interface.encodeFunctionData(
+        "execute",
+        [upgradeAddr, upgradeValue, upgradeData, id(proposalDescription)]
+      );
+
+      const scheduleData = l1TimelockContract.interface.encodeFunctionData(
+        "schedule",
+        [
+          l1UpgradeExecutor.address,
+          upgradeValue,
+          l1ProposalData,
+          constants.HashZero,
+          id(proposalDescription),
+          await l1TimelockContract.getMinDelay(),
+        ]
+      );
+
+      // CHRIS: TODO: import the proper interface from the sdk?
+
+      const arbSysInterface = new Interface([
+        "function sendTxToL1(address destination, bytes calldata data) external payable returns (uint256)",
+        "event L2ToL1Tx(address caller, address indexed destination, uint256 indexed hash, uint256 indexed position, uint256 arbBlockNum, uint256 ethBlockNum, uint256 timestamp, uint256 callvalue, bytes data)",
+      ]);
+      const l2Data = arbSysInterface.encodeFunctionData("sendTxToL1", [
+        l1TimelockContract.address,
+        scheduleData,
+      ]);
+
+      const l2Target = ARB_SYS_ADDRESS;
+      const l2Value = upgradeValue;
+
+      // CHRIS: TODO: move this to a function
+      const l2ProposalId = this.getProposalId(
+        [l2Target],
+        [l2Value],
+        [l2Data],
+        id(proposalDescription)
+      );
+
+
+      const l1ProposalTo = l1UpgradeExecutor.address
+      const l1ProposalValue = upgradeValue;
+      // incorrect
+      const l1ProposalId = this.getProposalId(
+        [l1ProposalTo],
+        [l1ProposalValue],
+        [l1ProposalData],
+        id(proposalDescription)
+      );
+
+      return {
+        l2Proposal: {
+          target: l2Target,
+          data: l2Data,
+          value: l2Value,
+          description: proposalDescription,
+          id: l2ProposalId,
+        },
+        l1Schedule: {
+          target: l1ProposalTo,
+          data: l1ProposalData,
+          value: l1ProposalValue,
+          description: proposalDescription,
+          operationId: l1ProposalId
+        },
+      };
+    }
+    public l2Upgrade() {}
+  }
 
   const deployGovernance = async (
     l1Deployer: Signer,
@@ -231,12 +325,9 @@ describe("Governor", function () {
           [proposalValue],
           [proposalCalldata],
           proposalDescription,
-          // CHRIS: TODO: for some reason the test fails if we remove this hardcoded gas limit
-          // CHRIS: TODO: not sure why, could be a nitro thing?
-          { gasLimit: 3000000 }
         )
     ).wait();
-    console.log("h")
+    console.log("h");
 
     const proposalId = keccak256(
       defaultAbiCoder.encode(
@@ -246,7 +337,7 @@ describe("Governor", function () {
     );
     const proposal = await l2GovernorContract.proposals(proposalId);
     expect(proposal, "Proposal exists").to.not.be.undefined;
-    console.log("i")
+    console.log("i");
 
     const l2VotingDelay = await l2GovernorContract.votingDelay();
     await mineBlocksAndWaitForProposalState(
@@ -257,7 +348,7 @@ describe("Governor", function () {
       l2VotingDelay.toNumber(),
       1
     );
-    console.log("j")
+    console.log("j");
     // vote on the proposal
     expect(
       await (
@@ -307,13 +398,13 @@ describe("Governor", function () {
     return executionTx;
   };
 
-  it("L2 proposal", async () => {
-    console.log("a")
+  it.only("L2 proposal", async () => {
+    console.log("a");
     const { l1Signer, l2Signer, l1Deployer, l2Deployer } = await testSetup();
     // CHRIS: TODO: move these into test setup if we need them
     await fundL1(l1Signer, parseEther("1"));
     await fundL2(l2Signer, parseEther("1"));
-    console.log("b")
+    console.log("b");
 
     const {
       l2TokenContract,
@@ -321,7 +412,7 @@ describe("Governor", function () {
       l2GovernorContract,
       l2ProxyAdmin,
     } = await deployGovernance(l1Deployer, l2Deployer, l2Signer);
-    console.log("c")
+    console.log("c");
     // give some tokens to the timelock contract
     const l2UpgradeExecutor = 10;
     const testUpgraderBalanceEnd = 7;
@@ -342,7 +433,7 @@ describe("Governor", function () {
       ).address,
       l2Deployer.provider!
     );
-    console.log("d")
+    console.log("d");
 
     await (
       await l2TokenContract
@@ -353,7 +444,7 @@ describe("Governor", function () {
       (await l2TokenContract.balanceOf(testUpgradeExecutor.address)).toNumber(),
       "Upgrade executor balance start"
     ).to.eq(l2UpgradeExecutor);
-    console.log("e")
+    console.log("e");
 
     await (
       await testUpgradeExecutor
@@ -362,7 +453,7 @@ describe("Governor", function () {
     ).wait();
     const testUpgrade = await new TestUpgrade__factory(l2Deployer).deploy();
 
-    console.log("f")
+    console.log("f");
     // create a proposal for transfering tokens to rand wallet
     const proposalString = "Prop1: Test transfer tokens on L2";
     const transferProposal = testUpgrade.interface.encodeFunctionData(
@@ -394,7 +485,7 @@ describe("Governor", function () {
 
       return true;
     };
-    console.log("g")
+    console.log("g");
 
     await proposeAndExecuteL2(
       l2TimelockContract,
@@ -493,12 +584,10 @@ describe("Governor", function () {
 
     const proposalString = "Prop2: Test transfer tokens on L1";
     // 1. transfer tokens to rand from the l1 timelock
-    const transferExecution =
-      transferUpgrade.interface.encodeFunctionData("upgrade", [
-        testErc20.address,
-        randWallet.address,
-        randWalletEnd,
-      ]);
+    const transferExecution = transferUpgrade.interface.encodeFunctionData(
+      "upgrade",
+      [testErc20.address, randWallet.address, randWalletEnd]
+    );
 
     const upgradeProposal = l1UpgradeExecutor.interface.encodeFunctionData(
       "execute",
