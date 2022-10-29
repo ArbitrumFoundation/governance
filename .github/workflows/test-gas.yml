@@ -1,0 +1,38 @@
+on: [push, pull_request]
+
+name: test-gas
+
+jobs:
+  check:
+    name: Foundry project
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - name: Checkout nitro
+        uses: actions/checkout@v3
+        with:
+          repository: OffchainLabs/nitro
+          submodules: 'recursive'
+          path: 'nitro'
+          ref: 'v2.0.0'
+
+      - name: Setup node/yarn
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
+          cache: 'yarn'
+          cache-dependency-path: '**/yarn.lock'
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+      
+      - name: Install packages
+        run: yarn
+
+      - name: Check gas snapshot
+        run: make gas-check

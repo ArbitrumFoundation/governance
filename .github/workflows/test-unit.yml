@@ -1,6 +1,6 @@
 on: [push, pull_request]
 
-name: test
+name: test-unit
 
 jobs:
   check:
@@ -16,11 +16,15 @@ jobs:
         with:
           version: nightly
       
+      - name: Setup node/yarn
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
+          cache: 'yarn'
+          cache-dependency-path: '**/yarn.lock'
+      
       - name: Install packages
         run: yarn
 
       - name: Run tests
         run: make test
-
-      - name: Check gas snapshot
-        run: make gas-check

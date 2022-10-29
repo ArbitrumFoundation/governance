@@ -3,15 +3,17 @@
 -include .env
 
 # deps
-install   :; yarn
+install   		:; yarn
 
 # Build & test
-build     :; forge build
-coverage  :; forge coverage
-gas       :; forge test --gas-report
-gas-check :; forge snapshot --check
-snapshot  :; forge snapshot
-test-forge:; forge test -vvv
-clean     :; forge clean
-fmt       :; forge fmt
-test      :  test-forge
+build     		:; forge build
+coverage  		:; forge coverage
+gas       		:; forge test --gas-report
+gas-check 		:; forge snapshot --check
+snapshot  		:; forge snapshot
+test-unit		:; forge test -vvv
+clean     		:; forge clean
+fmt       		:; forge fmt
+gen-network		:; yarn gen:network
+test      		:; test-unit
+test-integration: npx hardhat test
