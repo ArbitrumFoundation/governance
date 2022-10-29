@@ -4,21 +4,13 @@ name: test-gas
 
 jobs:
   check:
-    name: Foundry project
+    name: Test gas
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
         with:
           submodules: recursive
-
-      - name: Checkout nitro
-        uses: actions/checkout@v3
-        with:
-          repository: OffchainLabs/nitro
-          submodules: 'recursive'
-          path: 'nitro'
-          ref: 'v2.0.0'
-
+          
       - name: Setup node/yarn
         uses: actions/setup-node@v3
         with:
