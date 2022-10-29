@@ -16,4 +16,4 @@ clean     		:; forge clean
 fmt       		:; forge fmt
 gen-network		:; yarn gen:network
 test      		:  test-unit
-test-integration:; npx hardhat test
+test-integration:; yarn test:integration
