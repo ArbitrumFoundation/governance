@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.16;
 
-import "@openzeppelin/contracts-upgradeable-0.8/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 // CHRIS: TODO: lets just use proper errors, better where we can
 error InnerCallFailed(bytes reason);
@@ -37,10 +37,10 @@ contract UpgradeExecutor is Initializable, OwnableUpgradeable {
         // CHRIS: TODO: do we want to require succeed here?
         // CHRIS: TODO: I think it's important that we do, or we should a provided gas limit to make sure enough has been supplied
         // CHRIS: TODO: otherwise someone could execute this with insufficient gas causing the inner call to fail, but the outer would still store the noce
-        if(!success) {
+        if (!success) {
             revert InnerCallFailed(returnData);
         }
-        
+
         return returnData;
     }
 }

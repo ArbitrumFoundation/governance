@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.16;
 
-import "@openzeppelin/contracts-0.8/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 // CHRIS: TODO: remove this to the tests folder
 
@@ -16,10 +16,9 @@ contract TestUpgrade {
     }
 }
 
-// CHRIS: TODO: should we have the 
+// CHRIS: TODO: should we have the
 
 // CHRIS: TODO: testing upgrades is gonna be a nightmare? we could set up a rig to just inject the data into?
 // CHRIS: TODO: using hardhat forking
-
 
 // CHRIS: TODO: hand in the governor this week - and other stuff a week after

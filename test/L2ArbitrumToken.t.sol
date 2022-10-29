@@ -17,6 +17,8 @@ contract L2ArbitrumTokenTest is L2GovernanceFactory, Test {
     address mintRecipient = address(3);
     address user = address(4);
     address emptyAddr = address(5);
+    address l2UpgradeExecutorLogic = address(123_456);
+    address l2UpgradeExecutorInitialOwner = address(1_234_567);
     uint256 initialSupply = 10 * 1_000_000_000 * (10 ** 18);
 
     /// @dev deploys but does not init the contract
@@ -26,7 +28,17 @@ contract L2ArbitrumTokenTest is L2GovernanceFactory, Test {
 
     function deployAndInit() private returns (L2ArbitrumToken l2Token) {
         L2GovernanceFactory factory = new L2GovernanceFactory();
-        (l2Token,,,) = factory.deploy(0, l1Token, l2TokenLogic, initialSupply, owner, l2TimeLockLogic, l2GovernorLogic);
+        (l2Token,,,,) = factory.deploy(
+            0,
+            l1Token,
+            l2TokenLogic,
+            initialSupply,
+            owner,
+            l2TimeLockLogic,
+            l2GovernorLogic,
+            l2UpgradeExecutorLogic,
+            l2UpgradeExecutorInitialOwner
+        );
     }
 
     function testNoLogicContractInit() public {

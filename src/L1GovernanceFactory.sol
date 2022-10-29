@@ -16,7 +16,7 @@ contract L1GovernanceFactory {
     event Deployed(L1ArbitrumTimelock timelock, ProxyAdmin proxyAdmin, UpgradeExecutor executor);
 
     // CHRIS: TODO: rename all the args to timelock where applicable? or remove them all on the l2 variant
-    function deploy(uint256 _minTimelockDelay, address inbox, address l2Timelock, address l2Forwarder)
+    function deploy(uint256 _minTimelockDelay, address inbox, address l2Timelock, address l2UpgradeExecutor)
         external
         returns (L1ArbitrumTimelock timelock, ProxyAdmin proxyAdmin, UpgradeExecutor executor)
     {
@@ -25,7 +25,7 @@ contract L1GovernanceFactory {
         timelock = deployTimelock(proxyAdmin);
         address[] memory proposers;
         address[] memory executors;
-        timelock.initialize(_minTimelockDelay, proposers, executors, inbox, l2Timelock, l2Forwarder);
+        timelock.initialize(_minTimelockDelay, proposers, executors, inbox, l2Timelock, l2UpgradeExecutor);
 
         // CHRIS: TODO: we need to grant a role for the receiver
 
@@ -50,13 +50,9 @@ contract L1GovernanceFactory {
         // CHRIS: TODO: we should full describe the flow of doing an upgrade somewhere
     }
 
-    function deployUpgradeExecutor(ProxyAdmin _proxyAdmin)
-        internal
-        returns (UpgradeExecutor)
-    {
+    function deployUpgradeExecutor(ProxyAdmin _proxyAdmin) internal returns (UpgradeExecutor) {
         address logic = address(new UpgradeExecutor());
-        TransparentUpgradeableProxy proxy =
-            new TransparentUpgradeableProxy(logic, address(_proxyAdmin), bytes(""));
+        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(logic, address(_proxyAdmin), bytes(""));
         return UpgradeExecutor(address(proxy));
     }
 

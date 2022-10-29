@@ -1,7 +1,6 @@
 import { time, loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
 import { expect, util } from "chai";
-import { ethers } from "hardhat";
 import {
   ArbitrumTimelock,
   ArbitrumTimelock__factory,
