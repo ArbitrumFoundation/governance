@@ -15,6 +15,9 @@ jobs:
         uses: foundry-rs/foundry-toolchain@v1
         with:
           version: nightly
+      
+      - name: Install packages
+        run: yarn
 
       - name: Run tests
         run: make test
