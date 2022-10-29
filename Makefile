@@ -3,7 +3,7 @@
 -include .env
 
 # deps
-install   :; forge install
+install   :; yarn
 
 # Build & test
 build     :; forge build
