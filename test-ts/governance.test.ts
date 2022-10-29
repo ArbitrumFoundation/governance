@@ -327,7 +327,6 @@ describe("Governor", function () {
           proposalDescription,
         )
     ).wait();
-    console.log("h");
 
     const proposalId = keccak256(
       defaultAbiCoder.encode(
@@ -337,7 +336,6 @@ describe("Governor", function () {
     );
     const proposal = await l2GovernorContract.proposals(proposalId);
     expect(proposal, "Proposal exists").to.not.be.undefined;
-    console.log("i");
 
     const l2VotingDelay = await l2GovernorContract.votingDelay();
     await mineBlocksAndWaitForProposalState(
@@ -348,7 +346,6 @@ describe("Governor", function () {
       l2VotingDelay.toNumber(),
       1
     );
-    console.log("j");
     // vote on the proposal
     expect(
       await (
@@ -399,12 +396,10 @@ describe("Governor", function () {
   };
 
   it.only("L2 proposal", async () => {
-    console.log("a");
     const { l1Signer, l2Signer, l1Deployer, l2Deployer } = await testSetup();
     // CHRIS: TODO: move these into test setup if we need them
     await fundL1(l1Signer, parseEther("1"));
     await fundL2(l2Signer, parseEther("1"));
-    console.log("b");
 
     const {
       l2TokenContract,
@@ -412,7 +407,6 @@ describe("Governor", function () {
       l2GovernorContract,
       l2ProxyAdmin,
     } = await deployGovernance(l1Deployer, l2Deployer, l2Signer);
-    console.log("c");
     // give some tokens to the timelock contract
     const l2UpgradeExecutor = 10;
     const testUpgraderBalanceEnd = 7;
@@ -433,7 +427,6 @@ describe("Governor", function () {
       ).address,
       l2Deployer.provider!
     );
-    console.log("d");
 
     await (
       await l2TokenContract
@@ -444,7 +437,6 @@ describe("Governor", function () {
       (await l2TokenContract.balanceOf(testUpgradeExecutor.address)).toNumber(),
       "Upgrade executor balance start"
     ).to.eq(l2UpgradeExecutor);
-    console.log("e");
 
     await (
       await testUpgradeExecutor
@@ -453,7 +445,6 @@ describe("Governor", function () {
     ).wait();
     const testUpgrade = await new TestUpgrade__factory(l2Deployer).deploy();
 
-    console.log("f");
     // create a proposal for transfering tokens to rand wallet
     const proposalString = "Prop1: Test transfer tokens on L2";
     const transferProposal = testUpgrade.interface.encodeFunctionData(
@@ -485,7 +476,6 @@ describe("Governor", function () {
 
       return true;
     };
-    console.log("g");
 
     await proposeAndExecuteL2(
       l2TimelockContract,
