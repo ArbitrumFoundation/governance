@@ -11,6 +11,9 @@ import "forge-std/Test.sol";
 contract L2ArbitrumTokenTest is L2GovernanceFactory, Test {
     address owner = address(1);
     address l1Token = address(2);
+    address l2TokenLogic = address(123);
+    address l2TimeLockLogic = address(1234);
+    address l2GovernorLogic = address(12_345);
     address mintRecipient = address(3);
     address user = address(4);
     address emptyAddr = address(5);
@@ -18,12 +21,12 @@ contract L2ArbitrumTokenTest is L2GovernanceFactory, Test {
 
     /// @dev deploys but does not init the contract
     function deploy() private returns (L2ArbitrumToken l2Token) {
-        l2Token = deployToken(new ProxyAdmin());
+        l2Token = deployToken(new ProxyAdmin(), l2TokenLogic);
     }
 
     function deployAndInit() private returns (L2ArbitrumToken l2Token) {
         L2GovernanceFactory factory = new L2GovernanceFactory();
-        (l2Token,,,) = factory.deploy(0, l1Token, initialSupply, owner);
+        (l2Token,,,) = factory.deploy(0, l1Token, l2TokenLogic, initialSupply, owner, l2TimeLockLogic, l2GovernorLogic);
     }
 
     function testNoLogicContractInit() public {

@@ -8,12 +8,12 @@ const config: HardhatUserConfig = {
       optimizer: {
         enabled: true,
       },
-      viaIR: true,
     },
   },
   paths: {
     sources: "./src",
     tests: "./test-ts",
+    cache: "./cache_hardhat",
   },
 };
 

@@ -5,10 +5,10 @@ import "./MockArbSys.sol";
 
 import "forge-std/Test.sol";
 
-import "@arbitrum/nitro-contracts/bridge/Inbox.sol";
-import "@arbitrum/nitro-contracts/bridge/SequencerInbox.sol";
-import "@arbitrum/nitro-contracts/bridge/Bridge.sol";
-import "@arbitrum/nitro-contracts/bridge/Outbox.sol";
+import "@arbitrum/nitro-contracts/src/bridge/Inbox.sol";
+import "@arbitrum/nitro-contracts/src/bridge/SequencerInbox.sol";
+import "@arbitrum/nitro-contracts/src/bridge/Bridge.sol";
+import "@arbitrum/nitro-contracts/src/bridge/Outbox.sol";
 import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 
 abstract contract XChainTest is Test, IOwnable {
@@ -32,8 +32,8 @@ abstract contract XChainTest is Test, IOwnable {
         bridge = IBridge(address(new TransparentUpgradeableProxy(address(new Bridge()), address(this), bytes(""))));
         outbox = Outbox(address(new TransparentUpgradeableProxy(address(new Outbox()), address(this), bytes(""))));
 
-        delayedInbox.initialize(bridge, sequencerInbox);
-        sequencerInbox.initialize(
+        Inbox(address(delayedInbox)).initialize(bridge, sequencerInbox);
+        SequencerInbox(address(sequencerInbox)).initialize(
             bridge,
             ISequencerInbox.MaxTimeVariation({
                 delayBlocks: 100,
@@ -42,7 +42,7 @@ abstract contract XChainTest is Test, IOwnable {
                 futureSeconds: 100
             })
         );
-        bridge.initialize(this);
+        Bridge(address(bridge)).initialize(this);
         outbox.initialize(bridge);
 
         bridge.setSequencerInbox(address(sequencerInbox));

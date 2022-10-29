@@ -2,7 +2,7 @@
 pragma solidity 0.8.16;
 
 // CHRIS: TODO: we changed to 0.8 everywhere - do we want to do that?
-import "@openzeppelin/contracts-upgradeable-0.8/governance/TimelockControllerUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/governance/TimelockControllerUpgradeable.sol";
 
 // CHRIS: TODO: why do we even has this contract?
 contract ArbitrumTimelock is TimelockControllerUpgradeable {
