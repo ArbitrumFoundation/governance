@@ -28,7 +28,6 @@ contract L2GovernanceFactory {
         address _l2TokenLogic,
         uint256 _l2TokenInitialSupply,
         address _l2TokenOwner,
-        address[] memory _circulatingVotesExcludeList,
         address _l2TimeLockLogic,
         address _l2GovernorLogic,
         address _l2UpgradeExecutorLogic,
@@ -60,7 +59,7 @@ contract L2GovernanceFactory {
         proxyAdmin = new ProxyAdmin();
 
         token = deployToken(proxyAdmin, l2TokenLogic);
-        token.initialize(l1TokenAddress, l2TokenInitialSupply, l2TokenOwner, _circulatingVotesExcludeList);
+        token.initialize(l1TokenAddress, l2TokenInitialSupply, l2TokenOwner);
 
         timelock = deployTimelock(proxyAdmin, l2TimeLockLogic);
         // CHRIS: TODO: can we remove this?
