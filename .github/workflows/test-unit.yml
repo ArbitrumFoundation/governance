@@ -1,6 +1,6 @@
 on: [pull_request]
 
-name: test-unit
+name: Build and test
 
 jobs:
   check:
@@ -28,3 +28,80 @@ jobs:
 
       - name: Run tests
         run: make test
+
+  check:
+    name: Test gas
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: recursive
+          
+      - name: Setup node/yarn
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
+          cache: 'yarn'
+          cache-dependency-path: '**/yarn.lock'
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+      
+      - name: Install packages
+        run: yarn
+
+      - name: Check gas snapshot
+        run: make gas-check
+
+  check:
+    name: Test integration
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: recursive
+      
+      - name: Checkout nitro
+        uses: actions/checkout@v3
+        with:
+          repository: OffchainLabs/nitro
+          submodules: 'recursive'
+          path: 'nitro'
+          ref: 'v2.0.0'
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      - name: Setup node/yarn
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
+          cache: 'yarn'
+          cache-dependency-path: '**/yarn.lock'
+      
+      - name: Install packages
+        run: yarn
+
+      - name: Start background nitro test-node.bash
+        run: |
+          cd nitro
+          ./test-node.bash --init --no-blockscout &
+
+      - name: Copy .env
+        run: |
+          cp ./.env-sample ./.env
+
+      - name: Wait for nitro startup
+        run: |
+          cd scripts
+          ./waitForNitro.sh
+
+      - name: Generate network file
+        run: make gen-network
+
+      - name: Run integration tests
+        run: make test-integration
