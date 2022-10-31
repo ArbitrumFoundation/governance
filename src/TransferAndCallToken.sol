@@ -6,10 +6,10 @@ pragma solidity ^0.8.16;
 // * https://github.com/OffchainLabs/token-bridge-contracts/blob/e304fa491f0574c984e80705f9f6d7cf8f0d798e/contracts/tokenbridge/libraries/TransferAndCallToken.sol
 // * https://github.com/OffchainLabs/token-bridge-contracts/blob/e304fa491f0574c984e80705f9f6d7cf8f0d798e/contracts/tokenbridge/libraries/ITransferAndCall.sol
 // But the version was updated from >0.6.0 <0.8.0 to ^0.8.16 and the
-// imports where made from upgradeable-0.8 instead of 0.6
+// imports where made from upgradeable instead of 0.6
 
-import "@openzeppelin/contracts-upgradeable-0.8/token/ERC20/IERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable-0.8/token/ERC20/ERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
 
 interface ITransferAndCall is IERC20Upgradeable {
     function transferAndCall(address to, uint256 value, bytes memory data) external returns (bool success);
@@ -24,9 +24,9 @@ interface ITransferAndCallReceiver {
     function onTokenTransfer(address _sender, uint256 _value, bytes memory _data) external;
 }
 
-// Implementation from https://github.com/smartcontractkit/LinkToken/blob/master/contracts/v0.6/TransferAndCallToken.sol
+// Implementation from https://github.com/smartcontractkit/LinkToken/blob/8fd6d624d981e39e6e3f55a72732deb9f2f832d9/contracts/v0.6/ERC677.sol
 /**
- * @notice based on Implementation from https://github.com/smartcontractkit/LinkToken/blob/master/contracts/v0.6/ERC677Token.sol
+ * @notice based on Implementation from https://github.com/smartcontractkit/LinkToken/blob/8fd6d624d981e39e6e3f55a72732deb9f2f832d9/contracts/v0.6/ERC677.sol
  * The implementation doesn't return a bool on onTokenTransfer. This is similar to the proposed 677 standard, but still incompatible - thus we don't refer to it as such.
  */
 abstract contract TransferAndCallToken is ERC20Upgradeable, ITransferAndCall {
