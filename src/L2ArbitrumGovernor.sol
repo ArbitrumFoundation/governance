@@ -8,6 +8,7 @@ import "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorVotesU
 import "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorVotesQuorumFractionUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorTimelockControlUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "./L2ArbitrumToken.sol";
 
 contract L2ArbitrumGovernor is
     Initializable,
@@ -57,7 +58,7 @@ contract L2ArbitrumGovernor is
         override (IGovernorUpgradeable, GovernorVotesQuorumFractionUpgradeable)
         returns (uint256)
     {
-        return super.quorum(blockNumber);
+        return (L2ArbitrumToken(address(token)).getPastCirculatingSupply(blockNumber) * quorumNumerator(blockNumber)) / quorumDenominator();
     }
 
     function state(uint256 proposalId)

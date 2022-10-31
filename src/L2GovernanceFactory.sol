@@ -22,7 +22,8 @@ contract L2GovernanceFactory {
         uint256 _initialSupply,
         address _owner,
         address _l2TimeLockLogic,
-        address _l2GovernorLogic
+        address _l2GovernorLogic,
+        address[] memory _circulatingVotesExcludeList
     )
         external
         returns (L2ArbitrumToken token, L2ArbitrumGovernor gov, ArbitrumTimelock timelock, ProxyAdmin proxyAdmin)
@@ -32,7 +33,7 @@ contract L2GovernanceFactory {
         proxyAdmin = new ProxyAdmin();
 
         token = deployToken(proxyAdmin, _l2TokenLogic);
-        token.initialize(_l1TokenAddress, _initialSupply, _owner);
+        token.initialize(_l1TokenAddress, _initialSupply, _owner, _circulatingVotesExcludeList);
 
         timelock = deployTimelock(proxyAdmin, _l2TimeLockLogic);
         address[] memory proposers;
