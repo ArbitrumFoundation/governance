@@ -90,7 +90,7 @@ contract L2ArbitrumToken is
     function getPastCirculatingSupply(uint256 blockNumber) public view virtual returns (uint256) {
         uint256 supply = getPastTotalSupply(blockNumber);
         for (uint256 index = 0; index < circulatingVotesExcludeList.length; index++) {
-            supply -= getPastVotes(circulatingVotesExcludeList[index], blockNumber );
+            supply -= getPastVotes(circulatingVotesExcludeList[index], blockNumber);
         }
         return supply;
     }
