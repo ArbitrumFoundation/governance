@@ -64,7 +64,7 @@ contract TokenDistributor is Initializable, OwnableUpgradeable {
     /// @notice allows owner to set list of recipients to receive tokens
     function setRecipients(address[] calldata _recipients, uint256[] calldata _claimableAmount) external onlyOwner {
         require(_recipients.length == _claimableAmount.length, "TokenDistributor: invalid array length");
-        uint256 sum = 0;
+        uint256 sum = totalClaimable;
         for (uint256 i = 0; i < _recipients.length; uncheckedInc(i)) {
             require(claimableTokens[_recipients[i]] == 0, "TokenDistributor: recipient already set");
             claimableTokens[_recipients[i]] = _claimableAmount[i];
@@ -74,10 +74,8 @@ contract TokenDistributor is Initializable, OwnableUpgradeable {
             }
         }
 
-        // we assign sum in this order to avoid an extra sload (optimiser doesn't seem to catch this)
-        sum += totalClaimable;
-        totalClaimable = sum;
         require(token.balanceOf(address(this)) >= sum, "TokenDistributor: not enough balance");
+        totalClaimable = sum;
     }
 
     /// @notice allows admin to set the block range in which tokens can be claimed
