@@ -3,13 +3,16 @@ pragma solidity 0.8.16;
 
 import {uncheckedInc, IERC20VotesUpgradeable} from "./Util.sol";
 
-import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 /// @title  Token Distributor
 /// @notice A contract responsible for distributing tokens.
-contract TokenDistributor is Initializable, OwnableUpgradeable, PausableUpgradeable {
+/// @dev    After initialisation the following functions should be called in order
+///         1. transfer tokens to this contract
+///         2. setClaimPeriod - set the period during which users can claim
+///         3. setRecipients - called as many times as required to set all the recipients
+contract TokenDistributor is Initializable, OwnableUpgradeable {
     /// @notice Token to be distributed
     IERC20VotesUpgradeable public token;
     /// @notice address to receive tokens that were not claimed
@@ -41,47 +44,25 @@ contract TokenDistributor is Initializable, OwnableUpgradeable, PausableUpgradea
     /// @param _token token to be distributed (assumed to be an OZ implementation)
     /// @param _unclaimedTokensReciever address to receive leftover tokens after claiming period is over
     function initialize(IERC20VotesUpgradeable _token, address payable _unclaimedTokensReciever) external initializer {
-        __Pausable_init();
         __Ownable_init();
-        // the contract is paused during an initialisation phase
-        _pause();
         token = _token;
         unclaimedTokensReciever = _unclaimedTokensReciever;
         emit UnclaimedTokensRecieverSet(_unclaimedTokensReciever);
     }
 
-    /// @notice allows owner to pause the contract
-    function pause() external onlyOwner whenNotPaused {
-        _pause();
-    }
-
-    /// @notice allows owner to unpause contracts
-    function unpause() external onlyOwner whenPaused {
-        _unpause();
-    }
-
     /// @notice allows owner to update address of unclaimed tokens receiver
-    function setUnclaimedTokensReciever(address payable _unclaimedTokensReciever) external onlyOwner whenPaused {
+    function setUnclaimedTokensReciever(address payable _unclaimedTokensReciever) external onlyOwner {
         unclaimedTokensReciever = _unclaimedTokensReciever;
         emit UnclaimedTokensRecieverSet(_unclaimedTokensReciever);
     }
 
-    /// @notice utility function to help with depositing tokens into the distributor
-    function deposit(uint256 amount) external whenPaused {
-        require(token.transferFrom(msg.sender, address(this), amount), "TokenDistributor: fail transfer token");
-    }
-
     /// @notice allows owner of the contract to withdraw tokens when paused
-    function withdraw(uint256 amount) external onlyOwner whenPaused {
+    function withdraw(uint256 amount) external onlyOwner {
         require(token.transfer(msg.sender, amount), "TokenDistributor: fail transfer token");
     }
 
     /// @notice allows owner to set list of recipients to receive tokens
-    function setRecipients(address[] calldata _recipients, uint256[] calldata _claimableAmount)
-        external
-        onlyOwner
-        whenPaused
-    {
+    function setRecipients(address[] calldata _recipients, uint256[] calldata _claimableAmount) external onlyOwner {
         require(_recipients.length == _claimableAmount.length, "TokenDistributor: invalid array length");
         uint256 sum = 0;
         for (uint256 i = 0; i < _recipients.length; uncheckedInc(i)) {
@@ -101,7 +82,7 @@ contract TokenDistributor is Initializable, OwnableUpgradeable, PausableUpgradea
 
     /// @notice allows admin to set the block range in which tokens can be claimed
     /// @dev uses block number for validation instead of block timestamp to keep consistent with the Governor
-    function setClaimPeriod(uint256 start, uint256 end) external onlyOwner whenPaused {
+    function setClaimPeriod(uint256 start, uint256 end) external onlyOwner {
         require(start > block.number, "TokenDistributor: start should be in the future");
         require(end > start, "TokenDistributor: start should be before end");
         claimPeriodStart = start;
@@ -112,17 +93,14 @@ contract TokenDistributor is Initializable, OwnableUpgradeable, PausableUpgradea
     /// @notice allows a token recipient to claim their tokens and delegate them in a single call
     /// @dev different implementations may handle validation/fail delegateBySig differently. here a OZ v4.6.0 impl is assumed
     /// @dev delegateBySig by OZ does not support `IERC1271`, so smart contract wallets should not use this method
-    function claimAndDelegate(address delegatee, uint256 expiry, uint8 v, bytes32 r, bytes32 s)
-        external
-        whenNotPaused
-    {
+    function claimAndDelegate(address delegatee, uint256 expiry, uint8 v, bytes32 r, bytes32 s) external {
         claim();
         token.delegateBySig(delegatee, 0, expiry, v, r, s);
     }
 
     /// @notice sends leftover funds to unclaimed tokens reciever once the claiming period is over
-    function sweep() external whenNotPaused {
-        require(claimPeriodEnd != 0, "TokenDistributor: claim period not initialised");
+    function sweep() external {
+        require(claimPeriodEnd > 0, "TokenDistributor: claim period end not initialised");
         require(block.number >= claimPeriodEnd, "TokenDistributor: not ended");
         uint256 leftovers = token.balanceOf(address(this));
         require(token.transfer(unclaimedTokensReciever, leftovers), "TokenDistributor: fail token transfer");
@@ -141,7 +119,7 @@ contract TokenDistributor is Initializable, OwnableUpgradeable, PausableUpgradea
     }
 
     /// @notice allows a recipient to claim their tokens
-    function claim() public whenNotPaused {
+    function claim() public {
         require(block.number >= claimPeriodStart, "TokenDistributor: not started");
         require(block.number < claimPeriodEnd, "TokenDistributor: ended");
 
