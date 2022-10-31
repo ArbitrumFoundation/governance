@@ -4,6 +4,7 @@ pragma solidity 0.8.16;
 // import "./L2ArbitrumToken.sol";
 // import "./L2ArbitrumGovernor.sol";
 import "./L1ArbitrumTimelock.sol";
+import "./UpgradeExecutor.sol";
 
 // @openzeppelin-contracts-upgradeable doesn't contain transparent proxies
 import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
@@ -12,18 +13,19 @@ import "@arbitrum/nitro-contracts/src/bridge/IInbox.sol";
 
 /// @title Factory contract that deploys the L1 components for Arbitrum governance
 contract L1GovernanceFactory {
-    event Deployed(L1ArbitrumTimelock timelock, ProxyAdmin proxyAdmin);
+    event Deployed(L1ArbitrumTimelock timelock, ProxyAdmin proxyAdmin, UpgradeExecutor executor);
 
-    function deploy(uint256 _minTimelockDelay, address inbox, address l2Timelock, address l2Forwarder)
+    // CHRIS: TODO: rename all the args to timelock where applicable? or remove them all on the l2 variant
+    function deploy(uint256 _minTimelockDelay, address inbox, address l2Timelock, address l2UpgradeExecutor)
         external
-        returns (L1ArbitrumTimelock timelock, ProxyAdmin proxyAdmin)
+        returns (L1ArbitrumTimelock timelock, ProxyAdmin proxyAdmin, UpgradeExecutor executor)
     {
         proxyAdmin = new ProxyAdmin();
 
         timelock = deployTimelock(proxyAdmin);
         address[] memory proposers;
         address[] memory executors;
-        timelock.initialize(_minTimelockDelay, proposers, executors, inbox, l2Timelock, l2Forwarder);
+        timelock.initialize(_minTimelockDelay, proposers, executors, inbox, l2Timelock, l2UpgradeExecutor);
 
         // CHRIS: TODO: we need to grant a role for the receiver
 
@@ -36,9 +38,22 @@ contract L1GovernanceFactory {
         // we want the L1 timelock to be able to upgrade itself
         // timelock.revokeRole(timelock.TIMELOCK_ADMIN_ROLE(), address(timelock));
 
-        emit Deployed(timelock, proxyAdmin);
+        // CHRIS: TODO: do we want upgrades that do both L1 and L2 things at the same time?
+        // CHRIS: TODO: or should these be separate upgrades?
+        // CHRIS: TODO: the l1 upgrade executor should be the owner of the l2 upgrade exector?
+
+        executor = deployUpgradeExecutor(proxyAdmin);
+        executor.initialize(address(timelock));
+
+        emit Deployed(timelock, proxyAdmin, executor);
 
         // CHRIS: TODO: we should full describe the flow of doing an upgrade somewhere
+    }
+
+    function deployUpgradeExecutor(ProxyAdmin _proxyAdmin) internal returns (UpgradeExecutor) {
+        address logic = address(new UpgradeExecutor());
+        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(logic, address(_proxyAdmin), bytes(""));
+        return UpgradeExecutor(address(proxy));
     }
 
     function deployTimelock(ProxyAdmin _proxyAdmin) internal returns (L1ArbitrumTimelock timelock) {

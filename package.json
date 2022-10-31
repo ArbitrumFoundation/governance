@@ -6,7 +6,8 @@
   "author": "Offchain Labs",
   "license": "MIT",
   "scripts": {
-    "gen:network": "ts-node ./scripts/genNetwork.ts"
+    "gen:network": "ts-node ./scripts/genNetwork.ts",
+    "test:integration": "hardhat test"
   },
   "devDependencies": {
     "@arbitrum/sdk": "^3.0.0",

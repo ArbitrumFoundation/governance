@@ -1,34 +1,26 @@
 import { time, loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
 import { expect, util } from "chai";
-import { ethers } from "hardhat";
 import {
   ArbitrumTimelock,
   ArbitrumTimelock__factory,
-  ERC20PermitUpgradeable__factory,
-  Forwarder__factory,
   L1ArbitrumTimelock,
   L1ArbitrumTimelock__factory,
   L1GovernanceFactory__factory,
   L2ArbitrumGovernor,
   L2ArbitrumGovernor__factory,
-  L2ArbitrumToken,
   L2ArbitrumToken__factory,
   L2GovernanceFactory__factory,
   ProxyAdmin__factory,
+  TestUpgrade__factory,
   TransparentUpgradeableProxy__factory,
+  UpgradeExecutor,
+  UpgradeExecutor__factory,
 } from "../typechain-types";
 import { fundL1, fundL2, testSetup } from "./testSetup";
-import { JsonRpcProvider, TransactionReceipt } from "@ethersproject/providers";
 import { defaultAbiCoder, Interface } from "@ethersproject/abi";
-import { BigNumber, constants, Signer, Wallet } from "ethers";
-import {
-  arrayify,
-  id,
-  keccak256,
-  parseEther,
-  toUtf8Bytes,
-} from "ethers/lib/utils";
+import { BigNumber, BigNumberish, constants, Signer, Wallet } from "ethers";
+import { id, keccak256, parseEther } from "ethers/lib/utils";
 import {
   DeployedEvent as L1DeployedEvent,
   DeployedEventObject as L1DeployedEventObject,
@@ -91,12 +83,106 @@ describe("Governor", function () {
     }
   };
 
+  class UpgradeProposalGenerator {
+    private getProposalId(
+      to: string[],
+      value: BigNumberish[],
+      data: string[],
+      description: string
+    ) {
+      return keccak256(
+        defaultAbiCoder.encode(
+          ["address[]", "uint256[]", "bytes[]", "bytes32"],
+          [to, value, data, description]
+        )
+      );
+    }
+
+    public async l1Upgrade(
+      l1TimelockContract: L1ArbitrumTimelock,
+      l1UpgradeExecutor: UpgradeExecutor,
+      proposalDescription: string,
+      upgradeAddr: string,
+      upgradeValue: BigNumberish,
+      upgradeData: string
+    ) {
+      const l1ProposalData = l1UpgradeExecutor.interface.encodeFunctionData(
+        "execute",
+        [upgradeAddr, upgradeValue, upgradeData, id(proposalDescription)]
+      );
+
+      const scheduleData = l1TimelockContract.interface.encodeFunctionData(
+        "schedule",
+        [
+          l1UpgradeExecutor.address,
+          upgradeValue,
+          l1ProposalData,
+          constants.HashZero,
+          id(proposalDescription),
+          await l1TimelockContract.getMinDelay(),
+        ]
+      );
+
+      // CHRIS: TODO: import the proper interface from the sdk?
+
+      const arbSysInterface = new Interface([
+        "function sendTxToL1(address destination, bytes calldata data) external payable returns (uint256)",
+        "event L2ToL1Tx(address caller, address indexed destination, uint256 indexed hash, uint256 indexed position, uint256 arbBlockNum, uint256 ethBlockNum, uint256 timestamp, uint256 callvalue, bytes data)",
+      ]);
+      const l2Data = arbSysInterface.encodeFunctionData("sendTxToL1", [
+        l1TimelockContract.address,
+        scheduleData,
+      ]);
+
+      const l2Target = ARB_SYS_ADDRESS;
+      const l2Value = upgradeValue;
+
+      // CHRIS: TODO: move this to a function
+      const l2ProposalId = this.getProposalId(
+        [l2Target],
+        [l2Value],
+        [l2Data],
+        id(proposalDescription)
+      );
+
+
+      const l1ProposalTo = l1UpgradeExecutor.address
+      const l1ProposalValue = upgradeValue;
+      // incorrect
+      const l1ProposalId = this.getProposalId(
+        [l1ProposalTo],
+        [l1ProposalValue],
+        [l1ProposalData],
+        id(proposalDescription)
+      );
+
+      return {
+        l2Proposal: {
+          target: l2Target,
+          data: l2Data,
+          value: l2Value,
+          description: proposalDescription,
+          id: l2ProposalId,
+        },
+        l1Schedule: {
+          target: l1ProposalTo,
+          data: l1ProposalData,
+          value: l1ProposalValue,
+          description: proposalDescription,
+          operationId: l1ProposalId
+        },
+      };
+    }
+    public l2Upgrade() {}
+  }
+
   const deployGovernance = async (
     l1Deployer: Signer,
     l2Deployer: Signer,
     l2Signer: Signer
   ) => {
     const initialSupply = parseEther("1");
+    // CHRIS: TODO: these are seconds! we should wait accordingly!
     const l1TimeLockDelay = 5;
     const l2TimeLockDelay = 7;
     const l2SignerAddr = await l2Signer.getAddress();
@@ -117,6 +203,9 @@ describe("Governor", function () {
     const l2GovernanceFac = await new L2GovernanceFactory__factory(
       l2Deployer
     ).deploy();
+    const l2UpgradeExecutorLogic = await new UpgradeExecutor__factory(
+      l2Deployer
+    ).deploy();
     const l2GovDeployReceipt = await (
       await l2GovernanceFac.deploy(
         l2TimeLockDelay,
@@ -126,9 +215,12 @@ describe("Governor", function () {
         l2SignerAddr,
         l2TimelockLogic.address,
         l2GovernanceLogic.address,
+        l2UpgradeExecutorLogic.address,
+        await l2Deployer.getAddress(),
         { gasLimit: 30000000 }
       )
     ).wait();
+
     const l2DeployResult = l2GovDeployReceipt.events?.filter(
       (e) => e.topics[0] === l2GovernanceFac.interface.getEventTopic("Deployed")
     )[0].args as unknown as L2DeployedEventObject;
@@ -142,13 +234,24 @@ describe("Governor", function () {
       await l1GovernanceFac.deploy(
         l1TimeLockDelay,
         l2Network.ethBridge.inbox,
-        l2DeployResult.timelock
+        l2DeployResult.timelock,
+        l2DeployResult.executor
       )
     ).wait();
     const l1DeployResult = l1GovDeployReceipt.events?.filter(
       (e) => e.topics[0] === l1GovernanceFac.interface.getEventTopic("Deployed")
     )[0].args as unknown as L1DeployedEventObject;
 
+    // after deploying transfer ownership of the upgrader to the l1 contract
+    const l2UpgradeExecutor = UpgradeExecutor__factory.connect(
+      l2DeployResult.executor,
+      l2Deployer.provider!
+    );
+    const l1TimelockAddress = new Address(l1DeployResult.timelock);
+    const ow = l1TimelockAddress.applyAlias().value;
+    await (
+      await l2UpgradeExecutor.connect(l2Deployer).transferOwnership(ow)
+    ).wait();
     // return contract objects
     const l2TokenContract = L2ArbitrumToken__factory.connect(
       l2DeployResult.token,
@@ -162,8 +265,21 @@ describe("Governor", function () {
       l2DeployResult.governor,
       l2Deployer.provider!
     );
+    const l2ProxyAdmin = ProxyAdmin__factory.connect(
+      l2DeployResult.proxyAdmin,
+      l2Deployer.provider!
+    );
+
     const l1TimelockContract = L1ArbitrumTimelock__factory.connect(
       l1DeployResult.timelock,
+      l1Deployer.provider!
+    );
+    const l1UpgradeExecutor = UpgradeExecutor__factory.connect(
+      l1DeployResult.executor,
+      l1Deployer.provider!
+    );
+    const l1ProxyAdmin = ProxyAdmin__factory.connect(
+      l1DeployResult.proxyAdmin,
       l1Deployer.provider!
     );
 
@@ -181,12 +297,15 @@ describe("Governor", function () {
       l2TokenContract,
       l2TimelockContract,
       l2GovernorContract,
+      l2UpgradeExecutor,
+      l2ProxyAdmin,
       l1TimelockContract,
+      l1UpgradeExecutor,
+      l1ProxyAdmin,
     };
   };
 
   const proposeAndExecuteL2 = async (
-    l2TokenContract: L2ArbitrumToken,
     l2TimelockContract: ArbitrumTimelock,
     l2GovernorContract: L2ArbitrumGovernor,
     l1Deployer: Signer,
@@ -205,7 +324,7 @@ describe("Governor", function () {
           [proposalTo],
           [proposalValue],
           [proposalCalldata],
-          proposalDescription
+          proposalDescription,
         )
     ).wait();
 
@@ -227,7 +346,6 @@ describe("Governor", function () {
       l2VotingDelay.toNumber(),
       1
     );
-
     // vote on the proposal
     expect(
       await (
@@ -277,36 +395,67 @@ describe("Governor", function () {
     return executionTx;
   };
 
-  it.skip("L2 proposal", async function () {
+  it.only("L2 proposal", async () => {
     const { l1Signer, l2Signer, l1Deployer, l2Deployer } = await testSetup();
     // CHRIS: TODO: move these into test setup if we need them
     await fundL1(l1Signer, parseEther("1"));
     await fundL2(l2Signer, parseEther("1"));
 
-    const { l2TokenContract, l2TimelockContract, l2GovernorContract } =
-      await deployGovernance(l1Deployer, l2Deployer, l2Signer);
+    const {
+      l2TokenContract,
+      l2TimelockContract,
+      l2GovernorContract,
+      l2ProxyAdmin,
+    } = await deployGovernance(l1Deployer, l2Deployer, l2Signer);
     // give some tokens to the timelock contract
-    const l2TimelockBalanceStart = 10;
-    const l2TimelockBalanceEnd = 7;
-    const randWalletEnd = l2TimelockBalanceStart - l2TimelockBalanceEnd;
+    const l2UpgradeExecutor = 10;
+    const testUpgraderBalanceEnd = 7;
+    const randWalletEnd = l2UpgradeExecutor - testUpgraderBalanceEnd;
     const randWallet = Wallet.createRandom();
+
+    // upgrade executor and upgrade
+    const upExecutorLogic = await new UpgradeExecutor__factory(
+      l2Deployer
+    ).deploy();
+    const testUpgradeExecutor = UpgradeExecutor__factory.connect(
+      (
+        await new TransparentUpgradeableProxy__factory(l2Deployer).deploy(
+          upExecutorLogic.address,
+          l2ProxyAdmin.address,
+          "0x"
+        )
+      ).address,
+      l2Deployer.provider!
+    );
 
     await (
       await l2TokenContract
         .connect(l2Signer)
-        .transfer(l2TimelockContract.address, l2TimelockBalanceStart)
+        .transfer(testUpgradeExecutor.address, l2UpgradeExecutor)
     ).wait();
     expect(
-      (await l2TokenContract.balanceOf(l2TimelockContract.address)).toNumber(),
-      "Timelock balance start"
-    ).to.eq(l2TimelockBalanceStart);
+      (await l2TokenContract.balanceOf(testUpgradeExecutor.address)).toNumber(),
+      "Upgrade executor balance start"
+    ).to.eq(l2UpgradeExecutor);
+
+    await (
+      await testUpgradeExecutor
+        .connect(l2Deployer)
+        .initialize(l2TimelockContract.address)
+    ).wait();
+    const testUpgrade = await new TestUpgrade__factory(l2Deployer).deploy();
 
     // create a proposal for transfering tokens to rand wallet
-    const transferProposal = l2TokenContract.interface.encodeFunctionData(
-      "transfer",
-      [randWallet.address, randWalletEnd]
-    );
     const proposalString = "Prop1: Test transfer tokens on L2";
+    const transferProposal = testUpgrade.interface.encodeFunctionData(
+      "upgrade",
+      [l2TokenContract.address, randWallet.address, randWalletEnd]
+    );
+
+    const upgradeProposal = testUpgradeExecutor.interface.encodeFunctionData(
+      "execute",
+      [testUpgrade.address, 0, transferProposal, id(proposalString)]
+    );
 
     expect(
       (await l2TokenContract.balanceOf(randWallet.address)).toNumber(),
@@ -320,24 +469,23 @@ describe("Governor", function () {
       ).to.eq(randWalletEnd);
       expect(
         (
-          await l2TokenContract.balanceOf(l2TimelockContract.address)
+          await l2TokenContract.balanceOf(testUpgradeExecutor.address)
         ).toNumber(),
-        "Timelock balance after"
-      ).to.eq(l2TimelockBalanceEnd);
+        "Test upgrader balance after"
+      ).to.eq(testUpgraderBalanceEnd);
 
       return true;
     };
 
     await proposeAndExecuteL2(
-      l2TokenContract,
       l2TimelockContract,
       l2GovernorContract,
       l1Deployer,
       l2Deployer,
       l2Signer,
-      l2TokenContract.address,
+      testUpgradeExecutor.address,
       BigNumber.from(0),
-      transferProposal,
+      upgradeProposal,
       proposalString,
       proposalSuccess
     );
@@ -358,22 +506,22 @@ describe("Governor", function () {
     // console.log(deployReceipt)
   }).timeout(120000);
 
-  it("L2-L1 proposal", async function () {
+  it("L2-L1 proposal", async () => {
     const { l1Signer, l2Signer, l1Deployer, l2Deployer } = await testSetup();
     // CHRIS: TODO: move these into test setup if we need them
     await fundL1(l1Signer, parseEther("1"));
     await fundL2(l2Signer, parseEther("1"));
 
     const {
-      l2TokenContract,
       l2TimelockContract,
       l1TimelockContract,
       l2GovernorContract,
+      l1UpgradeExecutor,
     } = await deployGovernance(l1Deployer, l2Deployer, l2Signer);
     // give some tokens to the governor contract
-    const l1TimelockBalanceStart = 11;
+    const l1UpgraderBalanceStart = 11;
     const l1TimelockBalanceEnd = 6;
-    const randWalletEnd = l1TimelockBalanceStart - l1TimelockBalanceEnd;
+    const randWalletEnd = l1UpgraderBalanceStart - l1TimelockBalanceEnd;
     const randWallet = Wallet.createRandom();
 
     // deploy a dummy token onto L1
@@ -407,14 +555,14 @@ describe("Governor", function () {
     // send some tokens to the l1 timelock
     await (
       await testErc20.transfer(
-        l1TimelockContract.address,
-        l1TimelockBalanceStart
+        l1UpgradeExecutor.address,
+        l1UpgraderBalanceStart
       )
     ).wait();
     expect(
-      (await testErc20.balanceOf(l1TimelockContract.address)).toNumber(),
-      "Timelock balance start"
-    ).to.eq(l1TimelockBalanceStart);
+      (await testErc20.balanceOf(l1UpgradeExecutor.address)).toNumber(),
+      "Upgrader balance start"
+    ).to.eq(l1UpgraderBalanceStart);
 
     // CHRIS: TODO: packages have been published for token-bridge-contracts so we can remove that
 
@@ -422,21 +570,27 @@ describe("Governor", function () {
     // send an l2 to l1 message to transfer tokens on the l1 timelock
 
     // create a proposal for transfering tokens to rand wallet
+    const transferUpgrade = await new TestUpgrade__factory(l1Deployer).deploy();
 
     const proposalString = "Prop2: Test transfer tokens on L1";
     // 1. transfer tokens to rand from the l1 timelock
-    const l1TokenTransferCallData = testErc20.interface.encodeFunctionData(
-      "transfer",
-      [randWallet.address, randWalletEnd]
+    const transferExecution = transferUpgrade.interface.encodeFunctionData(
+      "upgrade",
+      [testErc20.address, randWallet.address, randWalletEnd]
+    );
+
+    const upgradeProposal = l1UpgradeExecutor.interface.encodeFunctionData(
+      "execute",
+      [transferUpgrade.address, 0, transferExecution, id(proposalString)]
     );
 
     // 2. schedule a transfer on l1
     const scheduleData = l1TimelockContract.interface.encodeFunctionData(
       "schedule",
       [
-        testErc20.address,
+        l1UpgradeExecutor.address,
         0,
-        l1TokenTransferCallData,
+        upgradeProposal,
         constants.HashZero,
         id(proposalString),
         await l1TimelockContract.getMinDelay(),
@@ -463,7 +617,6 @@ describe("Governor", function () {
     };
 
     const executionTx = await proposeAndExecuteL2(
-      l2TokenContract,
       l2TimelockContract,
       l2GovernorContract,
       l1Deployer,
@@ -485,7 +638,7 @@ describe("Governor", function () {
     const l1ProposalSuccess = async () => {
       const balAfter = (
         await testErc20.balanceOf(randWallet.address)
-      ).toString();
+      ).toNumber();
       expect(balAfter, "L1 balance after").to.eq(randWalletEnd);
 
       return true;
@@ -498,16 +651,16 @@ describe("Governor", function () {
       l2Signer,
       l1TimelockContract,
       l2Transaction,
-      testErc20.address,
+      l1UpgradeExecutor.address,
       BigNumber.from(0),
-      l1TokenTransferCallData,
+      upgradeProposal,
       proposalString,
       l1ProposalSuccess,
       false
     );
   }).timeout(360000);
 
-  it("L2-L1-L2 proposal", async function () {
+  it("L2-L1-L2 proposal", async () => {
     const { l1Signer, l2Signer, l1Deployer, l2Deployer } = await testSetup();
     // CHRIS: TODO: move these into test setup if we need them
     await fundL1(l1Signer, parseEther("1"));
@@ -518,28 +671,24 @@ describe("Governor", function () {
       l2TimelockContract,
       l1TimelockContract,
       l2GovernorContract,
+      l2UpgradeExecutor,
     } = await deployGovernance(l1Deployer, l2Deployer, l2Signer);
     // give some tokens to the governor contract
-    const l2ForwarderBalanceStart = 13;
-    const l2ForwarderBalanceEnd = 3;
-    const randWalletEnd = l2ForwarderBalanceStart - l2ForwarderBalanceEnd;
+    const l2UpgraderBalanceStart = 13;
+    const l2UpgraderBalanceEnd = 3;
+    const randWalletEnd = l2UpgraderBalanceStart - l2UpgraderBalanceEnd;
     const randWallet = Wallet.createRandom();
-
-    // create an l2 forwarder, who's owner is the l1 timelock
-    const addr = new Address(l1TimelockContract.address);
-    const l1TimelockAlias = addr.applyAlias().value;
-    const forwarder = await (
-      await new Forwarder__factory(l2Deployer).deploy(l1TimelockAlias)
-    ).deployed();
 
     // send some tokens to the forwarder
     await (
-      await l2TokenContract.transfer(forwarder.address, l2ForwarderBalanceStart)
+      await l2TokenContract
+        .connect(l2Signer)
+        .transfer(l2UpgradeExecutor.address, l2UpgraderBalanceStart)
     ).wait();
     expect(
-      (await l2TokenContract.balanceOf(forwarder.address)).toNumber(),
-      "Timelock balance start"
-    ).to.eq(l2ForwarderBalanceStart);
+      (await l2TokenContract.balanceOf(l2UpgradeExecutor.address)).toNumber(),
+      "Upgrader balance start"
+    ).to.eq(l2UpgraderBalanceStart);
 
     // CHRIS: TODO: packages have been published for token-bridge-contracts so we can remove that
     // pretty annoying that we have this problem - what about re-entrancy?
@@ -561,20 +710,23 @@ describe("Governor", function () {
     // 1. transfer tokens to rand from the l1 timelock
     // we want to create a retryable ticket for this part
 
-    const l2TokenTransferCallData =
-      l2TokenContract.interface.encodeFunctionData("transfer", [
-        randWallet.address,
-        randWalletEnd,
-      ]);
+    const transferUpgrade = await new TestUpgrade__factory(l2Deployer).deploy();
+    const transferExecution = transferUpgrade.interface.encodeFunctionData(
+      "upgrade",
+      [l2TokenContract.address, randWallet.address, randWalletEnd]
+    );
 
     // 1. a
-    const forwardData = forwarder.interface.encodeFunctionData("forward", [
-      l2TokenContract.address,
-      0,
-      l2TokenTransferCallData,
-      // CHRIS: TODO: this should be created by the l1 timelock? or should be previous
-      id(proposalString),
-    ]);
+    const upgradeData = l2UpgradeExecutor.interface.encodeFunctionData(
+      "execute",
+      [
+        transferUpgrade.address,
+        0,
+        transferExecution,
+        // CHRIS: TODO: this should be created by the l1 timelock? or should be previous
+        id(proposalString),
+      ]
+    );
 
     const l2Network = await getL2Network(l2Deployer);
     // 1. b. create a retryable ticket
@@ -586,7 +738,6 @@ describe("Governor", function () {
     //     l2CallValue: 0,
     //     callValueRefundAddress: await l2Signer.getAddress(),
     //     excessFeeRefundAddress: await l2Signer.getAddress(),
-
     //   }
     // )
 
@@ -596,7 +747,7 @@ describe("Governor", function () {
       [
         l2Network.ethBridge.inbox,
         0,
-        forwardData,
+        upgradeData,
         constants.HashZero,
         id(proposalString),
         await l1TimelockContract.getMinDelay(),
@@ -623,7 +774,6 @@ describe("Governor", function () {
     };
 
     const executionTx = await proposeAndExecuteL2(
-      l2TokenContract,
       l2TimelockContract,
       l2GovernorContract,
       l1Deployer,
@@ -643,38 +793,36 @@ describe("Governor", function () {
       return true;
     };
 
-    console.log("before l1 component exec")
-    const l1Rec = new L1TransactionReceipt(await execL1Component(
-      l1Deployer,
-      l2Deployer,
-      l1Signer,
-      l2Signer,
-      l1TimelockContract,
-      l2Transaction,
-      l2Network.ethBridge.inbox,
-      BigNumber.from(0),
-      forwardData,
-      proposalString,
-      l1ProposalSuccess,
-      true
-    ));
+    const l1Rec = new L1TransactionReceipt(
+      await execL1Component(
+        l1Deployer,
+        l2Deployer,
+        l1Signer,
+        l2Signer,
+        l1TimelockContract,
+        l2Transaction,
+        l2Network.ethBridge.inbox,
+        BigNumber.from(0),
+        upgradeData,
+        proposalString,
+        l1ProposalSuccess,
+        true
+      )
+    );
 
-    console.log("after l1 component exec")
-
+    const balanceBefore = await (
+      await l2TokenContract.balanceOf(randWallet.address)
+    ).toNumber();
+    expect(balanceBefore, "rand balance before").to.eq(0);
     const messages = await l1Rec.getL1ToL2Messages(l2Deployer.provider!);
-    console.log("before wait for status")
-    const status = await messages[0].waitForStatus()
-    console.log("after wait for status")
-    if(status.status === L1ToL2MessageStatus.REDEEMED) {
-      console.log("success", status.l2TxReceipt)
-    } else {
-      console.log("fail", status)
-    }
-
-    
-
-    
-
+    const status = await messages[0].waitForStatus();
+    expect(status.status, "Redeemed retryable").to.eq(
+      L1ToL2MessageStatus.REDEEMED
+    );
+    const balanceAfter = await (
+      await l2TokenContract.balanceOf(randWallet.address)
+    ).toNumber();
+    expect(balanceAfter, "balance after").to.eq(randWalletEnd);
   }).timeout(360000);
 
   const execL1Component = async (
@@ -702,15 +850,14 @@ describe("Governor", function () {
     ]);
     state.mining = false;
 
-    // mine the timelock blocks
-    const minDelay = (await l1TimelockContract.getMinDelay()).toNumber();
-    for (let index = 0; index < minDelay; index++) {
-      await mineBlock(l1Deployer);
-    }
+    await (await withdrawMessage.execute(l2Deployer.provider!)).wait();
+
+    // CHRIS: TODO: replace this with what we should actually have here
+    await wait(5000);
 
     if (!crossChain) {
       // execute the proposal
-      const tx = await await l1TimelockContract
+      const tx = await l1TimelockContract
         .connect(l1Signer)
         .execute(
           proposalTo,
@@ -721,6 +868,7 @@ describe("Governor", function () {
         );
 
       const rec = await tx.wait();
+
       expect(await proposalSuccess(), "L1 proposal success").to.be.true;
       return rec;
     } else {
@@ -732,7 +880,6 @@ describe("Governor", function () {
           [
             proposalTo,
             proposalValue,
-            proposalCallData,
             constants.HashZero,
             id(proposalString),
             params.maxSubmissionCost,
@@ -740,6 +887,7 @@ describe("Governor", function () {
             l1SignerAddr,
             params.gasLimit,
             params.maxFeePerGas,
+            proposalCallData,
           ]
         );
 
@@ -749,10 +897,10 @@ describe("Governor", function () {
           from: l1SignerAddr,
           value: params.gasLimit
             .mul(params.maxFeePerGas)
-            .add(params.maxSubmissionCost),
+            .add(params.maxSubmissionCost)
+            .add(proposalValue),
         };
       }, l1Deployer.provider!);
-
       const tx = await l1Signer.sendTransaction({
         to: funcParams.to,
         data: funcParams.data,
@@ -761,7 +909,6 @@ describe("Governor", function () {
 
       const rec = await tx.wait();
       expect(await proposalSuccess(), "L1 proposal success").to.be.true;
-      console.log(rec)
       return rec;
     }
   };

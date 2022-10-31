@@ -8,25 +8,42 @@ import "./util/MockTransferAndCallReceiver.sol";
 import "./util/Reverter.sol";
 import "forge-std/Test.sol";
 
-contract L2ArbitrumTokenTest is L2GovernanceFactory, Test {
+contract L2ArbitrumTokenTest is Test {
     address owner = address(1);
-    address l1Token = address(2);
+    address tokenLogic;
+    // CHRIS: TODO:
     address l2TokenLogic = address(123);
     address l2TimeLockLogic = address(1234);
     address l2GovernorLogic = address(12_345);
     address mintRecipient = address(3);
     address user = address(4);
     address emptyAddr = address(5);
+    address l2UpgradeExecutorLogic = address(123_456);
+    address l2UpgradeExecutorInitialOwner = address(1_234_567);
     uint256 initialSupply = 10 * 1_000_000_000 * (10 ** 18);
+    address l1Token = address(1_234_578);
 
     /// @dev deploys but does not init the contract
     function deploy() private returns (L2ArbitrumToken l2Token) {
-        l2Token = deployToken(new ProxyAdmin(), l2TokenLogic);
+        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
+            address(new L2ArbitrumToken()),
+            address(new ProxyAdmin()),
+            bytes("")
+        );
+        l2Token = L2ArbitrumToken(address(proxy));
     }
 
     function deployAndInit() private returns (L2ArbitrumToken l2Token) {
-        L2GovernanceFactory factory = new L2GovernanceFactory();
-        (l2Token,,,) = factory.deploy(0, l1Token, l2TokenLogic, initialSupply, owner, l2TimeLockLogic, l2GovernorLogic);
+        tokenLogic = address(new L2ArbitrumToken());
+        ProxyAdmin admin = new ProxyAdmin();
+        l2Token = L2ArbitrumToken(
+            address(
+                new TransparentUpgradeableProxy(
+                tokenLogic, address(admin), ""
+                )
+            )
+        );
+        l2Token.initialize(l1Token, initialSupply, owner);
     }
 
     function testNoLogicContractInit() public {

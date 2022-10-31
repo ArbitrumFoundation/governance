@@ -12,6 +12,64 @@ import "./L1ArbitrumMessenger.sol";
 
 // CHRIS: TODO: we could do this with a custom gnosis safe module instead
 
+// contract L1ArbitrumTimelockProposer, L1ArbitrumMessenger {
+
+//CHRIS: TODO: would need to make to pass in inbox and  and upgradable
+//     function initialize(
+//         address _inbox,
+//         address _l2Timelock,
+//     ) external initializer {
+//         inbox = _inbox;
+//         l2Timelock = _l2Timelock;
+
+//         // the bridge is allowed to create proposals
+//         // however we ensure that the actual caller is the l2timelock
+//         // by using the onlyCounterpartTimelock modifier
+//         address bridge = address(getBridge(_inbox));
+//         grantRole(PROPOSER_ROLE, bridge);
+//     }
+
+//     modifier onlyCounterpartTimelock() {
+//         // CHRIS: why do we do this?
+//         // address _inbox = inbox;
+
+//         // a message coming from the counterpart gateway was executed by the bridge
+//         address bridge = address(super.getBridge(inbox));
+//         require(msg.sender == bridge, "NOT_FROM_BRIDGE");
+
+//         // and the outbox reports that the L2 address of the sender is the counterpart gateway
+//         address l2ToL1Sender = super.getL2ToL1Sender(inbox);
+//         require(l2ToL1Sender == l2Timelock, "ONLY_COUNTERPART_TIMELOCK");
+//         _;
+//     }
+
+//     // allow it to call anything? no, we should call schedule
+
+//     function schedule(
+//         address l1Timelock,
+//         address target,
+//         uint256 value,
+//         bytes calldata data,
+//         bytes32 predecessor,
+//         bytes32 salt,
+//         uint256 delay
+//     ) public virtual override (TimelockControllerUpgradeable) onlyCounterpartTimelock {
+//         TimelockControllerUpgradeable(l1Timelock).schedule(target, value, data, predecessor, salt, delay);
+//     }
+
+// function scheduleBatch(
+//     address l1Timelock,
+//     address[] calldata targets,
+//     uint256[] calldata values,
+//     bytes[] calldata payloads,
+//     bytes32 predecessor,
+//     bytes32 salt,
+//     uint256 delay
+// ) public virtual  onlyCounterpartTimelock {
+//     TimelockControllerUpgradeable(l1Timelock).scheduleBatch(targets, values, payloads, predecessor, salt, delay);
+// }
+// }
+
 contract L1ArbitrumTimelock is TimelockControllerUpgradeable, L1ArbitrumMessenger {
     address public inbox;
     address public l2Timelock;
@@ -77,6 +135,9 @@ contract L1ArbitrumTimelock is TimelockControllerUpgradeable, L1ArbitrumMessenge
         TimelockControllerUpgradeable.schedule(target, value, data, predecessor, salt, delay);
     }
 
+    // CHRIS: TODO: we may want to add an atomic crosschain and normal execute
+    // CHRIS: TODO: this would be necessary if we want to ensure ordering here
+
     // CHRIS: TODO: should we stop all other calls to the inbox?
     // CHRIS: TODO: do this by overriding execute
     // CHRIS: TODO: one reason to do this is because the other execute will update the proposal - which we dont want to happen
@@ -110,10 +171,18 @@ contract L1ArbitrumTimelock is TimelockControllerUpgradeable, L1ArbitrumMessenge
         bytes32 id = hashOperation(target, value, payload, predecessor, salt);
         _beforeCrossChainCall(id, predecessor);
 
+        // CHRIS: TODO: remove this
+        // encoding the location will be tricky. We either need different target paths
+        // not nice
+        // or we need custom stuff
+        // we could form it from whatever...?
+        // basically encode the location of execution or allow more free will?
+
         // form the crosschain payload
         // CHRIS: TODO: should we use the return value from the createRetryableTicket?
 
-        IInbox(inbox).createRetryableTicket(
+        // CHRIS: TODO: what about nova? we want to allow that too right?
+        IInbox(inbox).createRetryableTicket{value: msg.value}(
             l2Forwarder, // we replace the to address with the forwarder
             value,
             maxSubmissionCost,
