@@ -3,12 +3,12 @@ pragma solidity 0.8.16;
 
 import {uncheckedInc, IERC20VotesUpgradeable} from "./Util.sol";
 
-import "@openzeppelin/contracts-upgradeable-0.8/security/PausableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable-0.8/access/OwnableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable-0.8/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 /// @title  Token Distributor
-/// @notice A contract responsible for distributing tokens
+/// @notice A contract responsible for distributing tokens.
 contract TokenDistributor is Initializable, OwnableUpgradeable, PausableUpgradeable {
     /// @notice Token to be distributed
     IERC20VotesUpgradeable public token;
@@ -36,7 +36,6 @@ contract TokenDistributor is Initializable, OwnableUpgradeable, PausableUpgradea
 
     constructor() {
         _disableInitializers();
-        _pause();
     }
 
     /// @param _token token to be distributed (assumed to be an OZ implementation)
@@ -44,6 +43,7 @@ contract TokenDistributor is Initializable, OwnableUpgradeable, PausableUpgradea
     function initialize(IERC20VotesUpgradeable _token, address payable _unclaimedTokensReciever) external initializer {
         __Pausable_init();
         __Ownable_init();
+        // the contract is paused during an initialisation phase
         _pause();
         token = _token;
         unclaimedTokensReciever = _unclaimedTokensReciever;
@@ -73,7 +73,7 @@ contract TokenDistributor is Initializable, OwnableUpgradeable, PausableUpgradea
 
     /// @notice allows owner of the contract to withdraw tokens when paused
     function withdraw(uint256 amount) external onlyOwner whenPaused {
-        require(token.transferFrom(address(this), msg.sender, amount), "TokenDistributor: fail transfer token");
+        require(token.transfer(msg.sender, amount), "TokenDistributor: fail transfer token");
     }
 
     /// @notice allows owner to set list of recipients to receive tokens
@@ -122,6 +122,7 @@ contract TokenDistributor is Initializable, OwnableUpgradeable, PausableUpgradea
 
     /// @notice sends leftover funds to unclaimed tokens reciever once the claiming period is over
     function sweep() external whenNotPaused {
+        require(claimPeriodEnd != 0, "TokenDistributor: claim period not initialised");
         require(block.number >= claimPeriodEnd, "TokenDistributor: not ended");
         uint256 leftovers = token.balanceOf(address(this));
         require(token.transfer(unclaimedTokensReciever, leftovers), "TokenDistributor: fail token transfer");
