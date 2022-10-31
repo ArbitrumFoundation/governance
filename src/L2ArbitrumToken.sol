@@ -42,7 +42,7 @@ contract L2ArbitrumToken is
     uint256 public nextMint;
     /// @notice Addresses to exclude from circulating votes for quorum threshold calculation. 
     // TODO Hardcode with initial values
-    address[] circulatingVotesExcludeList = [];
+    address[] circulatingVotesExcludeList;
 
     constructor() {
         _disableInitializers();
