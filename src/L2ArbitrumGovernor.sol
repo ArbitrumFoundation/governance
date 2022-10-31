@@ -9,22 +9,71 @@ import "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorVotesQ
 import "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorTimelockControlUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
+// definition: votable token = all tokens except:
+// 1. owned by arb dao
+// 2. owned by foundation
+// 3. airdrop not yet claimed
+// 4. any tokens known to have been permanently burned
+
+// tokens owned by the arb dao may not be voted or delegated.
+
+// 1. snapshot for 7 days before we even hit this contract - social
+// 2. proposal is made by someone with 0.1% of tokens, and they are in favour -
+// 3. proposal open for 3 days before delegate snapshot is taken and voting begins
+//      proposal must specify if it's constitutional change - social since we do nothing about this on chain anyway...
+//      however we should represent this in the tally interface
+//      proposal must specify affected chain - social
+// 4. voting open for 2 weeks
+// 5. require 5% for constitional change, 3% for any other
+// 6. l2 waiting period - 3 days
+// 7. l1 waiting period - 1 week
+// 8. proposal executed
+
+// 7 + 3 + 14 + 3 + 7 = 34 days total. Nice and slow I guess.
+
+// 1. override proposal threshold, and work out a % for 0.1%
+// 2. set votingDelay for the snapshot delay
+// 3. set votingPeriod for the period that voting is allowed
+// 4. need a function votableTokenSupply(), and need to use it scale the votable quorum
+// in order to do this we need to really increase the denominator fidelity
+// 5. set l2 timelock delay to 3 days
+// 6. set l1 timelock delay to 7 days
+
+// We need to know the number of votable tokens at the time of the snapshot
+// Then we need to use the number in the calculation
+// ArbGovernor needs to know about:
+// 1. foundation address
+// 2. dao address
+// 3. airdopper address
+// 4. tokens at the zero address
+// 5. get total supply and subtract all of the above
+// 7. then what about updating the numerator? do that every time we take a snapshot/proposal?
+// 8. use this when calculating the proposalThreshold as well
+
+// CHRIS: TODO: What is timelock conttroller vs timelockcontrollercompound?
+
 contract L2ArbitrumGovernor is
     Initializable,
     GovernorUpgradeable,
-    GovernorTimelockControlUpgradeable,
     GovernorCompatibilityBravoUpgradeable,
     GovernorVotesUpgradeable,
-    GovernorVotesQuorumFractionUpgradeable
+    GovernorVotesQuorumFractionUpgradeable,
+    GovernorTimelockControlUpgradeable
 {
+    constructor() {
+        _disableInitializers();
+    }
+
     // TODO: should we use GovernorPreventLateQuorumUpgradeable?
     function initialize(IVotesUpgradeable _token, TimelockControllerUpgradeable _timelock) external initializer {
-        // CHRIS: TODO: we shouldnt use the unchained options here - we also should pass in these vars instead of hard coding
-        __EIP712_init_unchained("L2ArbitrumGovernor", version());
-        __Governor_init_unchained("L2ArbitrumGovernor");
-        __GovernorTimelockControl_init_unchained(_timelock);
-        __GovernorVotes_init_unchained(_token);
-        __GovernorVotesQuorumFraction_init_unchained(4);
+        // CHRIS: TODO: pass in we also should pass in these vars instead of hard coding
+        __Governor_init("L2ArbitrumGovernor");
+        __GovernorCompatibilityBravo_init();
+        __GovernorVotes_init(_token);
+        // CHRIS: TODO: set this dynamically how? we could override quorum to return our own function?
+        // CHRIS: TODO: just get rid of this entirely? but we need to get quorum at a specific block height dont we? how is it used?
+        __GovernorVotesQuorumFraction_init(3);
+        __GovernorTimelockControl_init(_timelock);
     }
 
     /**
@@ -49,6 +98,7 @@ contract L2ArbitrumGovernor is
         return 10; // 10 blocks
     }
 
+    // CHRIS: TODO: I dont actually think all of these need to be overriden
     // The following functions are overrides required by Solidity.
 
     function quorum(uint256 blockNumber)
