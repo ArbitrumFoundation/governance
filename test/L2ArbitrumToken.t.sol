@@ -22,6 +22,7 @@ contract L2ArbitrumTokenTest is Test {
     address l2UpgradeExecutorInitialOwner = address(1_234_567);
     uint256 initialSupply = 10 * 1_000_000_000 * (10 ** 18);
     address l1Token = address(1_234_578);
+    address[] circulatingVotesExcludeList = [address(1234_5)];
 
     /// @dev deploys but does not init the contract
     function deploy() private returns (L2ArbitrumToken l2Token) {
@@ -43,14 +44,14 @@ contract L2ArbitrumTokenTest is Test {
                 )
             )
         );
-        l2Token.initialize(l1Token, initialSupply, owner);
+        l2Token.initialize(l1Token, initialSupply, owner, circulatingVotesExcludeList);
     }
 
     function testNoLogicContractInit() public {
         L2ArbitrumToken token = new L2ArbitrumToken();
 
         vm.expectRevert("Initializable: contract is already initialized");
-        token.initialize(l1Token, initialSupply, owner);
+        token.initialize(l1Token, initialSupply, owner, circulatingVotesExcludeList);
     }
 
     function testIsInitialised() public {
@@ -68,21 +69,21 @@ contract L2ArbitrumTokenTest is Test {
         L2ArbitrumToken l2Token = deploy();
 
         vm.expectRevert("ARB: ZERO_L1TOKEN_ADDRESS");
-        l2Token.initialize(address(0), initialSupply, owner);
+        l2Token.initialize(address(0), initialSupply, owner, circulatingVotesExcludeList);
     }
 
     function testDoesNotInitialiseZeroInitialSup() public {
         L2ArbitrumToken l2Token = deploy();
 
         vm.expectRevert("ARB: ZERO_INITIAL_SUPPLY");
-        l2Token.initialize(l1Token, 0, owner);
+        l2Token.initialize(l1Token, 0, owner, circulatingVotesExcludeList);
     }
 
     function testDoesNotInitialiseZeroOwner() public {
         L2ArbitrumToken l2Token = deploy();
 
         vm.expectRevert("ARB: ZERO_OWNER");
-        l2Token.initialize(l1Token, initialSupply, address(0));
+        l2Token.initialize(l1Token, initialSupply, address(0), circulatingVotesExcludeList);
     }
 
     function validMint(uint256 supplyNumerator, string memory revertReason, bool warp, address minter) public {
