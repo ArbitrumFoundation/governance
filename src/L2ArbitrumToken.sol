@@ -82,8 +82,8 @@ contract L2ArbitrumToken is
     }
 
     /// @notice Updates addresses to exlude from circulating votes supply for quorum threshold calculation.
-    function updateCirculatingVotesExcludeList(address[] memory _circulatingVotesExcludeList) external onlyOwner {
-        circulatingVotesExcludeList = _circulatingVotesExcludeList;
+    function addToCirculatingVotesExcludeList(address addressToExclude) external onlyOwner {
+        circulatingVotesExcludeList.push(addressToExclude);
     }
     
     /// @notice Get "circulating" votes supply; i.e., total minus excluded addresses.
