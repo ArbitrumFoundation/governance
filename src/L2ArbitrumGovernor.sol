@@ -62,13 +62,16 @@ contract L2ArbitrumGovernor is
     GovernorVotesQuorumFractionUpgradeable,
     GovernorTimelockControlUpgradeable
 {
+    uint256 votingPeriod_;
+    uint256 votingDelay_;
     constructor() {
         _disableInitializers();
     }
 
     // TODO: should we use GovernorPreventLateQuorumUpgradeable?
-    function initialize(IVotesUpgradeable _token, TimelockControllerUpgradeable _timelock) external initializer {
+    function initialize(IVotesUpgradeable _token, TimelockControllerUpgradeable _timelock, uint256 _votingPeriod, uint256 _votingDelay) external initializer {
         // CHRIS: TODO: pass in we also should pass in these vars instead of hard coding
+        require(votingPeriod_ == 0 && votingDelay_ == 0, "ALREADY_INITIALIZED");
         __Governor_init("L2ArbitrumGovernor");
         __GovernorCompatibilityBravo_init();
         __GovernorVotes_init(_token);
@@ -76,6 +79,8 @@ contract L2ArbitrumGovernor is
         // CHRIS: TODO: just get rid of this entirely? but we need to get quorum at a specific block height dont we? how is it used?
         __GovernorVotesQuorumFraction_init(3);
         __GovernorTimelockControl_init(_timelock);
+        votingDelay_ = _votingDelay;
+        votingPeriod_ = _votingPeriod;
     }
 
     /**
@@ -83,9 +88,8 @@ contract L2ArbitrumGovernor is
      * @dev Delay, in number of block, between the proposal is created and the vote starts. This can be increassed to
      * leave time for users to buy voting power, or delegate it, before the voting of a proposal starts.
      */
-    function votingDelay() public pure override returns (uint256) {
-        // CHRIS: TODO: this should be specified in initializer
-        return 1; // 1 block
+    function votingDelay() public view override returns (uint256) {
+        return votingDelay_;
     }
 
     /**
@@ -95,13 +99,9 @@ contract L2ArbitrumGovernor is
      * NOTE: The {votingDelay} can delay the start of the vote. This must be considered when setting the voting
      * duration compared to the voting delay.
      */
-    function votingPeriod() public pure override returns (uint256) {
-        // CHRIS: TODO: this should be specified in initializer, originally we had: 45_818
-        return 10; // 10 blocks
+    function votingPeriod() public view override returns (uint256) {
+        return votingPeriod_;
     }
-
-    // CHRIS: TODO: I dont actually think all of these need to be overriden
-    // The following functions are overrides required by Solidity.
 
     function quorum(uint256 blockNumber)
         public
@@ -111,6 +111,9 @@ contract L2ArbitrumGovernor is
     {
         return (L2ArbitrumToken(address(token)).getPastCirculatingSupply(blockNumber) * quorumNumerator(blockNumber)) / quorumDenominator();
     }
+
+    // CHRIS: TODO: I dont actually think all of these need to be overriden
+    // The following functions are overrides required by Solidity.
 
     function state(uint256 proposalId)
         public
