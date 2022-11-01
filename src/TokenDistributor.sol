@@ -56,7 +56,7 @@ contract TokenDistributor is Initializable, OwnableUpgradeable {
         emit UnclaimedTokensRecieverSet(_unclaimedTokensReciever);
     }
 
-    /// @notice allows owner of the contract to withdraw tokens when paused
+    /// @notice allows owner of the contract to withdraw tokens
     function withdraw(uint256 amount) external onlyOwner {
         require(token.transfer(msg.sender, amount), "TokenDistributor: fail transfer token");
     }
