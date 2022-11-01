@@ -41,7 +41,6 @@ contract L2ArbitrumToken is
     /// @notice The time at which the next mint is allowed - timestamp
     uint256 public nextMint;
     /// @notice Addresses to exclude from circulating votes for quorum threshold calculation. 
-    // TODO Hardcode with initial values
     address[] circulatingVotesExcludeList;
 
     constructor() {
@@ -52,7 +51,7 @@ contract L2ArbitrumToken is
     /// @param _l1TokenAddress The address of the counterparty L1 token
     /// @param _initialSupply The amount of initial supply to mint
     /// @param _owner The owner of this contract - controls minting, not upgradeability
-    function initialize(address _l1TokenAddress, uint256 _initialSupply, address _owner) public initializer {
+    function initialize(address _l1TokenAddress, uint256 _initialSupply, address _owner, address[] memory _circulatingVotesExcludeList ) public initializer {
         require(_l1TokenAddress != address(0), "ARB: ZERO_L1TOKEN_ADDRESS");
         require(_initialSupply != 0, "ARB: ZERO_INITIAL_SUPPLY");
         require(_owner != address(0), "ARB: ZERO_OWNER");
@@ -66,6 +65,7 @@ contract L2ArbitrumToken is
         _mint(_owner, _initialSupply);
         nextMint = block.timestamp + MIN_MINT_INTERVAL;
         l1Address = _l1TokenAddress;
+        circulatingVotesExcludeList = _circulatingVotesExcludeList;
         _transferOwnership(_owner);
     }
 
