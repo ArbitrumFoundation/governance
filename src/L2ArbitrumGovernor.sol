@@ -15,6 +15,7 @@ import "./L2ArbitrumToken.sol";
 // 2. owned by foundation
 // 3. airdrop not yet claimed
 // 4. any tokens known to have been permanently burned
+// 5. tokens that have been sent to the unclaimedTokenReceiver from the token distributor
 
 // tokens owned by the arb dao may not be voted or delegated.
 
