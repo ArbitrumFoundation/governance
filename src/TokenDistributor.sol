@@ -138,8 +138,6 @@ contract TokenDistributor is Ownable {
         uint256 amount = claimableTokens[msg.sender];
         require(amount > 0, "TokenDistributor: nothing to claim");
 
-        // CHRIS: TODO: should we reduce the totalClaimableTokens?
-
         claimableTokens[msg.sender] = 0;
 
         // we don't use safeTransfer since impl is assumed to be OZ
