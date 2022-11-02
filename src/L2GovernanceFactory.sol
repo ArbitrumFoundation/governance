@@ -55,7 +55,7 @@ contract L2GovernanceFactory {
         proxyAdmin = new ProxyAdmin();
 
         token = deployToken(proxyAdmin, params._l2TokenLogic);
-        token.initialize(params._l1TokenAddress, params._l2TokenInitialSupply, params._l2TokenOwner, params._circulatingVotesExcludeList);
+        token.initialize(params._l1TokenAddress, params._l2TokenInitialSupply, params._l2TokenOwner);
 
         timelock = deployTimelock(proxyAdmin, params._l2TimeLockLogic);
         // CHRIS: TODO: can we remove this?
@@ -66,7 +66,7 @@ contract L2GovernanceFactory {
         }
 
         gov = deployGovernor(proxyAdmin, params._l2GovernorLogic);
-        gov.initialize(token, timelock, params._votingPeriod, params._votingDelay);
+        gov.initialize(token, timelock, params._votingPeriod, params._votingDelay, params._circulatingVotesExcludeList);
 
         // the timelock itself and deployer are admins
         // CHRIS: TODO: set the same for the l1 contract?

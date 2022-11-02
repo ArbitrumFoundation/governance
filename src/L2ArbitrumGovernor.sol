@@ -64,12 +64,14 @@ contract L2ArbitrumGovernor is
 {
     uint256 votingPeriod_;
     uint256 votingDelay_;
+    /// @notice Addresses to exclude from circulating votes for quorum threshold calculation. 
+    address[] circulatingVotesExcludeList;
     constructor() {
         _disableInitializers();
     }
 
     // TODO: should we use GovernorPreventLateQuorumUpgradeable?
-    function initialize(IVotesUpgradeable _token, TimelockControllerUpgradeable _timelock, uint256 _votingPeriod, uint256 _votingDelay) external initializer {
+    function initialize(IVotesUpgradeable _token, TimelockControllerUpgradeable _timelock, uint256 _votingPeriod, uint256 _votingDelay, address[] memory _circulatingVotesExcludeList) external initializer {
         // CHRIS: TODO: pass in we also should pass in these vars instead of hard coding
         require(votingPeriod_ == 0 && votingDelay_ == 0, "ALREADY_INITIALIZED");
         __Governor_init("L2ArbitrumGovernor");
@@ -81,6 +83,7 @@ contract L2ArbitrumGovernor is
         __GovernorTimelockControl_init(_timelock);
         votingDelay_ = _votingDelay;
         votingPeriod_ = _votingPeriod;
+        circulatingVotesExcludeList = _circulatingVotesExcludeList;
     }
 
     /**
@@ -103,13 +106,29 @@ contract L2ArbitrumGovernor is
         return votingPeriod_;
     }
 
+    /// @notice Updates addresses to exlude from circulating votes supply for quorum threshold calculation.
+    // TODO: owner
+    function addToCirculatingVotesExcludeList(address addressToExclude) external {
+        circulatingVotesExcludeList.push(addressToExclude);
+    }
+
+        /// @notice Get "circulating" votes supply; i.e., total minus excluded addresses.
+    function getPastCirculatingSupply(uint256 blockNumber) public view virtual returns (uint256) {
+        uint256 supply = token.getPastTotalSupply(blockNumber);
+        for (uint256 index = 0; index < circulatingVotesExcludeList.length; index++) {
+            supply -= token.getPastVotes(circulatingVotesExcludeList[index], blockNumber);
+        }
+        return supply;
+    }
+
+
     function quorum(uint256 blockNumber)
         public
         view
         override (IGovernorUpgradeable, GovernorVotesQuorumFractionUpgradeable)
         returns (uint256)
     {
-        return (L2ArbitrumToken(address(token)).getPastCirculatingSupply(blockNumber) * quorumNumerator(blockNumber)) / quorumDenominator();
+        return getPastCirculatingSupply(blockNumber) * quorumNumerator(blockNumber) / quorumDenominator();
     }
 
     // CHRIS: TODO: I dont actually think all of these need to be overriden
