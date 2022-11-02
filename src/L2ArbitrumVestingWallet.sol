@@ -21,18 +21,26 @@ contract L2ArbitrumVestingWallet is VestingWallet {
         governer = _governer;
     }
 
+    modifier onlyBeneficiery() {
+        require(msg.sender == beneficiary(), "NOT_BENEFICIARY");
+        _;
+    }
+
     /// @notice delegate votes to target address
-    function delegate(address delegatee) public {
+    function delegate(address delegatee) public onlyBeneficiery {
         IERC20VotesUpgradeable(token).delegate(delegatee);
     }
 
     /// @notice claim tokens from distributor contract
-    function claim() public {
+    function claim() public onlyBeneficiery {
         TokenDistributor(distributor).claim();
     }
 
     /// @notice cast vote in governance proposal
-    function castVote(uint256 proposalId, uint8 support) public {
+    function castVote(uint256 proposalId, uint8 support)
+        public
+        onlyBeneficiery
+    {
         L2ArbitrumGovernor(governer).castVote(proposalId, support);
     }
 }
