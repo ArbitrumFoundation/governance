@@ -75,7 +75,6 @@ contract L2ArbitrumGovernor is
     // TODO: should we use GovernorPreventLateQuorumUpgradeable?
     function initialize(IVotesUpgradeable _token, TimelockControllerUpgradeable _timelock, uint256 _votingPeriod, uint256 _votingDelay, address[] memory _circulatingVotesExcludeList) external initializer {
         // CHRIS: TODO: pass in we also should pass in these vars instead of hard coding
-        require(votingPeriod_ == 0 && votingDelay_ == 0, "ALREADY_INITIALIZED");
         __Governor_init("L2ArbitrumGovernor");
         __GovernorCompatibilityBravo_init();
         __GovernorVotes_init(_token);
