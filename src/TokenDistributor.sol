@@ -1,32 +1,35 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.16;
 
-import {uncheckedInc, IERC20VotesUpgradeable} from "./Util.sol";
+import {IERC20VotesUpgradeable} from "./Util.sol";
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
 /// @title  Token Distributor
-/// @notice A contract responsible for distributing tokens.
-/// @dev    After initialisation the following functions should be called in order
+/// @notice Holds tokens for users to claim.
+/// @dev    Unlike a merkle distributor this contract uses storage to record claims rather than a
+///         merkle root. This is because calldata on Arbitrum is relatively expensive when compared with
+///         storage, since calldata uses L1 gas.
+///         After construction do the following
 ///         1. transfer tokens to this contract
-///         2. setClaimPeriod - set the period during which users can claim
-///         3. setRecipients - called as many times as required to set all the recipients
+///         2. setRecipients - called as many times as required to set all the recipients
+///         3. transferOwnership - the ownership of the contract should be transferred to a new owner (eg DAO) after all recipients have been set
 contract TokenDistributor is Ownable {
     /// @notice Token to be distributed
     IERC20VotesUpgradeable public immutable token;
-    /// @notice address to receive tokens that were not claimed
-    address payable public unclaimedTokensReciever;
+    /// @notice Address to receive tokens that were not claimed
+    address payable public sweepReceiver;
     /// @notice amount of tokens that can be claimed by address
     mapping(address => uint256) public claimableTokens;
-    /// @notice total amount of tokens claimable by recipients of this contract
+    /// @notice Total amount of tokens claimable by recipients of this contract
     uint256 public totalClaimable;
-    /// @notice block number at which claiming starts
+    /// @notice Block number at which claiming starts
     uint256 public immutable claimPeriodStart;
-    /// @notice block number at which claiming ends
+    /// @notice Block number at which claiming ends
     uint256 public immutable claimPeriodEnd;
 
-    /// @notice range of blocks in which claiming may happen
+    /// @notice Range of blocks in which claiming may happen
     event ClaimPeriodUpdated(uint256 start, uint256 end);
     /// @notice recipient can claim this amount of tokens
     event CanClaim(address recipient, uint256 amount);
@@ -35,48 +38,51 @@ contract TokenDistributor is Ownable {
     /// @notice leftover tokens after claiming period have been swept
     event Swept(uint256 amount);
     /// @notice new address set to receive unclaimed tokens
-    event UnclaimedTokensRecieverSet(address newUnclaimedTokensReciever);
+    event SweepReceiverSet(address newSweepReceiver);
+    /// @notice Tokens withdrawn
+    event Withdrawal(address recipient, uint256 amount);
 
     constructor(
         IERC20VotesUpgradeable _token,
-        address payable _unclaimedTokensReciever,
+        address payable _sweepReceiver,
         address _owner,
         uint256 _claimPeriodStart,
         uint256 _claimPeriodEnd
     ) Ownable() {
-        // CHRIS: TODO: we should standardise error messages - use custom errors?
-        require(address(_token) != address(0), "TokenDistributor: ZERO_TOKEN");
-        require(_unclaimedTokensReciever != address(0), "TokenDistributor: ZERO_UNCLAIMED_RECEIVER");
-        require(_owner != address(0), "TokenDistributor: ZERO_OWNER");
+        require(address(_token) != address(0), "TokenDistributor: zero token address");
+        require(_sweepReceiver != address(0), "TokenDistributor: zero sweep address");
+        require(_owner != address(0), "TokenDistributor: zero owner address");
         require(_claimPeriodStart > block.number, "TokenDistributor: start should be in the future");
         require(_claimPeriodEnd > _claimPeriodStart, "TokenDistributor: start should be before end");
 
         token = _token;
-        unclaimedTokensReciever = _unclaimedTokensReciever;
+        sweepReceiver = _sweepReceiver;
         claimPeriodStart = _claimPeriodStart;
         claimPeriodEnd = _claimPeriodEnd;
         _transferOwnership(_owner);
-
-        // CHRIS: TODO: is this necessary? we can see it from the args...
-        emit UnclaimedTokensRecieverSet(_unclaimedTokensReciever);
     }
 
-    /// @notice allows owner to update address of unclaimed tokens receiver
-    function setUnclaimedTokensReciever(address payable _unclaimedTokensReciever) external onlyOwner {
-        unclaimedTokensReciever = _unclaimedTokensReciever;
-        emit UnclaimedTokensRecieverSet(_unclaimedTokensReciever);
+    /// @notice Allows owner to update address of sweep receiver
+    function setSweepReciever(address payable _sweepReciever) external onlyOwner {
+        sweepReceiver = _sweepReciever;
+        emit SweepReceiverSet(_sweepReciever);
     }
 
-    /// @notice allows owner of the contract to withdraw tokens
+    /// @notice Allows owner of the contract to withdraw tokens
+    /// @dev A safety measure in case something goes wrong with the distribution
     function withdraw(uint256 amount) external onlyOwner {
         require(token.transfer(msg.sender, amount), "TokenDistributor: fail transfer token");
+        emit Withdrawal(msg.sender, amount);
     }
 
-    /// @notice allows owner to set list of recipients to receive tokens
+    /// @notice Allows owner to set a list of recipients to receive tokens
+    /// @dev This may need to be called many times to set the full list of recipients
     function setRecipients(address[] calldata _recipients, uint256[] calldata _claimableAmount) external onlyOwner {
         require(_recipients.length == _claimableAmount.length, "TokenDistributor: invalid array length");
         uint256 sum = totalClaimable;
         for (uint256 i = 0; i < _recipients.length; i++) {
+            // sanity check that the address being set is consistent
+            // if for some reason the owner made an error they can still set the address to zero in order to correct it
             require(claimableTokens[_recipients[i]] == 0, "TokenDistributor: recipient already set");
             claimableTokens[_recipients[i]] = _claimableAmount[i];
             emit CanClaim(_recipients[i], _claimableAmount[i]);
@@ -85,71 +91,54 @@ contract TokenDistributor is Ownable {
             }
         }
 
+        // sanity check that the current has been sufficiently allocated
         require(token.balanceOf(address(this)) >= sum, "TokenDistributor: not enough balance");
         totalClaimable = sum;
     }
 
-    // CHRIS: TODO: the docs in this file really need updating
-
-    /// @notice allows a token recipient to claim their tokens and delegate them in a single call
-    /// @dev different implementations may handle validation/fail delegateBySig differently. here a OZ v4.6.0 impl is assumed
+    /// @notice Claim and delegate in a single call
+    /// @dev Different implementations may handle validation/fail delegateBySig differently. here a OZ v4.6.0 impl is assumed
     /// @dev delegateBySig by OZ does not support `IERC1271`, so smart contract wallets should not use this method
+    /// @dev delegateBySig is used so that the token contract doesn't need to contain any claiming functionality
     function claimAndDelegate(address delegatee, uint256 expiry, uint8 v, bytes32 r, bytes32 s) external {
         claim();
+        // WARNING: there's a nuisance attack that can occur here on networks that allow front running
+        // A malicious party could see the signature when it's broadcast to a public mempool and create a
+        // new transaction to front run by calling delegateBySig on the token with the sig. The result would
+        // be that the tx to claimAndDelegate would fail. This is only a nuisance as the user can just call the
+        // claim function below to claim their funds, however it would be an annoying UX and they would have paid
+        // for a failed transaction. If using this function on a network that allows front running consider
+        // modifying it to put the delegateBySig in a try/catch and rethrow for all errors that aren't "nonce invalid"
         token.delegateBySig(delegatee, 0, expiry, v, r, s);
-
-        // CHRIS: TODO: write a comment on why it's not necessary to worry about front running
-
-        // try token.delegateBySig(delegatee, 0, expiry, v, r, s) {}
-        // catch Error(string memory reason) {
-        //     if (keccak256(abi.encodePacked(reason)) != keccak256(abi.encodePacked("ERC20Votes: invalid nonce"))) {
-        //         revert(reason);
-        //     }
-        // }
-
-        // // ensure that delegation did take place
-        // // CHRIS: TODO: docs on why we need to do this
+        // ensure that delegation did take place, this is just a sanity check that ensures the signature
+        // matched to the sender who was claiming. It helps to detect errors in forming signatures
         require(token.delegates(msg.sender) == delegatee, "TokenDistributor: delegate failed");
-
-        // CHRIS: TODO: maybe just do known risks
-        // CHRIS: TODO: should we check that the claimer is also the signer?
-        // CHRIS: TODO: there's a potential DOS here where someone is annoying be making delegate claims on behalf of someone else
-        // CHRIS: TODO: result is their claimAndDelegate will fail? and they'll have to do normal delegation
-        // CHRIS: TODO: could get round this by doing a try/catch on the actual delegation but this would be dangerous because we may fuck up the actual delegation
-        // CHRIS: TODO: better to do front end where we can actually check if the user has delegated?
-        // CHRIS: TODO: we want to stop people stealing the sig.. we could further wrap it up? nope, they can always unwrap
-        // CHRIS: TODO: basically nothing we can do about this since the nonce will already have been used
     }
 
-    /// @notice sends leftover funds to unclaimed tokens reciever once the claiming period is over
+    /// @notice Sends any unclaimed funds to the sweep reciever once the claiming period is over
     function sweep() external {
         require(block.number >= claimPeriodEnd, "TokenDistributor: not ended");
         uint256 leftovers = token.balanceOf(address(this));
         require(leftovers != 0, "TokenDistributor: no leftovers");
-        require(token.transfer(unclaimedTokensReciever, leftovers), "TokenDistributor: fail token transfer");
+        
+        require(token.transfer(sweepReceiver, leftovers), "TokenDistributor: fail token transfer");
 
         emit Swept(leftovers);
 
-        if (address(this).balance > 0) {
-            // this address shouldn't hold any eth. but if it does, we transfer eth using an
-            // explicit call to make sure the receiver's fallback function is triggered
-            (bool success,) = unclaimedTokensReciever.call{value: address(this).balance}("");
-
-            // if this fails, we continue regardless and funds will be transfered through self destruct
-        }
-        // no funds should be sent because of previous step (unless the contract doesnt have a payable fallback func)
         // contract is destroyed to clean up storage
-        selfdestruct(payable(unclaimedTokensReciever));
+        selfdestruct(payable(sweepReceiver));
     }
 
-    /// @notice allows a recipient to claim their tokens
+    /// @notice Allows a recipient to claim their tokens
+    /// @dev Can only be called during the claim period
     function claim() public {
-        // CHRIS: TODO: could these error messages be better?
         require(block.number >= claimPeriodStart, "TokenDistributor: claim not started");
         require(block.number < claimPeriodEnd, "TokenDistributor: claim ended");
 
         uint256 amount = claimableTokens[msg.sender];
         require(amount > 0, "TokenDistributor: nothing to claim");
+
+        // CHRIS: TODO: should we reduce the totalClaimableTokens?
 
         claimableTokens[msg.sender] = 0;
 
