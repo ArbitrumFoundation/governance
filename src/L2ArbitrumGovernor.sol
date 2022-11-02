@@ -63,9 +63,9 @@ contract L2ArbitrumGovernor is
     uint256 votingPeriod_;
     uint256 votingDelay_;
     /// @notice Addresses to exclude from circulating votes for quorum threshold calculation. 
-    address[] circulatingVotesExcludeList;
+    address[] public circulatingVotesExcludeList;
     /// @notice Addresses to exclude from circulating votes for quorum threshold calculation. 
-    mapping(address => bool) circulatingVotesExcludeMap;
+    mapping(address => bool) public circulatingVotesExcludeMap;
     constructor() {
         _disableInitializers();
     }
