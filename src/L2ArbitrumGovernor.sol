@@ -137,6 +137,16 @@ contract L2ArbitrumGovernor is
         return getPastCirculatingSupply(blockNumber) * quorumNumerator(blockNumber) / quorumDenominator();
     }
 
+    /// @notice cast vote on proposal; restrict access from exclude list
+    function castVote(uint256 proposalId, uint8 support)
+        public 
+        override(GovernorUpgradeable, IGovernorUpgradeable)
+        returns (uint256) 
+    {
+        require(!circulatingVotesExcludeMap[msg.sender], "CAN'T VOTE");
+        super.castVote(proposalId, support);
+    }
+
     // CHRIS: TODO: I dont actually think all of these need to be overriden
     // The following functions are overrides required by Solidity.
 
@@ -147,13 +157,6 @@ contract L2ArbitrumGovernor is
         returns (ProposalState)
     {
         return super.state(proposalId);
-    }
-
-     function castVote(uint256 proposalId, uint8 support)
-        public
-    {
-        require(!circulatingVotesExcludeMap[msg.sender], "CAN'T VOTE");
-        super.castVote(proposalId, support);
     }
 
     function propose(
