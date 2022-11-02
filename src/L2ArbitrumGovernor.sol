@@ -5,7 +5,6 @@ pragma solidity 0.8.16;
 import "@openzeppelin/contracts-upgradeable/governance/GovernorUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/governance/compatibility/GovernorCompatibilityBravoUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorVotesUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorVotesQuorumFractionUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorTimelockControlUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "./L2ArbitrumToken.sol";
@@ -59,7 +58,6 @@ contract L2ArbitrumGovernor is
     GovernorUpgradeable,
     GovernorCompatibilityBravoUpgradeable,
     GovernorVotesUpgradeable,
-    GovernorVotesQuorumFractionUpgradeable,
     GovernorTimelockControlUpgradeable
 {
     uint256 votingPeriod_;
@@ -80,7 +78,6 @@ contract L2ArbitrumGovernor is
         __GovernorVotes_init(_token);
         // CHRIS: TODO: set this dynamically how? we could override quorum to return our own function?
         // CHRIS: TODO: just get rid of this entirely? but we need to get quorum at a specific block height dont we? how is it used?
-        __GovernorVotesQuorumFraction_init(3);
         __GovernorTimelockControl_init(_timelock);
         votingDelay_ = _votingDelay;
         votingPeriod_ = _votingPeriod;
@@ -130,10 +127,10 @@ contract L2ArbitrumGovernor is
     function quorum(uint256 blockNumber)
         public
         view
-        override (IGovernorUpgradeable, GovernorVotesQuorumFractionUpgradeable)
+        override (IGovernorUpgradeable)
         returns (uint256)
     {
-        return getPastCirculatingSupply(blockNumber) * quorumNumerator(blockNumber) / quorumDenominator();
+        return getPastCirculatingSupply(blockNumber) * 3 / 100;
     }
 
     /// @notice cast vote on proposal; restrict access from exclude list
