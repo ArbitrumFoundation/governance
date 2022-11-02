@@ -38,11 +38,13 @@ contract L2ArbitrumVestingWallet is VestingWallet {
         governer = _governer;
     }
 
+    /// @notice restrict to calls from beneficiary (eventual token recipient) address
     modifier onlyBeneficiery() {
         require(msg.sender == beneficiary(), "NOT_BENEFICIARY");
         _;
     }
 
+    /// @notice Vesting formula; distrubutes tokens once per 30 days starting at start for duration such that totalAllocation is allocated after duration.
     function _vestingSchedule(uint256 totalAllocation, uint64 timestamp)
         internal
         view
