@@ -15,8 +15,8 @@ contract TokenDistributorTest is Test {
     address l1Token = address(100_000_001);
     uint256 initialSupply = 1000;
     address tokenOwner = address(100_000_002);
-    address payable unclaimedTokensReceiver = payable(address(100_000_003));
-    uint256 tdBalance = 400; // CHRIS: TODO: remove this?
+    address payable sweepReceiver = payable(address(100_000_003));
+    uint256 tdBalance = 400;
     uint256 currentBlockNumber = 200;
     uint256 claimPeriodStart = currentBlockNumber + 10;
     uint256 claimPeriodEnd = claimPeriodStart + 20;
@@ -34,10 +34,9 @@ contract TokenDistributorTest is Test {
 
     function deploy() public returns (TokenDistributor, L2ArbitrumToken) {
         L2ArbitrumToken token = deployToken();
-        // CHRIS: TODO: add this to the gov factory deployer?
         TokenDistributor td = new TokenDistributor(
             IERC20VotesUpgradeable(address(token)), 
-            unclaimedTokensReceiver, tdOwner, claimPeriodStart, 
+            sweepReceiver, tdOwner, claimPeriodStart, 
             claimPeriodEnd
         );
 
@@ -56,44 +55,44 @@ contract TokenDistributorTest is Test {
         (TokenDistributor td, L2ArbitrumToken token) = deploy();
 
         assertEq(address(td.token()), address(token), "Invalid token");
-        assertEq(td.unclaimedTokensReciever(), unclaimedTokensReceiver, "Invalid receiver");
+        assertEq(td.sweepReceiver(), sweepReceiver, "Invalid receiver");
         assertEq(td.totalClaimable(), 0, "Invalid total tokens");
         assertEq(token.balanceOf(address(td)), 0, "Invalid balance");
         assertEq(td.claimPeriodStart(), claimPeriodStart, "Invalid claim start");
         assertEq(td.claimPeriodEnd(), claimPeriodEnd, "Invalid claim end");
-        assertEq(td.claimableTokens(unclaimedTokensReceiver), 0, "Invalid claimable amount");
+        assertEq(td.claimableTokens(sweepReceiver), 0, "Invalid claimable amount");
     }
 
     function testZeroToken() public {
-        vm.expectRevert("TokenDistributor: ZERO_TOKEN");
+        vm.expectRevert("TokenDistributor: zero token address");
         new TokenDistributor(
-    IERC20VotesUpgradeable(address(0)), unclaimedTokensReceiver, tdOwner, claimPeriodStart, claimPeriodEnd);
+    IERC20VotesUpgradeable(address(0)), sweepReceiver, tdOwner, claimPeriodStart, claimPeriodEnd);
     }
 
     function testZeroReceiver() public {
         L2ArbitrumToken token = deployToken();
-        vm.expectRevert("TokenDistributor: ZERO_UNCLAIMED_RECEIVER");
+        vm.expectRevert("TokenDistributor: zero sweep address");
         new TokenDistributor(
         IERC20VotesUpgradeable(address(token)), payable(address(0)), tdOwner, claimPeriodStart, claimPeriodEnd);
     }
 
     function testZeroOwner() public {
         L2ArbitrumToken token = deployToken();
-        vm.expectRevert("TokenDistributor: ZERO_OWNER");
-        new TokenDistributor(IERC20VotesUpgradeable(address(token)), unclaimedTokensReceiver, address(0), claimPeriodStart, claimPeriodEnd);
+        vm.expectRevert("TokenDistributor: zero owner address");
+        new TokenDistributor(IERC20VotesUpgradeable(address(token)), sweepReceiver, address(0), claimPeriodStart, claimPeriodEnd);
     }
 
     function testOldClaimStart() public {
         L2ArbitrumToken token = deployToken();
         vm.roll(claimPeriodStart + 1);
         vm.expectRevert("TokenDistributor: start should be in the future");
-        new TokenDistributor(IERC20VotesUpgradeable(address(token)), unclaimedTokensReceiver, tdOwner, claimPeriodStart, claimPeriodEnd);
+        new TokenDistributor(IERC20VotesUpgradeable(address(token)), sweepReceiver, tdOwner, claimPeriodStart, claimPeriodEnd);
     }
 
     function testClaimStartAfterClaimEnd() public {
         L2ArbitrumToken token = deployToken();
         vm.expectRevert("TokenDistributor: start should be before end");
-        new TokenDistributor(IERC20VotesUpgradeable(address(token)), unclaimedTokensReceiver, tdOwner, claimPeriodEnd, claimPeriodStart);
+        new TokenDistributor(IERC20VotesUpgradeable(address(token)), sweepReceiver, tdOwner, claimPeriodEnd, claimPeriodStart);
     }
 
     function testDoesDeployAndDeposit() external {
@@ -382,14 +381,11 @@ contract TokenDistributorTest is Test {
     function testSweep() public {
         (TokenDistributor td, L2ArbitrumToken token,,,,) = deployAndSetRecipients();
 
-        // CHRIS: TODO: add a value test - we need to do a self destruct trick to test this...
-        // payable(address(td)).transfer(0.1 ether);
-
         vm.roll(claimPeriodEnd);
         td.sweep();
 
         assertEq(token.balanceOf(address(td)), 0, "Td balance");
-        assertEq(token.balanceOf(unclaimedTokensReceiver), tdBalance, "Reciever balance");
+        assertEq(token.balanceOf(sweepReceiver), tdBalance, "Reciever balance");
         // cant test the self destruct in the same tx
     }
 
@@ -406,7 +402,7 @@ contract TokenDistributorTest is Test {
         td.sweep();
 
         assertEq(token.balanceOf(address(td)), 0, "Td balance");
-        assertEq(token.balanceOf(unclaimedTokensReceiver), tdBalance - amounts[5], "Reciever balance");
+        assertEq(token.balanceOf(sweepReceiver), tdBalance - amounts[5], "Reciever balance");
     }
 
     function testSweepFailsBeforeClaimPeriodEnd() public {
@@ -431,7 +427,7 @@ contract TokenDistributorTest is Test {
         (TokenDistributor td, L2ArbitrumToken token,,,,) = deployAndSetRecipients();
         vm.mockCall(
             address(token),
-            abi.encodeWithSelector(token.transfer.selector, unclaimedTokensReceiver, tdBalance),
+            abi.encodeWithSelector(token.transfer.selector, sweepReceiver, tdBalance),
             abi.encode(false)
         );
 
@@ -472,7 +468,7 @@ contract TokenDistributorTest is Test {
         td.withdraw(tdBalance);
     }
 
-    function testSetUnclaimedReceiver() public {
+    function testSetSweepReceiver() public {
         (TokenDistributor td, L2ArbitrumToken token,,,,) = deployAndSetRecipients();
 
         vm.mockCall(
@@ -482,10 +478,10 @@ contract TokenDistributorTest is Test {
         address payable newReceiver = payable(address(1397));
 
         vm.prank(tdOwner);
-        td.setUnclaimedTokensReciever(newReceiver);
+        td.setSweepReciever(newReceiver);
     }
 
-    function testSetUnclaimedReceiverFailsOwner() public {
+    function testSetSweepReceiverFailsOwner() public {
         (TokenDistributor td, L2ArbitrumToken token,,,,) = deployAndSetRecipients();
 
         vm.mockCall(
@@ -495,6 +491,6 @@ contract TokenDistributorTest is Test {
         address payable newReceiver = payable(address(1397));
 
         vm.expectRevert("Ownable: caller is not the owner");
-        td.setUnclaimedTokensReciever(newReceiver);
+        td.setSweepReciever(newReceiver);
     }
 }
