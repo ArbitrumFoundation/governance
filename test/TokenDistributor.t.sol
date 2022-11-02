@@ -16,7 +16,7 @@ contract TokenDistributorTest is Test {
     uint256 initialSupply = 1000;
     address tokenOwner = address(100_000_002);
     address payable sweepReceiver = payable(address(100_000_003));
-    uint256 tdBalance = 400; // CHRIS: TODO: remove this?
+    uint256 tdBalance = 400;
     uint256 currentBlockNumber = 200;
     uint256 claimPeriodStart = currentBlockNumber + 10;
     uint256 claimPeriodEnd = claimPeriodStart + 20;
@@ -34,7 +34,6 @@ contract TokenDistributorTest is Test {
 
     function deploy() public returns (TokenDistributor, L2ArbitrumToken) {
         L2ArbitrumToken token = deployToken();
-        // CHRIS: TODO: add this to the gov factory deployer?
         TokenDistributor td = new TokenDistributor(
             IERC20VotesUpgradeable(address(token)), 
             sweepReceiver, tdOwner, claimPeriodStart, 
@@ -381,9 +380,6 @@ contract TokenDistributorTest is Test {
 
     function testSweep() public {
         (TokenDistributor td, L2ArbitrumToken token,,,,) = deployAndSetRecipients();
-
-        // CHRIS: TODO: add a value test - we need to do a self destruct trick to test this...
-        // payable(address(td)).transfer(0.1 ether);
 
         vm.roll(claimPeriodEnd);
         td.sweep();
