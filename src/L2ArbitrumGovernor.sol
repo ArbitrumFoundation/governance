@@ -66,6 +66,8 @@ contract L2ArbitrumGovernor is
     uint256 votingDelay_;
     /// @notice Addresses to exclude from circulating votes for quorum threshold calculation. 
     address[] circulatingVotesExcludeList;
+    /// @notice Addresses to exclude from circulating votes for quorum threshold calculation. 
+    mapping(address => bool) circulatingVotesExcludeMap;
     constructor() {
         _disableInitializers();
     }
@@ -84,6 +86,9 @@ contract L2ArbitrumGovernor is
         votingDelay_ = _votingDelay;
         votingPeriod_ = _votingPeriod;
         circulatingVotesExcludeList = _circulatingVotesExcludeList;
+        for (uint256 i = 0; i < _circulatingVotesExcludeList.length; i++) {
+            circulatingVotesExcludeMap[_circulatingVotesExcludeList[i]] = true;
+        }
     }
 
     /**
@@ -107,9 +112,10 @@ contract L2ArbitrumGovernor is
     }
 
     /// @notice Updates addresses to exlude from circulating votes supply for quorum threshold calculation.
-    // TODO: owner
+    // TODO: Access Control 
     function addToCirculatingVotesExcludeList(address addressToExclude) external {
         circulatingVotesExcludeList.push(addressToExclude);
+        circulatingVotesExcludeMap[addressToExclude] = true;
     }
 
         /// @notice Get "circulating" votes supply; i.e., total minus excluded addresses.
@@ -141,6 +147,13 @@ contract L2ArbitrumGovernor is
         returns (ProposalState)
     {
         return super.state(proposalId);
+    }
+
+     function castVote(uint256 proposalId, uint8 support)
+        public
+    {
+        require(!circulatingVotesExcludeMap[msg.sender], "CAN'T VOTE");
+        super.castVote(proposalId, support);
     }
 
     function propose(
