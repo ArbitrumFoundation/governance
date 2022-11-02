@@ -20,23 +20,18 @@ contract L2GovernanceFactory {
         UpgradeExecutor executor
     );
 
-    struct DeployParams {
-        uint256 _l2MinTimelockDelay;
-        address _l1TokenAddress;
-        address _l2TokenLogic;
-        uint256 _l2TokenInitialSupply;
-        address _l2TokenOwner;
-        address[] _circulatingVotesExcludeList;
-        address _l2TimeLockLogic;
-        address _l2GovernorLogic;
-        address _l2UpgradeExecutorLogic;
-        address _l2UpgradeExecutorInitialOwner;
-    }
-
     // CHRIS: TODO: make this whole thing ownable? we want to avoid the missing steps, but that's not an issue right
 
     function deploy(
-        DeployParams memory _deployParams
+        uint256 _l2MinTimelockDelay,
+        address _l1TokenAddress,
+        address _l2TokenLogic,
+        uint256 _l2TokenInitialSupply,
+        address _l2TokenOwner,
+        address _l2TimeLockLogic,
+        address _l2GovernorLogic,
+        address _l2UpgradeExecutorLogic,
+        address _l2UpgradeExecutorInitialOwner
     )
         external
         returns (
@@ -48,15 +43,15 @@ contract L2GovernanceFactory {
         )
     {
         // CHRIS: TODO: remove?
-        uint256 l2MinTimelockDelay = _deployParams._l2MinTimelockDelay;
-        address l1TokenAddress = _deployParams._l1TokenAddress;
-        address l2TokenLogic = _deployParams._l2TokenLogic;
-        uint256 l2TokenInitialSupply = _deployParams._l2TokenInitialSupply;
-        address l2TokenOwner = _deployParams._l2TokenOwner;
-        address l2TimeLockLogic = _deployParams._l2TimeLockLogic;
-        address l2GovernorLogic = _deployParams._l2GovernorLogic;
-        address l2UpgradeExecutorLogic = _deployParams._l2UpgradeExecutorLogic;
-        address l2UpgradeExecutorInitialOwner = _deployParams._l2UpgradeExecutorInitialOwner;
+        uint256 l2MinTimelockDelay = _l2MinTimelockDelay;
+        address l1TokenAddress = _l1TokenAddress;
+        address l2TokenLogic = _l2TokenLogic;
+        uint256 l2TokenInitialSupply = _l2TokenInitialSupply;
+        address l2TokenOwner = _l2TokenOwner;
+        address l2TimeLockLogic = _l2TimeLockLogic;
+        address l2GovernorLogic = _l2GovernorLogic;
+        address l2UpgradeExecutorLogic = _l2UpgradeExecutorLogic;
+        address l2UpgradeExecutorInitialOwner = _l2UpgradeExecutorInitialOwner;
 
         // CHRIS: TODO: we dont want the owner of the proxy admin to be this address!
         // CHRIS: TODO: make sure to transfer it out
@@ -64,7 +59,7 @@ contract L2GovernanceFactory {
         proxyAdmin = new ProxyAdmin();
 
         token = deployToken(proxyAdmin, l2TokenLogic);
-        token.initialize(l1TokenAddress, l2TokenInitialSupply, l2TokenOwner, _deployParams._circulatingVotesExcludeList);
+        token.initialize(l1TokenAddress, l2TokenInitialSupply, l2TokenOwner);
 
         timelock = deployTimelock(proxyAdmin, l2TimeLockLogic);
         // CHRIS: TODO: can we remove this?
