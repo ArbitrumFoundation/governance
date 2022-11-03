@@ -125,7 +125,7 @@ contract L2GovernanceFactoryTest is Test {
         );
         assertEq(
             l2ArbitrumGovernor.quorum(2),
-            306,
+            10200 * quorumNumerator / 100,
             "Mint should be reflected in quorum"
         );
         vm.warp(300000000000000000);
@@ -148,7 +148,7 @@ contract L2GovernanceFactoryTest is Test {
         );
         assertEq(
             l2ArbitrumGovernor.quorum(3),
-            306,
+            10200 * quorumNumerator / 100,
             "votes at exlcude-address member shouldn't affect quorum"
         );
     }
