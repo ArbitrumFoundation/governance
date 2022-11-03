@@ -78,10 +78,6 @@ contract L2ArbitrumToken is
         _mint(recipient, amount);
     }
 
-    function getPastTotalSupply(uint256 blockNumber) public view override returns (uint256) {
-        return super.getPastTotalSupply(blockNumber);
-    }
-
     function _afterTokenTransfer(address from, address to, uint256 amount)
         internal
         override (ERC20Upgradeable, ERC20VotesUpgradeable)
