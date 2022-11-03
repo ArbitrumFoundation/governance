@@ -1,19 +1,16 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.16;
 
-import "./L2ArbitrumVestingWallet.sol";
+import "./VotingVestingWallet.sol";
 
-contract L2ArbitrumVestingWalletsFactory {
+contract VestingWalletsFactory {
     uint64 public immutable startTimestamp;
     uint64 public immutable durationSeconds;
     address public immutable distributor;
     address public immutable token;
     address payable immutable governer;
 
-    event WalletCreated(
-        address indexed beneficiary,
-        address indexed vestingWalletAddress
-    );
+    event WalletCreated(address indexed beneficiary, address indexed vestingWalletAddress);
 
     constructor(
         uint64 _startTimestamp,
@@ -31,7 +28,7 @@ contract L2ArbitrumVestingWalletsFactory {
 
     function createWallets(address[] memory wallets) public {
         for (uint256 i = 0; i < wallets.length; i++) {
-            L2ArbitrumVestingWallet wallet = new L2ArbitrumVestingWallet(
+            VotingVestingWallet wallet = new VotingVestingWallet(
                 wallets[i],
                 startTimestamp,
                 durationSeconds,

@@ -426,9 +426,7 @@ contract TokenDistributorTest is Test {
     function testSweepFailsForFailedTransfer() public {
         (TokenDistributor td, L2ArbitrumToken token,,,,) = deployAndSetRecipients();
         vm.mockCall(
-            address(token),
-            abi.encodeWithSelector(token.transfer.selector, sweepReceiver, tdBalance),
-            abi.encode(false)
+            address(token), abi.encodeWithSelector(token.transfer.selector, sweepReceiver, tdBalance), abi.encode(false)
         );
 
         vm.roll(claimPeriodEnd);
