@@ -44,7 +44,8 @@ contract L2GovernanceFactoryTest is Test {
                     _l2UpgradeExecutorLogic: upgradeExecutorLogic,
                     _l2UpgradeExecutorInitialOwner: l2UpgradeExecutorInitialOwner,
                     _votingPeriod: 1,
-                    _votingDelay: 1
+                    _votingDelay: 1,
+                    _proposalThreshold: 1
                 })
             );
     }
@@ -80,7 +81,7 @@ contract L2GovernanceFactoryTest is Test {
         token.initialize(l1TokenAddr, initialSupply, l1TokenAddr);
 
         vm.expectRevert("Initializable: contract is already initialized");
-        gov.initialize(token, timelock, 1, 1);
+        gov.initialize(token, timelock, addressStub, 1, 1, 1);
 
         vm.expectRevert("Initializable: contract is already initialized");
         timelock.initialize(1, addressArrayStub, addressArrayStub);

@@ -3,6 +3,7 @@ pragma solidity 0.8.16;
 
 // CHRIS: TODO: we updated to 0.8
 import "@openzeppelin/contracts-upgradeable/governance/GovernorUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorSettingsUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/governance/compatibility/GovernorCompatibilityBravoUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorVotesUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorTimelockControlUpgradeable.sol";
@@ -55,50 +56,35 @@ import "./L2ArbitrumToken.sol";
 
 contract L2ArbitrumGovernor is
     Initializable,
-    GovernorUpgradeable,
+    GovernorSettingsUpgradeable,
     GovernorCompatibilityBravoUpgradeable,
     GovernorVotesUpgradeable,
     GovernorTimelockControlUpgradeable
 {
-    uint256 votingPeriod_;
-    uint256 votingDelay_;
     /// @notice address for which votes will not be counted toward quorum; i.e., treasurey will delegate it votes to it
     address public immutable circulatingVotesExcludeDummyAddress = address(0xA4b86);
+    address public l2Executor;
     constructor() {
         _disableInitializers();
     }
 
     // TODO: should we use GovernorPreventLateQuorumUpgradeable?
-    function initialize(IVotesUpgradeable _token, TimelockControllerUpgradeable _timelock, uint256 _votingPeriod, uint256 _votingDelay) external initializer {
+    function initialize(IVotesUpgradeable _token, TimelockControllerUpgradeable _timelock, address _l2Executor,  uint256 _votingDelay, uint256 _votingPeriod, uint256 _proposalThreshold) external initializer {
         // CHRIS: TODO: pass in we also should pass in these vars instead of hard coding
         __Governor_init("L2ArbitrumGovernor");
         __GovernorCompatibilityBravo_init();
         __GovernorVotes_init(_token);
+        __GovernorSettings_init(_votingDelay, _votingPeriod, _proposalThreshold);
         // CHRIS: TODO: set this dynamically how? we could override quorum to return our own function?
         // CHRIS: TODO: just get rid of this entirely? but we need to get quorum at a specific block height dont we? how is it used?
         __GovernorTimelockControl_init(_timelock);
-        votingDelay_ = _votingDelay;
-        votingPeriod_ = _votingPeriod;
+        l2Executor = _l2Executor;
+        
     }
 
-    /**
-     * @notice module:user-config
-     * @dev Delay, in number of block, between the proposal is created and the vote starts. This can be increassed to
-     * leave time for users to buy voting power, or delegate it, before the voting of a proposal starts.
-     */
-    function votingDelay() public view override returns (uint256) {
-        return votingDelay_;
-    }
-
-    /**
-     * @notice module:user-config
-     * @dev Delay, in number of blocks, between the vote start and vote ends.
-     *
-     * NOTE: The {votingDelay} can delay the start of the vote. This must be considered when setting the voting
-     * duration compared to the voting delay.
-     */
-    function votingPeriod() public view override returns (uint256) {
-        return votingPeriod_;
+    /// @notice returns l2 executor address; used internally for onlyFromGovernor check
+    function _executor() internal view override(GovernorTimelockControlUpgradeable, GovernorUpgradeable) returns (address) {
+        return l2Executor;
     }
 
 
@@ -107,14 +93,14 @@ contract L2ArbitrumGovernor is
         return token.getPastTotalSupply(blockNumber) - token.getPastVotes(circulatingVotesExcludeDummyAddress, blockNumber);
     }
 
-
+    /// @notice calculates quorum size; exludes delegated to exclude address 
     function quorum(uint256 blockNumber)
         public
         view
         override (IGovernorUpgradeable)
         returns (uint256)
     {
-        return getPastCirculatingSupply(blockNumber) * 3 / 100;
+        return getPastCirculatingSupply(blockNumber) * proposalThreshold() / 100;
     }
 
     /// @notice cast vote on proposal
@@ -128,6 +114,10 @@ contract L2ArbitrumGovernor is
 
     // CHRIS: TODO: I dont actually think all of these need to be overriden
     // The following functions are overrides required by Solidity.
+
+     function proposalThreshold() public view override (GovernorSettingsUpgradeable, GovernorUpgradeable) returns (uint256) {
+        return super.proposalThreshold();
+    }
 
     function state(uint256 proposalId)
         public
@@ -169,15 +159,6 @@ contract L2ArbitrumGovernor is
         bytes32 descriptionHash
     ) internal override (GovernorUpgradeable, GovernorTimelockControlUpgradeable) returns (uint256) {
         return super._cancel(targets, values, calldatas, descriptionHash);
-    }
-
-    function _executor()
-        internal
-        view
-        override (GovernorUpgradeable, GovernorTimelockControlUpgradeable)
-        returns (address)
-    {
-        return super._executor();
     }
 
     function supportsInterface(bytes4 interfaceId)

@@ -15,10 +15,11 @@ contract L2GovernanceFactoryTest is Test {
     uint256 votingPeriod = 6;
     uint256 votingDelay = 9;
     address excludeListMember = address(3);
-    uint256 quorumNumerator = 3;
+    uint256 quorumNumerator = 5;
 
     address[] stubAddressArray = [address(6)];
     address someRando = address(7);
+    address stubAddress = address(8);
 
     function deployAndInit()
         private
@@ -58,8 +59,10 @@ contract L2GovernanceFactoryTest is Test {
         l2ArbitrumGovernor.initialize(
             token,
             timelock,
+            stubAddress,
+            votingDelay,
             votingPeriod,
-            votingDelay
+            quorumNumerator
         );
         return (l2ArbitrumGovernor, token, timelock);
     }
@@ -75,8 +78,10 @@ contract L2GovernanceFactoryTest is Test {
         l2ArbitrumGovernor.initialize(
             token,
             timelock,
+            stubAddress,
+            votingDelay,
             votingPeriod,
-            votingDelay
+            quorumNumerator
         );
     }
 
@@ -125,7 +130,7 @@ contract L2GovernanceFactoryTest is Test {
         );
         assertEq(
             l2ArbitrumGovernor.quorum(2),
-            10200 * quorumNumerator / 100,
+            (10200 * quorumNumerator) / 100,
             "Mint should be reflected in quorum"
         );
         vm.warp(300000000000000000);
@@ -148,7 +153,7 @@ contract L2GovernanceFactoryTest is Test {
         );
         assertEq(
             l2ArbitrumGovernor.quorum(3),
-            10200 * quorumNumerator / 100,
+            (10200 * quorumNumerator) / 100,
             "votes at exlcude-address member shouldn't affect quorum"
         );
     }
