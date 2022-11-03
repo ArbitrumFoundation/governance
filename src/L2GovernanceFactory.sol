@@ -17,7 +17,6 @@ struct DeployParams {
         address _l1TokenAddress;
         address _l2TokenLogic;
         uint256 _l2TokenInitialSupply;
-        address[] _circulatingVotesExcludeList;
         address _l2TokenOwner;
         address _l2TimeLockLogic;
         address _l2GovernorLogic;
@@ -66,7 +65,7 @@ contract L2GovernanceFactory {
         }
 
         gov = deployGovernor(proxyAdmin, params._l2GovernorLogic);
-        gov.initialize(token, timelock, params._votingPeriod, params._votingDelay, params._circulatingVotesExcludeList);
+        gov.initialize(token, timelock, params._votingPeriod, params._votingDelay);
 
         // the timelock itself and deployer are admins
         // CHRIS: TODO: set the same for the l1 contract?

@@ -62,16 +62,14 @@ contract L2ArbitrumGovernor is
 {
     uint256 votingPeriod_;
     uint256 votingDelay_;
-    /// @notice Addresses to exclude from circulating votes for quorum threshold calculation. 
-    address[] public circulatingVotesExcludeList;
-    /// @notice Addresses to exclude from circulating votes for quorum threshold calculation. 
-    mapping(address => bool) public circulatingVotesExcludeMap;
+    /// @notice address for which votes will not be counted toward quorum; i.e., treasurey will delegate it votes to it
+    address public immutable circulatingVotesExcludeDummyAddress = address(0xA4b86);
     constructor() {
         _disableInitializers();
     }
 
     // TODO: should we use GovernorPreventLateQuorumUpgradeable?
-    function initialize(IVotesUpgradeable _token, TimelockControllerUpgradeable _timelock, uint256 _votingPeriod, uint256 _votingDelay, address[] memory _circulatingVotesExcludeList) external initializer {
+    function initialize(IVotesUpgradeable _token, TimelockControllerUpgradeable _timelock, uint256 _votingPeriod, uint256 _votingDelay) external initializer {
         // CHRIS: TODO: pass in we also should pass in these vars instead of hard coding
         __Governor_init("L2ArbitrumGovernor");
         __GovernorCompatibilityBravo_init();
@@ -81,10 +79,6 @@ contract L2ArbitrumGovernor is
         __GovernorTimelockControl_init(_timelock);
         votingDelay_ = _votingDelay;
         votingPeriod_ = _votingPeriod;
-        circulatingVotesExcludeList = _circulatingVotesExcludeList;
-        for (uint256 i = 0; i < _circulatingVotesExcludeList.length; i++) {
-            circulatingVotesExcludeMap[_circulatingVotesExcludeList[i]] = true;
-        }
     }
 
     /**
@@ -107,21 +101,10 @@ contract L2ArbitrumGovernor is
         return votingPeriod_;
     }
 
-    /// @notice Updates addresses to exlude from circulating votes supply for quorum threshold calculation.
-    // TODO: Access Control 
-    function addToCirculatingVotesExcludeList(address addressToExclude) external {
-        require(!circulatingVotesExcludeMap[addressToExclude], "already excluded");
-        circulatingVotesExcludeList.push(addressToExclude);
-        circulatingVotesExcludeMap[addressToExclude] = true;
-    }
 
-        /// @notice Get "circulating" votes supply; i.e., total minus excluded addresses.
+        /// @notice Get "circulating" votes supply; i.e., total minus excluded dummy address.
     function getPastCirculatingSupply(uint256 blockNumber) public view virtual returns (uint256) {
-        uint256 supply = token.getPastTotalSupply(blockNumber);
-        for (uint256 index = 0; index < circulatingVotesExcludeList.length; index++) {
-            supply -= token.getPastVotes(circulatingVotesExcludeList[index], blockNumber);
-        }
-        return supply;
+        return token.getPastTotalSupply(blockNumber) - token.getPastVotes(circulatingVotesExcludeDummyAddress, blockNumber);
     }
 
 
@@ -140,7 +123,6 @@ contract L2ArbitrumGovernor is
         override(GovernorUpgradeable, IGovernorUpgradeable)
         returns (uint256) 
     {
-        require(!circulatingVotesExcludeMap[msg.sender], "CAN'T VOTE");
         super.castVote(proposalId, support);
     }
 

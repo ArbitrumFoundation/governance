@@ -14,9 +14,7 @@ contract L2GovernanceFactoryTest is Test {
     address tokenOwner = address(2);
     uint256 votingPeriod = 6;
     uint256 votingDelay = 9;
-    address excludeListMember1 = address(3);
-    address excludeListMember2 = address(4);
-    address[] excludeList = [excludeListMember1, excludeListMember2];
+    address excludeListMember= address(3);
     uint256 quorumNumerator = 3;
 
     address[] stubAddressArray = [address(6)];
@@ -61,8 +59,7 @@ contract L2GovernanceFactoryTest is Test {
             token,
             timelock,
             votingPeriod,
-            votingDelay,
-            excludeList
+            votingDelay
         );
         return (l2ArbitrumGovernor, token, timelock);
     }
@@ -79,8 +76,7 @@ contract L2GovernanceFactoryTest is Test {
             token,
             timelock,
             votingPeriod,
-            votingDelay,
-            excludeList
+            votingDelay
         );
     }
 
@@ -100,31 +96,7 @@ contract L2GovernanceFactoryTest is Test {
             votingPeriod,
             "votingPeriod not set properly"
         );
-        assertTrue(
-            l2ArbitrumGovernor.circulatingVotesExcludeMap(excludeListMember1),
-            "excludeListMember1 not excluded"
-        );
-        assertTrue(
-            l2ArbitrumGovernor.circulatingVotesExcludeMap(excludeListMember2),
-            "excludeListMember2 not excluded"
-        );
-        assertFalse(
-            l2ArbitrumGovernor.circulatingVotesExcludeMap(someRando),
-            "Excluded some rando"
-        );
 
-        assertEq(
-            l2ArbitrumGovernor.circulatingVotesExcludeList(0),
-            excludeListMember1,
-            ""
-        );
-        assertEq(
-            l2ArbitrumGovernor.circulatingVotesExcludeList(1),
-            excludeListMember2,
-            ""
-        );
-        vm.expectRevert();
-        assertEq(l2ArbitrumGovernor.circulatingVotesExcludeList(2), address(0));
     }
 
     function testPastCirculatingSupply() external {
@@ -149,26 +121,15 @@ contract L2GovernanceFactoryTest is Test {
             10200,
             "Mint not reflected in quorum"
         );
-        // TODO DG: Get this passing
-        vm.warp(300000000000000000);
-        vm.prank(tokenOwner);
-        token.mint(excludeListMember1, 200);
-        vm.roll(4);
-        assertEq(
-            l2ArbitrumGovernor.getPastCirculatingSupply(3),
-            10200,
-            "minting to exlcude-list member shouldn't affect circulating supply"
-        );
-    }
-
-    function testExcludedVote() external {
-        (
-            L2ArbitrumGovernor l2ArbitrumGovernor,
-            L2ArbitrumToken token,
-            ArbitrumTimelock timelock
-        ) = deployAndInit();
-        vm.prank(excludeListMember1);
-        vm.expectRevert("CAN'T VOTE");
-        l2ArbitrumGovernor.castVote(0, 0);
+        // // TODO DG: Get this passing
+        // vm.warp(300000000000000000);
+        // vm.prank(tokenOwner);
+        // token.mint(excludeListMember1, 200);
+        // vm.roll(4);
+        // assertEq(
+        //     l2ArbitrumGovernor.getPastCirculatingSupply(3),
+        //     10200,
+        //     "minting to exlcude-list member shouldn't affect circulating supply"
+        // );
     }
 }

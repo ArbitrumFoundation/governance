@@ -38,7 +38,6 @@ contract L2GovernanceFactoryTest is Test {
                     _l1TokenAddress: l1TokenAddr,
                     _l2TokenLogic: tokenLogic,
                     _l2TokenInitialSupply: initialSupply,
-                    _circulatingVotesExcludeList: addressArrayStub,
                     _l2TokenOwner: address(this),
                     _l2TimeLockLogic: timeLockLogic,
                     _l2GovernorLogic: governerLogic,
@@ -81,7 +80,7 @@ contract L2GovernanceFactoryTest is Test {
         token.initialize(l1TokenAddr, initialSupply, l1TokenAddr);
 
         vm.expectRevert("Initializable: contract is already initialized");
-        gov.initialize(token, timelock, 1, 1, addressArrayStub);
+        gov.initialize(token, timelock, 1, 1);
 
         vm.expectRevert("Initializable: contract is already initialized");
         timelock.initialize(1, addressArrayStub, addressArrayStub);
