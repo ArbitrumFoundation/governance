@@ -14,7 +14,7 @@ contract L2GovernanceFactoryTest is Test {
     address tokenOwner = address(2);
     uint256 votingPeriod = 6;
     uint256 votingDelay = 9;
-    address excludeListMember= address(3);
+    address excludeListMember = address(3);
     uint256 quorumNumerator = 3;
 
     address[] stubAddressArray = [address(6)];
@@ -96,7 +96,6 @@ contract L2GovernanceFactoryTest is Test {
             votingPeriod,
             "votingPeriod not set properly"
         );
-
     }
 
     function testPastCirculatingSupply() external {
@@ -105,6 +104,9 @@ contract L2GovernanceFactoryTest is Test {
             L2ArbitrumToken token,
             ArbitrumTimelock timelock
         ) = deployAndInit();
+        address circulatingVotesExcludeDummyAddress = l2ArbitrumGovernor
+            .circulatingVotesExcludeDummyAddress();
+
         vm.warp(200000000000000000);
         vm.roll(2);
         assertEq(
@@ -119,17 +121,35 @@ contract L2GovernanceFactoryTest is Test {
         assertEq(
             l2ArbitrumGovernor.getPastCirculatingSupply(2),
             10200,
-            "Mint not reflected in quorum"
+            "Mint should be reflected in getPastCirculatingSupply"
         );
-        // // TODO DG: Get this passing
-        // vm.warp(300000000000000000);
-        // vm.prank(tokenOwner);
-        // token.mint(excludeListMember1, 200);
-        // vm.roll(4);
-        // assertEq(
-        //     l2ArbitrumGovernor.getPastCirculatingSupply(3),
-        //     10200,
-        //     "minting to exlcude-list member shouldn't affect circulating supply"
-        // );
+        assertEq(
+            l2ArbitrumGovernor.quorum(2),
+            306,
+            "Mint should be reflected in quorum"
+        );
+        vm.warp(300000000000000000);
+        vm.prank(tokenOwner);
+        token.mint(excludeListMember, 200);
+
+        vm.prank(excludeListMember);
+        token.delegate(circulatingVotesExcludeDummyAddress);
+        vm.roll(4);
+        assertEq(
+            token.getPastVotes(circulatingVotesExcludeDummyAddress, 3),
+            200,
+            "didn't delegate to votes circulatingVotesExcludeDummyAddress"
+        );
+
+        assertEq(
+            l2ArbitrumGovernor.getPastCirculatingSupply(3),
+            10200,
+            "votes at exlcude-address member shouldn't affect circulating supply"
+        );
+        assertEq(
+            l2ArbitrumGovernor.quorum(3),
+            306,
+            "votes at exlcude-address member shouldn't affect quorum"
+        );
     }
 }
