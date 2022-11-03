@@ -117,7 +117,7 @@ contract L2ArbitrumGovernor is
         return getPastCirculatingSupply(blockNumber) * 3 / 100;
     }
 
-    /// @notice cast vote on proposal; restrict access from exclude list
+    /// @notice cast vote on proposal
     function castVote(uint256 proposalId, uint8 support)
         public 
         override(GovernorUpgradeable, IGovernorUpgradeable)
