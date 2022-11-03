@@ -12,6 +12,13 @@ contract VestingWalletsFactory {
 
     event WalletCreated(address indexed beneficiary, address indexed vestingWalletAddress);
 
+    /**
+     * @param _startTimestamp  time to start vesting for all created wallets
+     * @param _durationSeconds during over while to vest for all created wallets
+     * @param _distributor token distribution contract
+     * @param _token ARB token (to vest)
+     * @param _governer Arbitrum L2 governer contract
+     */
     constructor(
         uint64 _startTimestamp,
         uint64 _durationSeconds,
@@ -26,17 +33,21 @@ contract VestingWalletsFactory {
         governer = _governer;
     }
 
-    function createWallets(address[] memory wallets) public {
-        for (uint256 i = 0; i < wallets.length; i++) {
+    /**
+     * @notice Create L2ArbitrumVestingWallets for each of the provided addresses
+     * @param _beneficiaries addresses at which to creat walelts
+     */
+    function createWallets(address[] memory _beneficiaries) public {
+        for (uint256 i = 0; i < _beneficiaries.length; i++) {
             VotingVestingWallet wallet = new VotingVestingWallet(
-                wallets[i],
+                _beneficiaries[i],
                 startTimestamp,
                 durationSeconds,
                 distributor,
                 token,
                 governer
             );
-            emit WalletCreated(wallets[i], address(wallet));
+            emit WalletCreated(_beneficiaries[i], address(wallet));
         }
     }
 }
