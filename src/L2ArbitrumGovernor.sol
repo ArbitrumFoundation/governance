@@ -110,6 +110,7 @@ contract L2ArbitrumGovernor is
     /// @notice Updates addresses to exlude from circulating votes supply for quorum threshold calculation.
     // TODO: Access Control 
     function addToCirculatingVotesExcludeList(address addressToExclude) external {
+        require(!circulatingVotesExcludeMap[addressToExclude], "already excluded");
         circulatingVotesExcludeList.push(addressToExclude);
         circulatingVotesExcludeMap[addressToExclude] = true;
     }
