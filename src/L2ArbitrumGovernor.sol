@@ -83,7 +83,7 @@ contract L2ArbitrumGovernor is
         return token.getPastTotalSupply(blockNumber) - token.getPastVotes(EXCLUDE_ADDRESS, blockNumber);
     }
 
-    /// @notice Calculates the quorum size, exludes token delegated to the exclude address
+    /// @notice Calculates the quorum size, excludes token delegated to the exclude address
     function quorum(uint256 blockNumber)
         public
         view
@@ -93,6 +93,13 @@ contract L2ArbitrumGovernor is
         return getPastCirculatingSupply(blockNumber) * quorumNumerator(blockNumber) / quorumDenominator();
     }
 
+
+    /// @notice Update L2 executor address. Only callable by governance.
+    function setL2Executor(address _l2Executor) public onlyGovernance {
+        l2Executor = _l2Executor;
+    }
+
+    // @notice Votes required for proposal.
     function proposalThreshold()
         public
         view
@@ -101,6 +108,8 @@ contract L2ArbitrumGovernor is
     {
         return GovernorSettingsUpgradeable.proposalThreshold();
     }
+
+    // Overrides:
 
     function state(uint256 proposalId)
         public
