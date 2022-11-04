@@ -2,13 +2,6 @@
 pragma solidity 0.8.16;
 
 import "../src/ArbitrumVestingWalletFactory.sol";
-// import "../src/L2ArbitrumToken.sol";
-// import "../src/L2ArbitrumGovernor.sol";
-// import "../src/TokenDistributor.sol";
-// import "../src/ArbitrumTimelock.sol";
-// import "../src/Util.sol";
-
-// import "./util/TestUtil.sol";
 
 import "forge-std/Test.sol";
 
