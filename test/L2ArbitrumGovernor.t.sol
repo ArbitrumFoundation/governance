@@ -5,6 +5,7 @@ import "../src/L2ArbitrumGovernor.sol";
 import "../src/ArbitrumTimelock.sol";
 import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
+import "@openzeppelin/contracts-upgradeable/governance/TimelockControllerUpgradeable.sol";
 import "../src/L2ArbitrumToken.sol";
 import "./util/TestUtil.sol";
 
@@ -68,7 +69,11 @@ contract L2ArbitrumGovernorTest is Test {
             initialTokenSupply + 200,
             "Mint should be reflected in getPastCirculatingSupply"
         );
-        assertEq(l2ArbitrumGovernor.quorum(2), ((initialTokenSupply + 200) * quorumNumerator) / 100, "Mint should be reflected in quorum");
+        assertEq(
+            l2ArbitrumGovernor.quorum(2),
+            ((initialTokenSupply + 200) * quorumNumerator) / 100,
+            "Mint should be reflected in quorum"
+        );
     }
 
     function testPastCirculatingSupplyExclude() external {
@@ -106,41 +111,48 @@ contract L2ArbitrumGovernorTest is Test {
     }
 
     function testExecutorPermissions() external {
-        // TODO: fix
-        // (L2ArbitrumGovernor l2ArbitrumGovernor,,) = deployAndInit();
-        // vm.startPrank(executor);
-        // l2ArbitrumGovernor.setVotingDelay(2);
-        // assertEq(l2ArbitrumGovernor.votingDelay(), 2, "Voting delay");
+        (L2ArbitrumGovernor l2ArbitrumGovernor,,) = deployAndInit();
+        vm.startPrank(executor);
 
-        // l2ArbitrumGovernor.setVotingPeriod(2);
-        // assertEq(l2ArbitrumGovernor.votingPeriod(), 2, "Voting period");
+        l2ArbitrumGovernor.setProposalThreshold(2);
+        assertEq(l2ArbitrumGovernor.proposalThreshold(), 2, "Prop threshold");
 
-        // l2ArbitrumGovernor.setProposalNumerator(2);
-        // assertEq(l2ArbitrumGovernor.proposalNumerator(), 2, "Prop numerator");
+        l2ArbitrumGovernor.setVotingDelay(2);
+        assertEq(l2ArbitrumGovernor.votingDelay(), 2, "Voting delay");
 
-        // l2ArbitrumGovernor.setL2Executor(someRando);
-        // assertEq(l2ArbitrumGovernor.l2Executor(), someRando, "l2executor");
-        // vm.stopPrank();
+        l2ArbitrumGovernor.setVotingPeriod(2);
+        assertEq(l2ArbitrumGovernor.votingPeriod(), 2, "Voting period");
+
+        l2ArbitrumGovernor.updateQuorumNumerator(4);
+        assertEq(l2ArbitrumGovernor.quorumNumerator(), 4, "Quorum num");
+
+        l2ArbitrumGovernor.updateTimelockExternal(TimelockControllerUpgradeable(payable(address(137))));
+        assertEq(l2ArbitrumGovernor.timelock(), address(137), "Timelock");
+
+        vm.stopPrank();
     }
 
     function testExecutorPermissionsFail() external {
         (L2ArbitrumGovernor l2ArbitrumGovernor,,) = deployAndInit();
         vm.startPrank(someRando);
 
-        vm.expectRevert("Governor: onlyGovernance");
+        vm.expectRevert("Ownable: caller is not the owner");
         l2ArbitrumGovernor.setProposalThreshold(2);
 
-        vm.expectRevert("Governor: onlyGovernance");
+        vm.expectRevert("Ownable: caller is not the owner");
         l2ArbitrumGovernor.setVotingDelay(2);
 
-        vm.expectRevert("Governor: onlyGovernance");
+        vm.expectRevert("Ownable: caller is not the owner");
         l2ArbitrumGovernor.setVotingPeriod(2);
 
+        vm.expectRevert("Ownable: caller is not the owner");
+        l2ArbitrumGovernor.updateQuorumNumerator(4);
 
-        vm.expectRevert("Governor: onlyGovernance");
-        l2ArbitrumGovernor.setL2Executor(someRando);
-        vm.expectRevert("Governor: onlyGovernance");
-        l2ArbitrumGovernor.setProposalThreshold(2);
+        vm.expectRevert("Ownable: caller is not the owner");
+        l2ArbitrumGovernor.updateTimelockExternal(TimelockControllerUpgradeable(payable(address(137))));
+
+        // CHRIS: TODO: test the relay() func here and above
         vm.stopPrank();
     }
+
 }

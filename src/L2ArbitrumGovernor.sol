@@ -8,12 +8,14 @@ import "@openzeppelin/contracts-upgradeable/governance/compatibility/GovernorCom
 import "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorVotesUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorTimelockControlUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 // CHRIS: TODO: proposalThreshold should use custom calculation?
 // CHRIS: TODO: What is timelock conttroller vs timelockcontrollercompound?
 // TODO: should we use GovernorPreventLateQuorumUpgradeable?
 // CHRIS: TODO: check the inheritance tree
 // CHRIS: TODO: should governance be able to set the executor?
+// GovernorTimelockCompoundUpgradeable is the only updator we didnt override
 
 /// @title  L2ArbitrumGovernor
 /// @notice Governance controls for the Arbitrum DAO
@@ -25,7 +27,8 @@ contract L2ArbitrumGovernor is
     GovernorCompatibilityBravoUpgradeable,
     GovernorVotesUpgradeable,
     GovernorTimelockControlUpgradeable,
-    GovernorVotesQuorumFractionUpgradeable
+    GovernorVotesQuorumFractionUpgradeable,
+    OwnableUpgradeable
 {
     /// @notice address for which votes will not be counted toward quorum
     /// @dev    A portion of the Arbitrum tokebs will be held by entities (eg the treasury) that
@@ -35,7 +38,7 @@ contract L2ArbitrumGovernor is
     ///         addresses which is not counted when calculating quorum
     ///         Example address that should be excluded: DAO treasury, foundation, unclaimed tokens,
     ///         burned tokens and swept (see TokenDistributor) tokens.
-    ///         Note that Excluded Address is a readable name with no code of PK associated with it, and thus can't vote. 
+    ///         Note that Excluded Address is a readable name with no code of PK associated with it, and thus can't vote.
     address public constant EXCLUDE_ADDRESS = address(0xA4b86);
     address public l2Executor;
 
@@ -45,7 +48,7 @@ contract L2ArbitrumGovernor is
 
     /// @param _token The token to read vote delegation from
     /// @param _timelock A time lock for proposal execution
-    /// @param _l2Executor The executor through which all upgrades should be finalised
+    /// @param _owner The executor through which all upgrades should be finalised
     /// @param _votingDelay The delay between a proposal submission and voting starts
     /// @param _votingPeriod The period for which the vote lasts
     /// @param _quorumNumerator The proportion of the circulating supply required to reach a quorum
@@ -53,7 +56,7 @@ contract L2ArbitrumGovernor is
     function initialize(
         IVotesUpgradeable _token,
         TimelockControllerUpgradeable _timelock,
-        address _l2Executor,
+        address _owner,
         uint256 _votingDelay,
         uint256 _votingPeriod,
         uint256 _quorumNumerator,
@@ -65,7 +68,33 @@ contract L2ArbitrumGovernor is
         __GovernorVotes_init(_token);
         __GovernorTimelockControl_init(_timelock);
         __GovernorVotesQuorumFraction_init(_quorumNumerator);
-        l2Executor = _l2Executor;
+        _transferOwnership(_owner);
+    }
+
+    // CHRIS: TODO: inherit docs
+
+    function setVotingDelay(uint256 newVotingDelay) public virtual override onlyOwner {
+        _setVotingDelay(newVotingDelay);
+    }
+
+    function setVotingPeriod(uint256 newVotingPeriod) public virtual override onlyOwner {
+        _setVotingPeriod(newVotingPeriod);
+    }
+
+    function setProposalThreshold(uint256 newProposalThreshold) public virtual override onlyOwner {
+        _setProposalThreshold(newProposalThreshold);
+    }
+
+    function updateQuorumNumerator(uint256 newQuorumNumerator) external virtual override onlyOwner {
+        _updateQuorumNumerator(newQuorumNumerator);
+    }
+
+    function relay(address target, uint256 value, bytes calldata data) external virtual override onlyOwner {
+        AddressUpgradeable.functionCallWithValue(target, data, value);
+    }
+
+    function updateTimelockExternal(TimelockControllerUpgradeable newTimelock) external virtual onlyOwner {
+        this.updateTimelock(newTimelock);
     }
 
     /// @notice returns l2 executor address; used internally for onlyFromGovernor check
@@ -75,7 +104,7 @@ contract L2ArbitrumGovernor is
         override (GovernorTimelockControlUpgradeable, GovernorUpgradeable)
         returns (address)
     {
-        return l2Executor;
+        return address(this);
     }
 
     /// @notice Get "circulating" votes supply; i.e., total minus excluded vote exclude address.
@@ -91,12 +120,6 @@ contract L2ArbitrumGovernor is
         returns (uint256)
     {
         return getPastCirculatingSupply(blockNumber) * quorumNumerator(blockNumber) / quorumDenominator();
-    }
-
-
-    /// @notice Update L2 executor address. Only callable by governance.
-    function setL2Executor(address _l2Executor) public onlyGovernance {
-        l2Executor = _l2Executor;
     }
 
     // @notice Votes required for proposal.
