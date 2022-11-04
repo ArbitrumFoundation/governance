@@ -118,7 +118,7 @@ contract TokenDistributor is Ownable {
         require(block.number >= claimPeriodEnd, "TokenDistributor: not ended");
         uint256 leftovers = token.balanceOf(address(this));
         require(leftovers != 0, "TokenDistributor: no leftovers");
-        
+
         require(token.transfer(sweepReceiver, leftovers), "TokenDistributor: fail token transfer");
 
         emit Swept(leftovers);
