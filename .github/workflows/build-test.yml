@@ -86,22 +86,22 @@ jobs:
       - name: Install packages
         run: yarn
 
-      - name: Start background nitro test-node.bash
-        run: |
-          cd nitro
-          ./test-node.bash --init --no-blockscout &
+      # - name: Start background nitro test-node.bash
+      #   run: |
+      #     cd nitro
+      #     ./test-node.bash --init --no-blockscout &
 
-      - name: Copy .env
-        run: |
-          cp ./.env-sample ./.env
+      # - name: Copy .env
+      #   run: |
+      #     cp ./.env-sample ./.env
 
-      - name: Wait for nitro startup
-        run: |
-          cd scripts
-          ./waitForNitro.sh
+      # - name: Wait for nitro startup
+      #   run: |
+      #     cd scripts
+      #     ./waitForNitro.sh
 
-      - name: Generate network file
-        run: make gen-network
+      # - name: Generate network file
+      #   run: make gen-network
 
-      - name: Run integration tests
-        run: make test-integration
+      # - name: Run integration tests
+      #   run: make test-integration
