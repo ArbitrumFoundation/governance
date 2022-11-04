@@ -40,7 +40,6 @@ contract L2ArbitrumGovernor is
     ///         burned tokens and swept (see TokenDistributor) tokens.
     ///         Note that Excluded Address is a readable name with no code of PK associated with it, and thus can't vote.
     address public constant EXCLUDE_ADDRESS = address(0xA4b86);
-    address public l2Executor;
 
     constructor() {
         _disableInitializers();
@@ -71,33 +70,11 @@ contract L2ArbitrumGovernor is
         _transferOwnership(_owner);
     }
 
-    // CHRIS: TODO: inherit docs
-
-    function setVotingDelay(uint256 newVotingDelay) public virtual override onlyOwner {
-        _setVotingDelay(newVotingDelay);
-    }
-
-    function setVotingPeriod(uint256 newVotingPeriod) public virtual override onlyOwner {
-        _setVotingPeriod(newVotingPeriod);
-    }
-
-    function setProposalThreshold(uint256 newProposalThreshold) public virtual override onlyOwner {
-        _setProposalThreshold(newProposalThreshold);
-    }
-
-    function updateQuorumNumerator(uint256 newQuorumNumerator) external virtual override onlyOwner {
-        _updateQuorumNumerator(newQuorumNumerator);
-    }
-
     function relay(address target, uint256 value, bytes calldata data) external virtual override onlyOwner {
         AddressUpgradeable.functionCallWithValue(target, data, value);
     }
 
-    function updateTimelockExternal(TimelockControllerUpgradeable newTimelock) external virtual onlyOwner {
-        this.updateTimelock(newTimelock);
-    }
-
-    /// @notice returns l2 executor address; used internally for onlyFromGovernor check
+    /// @notice returns l2 executor address; used internally for onlyGovernor check
     function _executor()
         internal
         view

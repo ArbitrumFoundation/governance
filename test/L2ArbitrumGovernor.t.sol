@@ -114,19 +114,31 @@ contract L2ArbitrumGovernorTest is Test {
         (L2ArbitrumGovernor l2ArbitrumGovernor,,) = deployAndInit();
         vm.startPrank(executor);
 
-        l2ArbitrumGovernor.setProposalThreshold(2);
+        l2ArbitrumGovernor.relay(
+            address(l2ArbitrumGovernor), 0, abi.encodeWithSelector(l2ArbitrumGovernor.setProposalThreshold.selector, 2)
+        );
         assertEq(l2ArbitrumGovernor.proposalThreshold(), 2, "Prop threshold");
 
-        l2ArbitrumGovernor.setVotingDelay(2);
+        l2ArbitrumGovernor.relay(
+            address(l2ArbitrumGovernor), 0, abi.encodeWithSelector(l2ArbitrumGovernor.setVotingDelay.selector, 2)
+        );
         assertEq(l2ArbitrumGovernor.votingDelay(), 2, "Voting delay");
 
-        l2ArbitrumGovernor.setVotingPeriod(2);
+        l2ArbitrumGovernor.relay(
+            address(l2ArbitrumGovernor), 0, abi.encodeWithSelector(l2ArbitrumGovernor.setVotingPeriod.selector, 2)
+        );
         assertEq(l2ArbitrumGovernor.votingPeriod(), 2, "Voting period");
 
-        l2ArbitrumGovernor.updateQuorumNumerator(4);
+        l2ArbitrumGovernor.relay(
+            address(l2ArbitrumGovernor), 0, abi.encodeWithSelector(l2ArbitrumGovernor.updateQuorumNumerator.selector, 4)
+        );
         assertEq(l2ArbitrumGovernor.quorumNumerator(), 4, "Quorum num");
 
-        l2ArbitrumGovernor.updateTimelockExternal(TimelockControllerUpgradeable(payable(address(137))));
+        l2ArbitrumGovernor.relay(
+            address(l2ArbitrumGovernor),
+            0,
+            abi.encodeWithSelector(l2ArbitrumGovernor.updateTimelock.selector, address(137))
+        );
         assertEq(l2ArbitrumGovernor.timelock(), address(137), "Timelock");
 
         vm.stopPrank();
@@ -134,25 +146,24 @@ contract L2ArbitrumGovernorTest is Test {
 
     function testExecutorPermissionsFail() external {
         (L2ArbitrumGovernor l2ArbitrumGovernor,,) = deployAndInit();
+
         vm.startPrank(someRando);
 
-        vm.expectRevert("Ownable: caller is not the owner");
+        vm.expectRevert("Governor: onlyGovernance");
         l2ArbitrumGovernor.setProposalThreshold(2);
 
-        vm.expectRevert("Ownable: caller is not the owner");
+        vm.expectRevert("Governor: onlyGovernance");
         l2ArbitrumGovernor.setVotingDelay(2);
 
-        vm.expectRevert("Ownable: caller is not the owner");
+        vm.expectRevert("Governor: onlyGovernance");
         l2ArbitrumGovernor.setVotingPeriod(2);
 
-        vm.expectRevert("Ownable: caller is not the owner");
+        vm.expectRevert("Governor: onlyGovernance");
         l2ArbitrumGovernor.updateQuorumNumerator(4);
 
-        vm.expectRevert("Ownable: caller is not the owner");
-        l2ArbitrumGovernor.updateTimelockExternal(TimelockControllerUpgradeable(payable(address(137))));
+        vm.expectRevert("Governor: onlyGovernance");
+        l2ArbitrumGovernor.updateTimelock(TimelockControllerUpgradeable(payable(address(137))));
 
-        // CHRIS: TODO: test the relay() func here and above
         vm.stopPrank();
     }
-
 }
