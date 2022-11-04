@@ -4,6 +4,7 @@ pragma solidity 0.8.16;
 // CHRIS: TODO: we updated to 0.8
 import "@openzeppelin/contracts-upgradeable/governance/GovernorUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorSettingsUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorVotesQuorumFractionUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/governance/compatibility/GovernorCompatibilityBravoUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorVotesUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorTimelockControlUpgradeable.sol";
@@ -59,7 +60,8 @@ contract L2ArbitrumGovernor is
     GovernorSettingsUpgradeable,
     GovernorCompatibilityBravoUpgradeable,
     GovernorVotesUpgradeable,
-    GovernorTimelockControlUpgradeable
+    GovernorTimelockControlUpgradeable,
+    GovernorVotesQuorumFractionUpgradeable
 {
     /// @notice address for which votes will not be counted toward quorum; i.e., treasurey will delegate it votes to it
     address public immutable circulatingVotesExcludeDummyAddress = address(0xA4b86);
@@ -69,12 +71,13 @@ contract L2ArbitrumGovernor is
     }
 
     // TODO: should we use GovernorPreventLateQuorumUpgradeable?
-    function initialize(IVotesUpgradeable _token, TimelockControllerUpgradeable _timelock, address _l2Executor,  uint256 _votingDelay, uint256 _votingPeriod, uint256 _proposalThreshold) external initializer {
+    function initialize(IVotesUpgradeable _token, TimelockControllerUpgradeable _timelock, address _l2Executor,  uint256 _votingDelay, uint256 _votingPeriod, uint256 _quorumNumerator, uint256 _proposalThreshold) external initializer {
         // CHRIS: TODO: pass in we also should pass in these vars instead of hard coding
         __Governor_init("L2ArbitrumGovernor");
         __GovernorCompatibilityBravo_init();
         __GovernorVotes_init(_token);
         __GovernorSettings_init(_votingDelay, _votingPeriod, _proposalThreshold);
+        __GovernorVotesQuorumFraction_init(_quorumNumerator);
         // CHRIS: TODO: set this dynamically how? we could override quorum to return our own function?
         // CHRIS: TODO: just get rid of this entirely? but we need to get quorum at a specific block height dont we? how is it used?
         __GovernorTimelockControl_init(_timelock);
@@ -97,10 +100,10 @@ contract L2ArbitrumGovernor is
     function quorum(uint256 blockNumber)
         public
         view
-        override (IGovernorUpgradeable)
+        override (IGovernorUpgradeable, GovernorVotesQuorumFractionUpgradeable)
         returns (uint256)
     {
-        return getPastCirculatingSupply(blockNumber) * proposalThreshold() / 100;
+        return getPastCirculatingSupply(blockNumber) * quorumNumerator() / 100;
     }
 
     /// @notice cast vote on proposal

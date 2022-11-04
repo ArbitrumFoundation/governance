@@ -17,6 +17,7 @@ contract L2GovernanceFactoryTest is Test {
     uint256 votingDelay = 9;
     address excludeListMember = address(3);
     uint256 quorumNumerator = 5;
+    uint256 proposalThreshold = 1;
 
     address[] stubAddressArray = [address(6)];
     address someRando = address(7);
@@ -74,7 +75,8 @@ contract L2GovernanceFactoryTest is Test {
             address(executor),
             votingDelay,
             votingPeriod,
-            quorumNumerator
+            quorumNumerator,
+            proposalThreshold
         );
         return (l2ArbitrumGovernor, token, timelock, executor);
     }
@@ -94,7 +96,8 @@ contract L2GovernanceFactoryTest is Test {
             someRando,
             votingDelay,
             votingPeriod,
-            quorumNumerator
+            quorumNumerator,
+            proposalThreshold
         );
     }
 
