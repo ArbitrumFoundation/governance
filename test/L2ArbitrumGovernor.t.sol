@@ -164,6 +164,11 @@ contract L2ArbitrumGovernorTest is Test {
         vm.expectRevert("Governor: onlyGovernance");
         l2ArbitrumGovernor.updateTimelock(TimelockControllerUpgradeable(payable(address(137))));
 
+        vm.expectRevert("Ownable: caller is not the owner");
+        l2ArbitrumGovernor.relay(
+            address(l2ArbitrumGovernor), 0, abi.encodeWithSelector(l2ArbitrumGovernor.updateQuorumNumerator.selector, 4)
+        );
+
         vm.stopPrank();
     }
 }
