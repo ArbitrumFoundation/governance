@@ -25,7 +25,7 @@ struct DeployParams {
         uint256 _votingPeriod;
         uint256 _votingDelay;
         uint _quorumThreshold;
-        uint _proposalThreshold;
+        uint256 _proposalThreshold;
 }
 contract L2GovernanceFactory {
     event Deployed(
