@@ -73,7 +73,7 @@ import "./L1ArbitrumMessenger.sol";
 contract L1ArbitrumTimelock is TimelockControllerUpgradeable, L1ArbitrumMessenger {
     address public inbox;
     address public l2Timelock;
-    address public l2Forwarder;
+    address public l2UpgradeExecutor;
 
     function initialize(
         uint256 minDelay,
@@ -81,13 +81,13 @@ contract L1ArbitrumTimelock is TimelockControllerUpgradeable, L1ArbitrumMessenge
         address[] memory executors,
         address _inbox,
         address _l2Timelock,
-        address _l2Forwarder
+        address _l2UpgradeExecutor
     ) external initializer {
         __TimelockController_init(minDelay, proposers, executors);
 
         inbox = _inbox;
         l2Timelock = _l2Timelock;
-        l2Forwarder = _l2Forwarder;
+        l2UpgradeExecutor = _l2UpgradeExecutor;
 
         // the bridge is allowed to create proposals
         // however we ensure that the actual caller is the l2timelock
@@ -183,7 +183,7 @@ contract L1ArbitrumTimelock is TimelockControllerUpgradeable, L1ArbitrumMessenge
 
         // CHRIS: TODO: what about nova? we want to allow that too right?
         IInbox(inbox).createRetryableTicket{value: msg.value}(
-            l2Forwarder, // we replace the to address with the forwarder
+            l2UpgradeExecutor, // we replace the to address with the forwarder
             value,
             maxSubmissionCost,
             excessFeeRefundAddress,
