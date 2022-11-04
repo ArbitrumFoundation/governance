@@ -55,10 +55,7 @@ contract VotingVestingWalletTest is Test {
         VotingVestingWallet wallet = new VotingVestingWallet(
             beneficiary,
             startTimestamp,
-            durationSeconds,
-            address(td),
-            address(token),
-            payable(address( gov))
+            durationSeconds
         );
 
         address[] memory recipients = new address[](1);
@@ -72,68 +69,26 @@ contract VotingVestingWalletTest is Test {
     }
 
     function testDoesDeploy() external {
-        (VotingVestingWallet wallet, L2ArbitrumToken token, L2ArbitrumGovernor gov, TokenDistributor td) = deploy();
+        (VotingVestingWallet wallet, L2ArbitrumToken token,,) = deploy();
 
-        assertEq(wallet.distributor(), address(td), "Distributor");
-        assertEq(wallet.governor(), address(gov), "Governor");
-        assertEq(wallet.token(), address(token), "Token");
         assertEq(wallet.start(), startTimestamp, "Start time");
         assertEq(wallet.duration(), durationSeconds, "Duration");
         assertEq(wallet.released(address(token)), 0, "Released");
     }
 
-    function testDeployZeroDistributor() external {
-        (L2ArbitrumToken token, L2ArbitrumGovernor gov,) = deployDeps();
-        vm.expectRevert("VotingVestingWallet: zero distributor");
-        new VotingVestingWallet(
-            beneficiary,
-            startTimestamp,
-            durationSeconds,
-            address(0),
-            address(token),
-            payable(address( gov))
-        );
-    }
-
-    function testDeployZeroToken() external {
-        (, L2ArbitrumGovernor gov, TokenDistributor td) = deployDeps();
-        vm.expectRevert("VotingVestingWallet: zero token");
-        new VotingVestingWallet(
-            beneficiary,
-            startTimestamp,
-            durationSeconds,
-            address(td),
-            address(0),
-            payable(address(gov))
-        );
-    }
-
-    function testDeployZeroGovernor() external {
-        (L2ArbitrumToken token,, TokenDistributor td) = deployDeps();
-        vm.expectRevert("VotingVestingWallet: zero governor");
-        new VotingVestingWallet(
-            beneficiary,
-            startTimestamp,
-            durationSeconds,
-            address(td),
-            address(token),
-            payable(address(0))
-        );
-    }
-
     function testClaim() external {
         (VotingVestingWallet wallet, L2ArbitrumToken token,, TokenDistributor td) = deploy();
         vm.prank(beneficiary);
-        wallet.claim();
+        wallet.claim(address(td));
 
         assertEq(token.balanceOf(address(wallet)), beneficiaryClaim, "Claim");
         assertEq(td.claimableTokens(address(wallet)), 0, "Claim left");
     }
 
     function testClaimFailsForNonBeneficiary() external {
-        (VotingVestingWallet wallet,,,) = deploy();
+        (VotingVestingWallet wallet,,, TokenDistributor td) = deploy();
         vm.expectRevert("VotingVestingWallet: not beneficiary");
-        wallet.claim();
+        wallet.claim(address(td));
     }
 
     function deployAndClaim()
@@ -142,7 +97,7 @@ contract VotingVestingWalletTest is Test {
     {
         (VotingVestingWallet wallet, L2ArbitrumToken token, L2ArbitrumGovernor gov, TokenDistributor td) = deploy();
         vm.prank(beneficiary);
-        wallet.claim();
+        wallet.claim(address(td));
 
         return (wallet, token, gov, td);
     }
@@ -151,16 +106,16 @@ contract VotingVestingWalletTest is Test {
         (VotingVestingWallet wallet, L2ArbitrumToken token,,) = deployAndClaim();
 
         vm.prank(beneficiary);
-        wallet.delegate(delegatee);
+        wallet.delegate(address(token), delegatee);
 
         assertEq(token.delegates(address(wallet)), delegatee, "Delegatee");
     }
 
     function testDelegateFailsForNonBeneficiary() external {
-        (VotingVestingWallet wallet,,,) = deployAndClaim();
+        (VotingVestingWallet wallet, L2ArbitrumToken token,,) = deployAndClaim();
 
         vm.expectRevert("VotingVestingWallet: not beneficiary");
-        wallet.delegate(delegatee);
+        wallet.delegate(address(token), delegatee);
     }
 
     function deployClaimAndDelegate()
@@ -171,7 +126,7 @@ contract VotingVestingWalletTest is Test {
             deployAndClaim();
 
         vm.prank(beneficiary);
-        wallet.delegate(delegatee);
+        wallet.delegate(address(token), delegatee);
 
         return (wallet, token, gov, td);
     }
@@ -191,7 +146,7 @@ contract VotingVestingWalletTest is Test {
 
         assertEq(gov.hasVoted(propId, address(wallet)), false, "Has not voted");
         vm.prank(beneficiary);
-        wallet.castVote(propId, 1);
+        wallet.castVote(address(gov), propId, 1);
         assertEq(gov.hasVoted(propId, address(wallet)), true, "Has voted");
     }
 
@@ -210,7 +165,7 @@ contract VotingVestingWalletTest is Test {
 
         assertEq(gov.hasVoted(propId, address(wallet)), false, "Has not voted");
         vm.expectRevert("VotingVestingWallet: not beneficiary");
-        wallet.castVote(propId, 1);
+        wallet.castVote(address(gov), propId, 1);
     }
 
     uint64 constant SECONDS_PER_YEAR = 60 * 60 * 24 * 365;

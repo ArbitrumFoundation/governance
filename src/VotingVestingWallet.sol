@@ -10,40 +10,22 @@ import {IERC20VotesUpgradeable} from "./Util.sol";
 
 /// @notice A wallet that vests tokens over time. The full token allowance can be used for delegating
 ///         and voting immediately.
-/// @dev    Tokens can be claimed to this contract from a token distributor. The full token allowance 
-///         is then immediately eligible for voting and delegation. A quarter of the tokens vest 
+/// @dev    Tokens can be claimed to this contract from a token distributor. The full token allowance
+///         is then immediately eligible for voting and delegation. A quarter of the tokens vest
 ///         immediately on the start date, after that they vest proportionally each month
 contract VotingVestingWallet is VestingWallet {
     using SafeMath for uint256;
 
     uint256 constant SECONDS_PER_MONTH = 60 * 60 * 24 * 365 / 12;
-    address public immutable distributor;
-    address public immutable token;
-    address payable public immutable governor;
 
     /**
      * @param _beneficiaryAddress Wallet owner
      * @param _startTimestamp The time to start vesting; at this point a quarter of the assets will immediately vest
      * @param _durationSeconds The time period for the remaining tokens to full vest
-     * @param _distributor A distributor to claim tokens from
-     * @param _token ARB token (to vest), and to delegate for
-     * @param _governor The governor contract where votes can be cast
      */
-    constructor(
-        address _beneficiaryAddress,
-        uint64 _startTimestamp,
-        uint64 _durationSeconds,
-        address _distributor,
-        address _token,
-        address payable _governor
-    ) VestingWallet(_beneficiaryAddress, _startTimestamp, _durationSeconds) {
-        require(_distributor != address(0), "VotingVestingWallet: zero distributor");
-        require(_token != address(0), "VotingVestingWallet: zero token");
-        require(_governor != address(0), "VotingVestingWallet: zero governor");
-        distributor = _distributor;
-        token = _token;
-        governor = _governor;
-    }
+    constructor(address _beneficiaryAddress, uint64 _startTimestamp, uint64 _durationSeconds)
+        VestingWallet(_beneficiaryAddress, _startTimestamp, _durationSeconds)
+    {}
 
     modifier onlyBeneficiary() {
         require(msg.sender == beneficiary(), "VotingVestingWallet: not beneficiary");
@@ -72,17 +54,17 @@ contract VotingVestingWallet is VestingWallet {
     }
 
     /// @notice Delegate votes to target address
-    function delegate(address delegatee) public onlyBeneficiary {
+    function delegate(address token, address delegatee) public onlyBeneficiary {
         IERC20VotesUpgradeable(token).delegate(delegatee);
     }
 
-    /// @notice Claim tokens from distributor contract
-    function claim() public onlyBeneficiary {
+    /// @notice Claim tokens from a distributor contract
+    function claim(address distributor) public onlyBeneficiary {
         TokenDistributor(distributor).claim();
     }
 
-    /// @notice Cast vote in governance proposal
-    function castVote(uint256 proposalId, uint8 support) public onlyBeneficiary {
+    /// @notice Cast vote in a governance proposal
+    function castVote(address governor, uint256 proposalId, uint8 support) public onlyBeneficiary {
         IGovernorUpgradeable(governor).castVote(proposalId, support);
     }
 }
