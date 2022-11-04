@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.16;
 
-import {IERC20VotesUpgradeable} from "./Util.sol";
+import { IERC20VotesUpgradeable } from "./Util.sol";
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
@@ -50,8 +50,14 @@ contract TokenDistributor is Ownable {
         require(address(_token) != address(0), "TokenDistributor: zero token address");
         require(_sweepReceiver != address(0), "TokenDistributor: zero sweep address");
         require(_owner != address(0), "TokenDistributor: zero owner address");
-        require(_claimPeriodStart > block.number, "TokenDistributor: start should be in the future");
-        require(_claimPeriodEnd > _claimPeriodStart, "TokenDistributor: start should be before end");
+        require(
+            _claimPeriodStart > block.number,
+            "TokenDistributor: start should be in the future"
+        );
+        require(
+            _claimPeriodEnd > _claimPeriodStart,
+            "TokenDistributor: start should be before end"
+        );
 
         token = _token;
         sweepReceiver = _sweepReceiver;
@@ -75,13 +81,22 @@ contract TokenDistributor is Ownable {
 
     /// @notice Allows owner to set a list of recipients to receive tokens
     /// @dev This may need to be called many times to set the full list of recipients
-    function setRecipients(address[] calldata _recipients, uint256[] calldata _claimableAmount) external onlyOwner {
-        require(_recipients.length == _claimableAmount.length, "TokenDistributor: invalid array length");
+    function setRecipients(
+        address[] calldata _recipients,
+        uint256[] calldata _claimableAmount
+    ) external onlyOwner {
+        require(
+            _recipients.length == _claimableAmount.length,
+            "TokenDistributor: invalid array length"
+        );
         uint256 sum = totalClaimable;
         for (uint256 i = 0; i < _recipients.length; i++) {
             // sanity check that the address being set is consistent
             // if for some reason the owner made an error they can still set the address to zero in order to correct it
-            require(claimableTokens[_recipients[i]] == 0, "TokenDistributor: recipient already set");
+            require(
+                claimableTokens[_recipients[i]] == 0,
+                "TokenDistributor: recipient already set"
+            );
             claimableTokens[_recipients[i]] = _claimableAmount[i];
             emit CanClaim(_recipients[i], _claimableAmount[i]);
             unchecked {
@@ -98,7 +113,13 @@ contract TokenDistributor is Ownable {
     /// @dev Different implementations may handle validation/fail delegateBySig differently. here a OZ v4.6.0 impl is assumed
     /// @dev delegateBySig by OZ does not support `IERC1271`, so smart contract wallets should not use this method
     /// @dev delegateBySig is used so that the token contract doesn't need to contain any claiming functionality
-    function claimAndDelegate(address delegatee, uint256 expiry, uint8 v, bytes32 r, bytes32 s) external {
+    function claimAndDelegate(
+        address delegatee,
+        uint256 expiry,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) external {
         claim();
         // WARNING: there's a nuisance attack that can occur here on networks that allow front running
         // A malicious party could see the signature when it's broadcast to a public mempool and create a

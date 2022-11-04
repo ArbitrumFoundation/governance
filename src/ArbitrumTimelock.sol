@@ -6,10 +6,11 @@ import "@openzeppelin/contracts-upgradeable/governance/TimelockControllerUpgrade
 
 // CHRIS: TODO: why do we even has this contract?
 contract ArbitrumTimelock is TimelockControllerUpgradeable {
-    function initialize(uint256 minDelay, address[] memory proposers, address[] memory executors)
-        external
-        initializer
-    {
+    function initialize(
+        uint256 minDelay,
+        address[] memory proposers,
+        address[] memory executors
+    ) external initializer {
         __TimelockController_init(minDelay, proposers, executors);
     }
 }
