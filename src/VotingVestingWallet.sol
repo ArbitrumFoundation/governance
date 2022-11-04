@@ -25,7 +25,9 @@ contract VotingVestingWallet is VestingWallet {
      */
     constructor(address _beneficiaryAddress, uint64 _startTimestamp, uint64 _durationSeconds)
         VestingWallet(_beneficiaryAddress, _startTimestamp, _durationSeconds)
-    {}
+    {
+        require(_startTimestamp > block.timestamp, "VotingVestingWallet: start time not in the future");
+    }
 
     modifier onlyBeneficiary() {
         require(msg.sender == beneficiary(), "VotingVestingWallet: not beneficiary");

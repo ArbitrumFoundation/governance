@@ -15,6 +15,7 @@ import "forge-std/Test.sol";
 contract VotingVestingWalletTest is Test {
     address beneficiary = address(1);
     uint64 secondsPerYear = 60 * 60 * 24 * 365;
+    uint64 timestampNow = secondsPerYear;
     uint64 startTimestamp = secondsPerYear * 2; // starts at 2 years
     uint64 durationSeconds = secondsPerYear * 3; // lasts a further 3 years
     uint256 beneficiaryClaim = 200_000_000_000_000;
@@ -46,6 +47,7 @@ contract VotingVestingWalletTest is Test {
         L2ArbitrumGovernor(governor).initialize(IVotesUpgradeable(token), ArbitrumTimelock(timelock));
 
         vm.roll(claimPeriodStart);
+        vm.warp(timestampNow);
 
         return (L2ArbitrumToken(token), L2ArbitrumGovernor(governor), td);
     }
@@ -74,6 +76,17 @@ contract VotingVestingWalletTest is Test {
         assertEq(wallet.start(), startTimestamp, "Start time");
         assertEq(wallet.duration(), durationSeconds, "Duration");
         assertEq(wallet.released(address(token)), 0, "Released");
+    }
+
+    function testDeployFailsForPastStart() external {
+        (L2ArbitrumToken token,,) = deployDeps();
+        vm.expectRevert("VotingVestingWallet: start time not in the future");
+        VotingVestingWallet wallet = new VotingVestingWallet(
+            beneficiary,
+            timestampNow,
+            durationSeconds
+        );
+        assertEq(token.balanceOf(address(wallet)), 0, "Zero balance");
     }
 
     function testClaim() external {
