@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.16;
 
-import "../src/L2ArbitrumToken.sol";
-import "../src/L2GovernanceFactory.sol";
+import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 
+import "../src/L2ArbitrumToken.sol";
 import "./util/MockTransferAndCallReceiver.sol";
 import "./util/Reverter.sol";
 import "forge-std/Test.sol";
