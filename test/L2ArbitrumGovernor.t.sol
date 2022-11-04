@@ -68,7 +68,11 @@ contract L2ArbitrumGovernorTest is Test {
             initialTokenSupply + 200,
             "Mint should be reflected in getPastCirculatingSupply"
         );
-        assertEq(l2ArbitrumGovernor.quorum(2), ((initialTokenSupply + 200) * quorumNumerator) / 100, "Mint should be reflected in quorum");
+        assertEq(
+            l2ArbitrumGovernor.quorum(2),
+            ((initialTokenSupply + 200) * quorumNumerator) / 100,
+            "Mint should be reflected in quorum"
+        );
     }
 
     function testPastCirculatingSupplyExclude() external {
@@ -135,7 +139,6 @@ contract L2ArbitrumGovernorTest is Test {
 
         vm.expectRevert("Governor: onlyGovernance");
         l2ArbitrumGovernor.setVotingPeriod(2);
-
 
         vm.expectRevert("Governor: onlyGovernance");
         l2ArbitrumGovernor.setL2Executor(someRando);

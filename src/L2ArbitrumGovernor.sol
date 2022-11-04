@@ -35,7 +35,7 @@ contract L2ArbitrumGovernor is
     ///         addresses which is not counted when calculating quorum
     ///         Example address that should be excluded: DAO treasury, foundation, unclaimed tokens,
     ///         burned tokens and swept (see TokenDistributor) tokens.
-    ///         Note that Excluded Address is a readable name with no code of PK associated with it, and thus can't vote. 
+    ///         Note that Excluded Address is a readable name with no code of PK associated with it, and thus can't vote.
     address public constant EXCLUDE_ADDRESS = address(0xA4b86);
     address public l2Executor;
 
@@ -92,7 +92,6 @@ contract L2ArbitrumGovernor is
     {
         return getPastCirculatingSupply(blockNumber) * quorumNumerator(blockNumber) / quorumDenominator();
     }
-
 
     /// @notice Update L2 executor address. Only callable by governance.
     function setL2Executor(address _l2Executor) public onlyGovernance {
