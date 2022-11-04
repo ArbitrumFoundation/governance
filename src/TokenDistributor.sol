@@ -29,8 +29,6 @@ contract TokenDistributor is Ownable {
     /// @notice Block number at which claiming ends
     uint256 public immutable claimPeriodEnd;
 
-    /// @notice Range of blocks in which claiming may happen
-    event ClaimPeriodUpdated(uint256 start, uint256 end);
     /// @notice recipient can claim this amount of tokens
     event CanClaim(address recipient, uint256 amount);
     /// @notice recipient has claimed this amount of tokens
