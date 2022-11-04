@@ -96,8 +96,7 @@ contract L2GovernanceFactoryTest is Test {
     }
 
     function testPastCirculatingSupply() external {
-        (L2ArbitrumGovernor l2ArbitrumGovernor, L2ArbitrumToken token,) = deployAndInit();
-        address circulatingVotesExcludeDummyAddress = l2ArbitrumGovernor.EXCLUDE_ADDRESS();
+        (L2ArbitrumGovernor l2ArbitrumGovernor,,) = deployAndInit();
 
         vm.warp(200_000_000_000_000_000);
         vm.roll(2);
