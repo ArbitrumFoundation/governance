@@ -78,21 +78,12 @@ contract L2ArbitrumGovernorTest is Test {
         vm.roll(3);
         vm.warp(300_000_000_000_000_000);
         vm.prank(tokenOwner);
-<<<<<<< HEAD
-        token.mint(excludeListMember, 200);
-=======
         token.mint(excludeListMember, 300);
->>>>>>> tob-audit-week-2
 
         vm.prank(excludeListMember);
         token.delegate(excludeAddress);
         vm.roll(4);
-<<<<<<< HEAD
-
-        assertEq(token.getPastVotes(excludeAddress, 3), 200, "didn't delegate to votes exclude address");
-=======
         assertEq(token.getPastVotes(excludeAddress, 3), 300, "didn't delegate to votes exclude address");
->>>>>>> tob-audit-week-2
 
         assertEq(
             l2ArbitrumGovernor.getPastCirculatingSupply(3),
@@ -107,12 +98,7 @@ contract L2ArbitrumGovernorTest is Test {
     }
 
     function testPastCirculatingSupply() external {
-<<<<<<< HEAD
-        (L2ArbitrumGovernor l2ArbitrumGovernor, L2ArbitrumToken token,) = deployAndInit();
-        address circulatingVotesExcludeDummyAddress = l2ArbitrumGovernor.EXCLUDE_ADDRESS();
-=======
         (L2ArbitrumGovernor l2ArbitrumGovernor,,) = deployAndInit();
->>>>>>> tob-audit-week-2
 
         vm.warp(200_000_000_000_000_000);
         vm.roll(2);
