@@ -35,6 +35,7 @@ contract L2ArbitrumGovernor is
     ///         addresses which is not counted when calculating quorum
     ///         Example address that should be excluded: DAO treasury, foundation, unclaimed tokens,
     ///         burned tokens and swept (see TokenDistributor) tokens.
+    ///         Note that Excluded Address is a readable name with no code of PK associated with it, and thus can't vote. 
     address public constant EXCLUDE_ADDRESS = address(0xA4b86);
     address public l2Executor;
 
@@ -59,11 +60,11 @@ contract L2ArbitrumGovernor is
         uint256 _proposalThreshold
     ) external initializer {
         __Governor_init("L2ArbitrumGovernor");
+        __GovernorSettings_init(_votingDelay, _votingPeriod, _proposalThreshold);
         __GovernorCompatibilityBravo_init();
         __GovernorVotes_init(_token);
-        __GovernorSettings_init(_votingDelay, _votingPeriod, _proposalThreshold);
-        __GovernorVotesQuorumFraction_init(_quorumNumerator);
         __GovernorTimelockControl_init(_timelock);
+        __GovernorVotesQuorumFraction_init(_quorumNumerator);
         l2Executor = _l2Executor;
     }
 
@@ -82,7 +83,7 @@ contract L2ArbitrumGovernor is
         return token.getPastTotalSupply(blockNumber) - token.getPastVotes(EXCLUDE_ADDRESS, blockNumber);
     }
 
-    /// @notice Calculates the quorum size, exludes token delegated to the exclude address
+    /// @notice Calculates the quorum size, excludes token delegated to the exclude address
     function quorum(uint256 blockNumber)
         public
         view
@@ -92,6 +93,13 @@ contract L2ArbitrumGovernor is
         return getPastCirculatingSupply(blockNumber) * quorumNumerator(blockNumber) / quorumDenominator();
     }
 
+
+    /// @notice Update L2 executor address. Only callable by governance.
+    function setL2Executor(address _l2Executor) public onlyGovernance {
+        l2Executor = _l2Executor;
+    }
+
+    // @notice Votes required for proposal.
     function proposalThreshold()
         public
         view
@@ -100,6 +108,8 @@ contract L2ArbitrumGovernor is
     {
         return GovernorSettingsUpgradeable.proposalThreshold();
     }
+
+    // Overrides:
 
     function state(uint256 proposalId)
         public
