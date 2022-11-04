@@ -13,7 +13,7 @@ import {IERC20VotesUpgradeable} from "./Util.sol";
 /// @dev    Tokens can be claimed to this contract from a token distributor. The full token allowance
 ///         is then immediately eligible for voting and delegation. A quarter of the tokens vest
 ///         immediately on the start date, after that they vest proportionally each month
-contract VotingVestingWallet is VestingWallet {
+contract ArbitrumVestingWallet is VestingWallet {
     using SafeMath for uint256;
 
     uint256 constant SECONDS_PER_MONTH = 60 * 60 * 24 * 365 / 12;
@@ -26,11 +26,11 @@ contract VotingVestingWallet is VestingWallet {
     constructor(address _beneficiaryAddress, uint64 _startTimestamp, uint64 _durationSeconds)
         VestingWallet(_beneficiaryAddress, _startTimestamp, _durationSeconds)
     {
-        require(_startTimestamp > block.timestamp, "VotingVestingWallet: start time not in the future");
+        require(_startTimestamp > block.timestamp, "ArbitrumVestingWallet: start time not in the future");
     }
 
     modifier onlyBeneficiary() {
-        require(msg.sender == beneficiary(), "VotingVestingWallet: not beneficiary");
+        require(msg.sender == beneficiary(), "ArbitrumVestingWallet: not beneficiary");
         _;
     }
 

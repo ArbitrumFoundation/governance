@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.16;
 
-import "./VotingVestingWallet.sol";
+import "./ArbitrumVestingWallet.sol";
 
 contract VestingWalletsFactory {
     event WalletCreated(address indexed beneficiary, address indexed vestingWalletAddress);
@@ -14,7 +14,7 @@ contract VestingWalletsFactory {
      */
     function createWallets(uint64 _startTimestamp, uint64 _durationSeconds, address[] memory _beneficiaries) public {
         for (uint256 i = 0; i < _beneficiaries.length; i++) {
-            VotingVestingWallet wallet = new VotingVestingWallet(
+            ArbitrumVestingWallet wallet = new ArbitrumVestingWallet(
                 _beneficiaries[i],
                 _startTimestamp,
                 _durationSeconds
