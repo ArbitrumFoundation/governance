@@ -14,4 +14,6 @@ function uncheckedInc(uint256 x) pure returns (uint256) {
 }
 
 /// @title A token contract with governance capabilities
-interface IERC20VotesUpgradeable is IVotesUpgradeable, IERC20Upgradeable, IERC20PermitUpgradeable {}
+interface IERC20VotesUpgradeable is IVotesUpgradeable, IERC20Upgradeable, IERC20PermitUpgradeable {
+
+}
