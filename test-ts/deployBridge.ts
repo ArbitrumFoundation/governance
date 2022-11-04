@@ -167,6 +167,7 @@ export const deployErc20L2 = async (deployer: Signer) => {
   };
 };
 
+
 export const deployErc20AndInit = async (
   l1Signer: Signer,
   l2Signer: Signer,

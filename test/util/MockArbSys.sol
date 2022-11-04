@@ -4,6 +4,7 @@ pragma solidity 0.8.16;
 // we alias the import to workaround forge dependency resolution bug
 import "@arbitrum/nitro-contracts/src/precompiles/ArbSys.sol";
 
+
 contract MockArbSys is ArbSys {
     /**
      * @notice Get Arbitrum block number (distinct from L1 block number; Arbitrum genesis block has block number 0)

@@ -6,6 +6,7 @@ import "../src/L2GovernanceFactory.sol";
 
 import "./util/XChainTest.sol";
 
+
 contract GovernanceXChainTest is Test {
     uint256 initialSupply = 10 * 10 ** 9;
     uint256 l1TimelockDelay = 10;

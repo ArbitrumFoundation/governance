@@ -162,6 +162,7 @@ export const setupNetworks = async (
     },
   };
 
+  
   addCustomNetwork({
     customL1Network: l1Network,
     customL2Network: l2Network,
