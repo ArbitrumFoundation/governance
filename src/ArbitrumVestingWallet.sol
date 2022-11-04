@@ -18,11 +18,9 @@ contract ArbitrumVestingWallet is VestingWallet {
 
     uint256 constant SECONDS_PER_MONTH = 60 * 60 * 24 * 365 / 12;
 
-    /**
-     * @param _beneficiaryAddress Wallet owner
-     * @param _startTimestamp The time to start vesting; at this point a quarter of the assets will immediately vest
-     * @param _durationSeconds The time period for the remaining tokens to full vest
-     */
+    /// @param _beneficiaryAddress Wallet owner
+    /// @param _startTimestamp The time to start vesting; at this point a quarter of the assets will immediately vest
+    /// @param _durationSeconds The time period for the remaining tokens to full vest
     constructor(address _beneficiaryAddress, uint64 _startTimestamp, uint64 _durationSeconds)
         VestingWallet(_beneficiaryAddress, _startTimestamp, _durationSeconds)
     {
