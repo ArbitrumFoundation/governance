@@ -12,7 +12,7 @@ import "forge-std/Test.sol";
 
 contract L2ArbitrumGovernorTest is Test {
     address l1TokenAddress = address(1);
-    uint256 initialTokenSupply = 10_000;
+    uint256 initialTokenSupply = 50_000;
     address tokenOwner = address(2);
     uint256 votingPeriod = 6;
     uint256 votingDelay = 9;
@@ -65,10 +65,10 @@ contract L2ArbitrumGovernorTest is Test {
         vm.roll(3);
         assertEq(
             l2ArbitrumGovernor.getPastCirculatingSupply(2),
-            10_200,
+            initialTokenSupply + 200,
             "Mint should be reflected in getPastCirculatingSupply"
         );
-        assertEq(l2ArbitrumGovernor.quorum(2), (10_200 * quorumNumerator) / 100, "Mint should be reflected in quorum");
+        assertEq(l2ArbitrumGovernor.quorum(2), ((initialTokenSupply + 200) * quorumNumerator) / 100, "Mint should be reflected in quorum");
     }
 
     function testPastCirculatingSupplyExclude() external {
@@ -78,13 +78,21 @@ contract L2ArbitrumGovernorTest is Test {
         vm.roll(3);
         vm.warp(300_000_000_000_000_000);
         vm.prank(tokenOwner);
+<<<<<<< HEAD
         token.mint(excludeListMember, 200);
+=======
+        token.mint(excludeListMember, 300);
+>>>>>>> tob-audit-week-2
 
         vm.prank(excludeListMember);
         token.delegate(excludeAddress);
         vm.roll(4);
+<<<<<<< HEAD
 
         assertEq(token.getPastVotes(excludeAddress, 3), 200, "didn't delegate to votes exclude address");
+=======
+        assertEq(token.getPastVotes(excludeAddress, 3), 300, "didn't delegate to votes exclude address");
+>>>>>>> tob-audit-week-2
 
         assertEq(
             l2ArbitrumGovernor.getPastCirculatingSupply(3),
@@ -99,12 +107,16 @@ contract L2ArbitrumGovernorTest is Test {
     }
 
     function testPastCirculatingSupply() external {
+<<<<<<< HEAD
         (L2ArbitrumGovernor l2ArbitrumGovernor, L2ArbitrumToken token,) = deployAndInit();
         address circulatingVotesExcludeDummyAddress = l2ArbitrumGovernor.EXCLUDE_ADDRESS();
+=======
+        (L2ArbitrumGovernor l2ArbitrumGovernor,,) = deployAndInit();
+>>>>>>> tob-audit-week-2
 
         vm.warp(200_000_000_000_000_000);
         vm.roll(2);
-        assertEq(l2ArbitrumGovernor.getPastCirculatingSupply(1), 10_000, "Inital supply error");
+        assertEq(l2ArbitrumGovernor.getPastCirculatingSupply(1), initialTokenSupply, "Inital supply error");
     }
 
     function testExecutorPermissions() external {
