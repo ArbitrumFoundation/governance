@@ -11,6 +11,23 @@ import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.so
 import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 
 /// @title Factory contract that deploys the L2 components for Arbitrum governance
+
+struct DeployParams {
+    uint256 _l2MinTimelockDelay;
+    address _l1TokenAddress;
+    address _l2TokenLogic;
+    uint256 _l2TokenInitialSupply;
+    address _l2TokenOwner;
+    address _l2TimeLockLogic;
+    address _l2GovernorLogic;
+    address _l2UpgradeExecutorLogic;
+    address _l2UpgradeExecutorInitialOwner;
+    uint256 _votingPeriod;
+    uint256 _votingDelay;
+    uint256 _quorumThreshold;
+    uint256 _proposalThreshold;
+}
+
 contract L2GovernanceFactory {
     event Deployed(
         L2ArbitrumToken token,
@@ -22,17 +39,7 @@ contract L2GovernanceFactory {
 
     // CHRIS: TODO: make this whole thing ownable? we want to avoid the missing steps, but that's not an issue right
 
-    function deploy(
-        uint256 _l2MinTimelockDelay,
-        address _l1TokenAddress,
-        address _l2TokenLogic,
-        uint256 _l2TokenInitialSupply,
-        address _l2TokenOwner,
-        address _l2TimeLockLogic,
-        address _l2GovernorLogic,
-        address _l2UpgradeExecutorLogic,
-        address _l2UpgradeExecutorInitialOwner
-    )
+    function deploy(DeployParams memory params)
         external
         returns (
             L2ArbitrumToken token,
@@ -42,35 +49,34 @@ contract L2GovernanceFactory {
             UpgradeExecutor executor
         )
     {
-        // CHRIS: TODO: remove?
-        uint256 l2MinTimelockDelay = _l2MinTimelockDelay;
-        address l1TokenAddress = _l1TokenAddress;
-        address l2TokenLogic = _l2TokenLogic;
-        uint256 l2TokenInitialSupply = _l2TokenInitialSupply;
-        address l2TokenOwner = _l2TokenOwner;
-        address l2TimeLockLogic = _l2TimeLockLogic;
-        address l2GovernorLogic = _l2GovernorLogic;
-        address l2UpgradeExecutorLogic = _l2UpgradeExecutorLogic;
-        address l2UpgradeExecutorInitialOwner = _l2UpgradeExecutorInitialOwner;
-
         // CHRIS: TODO: we dont want the owner of the proxy admin to be this address!
         // CHRIS: TODO: make sure to transfer it out
         // CHRIS: TODO: in both this and the L1gov fac
         proxyAdmin = new ProxyAdmin();
 
-        token = deployToken(proxyAdmin, l2TokenLogic);
-        token.initialize(l1TokenAddress, l2TokenInitialSupply, l2TokenOwner);
+        token = deployToken(proxyAdmin, params._l2TokenLogic);
+        token.initialize(params._l1TokenAddress, params._l2TokenInitialSupply, params._l2TokenOwner);
 
-        timelock = deployTimelock(proxyAdmin, l2TimeLockLogic);
+        timelock = deployTimelock(proxyAdmin, params._l2TimeLockLogic);
         // CHRIS: TODO: can we remove this?
         {
             address[] memory proposers;
             address[] memory executors;
-            timelock.initialize(l2MinTimelockDelay, proposers, executors);
+            timelock.initialize(params._l2MinTimelockDelay, proposers, executors);
         }
-
-        gov = deployGovernor(proxyAdmin, l2GovernorLogic);
-        gov.initialize(token, timelock);
+        executor = deployUpgradeExecutor(proxyAdmin, params._l2UpgradeExecutorLogic);
+        executor.initialize(params._l2UpgradeExecutorInitialOwner);
+        // todo
+        gov = deployGovernor(proxyAdmin, params._l2GovernorLogic);
+        gov.initialize(
+            token,
+            timelock,
+            address(executor),
+            params._votingDelay,
+            params._votingPeriod,
+            params._quorumThreshold,
+            params._proposalThreshold
+        );
 
         // the timelock itself and deployer are admins
         // CHRIS: TODO: set the same for the l1 contract?
@@ -78,9 +84,6 @@ contract L2GovernanceFactory {
         timelock.grantRole(timelock.EXECUTOR_ROLE(), address(0));
         timelock.revokeRole(timelock.TIMELOCK_ADMIN_ROLE(), address(timelock));
         timelock.revokeRole(timelock.TIMELOCK_ADMIN_ROLE(), address(this));
-
-        executor = deployUpgradeExecutor(proxyAdmin, l2UpgradeExecutorLogic);
-        executor.initialize(l2UpgradeExecutorInitialOwner);
 
         emit Deployed(token, timelock, gov, proxyAdmin, executor);
     }

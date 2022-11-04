@@ -44,7 +44,7 @@ contract ArbitrumVestingWalletTest is Test {
         ArbitrumTimelock(timelock).initialize(20, proposers, executors);
 
         address payable governor = payable(TestUtil.deployProxy(address(new L2ArbitrumGovernor())));
-        L2ArbitrumGovernor(governor).initialize(IVotesUpgradeable(token), ArbitrumTimelock(timelock));
+        L2ArbitrumGovernor(governor).initialize(IVotesUpgradeable(token), ArbitrumTimelock(timelock), address(1), 10000, 10000, 3, 0);
 
         vm.roll(claimPeriodStart);
         vm.warp(timestampNow);
