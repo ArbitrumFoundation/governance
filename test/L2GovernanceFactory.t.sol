@@ -31,24 +31,23 @@ contract L2GovernanceFactoryTest is Test {
         address timeLockLogic = address(new ArbitrumTimelock());
 
         L2GovernanceFactory factory = new L2GovernanceFactory();
-        return
-            factory.deploy(
-                DeployParams({
-                    _l2MinTimelockDelay: 0,
-                    _l1TokenAddress: l1TokenAddr,
-                    _l2TokenLogic: tokenLogic,
-                    _l2TokenInitialSupply: initialSupply,
-                    _l2TokenOwner: address(this),
-                    _l2TimeLockLogic: timeLockLogic,
-                    _l2GovernorLogic: governerLogic,
-                    _l2UpgradeExecutorLogic: upgradeExecutorLogic,
-                    _l2UpgradeExecutorInitialOwner: l2UpgradeExecutorInitialOwner,
-                    _votingPeriod: 1,
-                    _votingDelay: 1,
-                    _proposalThreshold: 1,
-                    _quorumThreshold: 1
-                })
-            );
+        return factory.deploy(
+            DeployParams({
+                _l2MinTimelockDelay: 0,
+                _l1TokenAddress: l1TokenAddr,
+                _l2TokenLogic: tokenLogic,
+                _l2TokenInitialSupply: initialSupply,
+                _l2TokenOwner: address(this),
+                _l2TimeLockLogic: timeLockLogic,
+                _l2GovernorLogic: governerLogic,
+                _l2UpgradeExecutorLogic: upgradeExecutorLogic,
+                _l2UpgradeExecutorInitialOwner: l2UpgradeExecutorInitialOwner,
+                _votingPeriod: 1,
+                _votingDelay: 1,
+                _proposalThreshold: 1,
+                _quorumThreshold: 1
+            })
+        );
     }
 
     function testContractsDeployed() external {
@@ -63,11 +62,7 @@ contract L2GovernanceFactoryTest is Test {
         assertGt(address(gov).code.length, 0, "no governer deployed");
         assertGt(address(timelock).code.length, 0, "no timelock deployed");
         assertGt(address(proxyAdmin).code.length, 0, "no proxyAdmin deployed");
-        assertGt(
-            address(upgradeExecutor).code.length,
-            0,
-            "no upgradeExecutor deployed"
-        );
+        assertGt(address(upgradeExecutor).code.length, 0, "no upgradeExecutor deployed");
     }
 
     function testContractsInitialized() external {

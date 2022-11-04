@@ -13,20 +13,21 @@ import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 /// @title Factory contract that deploys the L2 components for Arbitrum governance
 
 struct DeployParams {
-        uint256 _l2MinTimelockDelay;
-        address _l1TokenAddress;
-        address _l2TokenLogic;
-        uint256 _l2TokenInitialSupply;
-        address _l2TokenOwner;
-        address _l2TimeLockLogic;
-        address _l2GovernorLogic;
-        address _l2UpgradeExecutorLogic;
-        address _l2UpgradeExecutorInitialOwner;
-        uint256 _votingPeriod;
-        uint256 _votingDelay;
-        uint _quorumThreshold;
-        uint256 _proposalThreshold;
+    uint256 _l2MinTimelockDelay;
+    address _l1TokenAddress;
+    address _l2TokenLogic;
+    uint256 _l2TokenInitialSupply;
+    address _l2TokenOwner;
+    address _l2TimeLockLogic;
+    address _l2GovernorLogic;
+    address _l2UpgradeExecutorLogic;
+    address _l2UpgradeExecutorInitialOwner;
+    uint256 _votingPeriod;
+    uint256 _votingDelay;
+    uint256 _quorumThreshold;
+    uint256 _proposalThreshold;
 }
+
 contract L2GovernanceFactory {
     event Deployed(
         L2ArbitrumToken token,
@@ -38,9 +39,7 @@ contract L2GovernanceFactory {
 
     // CHRIS: TODO: make this whole thing ownable? we want to avoid the missing steps, but that's not an issue right
 
-    function deploy(
-        DeployParams memory params
-    )
+    function deploy(DeployParams memory params)
         external
         returns (
             L2ArbitrumToken token,
@@ -67,9 +66,17 @@ contract L2GovernanceFactory {
         }
         executor = deployUpgradeExecutor(proxyAdmin, params._l2UpgradeExecutorLogic);
         executor.initialize(params._l2UpgradeExecutorInitialOwner);
-        // todo 
+        // todo
         gov = deployGovernor(proxyAdmin, params._l2GovernorLogic);
-        gov.initialize(token, timelock, address(executor), params._votingDelay, params._votingPeriod, params._quorumThreshold, params._proposalThreshold );
+        gov.initialize(
+            token,
+            timelock,
+            address(executor),
+            params._votingDelay,
+            params._votingPeriod,
+            params._quorumThreshold,
+            params._proposalThreshold
+        );
 
         // the timelock itself and deployer are admins
         // CHRIS: TODO: set the same for the l1 contract?
@@ -77,7 +84,6 @@ contract L2GovernanceFactory {
         timelock.grantRole(timelock.EXECUTOR_ROLE(), address(0));
         timelock.revokeRole(timelock.TIMELOCK_ADMIN_ROLE(), address(timelock));
         timelock.revokeRole(timelock.TIMELOCK_ADMIN_ROLE(), address(this));
-
 
         emit Deployed(token, timelock, gov, proxyAdmin, executor);
     }
