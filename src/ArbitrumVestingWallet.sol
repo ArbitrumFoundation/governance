@@ -47,7 +47,7 @@ contract ArbitrumVestingWallet is VestingWallet {
             // we vest in units of months, so remove any seconds over the end of the last month
             uint256 vestedTimeSeconds = timestamp - start();
             uint256 vestedTimeSecondsMonthFloored = vestedTimeSeconds.sub(vestedTimeSeconds.mod(SECONDS_PER_MONTH));
-            uint256 remaining = ((3 * totalAllocation / 4) * (vestedTimeSecondsMonthFloored)) / duration();
+            uint256 remaining = ((totalAllocation - cliff) * (vestedTimeSecondsMonthFloored)) / duration();
 
             return cliff + remaining;
         }
