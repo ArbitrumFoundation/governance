@@ -103,7 +103,7 @@ contract L2ArbitrumGovernor is
         override (IGovernorUpgradeable, GovernorVotesQuorumFractionUpgradeable)
         returns (uint256)
     {
-        return getPastCirculatingSupply(blockNumber) * quorumNumerator() / 100;
+        return getPastCirculatingSupply(blockNumber) * quorumNumerator(blockNumber) / 100;
     }
 
     /// @notice cast vote on proposal
