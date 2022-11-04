@@ -78,17 +78,6 @@ contract ArbitrumVestingWalletTest is Test {
         assertEq(wallet.released(address(token)), 0, "Released");
     }
 
-    function testDeployFailsForPastStart() external {
-        (L2ArbitrumToken token,,) = deployDeps();
-        vm.expectRevert("ArbitrumVestingWallet: start time not in the future");
-        ArbitrumVestingWallet wallet = new ArbitrumVestingWallet(
-            beneficiary,
-            timestampNow,
-            durationSeconds
-        );
-        assertEq(token.balanceOf(address(wallet)), 0, "Zero balance");
-    }
-
     function testClaim() external {
         (ArbitrumVestingWallet wallet, L2ArbitrumToken token,, TokenDistributor td) = deploy();
         vm.prank(beneficiary);

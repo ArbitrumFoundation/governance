@@ -2,7 +2,6 @@
 pragma solidity 0.8.16;
 
 import "@openzeppelin/contracts/finance/VestingWallet.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts-upgradeable/governance/IGovernorUpgradeable.sol";
 
 import "./TokenDistributor.sol";
@@ -14,8 +13,6 @@ import {IERC20VotesUpgradeable} from "./Util.sol";
 ///         is then immediately eligible for voting and delegation. A quarter of the tokens vest
 ///         immediately on the start date, after that they vest proportionally each month
 contract ArbitrumVestingWallet is VestingWallet {
-    using SafeMath for uint256;
-
     uint256 constant SECONDS_PER_MONTH = 60 * 60 * 24 * 365 / 12;
 
     /// @param _beneficiaryAddress Wallet owner
@@ -23,9 +20,7 @@ contract ArbitrumVestingWallet is VestingWallet {
     /// @param _durationSeconds The time period for the remaining tokens to full vest
     constructor(address _beneficiaryAddress, uint64 _startTimestamp, uint64 _durationSeconds)
         VestingWallet(_beneficiaryAddress, _startTimestamp, _durationSeconds)
-    {
-        require(_startTimestamp > block.timestamp, "ArbitrumVestingWallet: start time not in the future");
-    }
+    {}
 
     modifier onlyBeneficiary() {
         require(msg.sender == beneficiary(), "ArbitrumVestingWallet: not beneficiary");
@@ -46,7 +41,7 @@ contract ArbitrumVestingWallet is VestingWallet {
 
             // we vest in units of months, so remove any seconds over the end of the last month
             uint256 vestedTimeSeconds = timestamp - start();
-            uint256 vestedTimeSecondsMonthFloored = vestedTimeSeconds.sub(vestedTimeSeconds.mod(SECONDS_PER_MONTH));
+            uint256 vestedTimeSecondsMonthFloored = vestedTimeSeconds - (vestedTimeSeconds % SECONDS_PER_MONTH);
             uint256 remaining = ((totalAllocation - cliff) * (vestedTimeSecondsMonthFloored)) / duration();
 
             return cliff + remaining;
