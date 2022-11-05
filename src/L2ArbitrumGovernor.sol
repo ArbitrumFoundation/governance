@@ -100,7 +100,11 @@ contract L2ArbitrumGovernor is
     ///             0,
     ///             abi.encodeWithSelector(l2ArbitrumGovernor.updateQuorumNumerator.selector, 4)
     ///         );
-    function relay(address target, uint256 value, bytes calldata data) external virtual override onlyOwner {
+    function relay(
+        address target,
+        uint256 value,
+        bytes calldata data
+    ) external virtual override onlyOwner {
         AddressUpgradeable.functionCallWithValue(target, data, value);
     }
 
@@ -108,7 +112,7 @@ contract L2ArbitrumGovernor is
     function _executor()
         internal
         view
-        override (GovernorTimelockControlUpgradeable, GovernorUpgradeable)
+        override(GovernorTimelockControlUpgradeable, GovernorUpgradeable)
         returns (address)
     {
         return address(this);
@@ -116,24 +120,30 @@ contract L2ArbitrumGovernor is
 
     /// @notice Get "circulating" votes supply; i.e., total minus excluded vote exclude address.
     function getPastCirculatingSupply(uint256 blockNumber) public view virtual returns (uint256) {
-        return token.getPastTotalSupply(blockNumber) - token.getPastVotes(EXCLUDE_ADDRESS, blockNumber);
+        return
+            token.getPastTotalSupply(blockNumber) -
+            token.getPastVotes(EXCLUDE_ADDRESS, blockNumber);
     }
 
     /// @notice Calculates the quorum size, excludes token delegated to the exclude address
-    function quorum(uint256 blockNumber)
+    function quorum(
+        uint256 blockNumber
+    )
         public
         view
-        override (IGovernorUpgradeable, GovernorVotesQuorumFractionUpgradeable)
+        override(IGovernorUpgradeable, GovernorVotesQuorumFractionUpgradeable)
         returns (uint256)
     {
-        return (getPastCirculatingSupply(blockNumber) * quorumNumerator(blockNumber)) / quorumDenominator();
+        return
+            (getPastCirculatingSupply(blockNumber) * quorumNumerator(blockNumber)) /
+            quorumDenominator();
     }
 
     // @notice Votes required for proposal.
     function proposalThreshold()
         public
         view
-        override (GovernorSettingsUpgradeable, GovernorUpgradeable)
+        override(GovernorSettingsUpgradeable, GovernorUpgradeable)
         returns (uint256)
     {
         return GovernorSettingsUpgradeable.proposalThreshold();
@@ -141,10 +151,12 @@ contract L2ArbitrumGovernor is
 
     // Overrides:
 
-    function state(uint256 proposalId)
+    function state(
+        uint256 proposalId
+    )
         public
         view
-        override (GovernorUpgradeable, IGovernorUpgradeable, GovernorTimelockControlUpgradeable)
+        override(GovernorUpgradeable, IGovernorUpgradeable, GovernorTimelockControlUpgradeable)
         returns (ProposalState)
     {
         return GovernorTimelockControlUpgradeable.state(proposalId);
@@ -157,10 +169,11 @@ contract L2ArbitrumGovernor is
         string memory description
     )
         public
-        override (GovernorUpgradeable, GovernorCompatibilityBravoUpgradeable, IGovernorUpgradeable)
+        override(GovernorUpgradeable, GovernorCompatibilityBravoUpgradeable, IGovernorUpgradeable)
         returns (uint256)
     {
-        return GovernorCompatibilityBravoUpgradeable.propose(targets, values, calldatas, description);
+        return
+            GovernorCompatibilityBravoUpgradeable.propose(targets, values, calldatas, description);
     }
 
     function _execute(
@@ -169,8 +182,14 @@ contract L2ArbitrumGovernor is
         uint256[] memory values,
         bytes[] memory calldatas,
         bytes32 descriptionHash
-    ) internal override (GovernorUpgradeable, GovernorTimelockControlUpgradeable) {
-        GovernorTimelockControlUpgradeable._execute(proposalId, targets, values, calldatas, descriptionHash);
+    ) internal override(GovernorUpgradeable, GovernorTimelockControlUpgradeable) {
+        GovernorTimelockControlUpgradeable._execute(
+            proposalId,
+            targets,
+            values,
+            calldatas,
+            descriptionHash
+        );
     }
 
     function _cancel(
@@ -178,14 +197,17 @@ contract L2ArbitrumGovernor is
         uint256[] memory values,
         bytes[] memory calldatas,
         bytes32 descriptionHash
-    ) internal override (GovernorUpgradeable, GovernorTimelockControlUpgradeable) returns (uint256) {
-        return GovernorTimelockControlUpgradeable._cancel(targets, values, calldatas, descriptionHash);
+    ) internal override(GovernorUpgradeable, GovernorTimelockControlUpgradeable) returns (uint256) {
+        return
+            GovernorTimelockControlUpgradeable._cancel(targets, values, calldatas, descriptionHash);
     }
 
-    function supportsInterface(bytes4 interfaceId)
+    function supportsInterface(
+        bytes4 interfaceId
+    )
         public
         view
-        override (GovernorUpgradeable, IERC165Upgradeable, GovernorTimelockControlUpgradeable)
+        override(GovernorUpgradeable, IERC165Upgradeable, GovernorTimelockControlUpgradeable)
         returns (bool)
     {
         return GovernorTimelockControlUpgradeable.supportsInterface(interfaceId);
