@@ -7,12 +7,6 @@ import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 library TestUtil {
     function deployProxy(address logic) public returns (address) {
         ProxyAdmin pa = new ProxyAdmin();
-        return address(
-            new TransparentUpgradeableProxy(
-                address(logic),
-                address(pa),
-                ""
-            )
-        );
+        return address(new TransparentUpgradeableProxy(address(logic), address(pa), ""));
     }
 }

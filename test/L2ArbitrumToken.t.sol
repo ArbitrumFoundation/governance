@@ -37,13 +37,7 @@ contract L2ArbitrumTokenTest is Test {
     function deployAndInit() private returns (L2ArbitrumToken l2Token) {
         tokenLogic = address(new L2ArbitrumToken());
         ProxyAdmin admin = new ProxyAdmin();
-        l2Token = L2ArbitrumToken(
-            address(
-                new TransparentUpgradeableProxy(
-                tokenLogic, address(admin), ""
-                )
-            )
-        );
+        l2Token = L2ArbitrumToken(address(new TransparentUpgradeableProxy(tokenLogic, address(admin), "")));
         l2Token.initialize(l1Token, initialSupply, owner);
     }
 
@@ -89,7 +83,7 @@ contract L2ArbitrumTokenTest is Test {
     function validMint(uint256 supplyNumerator, string memory revertReason, bool warp, address minter) public {
         L2ArbitrumToken l2Token = deployAndInit();
 
-        uint256 additionalSupply = initialSupply * supplyNumerator / 100_000;
+        uint256 additionalSupply = (initialSupply * supplyNumerator) / 100_000;
 
         assertEq(l2Token.balanceOf(mintRecipient), 0, "Invalid initial balance");
 

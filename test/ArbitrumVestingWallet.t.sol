@@ -33,7 +33,11 @@ contract ArbitrumVestingWalletTest is Test {
         address token = TestUtil.deployProxy(address(new L2ArbitrumToken()));
         L2ArbitrumToken(token).initialize(l1Token, initialSupply, owner);
         TokenDistributor td = new TokenDistributor(
-            IERC20VotesUpgradeable(token), sweepTo, owner, claimPeriodStart, claimPeriodEnd
+            IERC20VotesUpgradeable(token),
+            sweepTo,
+            owner,
+            claimPeriodStart,
+            claimPeriodEnd
         );
         vm.prank(owner);
         L2ArbitrumToken(token).transfer(address(td), beneficiaryClaim * 2);

@@ -78,7 +78,7 @@ contract L2ArbitrumGovernor is
     ///         which will then call out to the _executor(), which will then call back in to the governor to set
     ///         a parameter. At the point of setting the parameter onlyGovernance is checked, and this includes
     ///         a check this call originated in the execute() function. The purpose of this is an added
-    ///         safety measure that ensure that all calls originate at the governor, and if second entrypoint is 
+    ///         safety measure that ensure that all calls originate at the governor, and if second entrypoint is
     ///         added to the _executor() contract, that new entrypoint will not be able to pass the onlyGovernance check.
     ///         You can read more about this in the comments on onlyGovernance()
     ///         This flow doesn't work for Arbitrum governance as we require an proposal on L2 to first
@@ -92,12 +92,12 @@ contract L2ArbitrumGovernor is
     ///         2.  Override this protection and just ensure elsewhere that the executor nonly has the
     ///             the correct entrypoints and access control. We've gone for this option.
     ///         By overriding the relay function we allow the executor to make any call originating
-    ///         from the governor, and by setting the _executor() to be the governor itself we can use the 
+    ///         from the governor, and by setting the _executor() to be the governor itself we can use the
     ///         relay function to call back into the governor to update settings e.g:
     ///
     ///         l2ArbitrumGovernor.relay(
-    ///             address(l2ArbitrumGovernor), 
-    ///             0, 
+    ///             address(l2ArbitrumGovernor),
+    ///             0,
     ///             abi.encodeWithSelector(l2ArbitrumGovernor.updateQuorumNumerator.selector, 4)
     ///         );
     function relay(address target, uint256 value, bytes calldata data) external virtual override onlyOwner {
@@ -126,7 +126,7 @@ contract L2ArbitrumGovernor is
         override (IGovernorUpgradeable, GovernorVotesQuorumFractionUpgradeable)
         returns (uint256)
     {
-        return getPastCirculatingSupply(blockNumber) * quorumNumerator(blockNumber) / quorumDenominator();
+        return (getPastCirculatingSupply(blockNumber) * quorumNumerator(blockNumber)) / quorumDenominator();
     }
 
     // @notice Votes required for proposal.

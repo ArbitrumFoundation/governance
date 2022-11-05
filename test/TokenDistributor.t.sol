@@ -35,8 +35,10 @@ contract TokenDistributorTest is Test {
     function deploy() public returns (TokenDistributor, L2ArbitrumToken) {
         L2ArbitrumToken token = deployToken();
         TokenDistributor td = new TokenDistributor(
-            IERC20VotesUpgradeable(address(token)), 
-            sweepReceiver, tdOwner, claimPeriodStart, 
+            IERC20VotesUpgradeable(address(token)),
+            sweepReceiver,
+            tdOwner,
+            claimPeriodStart,
             claimPeriodEnd
         );
 
@@ -66,33 +68,61 @@ contract TokenDistributorTest is Test {
     function testZeroToken() public {
         vm.expectRevert("TokenDistributor: zero token address");
         new TokenDistributor(
-    IERC20VotesUpgradeable(address(0)), sweepReceiver, tdOwner, claimPeriodStart, claimPeriodEnd);
+            IERC20VotesUpgradeable(address(0)),
+            sweepReceiver,
+            tdOwner,
+            claimPeriodStart,
+            claimPeriodEnd
+        );
     }
 
     function testZeroReceiver() public {
         L2ArbitrumToken token = deployToken();
         vm.expectRevert("TokenDistributor: zero sweep address");
         new TokenDistributor(
-        IERC20VotesUpgradeable(address(token)), payable(address(0)), tdOwner, claimPeriodStart, claimPeriodEnd);
+            IERC20VotesUpgradeable(address(token)),
+            payable(address(0)),
+            tdOwner,
+            claimPeriodStart,
+            claimPeriodEnd
+        );
     }
 
     function testZeroOwner() public {
         L2ArbitrumToken token = deployToken();
         vm.expectRevert("TokenDistributor: zero owner address");
-        new TokenDistributor(IERC20VotesUpgradeable(address(token)), sweepReceiver, address(0), claimPeriodStart, claimPeriodEnd);
+        new TokenDistributor(
+            IERC20VotesUpgradeable(address(token)),
+            sweepReceiver,
+            address(0),
+            claimPeriodStart,
+            claimPeriodEnd
+        );
     }
 
     function testOldClaimStart() public {
         L2ArbitrumToken token = deployToken();
         vm.roll(claimPeriodStart + 1);
         vm.expectRevert("TokenDistributor: start should be in the future");
-        new TokenDistributor(IERC20VotesUpgradeable(address(token)), sweepReceiver, tdOwner, claimPeriodStart, claimPeriodEnd);
+        new TokenDistributor(
+            IERC20VotesUpgradeable(address(token)),
+            sweepReceiver,
+            tdOwner,
+            claimPeriodStart,
+            claimPeriodEnd
+        );
     }
 
     function testClaimStartAfterClaimEnd() public {
         L2ArbitrumToken token = deployToken();
         vm.expectRevert("TokenDistributor: start should be before end");
-        new TokenDistributor(IERC20VotesUpgradeable(address(token)), sweepReceiver, tdOwner, claimPeriodEnd, claimPeriodStart);
+        new TokenDistributor(
+            IERC20VotesUpgradeable(address(token)),
+            sweepReceiver,
+            tdOwner,
+            claimPeriodEnd,
+            claimPeriodStart
+        );
     }
 
     function testDoesDeployAndDeposit() external {
@@ -117,7 +147,7 @@ contract TokenDistributorTest is Test {
         }
 
         // triangle numbers
-        sum = ((start + count + 1) * (start + count) / 2);
+        sum = (((start + count + 1) * (start + count)) / 2);
     }
 
     function setAndTestRecipients(

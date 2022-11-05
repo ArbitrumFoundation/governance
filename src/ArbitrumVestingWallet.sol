@@ -13,7 +13,7 @@ import {IERC20VotesUpgradeable} from "./Util.sol";
 ///         is then immediately eligible for voting and delegation. A quarter of the tokens vest
 ///         immediately on the start date, after that they vest proportionally each month
 contract ArbitrumVestingWallet is VestingWallet {
-    uint256 constant SECONDS_PER_MONTH = 60 * 60 * 24 * 365 / 12;
+    uint256 constant SECONDS_PER_MONTH = (60 * 60 * 24 * 365) / 12;
 
     /// @param _beneficiaryAddress Wallet owner
     /// @param _startTimestamp The time to start vesting; at this point a quarter of the assets will immediately vest
