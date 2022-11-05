@@ -55,7 +55,8 @@ contract ArbitrumVestingWalletTest is Test {
             10000,
             10000,
             3,
-            0
+            0,
+            10
         );
 
         vm.roll(claimPeriodStart);
