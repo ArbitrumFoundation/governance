@@ -20,7 +20,8 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 /// @title  L2ArbitrumGovernor
 /// @notice Governance controls for the Arbitrum DAO
 /// @dev    Standard CompBravo compatible governor with some special functionality to avoid counting
-///         votes of some excluded tokens.
+///         votes of some excluded tokens. Also allows for an owner to set parameters by calling
+///         relay.
 contract L2ArbitrumGovernor is
     Initializable,
     GovernorSettingsUpgradeable,
@@ -70,6 +71,35 @@ contract L2ArbitrumGovernor is
         _transferOwnership(_owner);
     }
 
+    /// @notice Allows the owner to make calls from the governor
+    /// @dev    We want the owner to be able to upgrade settings and parametes on this Governor
+    ///         however we can't use onlyGovernance as it requires calls originate from the governor
+    ///         contract. The normal flow for onlyGovernance to work is to call execute on the governor
+    ///         which will then call out to the _executor(), which will then call back in to the governor to set
+    ///         a parameter. At the point of setting the parameter onlyGovernance is checked, and this includes
+    ///         a check this call originated in the execute() function. The purpose of this is an added
+    ///         safety measure that ensure that all calls originate at the governor, and if second entrypoint is 
+    ///         added to the _executor() contract, that new entrypoint will not be able to pass the onlyGovernance check.
+    ///         You can read more about this in the comments on onlyGovernance()
+    ///         This flow doesn't work for Arbitrum governance as we require an proposal on L2 to first
+    ///         be relayed to L1, and then back again to L2 before calling into the governor to update
+    ///         settings. This means that updating settings cant be done in a single transaction.
+    ///         There are two potential solutions to this problem:
+    ///         1.  Use a more persistent record that a specific upgrade is taking place. This adds
+    ///             a lot of complexity, as we have multiple layers of calldata wrapping each other to
+    ///             define the multiple transactions that occur in a round-trip upgrade. So safely recording
+    ///             execution of the would be difficult and brittle.
+    ///         2.  Override this protection and just ensure elsewhere that the executor nonly has the
+    ///             the correct entrypoints and access control. We've gone for this option.
+    ///         By overriding the relay function we allow the executor to make any call originating
+    ///         from the governor, and by setting the _executor() to be the governor itself we can use the 
+    ///         relay function to call back into the governor to update settings e.g:
+    ///
+    ///         l2ArbitrumGovernor.relay(
+    ///             address(l2ArbitrumGovernor), 
+    ///             0, 
+    ///             abi.encodeWithSelector(l2ArbitrumGovernor.updateQuorumNumerator.selector, 4)
+    ///         );
     function relay(address target, uint256 value, bytes calldata data) external virtual override onlyOwner {
         AddressUpgradeable.functionCallWithValue(target, data, value);
     }
