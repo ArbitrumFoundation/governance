@@ -12,10 +12,11 @@ contract ArbitrumTimelock is TimelockControllerUpgradeable {
     /// @param minDelay The minimum amount of delay enforced by this timelock
     /// @param proposers The accounts allowed to propose actions
     /// @param executors The accounts allowed to execute action
-    function initialize(uint256 minDelay, address[] memory proposers, address[] memory executors)
-        external
-        initializer
-    {
+    function initialize(
+        uint256 minDelay,
+        address[] memory proposers,
+        address[] memory executors
+    ) external initializer {
         __TimelockController_init(minDelay, proposers, executors);
     }
 }
