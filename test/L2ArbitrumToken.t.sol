@@ -12,15 +12,7 @@ import "forge-std/Test.sol";
 contract L2ArbitrumTokenTest is Test {
     address owner = address(1);
     address tokenLogic;
-    // CHRIS: TODO:
-    address l2TokenLogic = address(123);
-    address l2TimeLockLogic = address(1234);
-    address l2GovernorLogic = address(12_345);
-    address mintRecipient = address(3);
-    address user = address(4);
     address emptyAddr = address(5);
-    address l2UpgradeExecutorLogic = address(123_456);
-    address l2UpgradeExecutorInitialOwner = address(1_234_567);
     uint256 initialSupply = 10 * 1_000_000_000 * (10 ** 18);
     address l1Token = address(1_234_578);
 

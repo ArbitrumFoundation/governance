@@ -9,12 +9,6 @@ import "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorVotesU
 import "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorTimelockControlUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
-// CHRIS: TODO: proposalThreshold should use custom calculation?
-// CHRIS: TODO: What is timelock conttroller vs timelockcontrollercompound?
-// TODO: should we use GovernorPreventLateQuorumUpgradeable?
-// CHRIS: TODO: check the inheritance tree
-// CHRIS: TODO: should governance be able to set the executor?
-
 /// @title  L2ArbitrumGovernor
 /// @notice Governance controls for the Arbitrum DAO
 /// @dev    Standard CompBravo compatible governor with some special functionality to avoid counting
