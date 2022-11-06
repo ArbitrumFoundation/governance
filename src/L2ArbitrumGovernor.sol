@@ -4,18 +4,12 @@ pragma solidity 0.8.16;
 import "@openzeppelin/contracts-upgradeable/governance/GovernorUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorSettingsUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorVotesQuorumFractionUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorPreventLateQuorumUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/governance/compatibility/GovernorCompatibilityBravoUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorVotesUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorTimelockControlUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-
-// CHRIS: TODO: proposalThreshold should use custom calculation?
-// CHRIS: TODO: What is timelock conttroller vs timelockcontrollercompound?
-// TODO: should we use GovernorPreventLateQuorumUpgradeable?
-// CHRIS: TODO: check the inheritance tree
-// CHRIS: TODO: should governance be able to set the executor?
-// GovernorTimelockCompoundUpgradeable is the only updator we didnt override
 
 /// @title  L2ArbitrumGovernor
 /// @notice Governance controls for the Arbitrum DAO
@@ -29,6 +23,7 @@ contract L2ArbitrumGovernor is
     GovernorVotesUpgradeable,
     GovernorTimelockControlUpgradeable,
     GovernorVotesQuorumFractionUpgradeable,
+    GovernorPreventLateQuorumUpgradeable,
     OwnableUpgradeable
 {
     /// @notice address for which votes will not be counted toward quorum
@@ -53,6 +48,7 @@ contract L2ArbitrumGovernor is
     /// @param _votingPeriod The period for which the vote lasts
     /// @param _quorumNumerator The proportion of the circulating supply required to reach a quorum
     /// @param _proposalThreshold The number of delegated votes required to create a proposal
+    /// @param _minPeriodAfterQuorum The minimum number of blocks available for voting after the quorum is reached
     function initialize(
         IVotesUpgradeable _token,
         TimelockControllerUpgradeable _timelock,
@@ -60,7 +56,8 @@ contract L2ArbitrumGovernor is
         uint256 _votingDelay,
         uint256 _votingPeriod,
         uint256 _quorumNumerator,
-        uint256 _proposalThreshold
+        uint256 _proposalThreshold,
+        uint64 _minPeriodAfterQuorum
     ) external initializer {
         __Governor_init("L2ArbitrumGovernor");
         __GovernorSettings_init(_votingDelay, _votingPeriod, _proposalThreshold);
@@ -68,6 +65,7 @@ contract L2ArbitrumGovernor is
         __GovernorVotes_init(_token);
         __GovernorTimelockControl_init(_timelock);
         __GovernorVotesQuorumFraction_init(_quorumNumerator);
+        __GovernorPreventLateQuorum_init(_minPeriodAfterQuorum);
         _transferOwnership(_owner);
     }
 
@@ -174,6 +172,28 @@ contract L2ArbitrumGovernor is
     {
         return
             GovernorCompatibilityBravoUpgradeable.propose(targets, values, calldatas, description);
+    }
+
+    function _castVote(
+        uint256 proposalId,
+        address account,
+        uint8 support,
+        string memory reason,
+        bytes memory params
+    ) internal override(GovernorUpgradeable, GovernorPreventLateQuorumUpgradeable) returns(uint256) {
+        return GovernorPreventLateQuorumUpgradeable._castVote(
+            proposalId,
+            account,
+            support,
+            reason,
+            params
+        );
+    }
+
+    function proposalDeadline(uint256 proposalId) public 
+        view 
+        override(IGovernorUpgradeable, GovernorUpgradeable, GovernorPreventLateQuorumUpgradeable) returns (uint256) {
+        return GovernorPreventLateQuorumUpgradeable.proposalDeadline(proposalId);
     }
 
     function _execute(

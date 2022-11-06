@@ -20,6 +20,7 @@ contract L2ArbitrumGovernorTest is Test {
     address excludeListMember = address(3);
     uint256 quorumNumerator = 5;
     uint256 proposalThreshold = 1;
+    uint64 initialVoteExtension = 5;
 
     address[] stubAddressArray = [address(6)];
     address someRando = address(7);
@@ -35,7 +36,14 @@ contract L2ArbitrumGovernorTest is Test {
         L2ArbitrumGovernor l2ArbitrumGovernor =
             L2ArbitrumGovernor(payable(TestUtil.deployProxy(address(new L2ArbitrumGovernor()))));
         l2ArbitrumGovernor.initialize(
-            token, timelock, executor, votingDelay, votingPeriod, quorumNumerator, proposalThreshold
+            token,
+            timelock,
+            executor,
+            votingDelay,
+            votingPeriod,
+            quorumNumerator,
+            proposalThreshold,
+            initialVoteExtension
         );
         return (l2ArbitrumGovernor, token, timelock);
     }
@@ -45,7 +53,14 @@ contract L2ArbitrumGovernorTest is Test {
 
         vm.expectRevert("Initializable: contract is already initialized");
         l2ArbitrumGovernor.initialize(
-            token, timelock, someRando, votingDelay, votingPeriod, quorumNumerator, proposalThreshold
+            token,
+            timelock,
+            someRando,
+            votingDelay,
+            votingPeriod,
+            quorumNumerator,
+            proposalThreshold,
+            initialVoteExtension
         );
     }
 
