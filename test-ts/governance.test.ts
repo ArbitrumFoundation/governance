@@ -145,8 +145,7 @@ describe("Governor", function () {
         id(proposalDescription)
       );
 
-
-      const l1ProposalTo = l1UpgradeExecutor.address
+      const l1ProposalTo = l1UpgradeExecutor.address;
       const l1ProposalValue = upgradeValue;
       // incorrect
       const l1ProposalId = this.getProposalId(
@@ -169,7 +168,7 @@ describe("Governor", function () {
           data: l1ProposalData,
           value: l1ProposalValue,
           description: proposalDescription,
-          operationId: l1ProposalId
+          operationId: l1ProposalId,
         },
       };
     }
@@ -208,15 +207,22 @@ describe("Governor", function () {
     ).deploy();
     const l2GovDeployReceipt = await (
       await l2GovernanceFac.deploy(
-        l2TimeLockDelay,
-        l1TokenAddress,
-        l2TokenLogic.address,
-        initialSupply,
-        l2SignerAddr,
-        l2TimelockLogic.address,
-        l2GovernanceLogic.address,
-        l2UpgradeExecutorLogic.address,
-        await l2Deployer.getAddress(),
+        {
+          _l2MinTimelockDelay: l2TimeLockDelay,
+          _l1TokenAddress: l1TokenAddress,
+          _l2TokenLogic: l2TokenLogic.address,
+          _l2TokenInitialSupply: initialSupply,
+          _l2TokenOwner: l2SignerAddr,
+          _l2TimeLockLogic: l2TimelockLogic.address,
+          _l2GovernorLogic: l2GovernanceLogic.address,
+          _l2UpgradeExecutorInitialOwner: await l2Deployer.getAddress(),
+          _l2UpgradeExecutorLogic: l2UpgradeExecutorLogic.address,
+          _proposalThreshold: 100,
+          _quorumThreshold: 3,
+          _votingDelay: 10,
+          _votingPeriod: 5,
+        },
+
         { gasLimit: 30000000 }
       )
     ).wait();
@@ -234,8 +240,7 @@ describe("Governor", function () {
       await l1GovernanceFac.deploy(
         l1TimeLockDelay,
         l2Network.ethBridge.inbox,
-        l2DeployResult.timelock,
-        l2DeployResult.executor
+        l2DeployResult.timelock
       )
     ).wait();
     const l1DeployResult = l1GovDeployReceipt.events?.filter(
@@ -257,6 +262,7 @@ describe("Governor", function () {
       l2DeployResult.token,
       l2Deployer.provider!
     );
+    
     const l2TimelockContract = ArbitrumTimelock__factory.connect(
       l2DeployResult.timelock,
       l2Deployer.provider!
@@ -287,11 +293,16 @@ describe("Governor", function () {
       await l2TokenContract.callStatic.delegates(l2SignerAddr),
       "L2 signer delegate before"
     ).to.eq(constants.AddressZero);
-    await l2TokenContract.connect(l2Signer).delegate(l2SignerAddr);
+    await (await l2TokenContract.connect(l2Signer).delegate(l2SignerAddr)).wait();
     expect(
       await l2TokenContract.callStatic.delegates(l2SignerAddr),
       "L2 signer delegate after"
     ).to.eq(l2SignerAddr);
+
+    // mine some blocks to ensure that the votes are available for the previous block
+    await mineBlock(l2Signer);
+    await mineBlock(l2Signer);
+    await mineBlock(l2Signer);
 
     return {
       l2TokenContract,
@@ -317,6 +328,7 @@ describe("Governor", function () {
     proposalDescription: string,
     proposalSuccess: () => Promise<Boolean>
   ) => {
+
     await (
       await l2GovernorContract
         .connect(l2Signer)
@@ -324,7 +336,7 @@ describe("Governor", function () {
           [proposalTo],
           [proposalValue],
           [proposalCalldata],
-          proposalDescription,
+          proposalDescription
         )
     ).wait();
 
@@ -395,7 +407,7 @@ describe("Governor", function () {
     return executionTx;
   };
 
-  it("L2 proposal", async () => {
+  it.only("L2 proposal", async () => {
     const { l1Signer, l2Signer, l1Deployer, l2Deployer } = await testSetup();
     // CHRIS: TODO: move these into test setup if we need them
     await fundL1(l1Signer, parseEther("1"));
@@ -407,6 +419,7 @@ describe("Governor", function () {
       l2GovernorContract,
       l2ProxyAdmin,
     } = await deployGovernance(l1Deployer, l2Deployer, l2Signer);
+    
     // give some tokens to the timelock contract
     const l2UpgradeExecutor = 10;
     const testUpgraderBalanceEnd = 7;
@@ -504,7 +517,7 @@ describe("Governor", function () {
     // ).wait();
 
     // console.log(deployReceipt)
-  }).timeout(120000);
+  }).timeout(300000);
 
   it("L2-L1 proposal", async () => {
     const { l1Signer, l2Signer, l1Deployer, l2Deployer } = await testSetup();
@@ -741,13 +754,19 @@ describe("Governor", function () {
     //   }
     // )
 
+    // abi encode the upgrade data
+    const executionData = defaultAbiCoder.encode(
+      ["address", "uint256", "bytes"],
+      [l2UpgradeExecutor.address, 0, upgradeData]
+    );
+
     // 2. schedule a transfer on l1
     const scheduleData = l1TimelockContract.interface.encodeFunctionData(
       "schedule",
       [
         l2Network.ethBridge.inbox,
         0,
-        upgradeData,
+        executionData,
         constants.HashZero,
         id(proposalString),
         await l1TimelockContract.getMinDelay(),
@@ -803,7 +822,7 @@ describe("Governor", function () {
         l2Transaction,
         l2Network.ethBridge.inbox,
         BigNumber.from(0),
-        upgradeData,
+        executionData,
         proposalString,
         l1ProposalSuccess,
         true
@@ -878,16 +897,18 @@ describe("Governor", function () {
         const data = l1TimelockContract.interface.encodeFunctionData(
           "executeCrossChain",
           [
-            proposalTo,
-            proposalValue,
-            constants.HashZero,
-            id(proposalString),
-            params.maxSubmissionCost,
-            l1SignerAddr,
-            l1SignerAddr,
-            params.gasLimit,
-            params.maxFeePerGas,
-            proposalCallData,
+            {
+              target: proposalTo,
+              value: proposalValue,
+              predecessor: constants.HashZero,
+              salt: id(proposalString),
+              maxSubmissionCost: params.maxSubmissionCost,
+              excessFeeRefundAddress: l1SignerAddr,
+              callValueRefundAddress: l1SignerAddr,
+              gasLimit: params.gasLimit,
+              maxFeePerGas: params.maxFeePerGas,
+              payload: proposalCallData,
+            },
           ]
         );
 

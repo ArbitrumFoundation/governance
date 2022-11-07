@@ -17,7 +17,7 @@ contract L1GovernanceFactory {
     event Deployed(L1ArbitrumTimelock timelock, ProxyAdmin proxyAdmin, UpgradeExecutor executor);
 
     // CHRIS: TODO: rename all the args to timelock where applicable? or remove them all on the l2 variant
-    function deploy(uint256 _minTimelockDelay, address inbox, address l2Timelock, address l2UpgradeExecutor)
+    function deploy(uint256 _minTimelockDelay, address inbox, address l2Timelock)
         external
         returns (L1ArbitrumTimelock timelock, ProxyAdmin proxyAdmin, UpgradeExecutor executor)
     {
@@ -26,7 +26,7 @@ contract L1GovernanceFactory {
         timelock = deployTimelock(proxyAdmin);
         address[] memory proposers;
         address[] memory executors;
-        timelock.initialize(_minTimelockDelay, proposers, executors, inbox, l2Timelock, l2UpgradeExecutor);
+        timelock.initialize(_minTimelockDelay, proposers, executors, inbox, l2Timelock);
 
         // CHRIS: TODO: we need to grant a role for the receiver
 

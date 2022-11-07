@@ -152,22 +152,25 @@ contract L1ArbitrumTimelock is TimelockControllerUpgradeable, L1ArbitrumMessenge
 
     // CHRIS: TODO: we may want to add an atomic crosschain and normal execute
     // CHRIS: TODO: this would be necessary if we want to ensure ordering here
+    struct CrossChainParams {
+        address target;
+        uint256 value;
+        bytes32 predecessor;
+        bytes32 salt;
+        uint256 maxSubmissionCost;
+        address excessFeeRefundAddress;
+        address callValueRefundAddress;
+        uint256 gasLimit;
+        uint256 maxFeePerGas;
+        bytes payload;
+    }
 
     // CHRIS: TODO: should we stop all other calls to the inbox?
     // CHRIS: TODO: do this by overriding execute
     // CHRIS: TODO: one reason to do this is because the other execute will update the proposal - which we dont want to happen
     // CHRIS: TODO: this is unlikely/impossible because we wont be directly calling with any of the actual functions - our forwarder would need to look like our inbox
     function executeCrossChain(
-        address target,
-        uint256 value,
-        bytes32 predecessor,
-        bytes32 salt,
-        uint256 maxSubmissionCost,
-        address excessFeeRefundAddress,
-        address callValueRefundAddress,
-        uint256 gasLimit,
-        uint256 maxFeePerGas,
-        bytes calldata payload
+        CrossChainParams calldata crossChainParams
     ) public payable onlyRoleOrOpenRole(EXECUTOR_ROLE) {
         // CHRIS: TODO: clean up here
         // we need the l2forwarder in the to here. Should it be in the payload?
@@ -176,12 +179,12 @@ contract L1ArbitrumTimelock is TimelockControllerUpgradeable, L1ArbitrumMessenge
 
         // CHRIS: TODO: describe why it's safe always redirect calls to the inbox
         // CHRIS: TODO: and what the limitations of doing this are
-        require(target == inbox, "L1ArbitrumTimelock: only inbox execution allowed cross chain");
-        bytes32 id = hashOperation(target, value, payload, predecessor, salt);
-        _beforeCrossChainCall(id, predecessor);
+        require(crossChainParams.target == inbox, "L1ArbitrumTimelock: only inbox execution allowed cross chain");
+        bytes32 id = hashOperation(crossChainParams.target, crossChainParams.value, crossChainParams.payload, crossChainParams.predecessor, crossChainParams.salt);
+        _beforeCrossChainCall(id, crossChainParams.predecessor);
 
         // CHRIS: TODO: insist that value is 0?
-        (address l2Target, uint256 l2Value, bytes memory l2Calldata) = abi.decode(payload, (address, uint256, bytes));
+        (address l2Target, uint256 l2Value, bytes memory l2Calldata) = abi.decode(crossChainParams.payload, (address, uint256, bytes));
 
         // CHRIS: TODO: should we insist on a minimum gas limit?
 
@@ -204,11 +207,11 @@ contract L1ArbitrumTimelock is TimelockControllerUpgradeable, L1ArbitrumMessenge
         IInbox(inbox).createRetryableTicket{value: msg.value}(
             l2Target,
             l2Value,
-            maxSubmissionCost,
-            excessFeeRefundAddress,
-            callValueRefundAddress,
-            gasLimit,
-            maxFeePerGas,
+            crossChainParams.maxSubmissionCost,
+            crossChainParams.excessFeeRefundAddress,
+            crossChainParams.callValueRefundAddress,
+            crossChainParams.gasLimit,
+            crossChainParams.maxFeePerGas,
             l2Calldata
         );
 
@@ -217,7 +220,7 @@ contract L1ArbitrumTimelock is TimelockControllerUpgradeable, L1ArbitrumMessenge
 
         // CHRIS: TODO: should we have a crosschaincallexecuted event?
 
-        emit CallExecuted(id, 0, target, value, payload);
+        emit CallExecuted(id, 0, crossChainParams.target, crossChainParams.value, crossChainParams.payload);
     }
 
     // CHRIS: TODO: add the execute batch variant?
