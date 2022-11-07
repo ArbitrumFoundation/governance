@@ -3,10 +3,10 @@ src = 'src'
 out = 'out'
 libs = ['lib']
 optimizer = true
-optimizer_runs = 100000
+optimizer_runs = 800
 via_ir = false
 
 [fmt]
 number_underscore = 'thousands'
-
+line_length = 100
 # See more config options https://github.com/foundry-rs/foundry/tree/master/config

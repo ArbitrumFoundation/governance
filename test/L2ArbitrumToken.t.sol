@@ -1,29 +1,45 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.16;
 
-import "../src/L2ArbitrumToken.sol";
+import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 
-import "./MockTransferAndCallReceiver.sol";
-import "./Reverter.sol";
-import "./TestUtil.sol";
+import "../src/L2ArbitrumToken.sol";
+import "./util/MockTransferAndCallReceiver.sol";
+import "./util/Reverter.sol";
 import "forge-std/Test.sol";
 
 contract L2ArbitrumTokenTest is Test {
     address owner = address(1);
-    address l1Token = address(2);
     address mintRecipient = address(3);
-    address user = address(4);
     address emptyAddr = address(5);
     uint256 initialSupply = 10 * 1_000_000_000 * (10 ** 18);
+    address l1Token = address(1_234_578);
 
+    /// @dev deploys but does not init the contract
     function deploy() private returns (L2ArbitrumToken l2Token) {
-        address proxy = deployProxy(address(new L2ArbitrumToken()));
-        l2Token = L2ArbitrumToken(proxy);
+        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
+            address(new L2ArbitrumToken()),
+            address(new ProxyAdmin()),
+            bytes("")
+        );
+        l2Token = L2ArbitrumToken(address(proxy));
     }
 
     function deployAndInit() private returns (L2ArbitrumToken l2Token) {
-        l2Token = deploy();
+        address tokenLogic = address(new L2ArbitrumToken());
+        ProxyAdmin admin = new ProxyAdmin();
+        l2Token = L2ArbitrumToken(
+            address(new TransparentUpgradeableProxy(tokenLogic, address(admin), ""))
+        );
         l2Token.initialize(l1Token, initialSupply, owner);
+    }
+
+    function testNoLogicContractInit() public {
+        L2ArbitrumToken token = new L2ArbitrumToken();
+
+        vm.expectRevert("Initializable: contract is already initialized");
+        token.initialize(l1Token, initialSupply, owner);
     }
 
     function testIsInitialised() public {
@@ -32,7 +48,9 @@ contract L2ArbitrumTokenTest is Test {
         assertEq(l2Token.name(), "Arbitrum", "Invalid name");
         assertEq(l2Token.symbol(), "ARB", "Invalid symbol");
         assertEq(l2Token.l1Address(), l1Token, "Invalid l1Address");
-        assertEq(l2Token.nextMint(), block.timestamp + l2Token.MIN_MINT_INTERVAL(), "Invalid nextMint");
+        assertEq(
+            l2Token.nextMint(), block.timestamp + l2Token.MIN_MINT_INTERVAL(), "Invalid nextMint"
+        );
         assertEq(l2Token.totalSupply(), 1e28, "Invalid totalSupply");
         assertEq(l2Token.owner(), owner, "Invalid owner");
     }
@@ -58,10 +76,15 @@ contract L2ArbitrumTokenTest is Test {
         l2Token.initialize(l1Token, initialSupply, address(0));
     }
 
-    function validMint(uint256 supplyNumerator, string memory revertReason, bool warp, address minter) public {
+    function validMint(
+        uint256 supplyNumerator,
+        string memory revertReason,
+        bool warp,
+        address minter
+    ) public {
         L2ArbitrumToken l2Token = deployAndInit();
 
-        uint256 additionalSupply = initialSupply * supplyNumerator / 100_000;
+        uint256 additionalSupply = (initialSupply * supplyNumerator) / 100_000;
 
         assertEq(l2Token.balanceOf(mintRecipient), 0, "Invalid initial balance");
 
@@ -74,7 +97,9 @@ contract L2ArbitrumTokenTest is Test {
             l2Token.mint(mintRecipient, additionalSupply);
         } else {
             l2Token.mint(mintRecipient, additionalSupply);
-            assertEq(l2Token.totalSupply(), initialSupply + additionalSupply, "Invalid inflated supply");
+            assertEq(
+                l2Token.totalSupply(), initialSupply + additionalSupply, "Invalid inflated supply"
+            );
             assertEq(l2Token.balanceOf(mintRecipient), additionalSupply, "Invalid final balance");
         }
     }

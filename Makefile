@@ -3,15 +3,17 @@
 -include .env
 
 # deps
-install   :; forge install
+install   		:; yarn
 
 # Build & test
-build     :; forge build
-coverage  :; forge coverage
-gas       :; forge test --gas-report
-gas-check :; forge snapshot --check
-snapshot  :; forge snapshot
-test-forge:; forge test -vvv
-clean     :; forge clean
-fmt       :; forge fmt
-test      :  test-forge
+build     		:; forge build
+coverage  		:; forge coverage
+gas       		:; forge test --gas-report
+gas-check 		:; forge snapshot --check
+snapshot  		:; forge snapshot
+test-unit		:; forge test -vvv
+clean     		:; forge clean
+fmt       		:; forge fmt
+gen-network		:; echo 'stubbed for now'
+test      		:  test-unit
+test-integration:; echo 'stubbed for now'

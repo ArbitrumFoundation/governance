@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.16;
 
-import "@openzeppelin/contracts-upgradeable-0.8/access/OwnableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable-0.8/token/ERC20/ERC20Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable-0.8/token/ERC20/extensions/ERC20BurnableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable-0.8/token/ERC20/extensions/draft-ERC20PermitUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable-0.8/token/ERC20/extensions/ERC20VotesUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable-0.8/proxy/utils/Initializable.sol";
-import "@arbitrum/token-bridge-contracts/tokenbridge/arbitrum/IReverseArbToken.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/ERC20Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20BurnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/draft-ERC20PermitUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20VotesUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "./TransferAndCallToken.sol";
 
 /// @title  L2 Arbitrum Token
@@ -26,8 +25,7 @@ contract L2ArbitrumToken is
     ERC20PermitUpgradeable,
     ERC20VotesUpgradeable,
     OwnableUpgradeable,
-    TransferAndCallToken,
-    IReverseArbToken
+    TransferAndCallToken
 {
     string private constant NAME = "Arbitrum";
     string private constant SYMBOL = "ARB";
@@ -51,7 +49,10 @@ contract L2ArbitrumToken is
     /// @param _l1TokenAddress The address of the counterparty L1 token
     /// @param _initialSupply The amount of initial supply to mint
     /// @param _owner The owner of this contract - controls minting, not upgradeability
-    function initialize(address _l1TokenAddress, uint256 _initialSupply, address _owner) public initializer {
+    function initialize(address _l1TokenAddress, uint256 _initialSupply, address _owner)
+        public
+        initializer
+    {
         require(_l1TokenAddress != address(0), "ARB: ZERO_L1TOKEN_ADDRESS");
         require(_initialSupply != 0, "ARB: ZERO_INITIAL_SUPPLY");
         require(_owner != address(0), "ARB: ZERO_OWNER");
@@ -73,7 +74,10 @@ contract L2ArbitrumToken is
     ///         Set to once per year, and a maximum of 2%.
     function mint(address recipient, uint256 amount) external onlyOwner {
         // function inspired by: https://github.com/ensdomains/governance/blob/548f3f3607c83717427d9ae3fc1f3a9e66fc7642/contracts/ENSToken.sol#L105
-        require(amount <= (totalSupply() * MINT_CAP_NUMERATOR) / MINT_CAP_DENOMINATOR, "ARB: MINT_TOO_MUCH");
+        require(
+            amount <= (totalSupply() * MINT_CAP_NUMERATOR) / MINT_CAP_DENOMINATOR,
+            "ARB: MINT_TOO_MUCH"
+        );
         require(block.timestamp >= nextMint, "ARB: MINT_TOO_EARLY");
 
         nextMint = block.timestamp + MIN_MINT_INTERVAL;
@@ -87,11 +91,17 @@ contract L2ArbitrumToken is
         super._afterTokenTransfer(from, to, amount);
     }
 
-    function _mint(address to, uint256 amount) internal override (ERC20Upgradeable, ERC20VotesUpgradeable) {
+    function _mint(address to, uint256 amount)
+        internal
+        override (ERC20Upgradeable, ERC20VotesUpgradeable)
+    {
         super._mint(to, amount);
     }
 
-    function _burn(address account, uint256 amount) internal override (ERC20Upgradeable, ERC20VotesUpgradeable) {
+    function _burn(address account, uint256 amount)
+        internal
+        override (ERC20Upgradeable, ERC20VotesUpgradeable)
+    {
         super._burn(account, amount);
     }
 }
