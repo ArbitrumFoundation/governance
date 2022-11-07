@@ -146,19 +146,29 @@ contract L2ArbitrumGovernor is
         uint8 support,
         string memory reason,
         bytes memory params
-    ) internal override(GovernorUpgradeable, GovernorPreventLateQuorumUpgradeable) returns(uint256) {
-        return GovernorPreventLateQuorumUpgradeable._castVote(
-            proposalId,
-            account,
-            support,
-            reason,
-            params
-        );
+    )
+        internal
+        override(GovernorUpgradeable, GovernorPreventLateQuorumUpgradeable)
+        returns (uint256)
+    {
+        return
+            GovernorPreventLateQuorumUpgradeable._castVote(
+                proposalId,
+                account,
+                support,
+                reason,
+                params
+            );
     }
 
-    function proposalDeadline(uint256 proposalId) public 
-        view 
-        override(IGovernorUpgradeable, GovernorUpgradeable, GovernorPreventLateQuorumUpgradeable) returns (uint256) {
+    function proposalDeadline(
+        uint256 proposalId
+    )
+        public
+        view
+        override(IGovernorUpgradeable, GovernorUpgradeable, GovernorPreventLateQuorumUpgradeable)
+        returns (uint256)
+    {
         return GovernorPreventLateQuorumUpgradeable.proposalDeadline(proposalId);
     }
 
