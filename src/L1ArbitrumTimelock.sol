@@ -2,7 +2,6 @@
 // CHRIS: TODO: this version stuff is stupid - we should update our other files?
 pragma solidity 0.8.16;
 
-
 // CHRIS: TODO: we changed to 0.8 everywhere - do we want to do that?
 import "@openzeppelin/contracts-upgradeable/governance/TimelockControllerUpgradeable.sol";
 import "@arbitrum/nitro-contracts/src/bridge/IInbox.sol";
@@ -90,24 +89,16 @@ contract L1ArbitrumTimelock is TimelockControllerUpgradeable, L1ArbitrumMessenge
         l2Timelock = _l2Timelock;
 
         // the bridge is allowed to create proposals
-        // however we ensure that the actual caller is the l2timelock
+        // and we ensure that the l2 caller is the l2timelock
         // by using the onlyCounterpartTimelock modifier
         address bridge = address(getBridge(_inbox));
         grantRole(PROPOSER_ROLE, bridge);
     }
 
     modifier onlyCounterpartTimelock() {
-        // CHRIS: why do we do this?
-        // address _inbox = inbox;
-
-        // a message coming from the counterpart gateway was executed by the bridge
-        // CHRIS: TODO: dont need this check as bridge is already proposer
-        address bridge = address(super.getBridge(inbox));
-        require(msg.sender == bridge, "NOT_FROM_BRIDGE");
-
-        // and the outbox reports that the L2 address of the sender is the counterpart gateway
+        // the outbox reports that the L2 address of the sender is the counterpart gateway
         address l2ToL1Sender = super.getL2ToL1Sender(inbox);
-        require(l2ToL1Sender == l2Timelock, "ONLY_COUNTERPART_TIMELOCK");
+        require(l2ToL1Sender == l2Timelock, "L1ArbitrumTimelock: not from l2 timelock");
         _;
     }
 
@@ -136,21 +127,14 @@ contract L1ArbitrumTimelock is TimelockControllerUpgradeable, L1ArbitrumMessenge
         TimelockControllerUpgradeable.schedule(target, value, data, predecessor, salt, delay);
     }
 
-    function execute(
-        address target,
-        uint256 value,
-        bytes calldata payload,
-        bytes32 predecessor,
-        bytes32 salt
-    ) public payable virtual override {
+    function execute(address target, uint256 value, bytes calldata payload, bytes32 predecessor, bytes32 salt)
+        public
+        payable
+        virtual
+        override
+    {
         require(target != inbox, "L1ArbitrumTimelock: L1 inbox execution not allowed");
-        super.execute(
-            target,
-            value,
-            payload,
-            predecessor,
-            salt
-        );
+        super.execute(target, value, payload, predecessor, salt);
     }
 
     function executeBatch(
@@ -160,16 +144,10 @@ contract L1ArbitrumTimelock is TimelockControllerUpgradeable, L1ArbitrumMessenge
         bytes32 predecessor,
         bytes32 salt
     ) public payable virtual override {
-        for (uint256 i = 0; i < targets.length; ++i) { 
+        for (uint256 i = 0; i < targets.length; ++i) {
             require(targets[i] != inbox, "L1ArbitrumTimelock: L1 inbox batch execution not allowed");
         }
-        super.executeBatch(
-            targets,
-            values,
-            payloads,
-            predecessor,
-            salt
-        );
+        super.executeBatch(targets, values, payloads, predecessor, salt);
     }
 
     // CHRIS: TODO: we may want to add an atomic crosschain and normal execute
@@ -198,15 +176,12 @@ contract L1ArbitrumTimelock is TimelockControllerUpgradeable, L1ArbitrumMessenge
 
         // CHRIS: TODO: describe why it's safe always redirect calls to the inbox
         // CHRIS: TODO: and what the limitations of doing this are
-        require(target == inbox, "ONLY_INBOX_CALLS");
+        require(target == inbox, "L1ArbitrumTimelock: only inbox execution allowed cross chain");
         bytes32 id = hashOperation(target, value, payload, predecessor, salt);
         _beforeCrossChainCall(id, predecessor);
 
         // CHRIS: TODO: insist that value is 0?
-        (address l2Target, uint256 l2Value, bytes memory l2Calldata) = abi.decode(
-            payload,
-            (address, uint256, bytes)
-        );
+        (address l2Target, uint256 l2Value, bytes memory l2Calldata) = abi.decode(payload, (address, uint256, bytes));
 
         // CHRIS: TODO: should we insist on a minimum gas limit?
 
@@ -214,7 +189,6 @@ contract L1ArbitrumTimelock is TimelockControllerUpgradeable, L1ArbitrumMessenge
         // when executing we store the hash of the stuff
         // this will be different if we wrap up the data in this way
         // we need to update the correct? no we want it to be forever executable?
-
 
         // CHRIS: TODO: remove this
         // encoding the location will be tricky. We either need different target paths
@@ -228,7 +202,7 @@ contract L1ArbitrumTimelock is TimelockControllerUpgradeable, L1ArbitrumMessenge
 
         // CHRIS: TODO: what about nova? we want to allow that too right?
         IInbox(inbox).createRetryableTicket{value: msg.value}(
-            l2Target, // we replace the to address with the forwarder
+            l2Target,
             l2Value,
             maxSubmissionCost,
             excessFeeRefundAddress,
@@ -240,7 +214,7 @@ contract L1ArbitrumTimelock is TimelockControllerUpgradeable, L1ArbitrumMessenge
 
         // CHRIS: TODO: not updating the status after executing opens us up to re-entrancy
         // CHRIS: TODO: is this a problem? should we disallow that with an explicit re-entrancy guard?
-        
+
         // CHRIS: TODO: should we have a crosschaincallexecuted event?
 
         emit CallExecuted(id, 0, target, value, payload);
