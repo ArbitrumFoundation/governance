@@ -52,8 +52,8 @@ contract ArbitrumVestingWalletTest is Test {
             IVotesUpgradeable(token),
             ArbitrumTimelock(timelock),
             address(1),
-            10000,
-            10000,
+            10_000,
+            10_000,
             3,
             0,
             10
@@ -65,7 +65,10 @@ contract ArbitrumVestingWalletTest is Test {
         return (L2ArbitrumToken(token), L2ArbitrumGovernor(governor), td);
     }
 
-    function deploy() public returns (ArbitrumVestingWallet, L2ArbitrumToken, L2ArbitrumGovernor, TokenDistributor) {
+    function deploy()
+        public
+        returns (ArbitrumVestingWallet, L2ArbitrumToken, L2ArbitrumGovernor, TokenDistributor)
+    {
         (L2ArbitrumToken token, L2ArbitrumGovernor gov, TokenDistributor td) = deployDeps();
         ArbitrumVestingWallet wallet = new ArbitrumVestingWallet(
             beneficiary,
@@ -110,7 +113,12 @@ contract ArbitrumVestingWalletTest is Test {
         public
         returns (ArbitrumVestingWallet, L2ArbitrumToken, L2ArbitrumGovernor, TokenDistributor)
     {
-        (ArbitrumVestingWallet wallet, L2ArbitrumToken token, L2ArbitrumGovernor gov, TokenDistributor td) = deploy();
+        (
+            ArbitrumVestingWallet wallet,
+            L2ArbitrumToken token,
+            L2ArbitrumGovernor gov,
+            TokenDistributor td
+        ) = deploy();
         vm.prank(beneficiary);
         wallet.claim(address(td));
 
@@ -137,8 +145,12 @@ contract ArbitrumVestingWalletTest is Test {
         public
         returns (ArbitrumVestingWallet, L2ArbitrumToken, L2ArbitrumGovernor, TokenDistributor)
     {
-        (ArbitrumVestingWallet wallet, L2ArbitrumToken token, L2ArbitrumGovernor gov, TokenDistributor td) =
-            deployAndClaim();
+        (
+            ArbitrumVestingWallet wallet,
+            L2ArbitrumToken token,
+            L2ArbitrumGovernor gov,
+            TokenDistributor td
+        ) = deployAndClaim();
 
         vm.prank(beneficiary);
         wallet.delegate(address(token), delegatee);
@@ -190,8 +202,16 @@ contract ArbitrumVestingWalletTest is Test {
         (ArbitrumVestingWallet wallet, L2ArbitrumToken token,,) = deployAndClaim();
 
         assertEq(wallet.vestedAmount(address(token), startTimestamp - 1), 0, "Vested zero");
-        assertEq(wallet.vestedAmount(address(token), startTimestamp), beneficiaryClaim / 4, "Vested cliff");
-        assertEq(wallet.vestedAmount(address(token), startTimestamp + 1), beneficiaryClaim / 4, "Vested cliff after");
+        assertEq(
+            wallet.vestedAmount(address(token), startTimestamp),
+            beneficiaryClaim / 4,
+            "Vested cliff"
+        );
+        assertEq(
+            wallet.vestedAmount(address(token), startTimestamp + 1),
+            beneficiaryClaim / 4,
+            "Vested cliff after"
+        );
         assertEq(
             wallet.vestedAmount(address(token), startTimestamp + SECONDS_PER_MONTH - 1),
             beneficiaryClaim / 4,
@@ -223,17 +243,23 @@ contract ArbitrumVestingWalletTest is Test {
             "Vested one year plus one"
         );
         assertEq(
-            wallet.vestedAmount(address(token), startTimestamp + SECONDS_PER_YEAR + SECONDS_PER_MONTH - 1),
+            wallet.vestedAmount(
+                address(token), startTimestamp + SECONDS_PER_YEAR + SECONDS_PER_MONTH - 1
+            ),
             beneficiaryClaim / 2,
             "Vested one year and one month minus one"
         );
         assertEq(
-            wallet.vestedAmount(address(token), startTimestamp + SECONDS_PER_YEAR + SECONDS_PER_MONTH),
+            wallet.vestedAmount(
+                address(token), startTimestamp + SECONDS_PER_YEAR + SECONDS_PER_MONTH
+            ),
             (beneficiaryClaim / 2) + (beneficiaryClaim / 48),
             "Vested one year and one month"
         );
         assertEq(
-            wallet.vestedAmount(address(token), startTimestamp + SECONDS_PER_YEAR + SECONDS_PER_MONTH + 1),
+            wallet.vestedAmount(
+                address(token), startTimestamp + SECONDS_PER_YEAR + SECONDS_PER_MONTH + 1
+            ),
             (beneficiaryClaim / 2) + (beneficiaryClaim / 48),
             "Vested one year and one month plus one"
         );
