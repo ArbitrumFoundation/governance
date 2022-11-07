@@ -19,6 +19,7 @@ contract L2ArbitrumGovernorTest is Test {
     address excludeListMember = address(3);
     uint256 quorumNumerator = 5;
     uint256 proposalThreshold = 1;
+    uint64 initialVoteExtension = 5;
 
     address[] stubAddressArray = [address(6)];
     address someRando = address(7);
@@ -48,7 +49,8 @@ contract L2ArbitrumGovernorTest is Test {
             votingDelay,
             votingPeriod,
             quorumNumerator,
-            proposalThreshold
+            proposalThreshold,
+            initialVoteExtension
         );
         return (l2ArbitrumGovernor, token, timelock);
     }
@@ -68,7 +70,8 @@ contract L2ArbitrumGovernorTest is Test {
             votingDelay,
             votingPeriod,
             quorumNumerator,
-            proposalThreshold
+            proposalThreshold,
+            initialVoteExtension
         );
     }
 
