@@ -65,10 +65,7 @@ contract ArbitrumVestingWalletTest is Test {
         return (L2ArbitrumToken(token), L2ArbitrumGovernor(governor), td);
     }
 
-    function deploy()
-        public
-        returns (ArbitrumVestingWallet, L2ArbitrumToken, L2ArbitrumGovernor, TokenDistributor)
-    {
+    function deploy() public returns (ArbitrumVestingWallet, L2ArbitrumToken, L2ArbitrumGovernor, TokenDistributor) {
         (L2ArbitrumToken token, L2ArbitrumGovernor gov, TokenDistributor td) = deployDeps();
         ArbitrumVestingWallet wallet = new ArbitrumVestingWallet(
             beneficiary,
@@ -87,7 +84,7 @@ contract ArbitrumVestingWalletTest is Test {
     }
 
     function testDoesDeploy() external {
-        (ArbitrumVestingWallet wallet, L2ArbitrumToken token, , ) = deploy();
+        (ArbitrumVestingWallet wallet, L2ArbitrumToken token,,) = deploy();
 
         assertEq(wallet.start(), startTimestamp, "Start time");
         assertEq(wallet.duration(), durationSeconds, "Duration");
@@ -95,7 +92,7 @@ contract ArbitrumVestingWalletTest is Test {
     }
 
     function testClaim() external {
-        (ArbitrumVestingWallet wallet, L2ArbitrumToken token, , TokenDistributor td) = deploy();
+        (ArbitrumVestingWallet wallet, L2ArbitrumToken token,, TokenDistributor td) = deploy();
         vm.prank(beneficiary);
         wallet.claim(address(td));
 
@@ -104,7 +101,7 @@ contract ArbitrumVestingWalletTest is Test {
     }
 
     function testClaimFailsForNonBeneficiary() external {
-        (ArbitrumVestingWallet wallet, , , TokenDistributor td) = deploy();
+        (ArbitrumVestingWallet wallet,,, TokenDistributor td) = deploy();
         vm.expectRevert("ArbitrumVestingWallet: not beneficiary");
         wallet.claim(address(td));
     }
@@ -113,12 +110,7 @@ contract ArbitrumVestingWalletTest is Test {
         public
         returns (ArbitrumVestingWallet, L2ArbitrumToken, L2ArbitrumGovernor, TokenDistributor)
     {
-        (
-            ArbitrumVestingWallet wallet,
-            L2ArbitrumToken token,
-            L2ArbitrumGovernor gov,
-            TokenDistributor td
-        ) = deploy();
+        (ArbitrumVestingWallet wallet, L2ArbitrumToken token, L2ArbitrumGovernor gov, TokenDistributor td) = deploy();
         vm.prank(beneficiary);
         wallet.claim(address(td));
 
@@ -126,7 +118,7 @@ contract ArbitrumVestingWalletTest is Test {
     }
 
     function testDelegate() external {
-        (ArbitrumVestingWallet wallet, L2ArbitrumToken token, , ) = deployAndClaim();
+        (ArbitrumVestingWallet wallet, L2ArbitrumToken token,,) = deployAndClaim();
 
         vm.prank(beneficiary);
         wallet.delegate(address(token), delegatee);
@@ -135,7 +127,7 @@ contract ArbitrumVestingWalletTest is Test {
     }
 
     function testDelegateFailsForNonBeneficiary() external {
-        (ArbitrumVestingWallet wallet, L2ArbitrumToken token, , ) = deployAndClaim();
+        (ArbitrumVestingWallet wallet, L2ArbitrumToken token,,) = deployAndClaim();
 
         vm.expectRevert("ArbitrumVestingWallet: not beneficiary");
         wallet.delegate(address(token), delegatee);
@@ -145,12 +137,8 @@ contract ArbitrumVestingWalletTest is Test {
         public
         returns (ArbitrumVestingWallet, L2ArbitrumToken, L2ArbitrumGovernor, TokenDistributor)
     {
-        (
-            ArbitrumVestingWallet wallet,
-            L2ArbitrumToken token,
-            L2ArbitrumGovernor gov,
-            TokenDistributor td
-        ) = deployAndClaim();
+        (ArbitrumVestingWallet wallet, L2ArbitrumToken token, L2ArbitrumGovernor gov, TokenDistributor td) =
+            deployAndClaim();
 
         vm.prank(beneficiary);
         wallet.delegate(address(token), delegatee);
@@ -159,7 +147,7 @@ contract ArbitrumVestingWalletTest is Test {
     }
 
     function testCastVote() external {
-        (ArbitrumVestingWallet wallet, , L2ArbitrumGovernor gov, ) = deployClaimAndDelegate();
+        (ArbitrumVestingWallet wallet,, L2ArbitrumGovernor gov,) = deployClaimAndDelegate();
 
         address[] memory targets = new address[](1);
         targets[0] = address(5);
@@ -178,7 +166,7 @@ contract ArbitrumVestingWalletTest is Test {
     }
 
     function testCastVoteFailsForNonBeneficiary() external {
-        (ArbitrumVestingWallet wallet, , L2ArbitrumGovernor gov, ) = deployClaimAndDelegate();
+        (ArbitrumVestingWallet wallet,, L2ArbitrumGovernor gov,) = deployClaimAndDelegate();
 
         address[] memory targets = new address[](1);
         targets[0] = address(5);
@@ -199,19 +187,11 @@ contract ArbitrumVestingWalletTest is Test {
     uint64 constant SECONDS_PER_MONTH = SECONDS_PER_YEAR / 12;
 
     function testVestedAmountStart() external {
-        (ArbitrumVestingWallet wallet, L2ArbitrumToken token, , ) = deployAndClaim();
+        (ArbitrumVestingWallet wallet, L2ArbitrumToken token,,) = deployAndClaim();
 
         assertEq(wallet.vestedAmount(address(token), startTimestamp - 1), 0, "Vested zero");
-        assertEq(
-            wallet.vestedAmount(address(token), startTimestamp),
-            beneficiaryClaim / 4,
-            "Vested cliff"
-        );
-        assertEq(
-            wallet.vestedAmount(address(token), startTimestamp + 1),
-            beneficiaryClaim / 4,
-            "Vested cliff after"
-        );
+        assertEq(wallet.vestedAmount(address(token), startTimestamp), beneficiaryClaim / 4, "Vested cliff");
+        assertEq(wallet.vestedAmount(address(token), startTimestamp + 1), beneficiaryClaim / 4, "Vested cliff after");
         assertEq(
             wallet.vestedAmount(address(token), startTimestamp + SECONDS_PER_MONTH - 1),
             beneficiaryClaim / 4,
@@ -243,26 +223,17 @@ contract ArbitrumVestingWalletTest is Test {
             "Vested one year plus one"
         );
         assertEq(
-            wallet.vestedAmount(
-                address(token),
-                startTimestamp + SECONDS_PER_YEAR + SECONDS_PER_MONTH - 1
-            ),
+            wallet.vestedAmount(address(token), startTimestamp + SECONDS_PER_YEAR + SECONDS_PER_MONTH - 1),
             beneficiaryClaim / 2,
             "Vested one year and one month minus one"
         );
         assertEq(
-            wallet.vestedAmount(
-                address(token),
-                startTimestamp + SECONDS_PER_YEAR + SECONDS_PER_MONTH
-            ),
+            wallet.vestedAmount(address(token), startTimestamp + SECONDS_PER_YEAR + SECONDS_PER_MONTH),
             (beneficiaryClaim / 2) + (beneficiaryClaim / 48),
             "Vested one year and one month"
         );
         assertEq(
-            wallet.vestedAmount(
-                address(token),
-                startTimestamp + SECONDS_PER_YEAR + SECONDS_PER_MONTH + 1
-            ),
+            wallet.vestedAmount(address(token), startTimestamp + SECONDS_PER_YEAR + SECONDS_PER_MONTH + 1),
             (beneficiaryClaim / 2) + (beneficiaryClaim / 48),
             "Vested one year and one month plus one"
         );

@@ -5,6 +5,7 @@ import "../src/L2ArbitrumGovernor.sol";
 import "../src/ArbitrumTimelock.sol";
 import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
+import "@openzeppelin/contracts-upgradeable/governance/TimelockControllerUpgradeable.sol";
 import "../src/L2ArbitrumToken.sol";
 import "./util/TestUtil.sol";
 
@@ -25,23 +26,15 @@ contract L2ArbitrumGovernorTest is Test {
     address someRando = address(7);
     address executor = address(8);
 
-    function deployAndInit()
-        private
-        returns (L2ArbitrumGovernor, L2ArbitrumToken, ArbitrumTimelock)
-    {
-        L2ArbitrumToken token = L2ArbitrumToken(
-            TestUtil.deployProxy(address(new L2ArbitrumToken()))
-        );
+    function deployAndInit() private returns (L2ArbitrumGovernor, L2ArbitrumToken, ArbitrumTimelock) {
+        L2ArbitrumToken token = L2ArbitrumToken(TestUtil.deployProxy(address(new L2ArbitrumToken())));
         token.initialize(l1TokenAddress, initialTokenSupply, tokenOwner);
 
-        ArbitrumTimelock timelock = ArbitrumTimelock(
-            payable(TestUtil.deployProxy(address(new ArbitrumTimelock())))
-        );
+        ArbitrumTimelock timelock = ArbitrumTimelock(payable(TestUtil.deployProxy(address(new ArbitrumTimelock()))));
         timelock.initialize(1, stubAddressArray, stubAddressArray);
 
-        L2ArbitrumGovernor l2ArbitrumGovernor = L2ArbitrumGovernor(
-            payable(TestUtil.deployProxy(address(new L2ArbitrumGovernor())))
-        );
+        L2ArbitrumGovernor l2ArbitrumGovernor =
+            L2ArbitrumGovernor(payable(TestUtil.deployProxy(address(new L2ArbitrumGovernor()))));
         l2ArbitrumGovernor.initialize(
             token,
             timelock,
@@ -56,11 +49,7 @@ contract L2ArbitrumGovernorTest is Test {
     }
 
     function testCantReinit() external {
-        (
-            L2ArbitrumGovernor l2ArbitrumGovernor,
-            L2ArbitrumToken token,
-            ArbitrumTimelock timelock
-        ) = deployAndInit();
+        (L2ArbitrumGovernor l2ArbitrumGovernor, L2ArbitrumToken token, ArbitrumTimelock timelock) = deployAndInit();
 
         vm.expectRevert("Initializable: contract is already initialized");
         l2ArbitrumGovernor.initialize(
@@ -76,13 +65,13 @@ contract L2ArbitrumGovernorTest is Test {
     }
 
     function testProperlyInitialized() external {
-        (L2ArbitrumGovernor l2ArbitrumGovernor, , ) = deployAndInit();
+        (L2ArbitrumGovernor l2ArbitrumGovernor,,) = deployAndInit();
         assertEq(l2ArbitrumGovernor.votingDelay(), votingDelay, "votingDelay not set properly");
         assertEq(l2ArbitrumGovernor.votingPeriod(), votingPeriod, "votingPeriod not set properly");
     }
 
     function testPastCirculatingSupplyMint() external {
-        (L2ArbitrumGovernor l2ArbitrumGovernor, L2ArbitrumToken token, ) = deployAndInit();
+        (L2ArbitrumGovernor l2ArbitrumGovernor, L2ArbitrumToken token,) = deployAndInit();
 
         vm.warp(200_000_000_000_000_000);
         vm.roll(2);
@@ -103,7 +92,7 @@ contract L2ArbitrumGovernorTest is Test {
     }
 
     function testPastCirculatingSupplyExclude() external {
-        (L2ArbitrumGovernor l2ArbitrumGovernor, L2ArbitrumToken token, ) = deployAndInit();
+        (L2ArbitrumGovernor l2ArbitrumGovernor, L2ArbitrumToken token,) = deployAndInit();
         address excludeAddress = l2ArbitrumGovernor.EXCLUDE_ADDRESS();
 
         vm.roll(3);
@@ -114,11 +103,7 @@ contract L2ArbitrumGovernorTest is Test {
         vm.prank(excludeListMember);
         token.delegate(excludeAddress);
         vm.roll(4);
-        assertEq(
-            token.getPastVotes(excludeAddress, 3),
-            300,
-            "didn't delegate to votes exclude address"
-        );
+        assertEq(token.getPastVotes(excludeAddress, 3), 300, "didn't delegate to votes exclude address");
 
         assertEq(
             l2ArbitrumGovernor.getPastCirculatingSupply(3),
@@ -133,34 +118,50 @@ contract L2ArbitrumGovernorTest is Test {
     }
 
     function testPastCirculatingSupply() external {
-        (L2ArbitrumGovernor l2ArbitrumGovernor, , ) = deployAndInit();
+        (L2ArbitrumGovernor l2ArbitrumGovernor,,) = deployAndInit();
 
         vm.warp(200_000_000_000_000_000);
         vm.roll(2);
-        assertEq(
-            l2ArbitrumGovernor.getPastCirculatingSupply(1),
-            initialTokenSupply,
-            "Inital supply error"
-        );
+        assertEq(l2ArbitrumGovernor.getPastCirculatingSupply(1), initialTokenSupply, "Inital supply error");
     }
 
     function testExecutorPermissions() external {
-        // TODO: fix
-        // (L2ArbitrumGovernor l2ArbitrumGovernor,,) = deployAndInit();
-        // vm.startPrank(executor);
-        // l2ArbitrumGovernor.setVotingDelay(2);
-        // assertEq(l2ArbitrumGovernor.votingDelay(), 2, "Voting delay");
-        // l2ArbitrumGovernor.setVotingPeriod(2);
-        // assertEq(l2ArbitrumGovernor.votingPeriod(), 2, "Voting period");
-        // l2ArbitrumGovernor.setProposalNumerator(2);
-        // assertEq(l2ArbitrumGovernor.proposalNumerator(), 2, "Prop numerator");
-        // l2ArbitrumGovernor.setL2Executor(someRando);
-        // assertEq(l2ArbitrumGovernor.l2Executor(), someRando, "l2executor");
-        // vm.stopPrank();
+        (L2ArbitrumGovernor l2ArbitrumGovernor,,) = deployAndInit();
+        vm.startPrank(executor);
+
+        l2ArbitrumGovernor.relay(
+            address(l2ArbitrumGovernor), 0, abi.encodeWithSelector(l2ArbitrumGovernor.setProposalThreshold.selector, 2)
+        );
+        assertEq(l2ArbitrumGovernor.proposalThreshold(), 2, "Prop threshold");
+
+        l2ArbitrumGovernor.relay(
+            address(l2ArbitrumGovernor), 0, abi.encodeWithSelector(l2ArbitrumGovernor.setVotingDelay.selector, 2)
+        );
+        assertEq(l2ArbitrumGovernor.votingDelay(), 2, "Voting delay");
+
+        l2ArbitrumGovernor.relay(
+            address(l2ArbitrumGovernor), 0, abi.encodeWithSelector(l2ArbitrumGovernor.setVotingPeriod.selector, 2)
+        );
+        assertEq(l2ArbitrumGovernor.votingPeriod(), 2, "Voting period");
+
+        l2ArbitrumGovernor.relay(
+            address(l2ArbitrumGovernor), 0, abi.encodeWithSelector(l2ArbitrumGovernor.updateQuorumNumerator.selector, 4)
+        );
+        assertEq(l2ArbitrumGovernor.quorumNumerator(), 4, "Quorum num");
+
+        l2ArbitrumGovernor.relay(
+            address(l2ArbitrumGovernor),
+            0,
+            abi.encodeWithSelector(l2ArbitrumGovernor.updateTimelock.selector, address(137))
+        );
+        assertEq(l2ArbitrumGovernor.timelock(), address(137), "Timelock");
+
+        vm.stopPrank();
     }
 
     function testExecutorPermissionsFail() external {
-        (L2ArbitrumGovernor l2ArbitrumGovernor, , ) = deployAndInit();
+        (L2ArbitrumGovernor l2ArbitrumGovernor,,) = deployAndInit();
+
         vm.startPrank(someRando);
 
         vm.expectRevert("Governor: onlyGovernance");
@@ -173,9 +174,16 @@ contract L2ArbitrumGovernorTest is Test {
         l2ArbitrumGovernor.setVotingPeriod(2);
 
         vm.expectRevert("Governor: onlyGovernance");
-        l2ArbitrumGovernor.setL2Executor(someRando);
+        l2ArbitrumGovernor.updateQuorumNumerator(4);
+
         vm.expectRevert("Governor: onlyGovernance");
-        l2ArbitrumGovernor.setProposalThreshold(2);
+        l2ArbitrumGovernor.updateTimelock(TimelockControllerUpgradeable(payable(address(137))));
+
+        vm.expectRevert("Ownable: caller is not the owner");
+        l2ArbitrumGovernor.relay(
+            address(l2ArbitrumGovernor), 0, abi.encodeWithSelector(l2ArbitrumGovernor.updateQuorumNumerator.selector, 4)
+        );
+
         vm.stopPrank();
     }
 }
