@@ -87,7 +87,7 @@ contract L2ArbitrumGovernor is
     ///             a lot of complexity, as we have multiple layers of calldata wrapping each other to
     ///             define the multiple transactions that occur in a round-trip upgrade. So safely recording
     ///             execution of the would be difficult and brittle.
-    ///         2.  Override this protection and just ensure elsewhere that the executor nonly has the
+    ///         2.  Override this protection and just ensure elsewhere that the executor only has the
     ///             the correct entrypoints and access control. We've gone for this option.
     ///         By overriding the relay function we allow the executor to make any call originating
     ///         from the governor, and by setting the _executor() to be the governor itself we can use the
