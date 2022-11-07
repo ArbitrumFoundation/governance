@@ -26,7 +26,8 @@ contract TokenDistributorTest is Test {
     function deployToken() public returns (L2ArbitrumToken) {
         vm.roll(currentBlockNumber);
 
-        L2ArbitrumToken testToken = L2ArbitrumToken(TestUtil.deployProxy(address(new L2ArbitrumToken())));
+        L2ArbitrumToken testToken =
+            L2ArbitrumToken(TestUtil.deployProxy(address(new L2ArbitrumToken())));
         testToken.initialize(l1Token, initialSupply, tokenOwner);
 
         return (testToken);
@@ -45,7 +46,10 @@ contract TokenDistributorTest is Test {
         return (td, token);
     }
 
-    function deployInitAndDeposit(uint256 amount) public returns (TokenDistributor, L2ArbitrumToken) {
+    function deployInitAndDeposit(uint256 amount)
+        public
+        returns (TokenDistributor, L2ArbitrumToken)
+    {
         (TokenDistributor td, L2ArbitrumToken token) = deploy();
         vm.prank(tokenOwner);
         token.transfer(address(td), amount);
@@ -134,7 +138,12 @@ contract TokenDistributorTest is Test {
 
     function createRecipients(uint128 start, uint32 count)
         private
-        returns (uint256[] memory privKeys, address[] memory recipients, uint256[] memory amounts, uint256 sum)
+        returns (
+            uint256[] memory privKeys,
+            address[] memory recipients,
+            uint256[] memory amounts,
+            uint256 sum
+        )
     {
         privKeys = new uint256[](count);
         recipients = new address[](count);
@@ -177,7 +186,8 @@ contract TokenDistributorTest is Test {
     }
 
     function testSetRecipientsTwice() public {
-        (, address[] memory recipients, uint256[] memory amounts, uint256 sum) = createRecipients(0, 10);
+        (, address[] memory recipients, uint256[] memory amounts, uint256 sum) =
+            createRecipients(0, 10);
         (, address[] memory recipients2, uint256[] memory amounts2, uint256 sum2) =
             createRecipients(uint128(recipients.length), 25);
 
@@ -190,28 +200,37 @@ contract TokenDistributorTest is Test {
         (TokenDistributor td,) = deployInitAndDeposit(tdBalance);
 
         (, address[] memory recipients, uint256[] memory amounts,) = createRecipients(0, 10);
-        setAndTestRecipients(td, recipients, amounts, "Ownable: caller is not the owner", address(137));
+        setAndTestRecipients(
+            td, recipients, amounts, "Ownable: caller is not the owner", address(137)
+        );
     }
 
     function testSetRecipientsFailsNotEnoughDeposit() public {
-        (, address[] memory recipients, uint256[] memory amounts, uint256 sum) = createRecipients(0, 10);
+        (, address[] memory recipients, uint256[] memory amounts, uint256 sum) =
+            createRecipients(0, 10);
         (TokenDistributor td,) = deployInitAndDeposit(sum - 1);
 
-        setAndTestRecipients(td, recipients, amounts, "TokenDistributor: not enough balance", tdOwner);
+        setAndTestRecipients(
+            td, recipients, amounts, "TokenDistributor: not enough balance", tdOwner
+        );
     }
 
     function testSetRecipientsFailsWhenAddingTwice() public {
-        (, address[] memory recipients, uint256[] memory amounts, uint256 sum) = createRecipients(0, 10);
+        (, address[] memory recipients, uint256[] memory amounts, uint256 sum) =
+            createRecipients(0, 10);
         (, address[] memory recipients2, uint256[] memory amounts2, uint256 sum2) =
             createRecipients(uint128(recipients.length) - 1, 5);
 
         (TokenDistributor td,) = deployInitAndDeposit(sum + sum2);
         setAndTestRecipients(td, recipients, amounts, "", tdOwner);
-        setAndTestRecipients(td, recipients2, amounts2, "TokenDistributor: recipient already set", tdOwner);
+        setAndTestRecipients(
+            td, recipients2, amounts2, "TokenDistributor: recipient already set", tdOwner
+        );
     }
 
     function testSetRecipientsFailsWrongRecipientCount() public {
-        (, address[] memory recipients, uint256[] memory amounts, uint256 sum) = createRecipients(0, 10);
+        (, address[] memory recipients, uint256[] memory amounts, uint256 sum) =
+            createRecipients(0, 10);
         address[] memory recipients2 = new address[](recipients.length - 1);
         for (uint256 index = 0; index < recipients.length - 1; index++) {
             recipients2[index] = recipients[index];
@@ -219,11 +238,14 @@ contract TokenDistributorTest is Test {
 
         (TokenDistributor td,) = deployInitAndDeposit(sum);
 
-        setAndTestRecipients(td, recipients2, amounts, "TokenDistributor: invalid array length", tdOwner);
+        setAndTestRecipients(
+            td, recipients2, amounts, "TokenDistributor: invalid array length", tdOwner
+        );
     }
 
     function testSetRecipientsFailsWrongAmountCount() public {
-        (, address[] memory recipients, uint256[] memory amounts, uint256 sum) = createRecipients(0, 10);
+        (, address[] memory recipients, uint256[] memory amounts, uint256 sum) =
+            createRecipients(0, 10);
         uint256[] memory amounts2 = new uint256[](amounts.length - 1);
         for (uint256 index = 0; index < amounts.length - 1; index++) {
             amounts2[index] = amounts[index];
@@ -231,24 +253,42 @@ contract TokenDistributorTest is Test {
 
         (TokenDistributor td,) = deployInitAndDeposit(sum);
 
-        setAndTestRecipients(td, recipients, amounts2, "TokenDistributor: invalid array length", tdOwner);
+        setAndTestRecipients(
+            td, recipients, amounts2, "TokenDistributor: invalid array length", tdOwner
+        );
     }
 
     function deployAndSetRecipients()
         private
-        returns (TokenDistributor, L2ArbitrumToken, uint256[] memory, address[] memory, uint256[] memory, uint256)
+        returns (
+            TokenDistributor,
+            L2ArbitrumToken,
+            uint256[] memory,
+            address[] memory,
+            uint256[] memory,
+            uint256
+        )
     {
         (TokenDistributor td, L2ArbitrumToken token) = deployInitAndDeposit(tdBalance);
 
-        (uint256[] memory privKeys, address[] memory recipients, uint256[] memory amounts, uint256 sum) =
-            createRecipients(0, 10);
+        (
+            uint256[] memory privKeys,
+            address[] memory recipients,
+            uint256[] memory amounts,
+            uint256 sum
+        ) = createRecipients(0, 10);
         setAndTestRecipients(td, recipients, amounts, "", tdOwner);
         return (td, token, privKeys, recipients, amounts, sum);
     }
 
     function testClaim() public {
-        (TokenDistributor td, L2ArbitrumToken token,, address[] memory recipients, uint256[] memory amounts,) =
-            deployAndSetRecipients();
+        (
+            TokenDistributor td,
+            L2ArbitrumToken token,
+            ,
+            address[] memory recipients,
+            uint256[] memory amounts,
+        ) = deployAndSetRecipients();
 
         vm.roll(claimPeriodStart);
         address user = recipients[1];
@@ -289,12 +329,21 @@ contract TokenDistributorTest is Test {
     }
 
     function testClaimFailsForFalseTransfer() public {
-        (TokenDistributor td, L2ArbitrumToken token,, address[] memory recipients, uint256[] memory amounts,) =
-            deployAndSetRecipients();
+        (
+            TokenDistributor td,
+            L2ArbitrumToken token,
+            ,
+            address[] memory recipients,
+            uint256[] memory amounts,
+        ) = deployAndSetRecipients();
 
         address user = recipients[1];
         uint256 amount = amounts[1];
-        vm.mockCall(address(token), abi.encodeWithSelector(token.transfer.selector, user, amount), abi.encode(false));
+        vm.mockCall(
+            address(token),
+            abi.encodeWithSelector(token.transfer.selector, user, amount),
+            abi.encode(false)
+        );
 
         vm.roll(claimPeriodStart);
         vm.prank(user);
@@ -315,17 +364,23 @@ contract TokenDistributorTest is Test {
         td.claim();
     }
 
-    bytes32 private constant _DELEGATE_HASH = keccak256("Delegation(address delegatee,uint256 nonce,uint256 expiry)");
+    bytes32 private constant _DELEGATE_HASH =
+        keccak256("Delegation(address delegatee,uint256 nonce,uint256 expiry)");
 
-    function toTypedDataHash(bytes32 domainSeparator, bytes32 structHash) internal pure returns (bytes32) {
+    function toTypedDataHash(bytes32 domainSeparator, bytes32 structHash)
+        internal
+        pure
+        returns (bytes32)
+    {
         return keccak256(abi.encodePacked("\x19\x01", domainSeparator, structHash));
     }
 
-    function delegateSigHash(L2ArbitrumToken token, address delegatee, uint256 nonce, uint256 expiry)
-        public
-        view
-        returns (bytes32)
-    {
+    function delegateSigHash(
+        L2ArbitrumToken token,
+        address delegatee,
+        uint256 nonce,
+        uint256 expiry
+    ) public view returns (bytes32) {
         bytes32 structHash = keccak256(abi.encode(_DELEGATE_HASH, delegatee, nonce, expiry));
         return toTypedDataHash(token.DOMAIN_SEPARATOR(), structHash);
     }
@@ -356,8 +411,13 @@ contract TokenDistributorTest is Test {
     }
 
     function testClaimAndDelegateFailsForWrongSender() public {
-        (TokenDistributor td, L2ArbitrumToken token, uint256[] memory privKeys, address[] memory recipients,,) =
-            deployAndSetRecipients();
+        (
+            TokenDistributor td,
+            L2ArbitrumToken token,
+            uint256[] memory privKeys,
+            address[] memory recipients,
+            ,
+        ) = deployAndSetRecipients();
 
         vm.roll(claimPeriodStart);
         vm.warp(currentBlockTimestamp);
@@ -374,8 +434,13 @@ contract TokenDistributorTest is Test {
     }
 
     function testClaimAndDelegateFailsForExpired() public {
-        (TokenDistributor td, L2ArbitrumToken token, uint256[] memory privKeys, address[] memory recipients,,) =
-            deployAndSetRecipients();
+        (
+            TokenDistributor td,
+            L2ArbitrumToken token,
+            uint256[] memory privKeys,
+            address[] memory recipients,
+            ,
+        ) = deployAndSetRecipients();
 
         vm.roll(claimPeriodStart);
         vm.warp(currentBlockTimestamp);
@@ -392,8 +457,13 @@ contract TokenDistributorTest is Test {
     }
 
     function testClaimAndDelegateFailsWrongNonce() public {
-        (TokenDistributor td, L2ArbitrumToken token, uint256[] memory privKeys, address[] memory recipients,,) =
-            deployAndSetRecipients();
+        (
+            TokenDistributor td,
+            L2ArbitrumToken token,
+            uint256[] memory privKeys,
+            address[] memory recipients,
+            ,
+        ) = deployAndSetRecipients();
 
         vm.roll(claimPeriodStart);
         vm.warp(currentBlockTimestamp);
@@ -420,8 +490,13 @@ contract TokenDistributorTest is Test {
     }
 
     function testSweepAfterClaim() public {
-        (TokenDistributor td, L2ArbitrumToken token,, address[] memory recipients, uint256[] memory amounts,) =
-            deployAndSetRecipients();
+        (
+            TokenDistributor td,
+            L2ArbitrumToken token,
+            ,
+            address[] memory recipients,
+            uint256[] memory amounts,
+        ) = deployAndSetRecipients();
 
         vm.roll(claimPeriodStart);
         address user = recipients[5];
@@ -456,7 +531,9 @@ contract TokenDistributorTest is Test {
     function testSweepFailsForFailedTransfer() public {
         (TokenDistributor td, L2ArbitrumToken token,,,,) = deployAndSetRecipients();
         vm.mockCall(
-            address(token), abi.encodeWithSelector(token.transfer.selector, sweepReceiver, tdBalance), abi.encode(false)
+            address(token),
+            abi.encodeWithSelector(token.transfer.selector, sweepReceiver, tdBalance),
+            abi.encode(false)
         );
 
         vm.roll(claimPeriodEnd);
@@ -488,7 +565,9 @@ contract TokenDistributorTest is Test {
         (TokenDistributor td, L2ArbitrumToken token,,,,) = deployAndSetRecipients();
 
         vm.mockCall(
-            address(token), abi.encodeWithSelector(token.transfer.selector, tdOwner, tdBalance), abi.encode(false)
+            address(token),
+            abi.encodeWithSelector(token.transfer.selector, tdOwner, tdBalance),
+            abi.encode(false)
         );
 
         vm.expectRevert("TokenDistributor: fail transfer token");
@@ -500,7 +579,9 @@ contract TokenDistributorTest is Test {
         (TokenDistributor td, L2ArbitrumToken token,,,,) = deployAndSetRecipients();
 
         vm.mockCall(
-            address(token), abi.encodeWithSelector(token.transfer.selector, tdOwner, tdBalance), abi.encode(false)
+            address(token),
+            abi.encodeWithSelector(token.transfer.selector, tdOwner, tdBalance),
+            abi.encode(false)
         );
 
         address payable newReceiver = payable(address(1397));
@@ -513,7 +594,9 @@ contract TokenDistributorTest is Test {
         (TokenDistributor td, L2ArbitrumToken token,,,,) = deployAndSetRecipients();
 
         vm.mockCall(
-            address(token), abi.encodeWithSelector(token.transfer.selector, tdOwner, tdBalance), abi.encode(false)
+            address(token),
+            abi.encodeWithSelector(token.transfer.selector, tdOwner, tdBalance),
+            abi.encode(false)
         );
 
         address payable newReceiver = payable(address(1397));

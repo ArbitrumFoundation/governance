@@ -49,11 +49,10 @@ contract L2ArbitrumToken is
     /// @param _l1TokenAddress The address of the counterparty L1 token
     /// @param _initialSupply The amount of initial supply to mint
     /// @param _owner The owner of this contract - controls minting, not upgradeability
-    function initialize(
-        address _l1TokenAddress,
-        uint256 _initialSupply,
-        address _owner
-    ) public initializer {
+    function initialize(address _l1TokenAddress, uint256 _initialSupply, address _owner)
+        public
+        initializer
+    {
         require(_l1TokenAddress != address(0), "ARB: ZERO_L1TOKEN_ADDRESS");
         require(_initialSupply != 0, "ARB: ZERO_INITIAL_SUPPLY");
         require(_owner != address(0), "ARB: ZERO_OWNER");
@@ -85,25 +84,24 @@ contract L2ArbitrumToken is
         _mint(recipient, amount);
     }
 
-    function _afterTokenTransfer(
-        address from,
-        address to,
-        uint256 amount
-    ) internal override(ERC20Upgradeable, ERC20VotesUpgradeable) {
+    function _afterTokenTransfer(address from, address to, uint256 amount)
+        internal
+        override (ERC20Upgradeable, ERC20VotesUpgradeable)
+    {
         super._afterTokenTransfer(from, to, amount);
     }
 
-    function _mint(
-        address to,
-        uint256 amount
-    ) internal override(ERC20Upgradeable, ERC20VotesUpgradeable) {
+    function _mint(address to, uint256 amount)
+        internal
+        override (ERC20Upgradeable, ERC20VotesUpgradeable)
+    {
         super._mint(to, amount);
     }
 
-    function _burn(
-        address account,
-        uint256 amount
-    ) internal override(ERC20Upgradeable, ERC20VotesUpgradeable) {
+    function _burn(address account, uint256 amount)
+        internal
+        override (ERC20Upgradeable, ERC20VotesUpgradeable)
+    {
         super._burn(account, amount);
     }
 }
