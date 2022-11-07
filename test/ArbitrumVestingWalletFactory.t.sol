@@ -20,10 +20,6 @@ contract ArbitrumVestingWalletFactoryTest is Test {
         beneficiaries[2] = address(3);
 
         address[] memory wallets = fac.createWallets(startTimestamp, duration, beneficiaries);
-        assertEq(
-            ArbitrumVestingWallet(payable(wallets[0])).beneficiary(),
-            beneficiaries[0],
-            "Beneficiary 0"
-        );
+        assertEq(ArbitrumVestingWallet(payable(wallets[0])).beneficiary(), beneficiaries[0], "Beneficiary 0");
     }
 }

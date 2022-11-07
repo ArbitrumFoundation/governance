@@ -29,9 +29,7 @@ contract L2ArbitrumTokenTest is Test {
     function deployAndInit() private returns (L2ArbitrumToken l2Token) {
         address tokenLogic = address(new L2ArbitrumToken());
         ProxyAdmin admin = new ProxyAdmin();
-        l2Token = L2ArbitrumToken(
-            address(new TransparentUpgradeableProxy(tokenLogic, address(admin), ""))
-        );
+        l2Token = L2ArbitrumToken(address(new TransparentUpgradeableProxy(tokenLogic, address(admin), "")));
         l2Token.initialize(l1Token, initialSupply, owner);
     }
 
@@ -48,11 +46,7 @@ contract L2ArbitrumTokenTest is Test {
         assertEq(l2Token.name(), "Arbitrum", "Invalid name");
         assertEq(l2Token.symbol(), "ARB", "Invalid symbol");
         assertEq(l2Token.l1Address(), l1Token, "Invalid l1Address");
-        assertEq(
-            l2Token.nextMint(),
-            block.timestamp + l2Token.MIN_MINT_INTERVAL(),
-            "Invalid nextMint"
-        );
+        assertEq(l2Token.nextMint(), block.timestamp + l2Token.MIN_MINT_INTERVAL(), "Invalid nextMint");
         assertEq(l2Token.totalSupply(), 1e28, "Invalid totalSupply");
         assertEq(l2Token.owner(), owner, "Invalid owner");
     }
@@ -78,12 +72,7 @@ contract L2ArbitrumTokenTest is Test {
         l2Token.initialize(l1Token, initialSupply, address(0));
     }
 
-    function validMint(
-        uint256 supplyNumerator,
-        string memory revertReason,
-        bool warp,
-        address minter
-    ) public {
+    function validMint(uint256 supplyNumerator, string memory revertReason, bool warp, address minter) public {
         L2ArbitrumToken l2Token = deployAndInit();
 
         uint256 additionalSupply = (initialSupply * supplyNumerator) / 100_000;
@@ -99,11 +88,7 @@ contract L2ArbitrumTokenTest is Test {
             l2Token.mint(mintRecipient, additionalSupply);
         } else {
             l2Token.mint(mintRecipient, additionalSupply);
-            assertEq(
-                l2Token.totalSupply(),
-                initialSupply + additionalSupply,
-                "Invalid inflated supply"
-            );
+            assertEq(l2Token.totalSupply(), initialSupply + additionalSupply, "Invalid inflated supply");
             assertEq(l2Token.balanceOf(mintRecipient), additionalSupply, "Invalid final balance");
         }
     }
