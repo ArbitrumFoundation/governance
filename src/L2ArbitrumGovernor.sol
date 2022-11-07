@@ -106,7 +106,7 @@ contract L2ArbitrumGovernor is
         AddressUpgradeable.functionCallWithValue(target, data, value);
     }
 
-    /// @notice returns l2 executor address; used internally for onlyGovernor check
+    /// @notice returns l2 executor address; used internally for onlyGovernance check
     function _executor()
         internal
         view
