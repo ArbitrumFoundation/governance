@@ -7,7 +7,8 @@
   "license": "MIT",
   "scripts": {
     "gen:network": "ts-node ./scripts/genNetwork.ts",
-    "test:integration": "hardhat test"
+    "test:integration": "hardhat test",
+    "format:sol": "forge fmt"
   },
   "devDependencies": {
     "@arbitrum/sdk": "^3.0.0",

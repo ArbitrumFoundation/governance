@@ -11,16 +11,8 @@ import "forge-std/Test.sol";
 
 contract L2ArbitrumTokenTest is Test {
     address owner = address(1);
-    address tokenLogic;
-    // CHRIS: TODO:
-    address l2TokenLogic = address(123);
-    address l2TimeLockLogic = address(1234);
-    address l2GovernorLogic = address(12_345);
     address mintRecipient = address(3);
-    address user = address(4);
     address emptyAddr = address(5);
-    address l2UpgradeExecutorLogic = address(123_456);
-    address l2UpgradeExecutorInitialOwner = address(1_234_567);
     uint256 initialSupply = 10 * 1_000_000_000 * (10 ** 18);
     address l1Token = address(1_234_578);
 
@@ -35,14 +27,10 @@ contract L2ArbitrumTokenTest is Test {
     }
 
     function deployAndInit() private returns (L2ArbitrumToken l2Token) {
-        tokenLogic = address(new L2ArbitrumToken());
+        address tokenLogic = address(new L2ArbitrumToken());
         ProxyAdmin admin = new ProxyAdmin();
         l2Token = L2ArbitrumToken(
-            address(
-                new TransparentUpgradeableProxy(
-                tokenLogic, address(admin), ""
-                )
-            )
+            address(new TransparentUpgradeableProxy(tokenLogic, address(admin), ""))
         );
         l2Token.initialize(l1Token, initialSupply, owner);
     }
@@ -60,7 +48,9 @@ contract L2ArbitrumTokenTest is Test {
         assertEq(l2Token.name(), "Arbitrum", "Invalid name");
         assertEq(l2Token.symbol(), "ARB", "Invalid symbol");
         assertEq(l2Token.l1Address(), l1Token, "Invalid l1Address");
-        assertEq(l2Token.nextMint(), block.timestamp + l2Token.MIN_MINT_INTERVAL(), "Invalid nextMint");
+        assertEq(
+            l2Token.nextMint(), block.timestamp + l2Token.MIN_MINT_INTERVAL(), "Invalid nextMint"
+        );
         assertEq(l2Token.totalSupply(), 1e28, "Invalid totalSupply");
         assertEq(l2Token.owner(), owner, "Invalid owner");
     }
@@ -86,10 +76,15 @@ contract L2ArbitrumTokenTest is Test {
         l2Token.initialize(l1Token, initialSupply, address(0));
     }
 
-    function validMint(uint256 supplyNumerator, string memory revertReason, bool warp, address minter) public {
+    function validMint(
+        uint256 supplyNumerator,
+        string memory revertReason,
+        bool warp,
+        address minter
+    ) public {
         L2ArbitrumToken l2Token = deployAndInit();
 
-        uint256 additionalSupply = initialSupply * supplyNumerator / 100_000;
+        uint256 additionalSupply = (initialSupply * supplyNumerator) / 100_000;
 
         assertEq(l2Token.balanceOf(mintRecipient), 0, "Invalid initial balance");
 
@@ -102,7 +97,9 @@ contract L2ArbitrumTokenTest is Test {
             l2Token.mint(mintRecipient, additionalSupply);
         } else {
             l2Token.mint(mintRecipient, additionalSupply);
-            assertEq(l2Token.totalSupply(), initialSupply + additionalSupply, "Invalid inflated supply");
+            assertEq(
+                l2Token.totalSupply(), initialSupply + additionalSupply, "Invalid inflated supply"
+            );
             assertEq(l2Token.balanceOf(mintRecipient), additionalSupply, "Invalid final balance");
         }
     }

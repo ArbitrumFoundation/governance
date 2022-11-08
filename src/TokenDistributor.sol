@@ -75,8 +75,13 @@ contract TokenDistributor is Ownable {
 
     /// @notice Allows owner to set a list of recipients to receive tokens
     /// @dev This may need to be called many times to set the full list of recipients
-    function setRecipients(address[] calldata _recipients, uint256[] calldata _claimableAmount) external onlyOwner {
-        require(_recipients.length == _claimableAmount.length, "TokenDistributor: invalid array length");
+    function setRecipients(address[] calldata _recipients, uint256[] calldata _claimableAmount)
+        external
+        onlyOwner
+    {
+        require(
+            _recipients.length == _claimableAmount.length, "TokenDistributor: invalid array length"
+        );
         uint256 sum = totalClaimable;
         for (uint256 i = 0; i < _recipients.length; i++) {
             // sanity check that the address being set is consistent
@@ -98,7 +103,9 @@ contract TokenDistributor is Ownable {
     /// @dev Different implementations may handle validation/fail delegateBySig differently. here a OZ v4.6.0 impl is assumed
     /// @dev delegateBySig by OZ does not support `IERC1271`, so smart contract wallets should not use this method
     /// @dev delegateBySig is used so that the token contract doesn't need to contain any claiming functionality
-    function claimAndDelegate(address delegatee, uint256 expiry, uint8 v, bytes32 r, bytes32 s) external {
+    function claimAndDelegate(address delegatee, uint256 expiry, uint8 v, bytes32 r, bytes32 s)
+        external
+    {
         claim();
         // WARNING: there's a nuisance attack that can occur here on networks that allow front running
         // A malicious party could see the signature when it's broadcast to a public mempool and create a

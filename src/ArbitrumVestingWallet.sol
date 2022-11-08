@@ -13,7 +13,7 @@ import {IERC20VotesUpgradeable} from "./Util.sol";
 ///         is then immediately eligible for voting and delegation. A quarter of the tokens vest
 ///         immediately on the start date, after that they vest proportionally each month
 contract ArbitrumVestingWallet is VestingWallet {
-    uint256 constant SECONDS_PER_MONTH = 60 * 60 * 24 * 365 / 12;
+    uint256 constant SECONDS_PER_MONTH = (60 * 60 * 24 * 365) / 12;
 
     /// @param _beneficiaryAddress Wallet owner
     /// @param _startTimestamp The time to start vesting; at this point a quarter of the assets will immediately vest
@@ -27,7 +27,12 @@ contract ArbitrumVestingWallet is VestingWallet {
         _;
     }
 
-    function _vestingSchedule(uint256 totalAllocation, uint64 timestamp) internal view override returns (uint256) {
+    function _vestingSchedule(uint256 totalAllocation, uint64 timestamp)
+        internal
+        view
+        override
+        returns (uint256)
+    {
         // at the start date a quarter of the assets immediately vest
         // after they vest proportionally each month for the duration
 
@@ -41,8 +46,10 @@ contract ArbitrumVestingWallet is VestingWallet {
 
             // we vest in units of months, so remove any seconds over the end of the last month
             uint256 vestedTimeSeconds = timestamp - start();
-            uint256 vestedTimeSecondsMonthFloored = vestedTimeSeconds - (vestedTimeSeconds % SECONDS_PER_MONTH);
-            uint256 remaining = ((totalAllocation - cliff) * (vestedTimeSecondsMonthFloored)) / duration();
+            uint256 vestedTimeSecondsMonthFloored =
+                vestedTimeSeconds - (vestedTimeSeconds % SECONDS_PER_MONTH);
+            uint256 remaining =
+                ((totalAllocation - cliff) * (vestedTimeSecondsMonthFloored)) / duration();
 
             return cliff + remaining;
         }
