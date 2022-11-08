@@ -5,9 +5,6 @@ import "@openzeppelin/contracts-upgradeable/governance/TimelockControllerUpgrade
 import "@arbitrum/nitro-contracts/src/bridge/IInbox.sol";
 import "./L1ArbitrumMessenger.sol";
 
-// CHRIS: TODO: if governance is upgradeable then what about the timelocks?
-// CHRIS: TODO: if the timelocks are upgradeable is that ok?
-
 interface IInboxSubmissionFee {
     function calculateRetryableSubmissionFee(uint256 dataLength, uint256 baseFee)
         external
@@ -51,9 +48,8 @@ contract L1ArbitrumTimelock is TimelockControllerUpgradeable, L1ArbitrumMessenge
         _;
     }
 
-    // CHRIS: TODO: docs on these
-    // CHRIS: TODO: i forgot, is this how we're supposed to use inheritance - should we use super?
-
+    /// @notice Schedule actions to be later executed
+    /// @dev Only callable by the l2 timelock, via the outbox/bridge
     function scheduleBatch(
         address[] calldata targets,
         uint256[] calldata values,
@@ -67,6 +63,8 @@ contract L1ArbitrumTimelock is TimelockControllerUpgradeable, L1ArbitrumMessenge
         );
     }
 
+    /// @notice Schedule an action to be later executed
+    /// @dev Only callable by the l2 timelock, via the outbox/bridge
     function schedule(
         address target,
         uint256 value,
@@ -78,13 +76,19 @@ contract L1ArbitrumTimelock is TimelockControllerUpgradeable, L1ArbitrumMessenge
         TimelockControllerUpgradeable.schedule(target, value, data, predecessor, salt, delay);
     }
 
+    /// @dev If the target is the inbox we assume a cross chain call is intended
+    //       so instead of executing directly we create a retryable ticket 
     function _execute(address target, uint256 value, bytes calldata data)
         internal
         virtual
         override
     {
         if (target == inbox) {
-            // if the target is the inbox we only allow the creation of retryable ticketss
+            // if the target is the inbox we assume that the intention was to create a
+            // a retryable ticket. This means that the timelock can't actually execute any
+            // other methods on the Inbox, but that's ok because non of the admin functions
+            // on the Inbox should directly be the timelock.
+            // we assume that retryable ticket params were provided in the data
             (
                 address l2Target,
                 uint256 l2Value,
@@ -95,16 +99,23 @@ contract L1ArbitrumTimelock is TimelockControllerUpgradeable, L1ArbitrumMessenge
                 bytes memory l2Calldata
             ) = abi.decode(data, (address, uint256, address, address, uint256, uint256, bytes));
 
+            // submission fee is dependent on base fee, by looking this up here
+            // and ensuring we send enough value to cover it we can be sure that
+            // a retryable ticket will be created.
             uint256 submissionCost = IInboxSubmissionFee(inbox).calculateRetryableSubmissionFee(
                 l2Calldata.length, block.basefee
             );
 
+            // create a retryable ticket
+            // note that the "value" argument has been completely ignored and is set based on
+            // what is calculated to be required. The msg.sender then needs to supply value to this 
+            // function to cover the calculated value.
             sendTxToL2CustomRefund(
                 inbox,
                 l2Target,
                 excessFeeRefundAddress,
                 callValueRefundAddress,
-                msg.value + value,
+                submissionCost + l2Value + (maxFeePerGas * gasLimit),
                 l2Value,
                 L2GasParams({
                     _maxSubmissionCost: submissionCost,
@@ -115,12 +126,10 @@ contract L1ArbitrumTimelock is TimelockControllerUpgradeable, L1ArbitrumMessenge
             );
 
             // return any unspent value to the caller
-            // CHRIS: TODO: should we require this?
-            (bool success,) = address(msg.sender).call{value: address(this).balance}("");
-            // CHRIS: TODO: error message
-            require(success, "CALL FAILED");
-        } else {
-            // CHRIS: TODO: these calls allow re-entrancy...
+            // it's the responsbility of the sender to ensure they can 
+            // receive the funds
+            address(msg.sender).call{value: address(this).balance}("");
+        } else {   
             super._execute(target, value, data);
         }
     }
