@@ -7,3 +7,4 @@ artifacts/
 typechain-types
 cache_hardhat/
 localNetwork.json
+.env
