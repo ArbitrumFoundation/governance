@@ -38,8 +38,15 @@ import {
   L1TransactionReceipt,
   L2TransactionReceipt,
 } from "@arbitrum/sdk";
-import { ARB_SYS_ADDRESS } from "@arbitrum/sdk/dist/lib/dataEntities/constants";
+import {
+  ARB_SYS_ADDRESS,
+  NODE_INTERFACE_ADDRESS,
+} from "@arbitrum/sdk/dist/lib/dataEntities/constants";
+import { ArbitrumProvider } from "@arbitrum/sdk/dist/lib/utils/arbProvider";
+import { ArbSys__factory } from "@arbitrum/sdk/dist/lib/abi/factories/ArbSys__factory";
+import { Inbox__factory } from "@arbitrum/sdk/dist/lib/abi/factories/Inbox__factory";
 import { L1ToL2MessageCreator } from "@arbitrum/sdk/dist/lib/message/L1ToL2MessageCreator";
+import { JsonRpcProvider } from "@ethersproject/providers";
 // CHRIS: TODO: move typechain types to the right place?
 
 const wait = async (ms: number) => new Promise((res) => setTimeout(res, ms));
@@ -76,9 +83,6 @@ describe("Governor", function () {
     for (let index = 0; index < blockCount; index++) {
       await mineBlock(l1Signer);
       await mineBlock(l2Signer);
-    }
-    while (true) {
-      await wait(100);
       if ((await l2GovernorContract.state(proposalId)) === state) break;
     }
   };
@@ -220,7 +224,7 @@ describe("Governor", function () {
           _proposalThreshold: 100,
           _quorumThreshold: 3,
           _votingDelay: 10,
-          _votingPeriod: 5,
+          _votingPeriod: 10,
         },
 
         { gasLimit: 30000000 }
@@ -262,7 +266,7 @@ describe("Governor", function () {
       l2DeployResult.token,
       l2Deployer.provider!
     );
-    
+
     const l2TimelockContract = ArbitrumTimelock__factory.connect(
       l2DeployResult.timelock,
       l2Deployer.provider!
@@ -293,16 +297,46 @@ describe("Governor", function () {
       await l2TokenContract.callStatic.delegates(l2SignerAddr),
       "L2 signer delegate before"
     ).to.eq(constants.AddressZero);
-    await (await l2TokenContract.connect(l2Signer).delegate(l2SignerAddr)).wait();
+    await (
+      await l2TokenContract.connect(l2Signer).delegate(l2SignerAddr)
+    ).wait();
     expect(
       await l2TokenContract.callStatic.delegates(l2SignerAddr),
       "L2 signer delegate after"
     ).to.eq(l2SignerAddr);
 
     // mine some blocks to ensure that the votes are available for the previous block
-    await mineBlock(l2Signer);
-    await mineBlock(l2Signer);
-    await mineBlock(l2Signer);
+    // make sure to mine at least 2 l1 block
+    const arbSys = ArbSys__factory.connect(
+      ARB_SYS_ADDRESS,
+      l2Deployer.provider!
+    );
+
+    const arbProvider = new ArbitrumProvider(
+      l2Deployer.provider! as JsonRpcProvider
+    );
+    const blockStart = await arbProvider.getBlock("latest");
+    while (true) {
+      const blockNext = await arbProvider.getBlock("latest");
+      console.log("blocks", blockNext.l1BlockNumber, blockStart.l1BlockNumber);
+      console.log(
+        "votes available",
+        (
+          await l2GovernorContract.getVotes(
+            await l2Signer.getAddress(),
+            blockNext.l1BlockNumber - 1
+          )
+        ).toString()
+      );
+      await wait(1000);
+      await mineBlock(l1Deployer);
+      await mineBlock(l2Deployer);
+      if (blockNext.l1BlockNumber - blockStart.l1BlockNumber > 5) break;
+    }
+
+    // await mineBlock(l2Signer);
+    // await mineBlock(l2Signer);
+    // await wait(1000);
 
     return {
       l2TokenContract,
@@ -328,6 +362,15 @@ describe("Governor", function () {
     proposalDescription: string,
     proposalSuccess: () => Promise<Boolean>
   ) => {
+    console.log(
+      "votes available",
+      (
+        await l2GovernorContract.getVotes(
+          await l2Signer.getAddress(),
+          (await l2GovernorContract.provider.getBlockNumber()) - 1
+        )
+      ).toString()
+    );
 
     await (
       await l2GovernorContract
@@ -340,16 +383,26 @@ describe("Governor", function () {
         )
     ).wait();
 
+    console.log("a");
     const proposalId = keccak256(
       defaultAbiCoder.encode(
         ["address[]", "uint256[]", "bytes[]", "bytes32"],
         [[proposalTo], [0], [proposalCalldata], id(proposalDescription)]
       )
     );
+    console.log("statebefore", await l2GovernorContract.state(proposalId));
     const proposal = await l2GovernorContract.proposals(proposalId);
     expect(proposal, "Proposal exists").to.not.be.undefined;
+    console.log("b");
+    console.log(
+      "proposal",
+      await await l2GovernorContract.proposals(proposalId)
+    );
 
+    console.log("statebeforeb", await l2GovernorContract.state(proposalId));
     const l2VotingDelay = await l2GovernorContract.votingDelay();
+    console.log("statebeforec", await l2GovernorContract.state(proposalId));
+    console.log("l2VotingDelay", l2VotingDelay.toString());
     await mineBlocksAndWaitForProposalState(
       l1Deployer,
       l2Deployer,
@@ -358,6 +411,7 @@ describe("Governor", function () {
       l2VotingDelay.toNumber(),
       1
     );
+    console.log("c");
     // vote on the proposal
     expect(
       await (
@@ -372,9 +426,11 @@ describe("Governor", function () {
       await (await l2GovernorContract.proposals(proposalId)).forVotes.gt(0),
       "Votes after"
     ).to.be.true;
+    console.log("d");
 
     // wait for proposal to be in success state
     const l2VotingPeriod = (await l2GovernorContract.votingPeriod()).toNumber();
+    console.log("voting period", l2VotingPeriod);
     await mineBlocksAndWaitForProposalState(
       l1Deployer,
       l2Deployer,
@@ -383,13 +439,16 @@ describe("Governor", function () {
       l2VotingPeriod,
       4
     );
+    console.log("e");
 
     // queue the proposal
     await (
       await l2GovernorContract.connect(l2Signer)["queue(uint256)"](proposalId)
     ).wait();
+    console.log("f");
 
     const l2TimelockDelay = (await l2TimelockContract.getMinDelay()).toNumber();
+    const start = Date.now();
     await mineBlocksAndWaitForProposalState(
       l1Deployer,
       l2Deployer,
@@ -398,7 +457,29 @@ describe("Governor", function () {
       l2TimelockDelay,
       5
     );
+    const end = Date.now();
+    console.log("time", end - start);
 
+    console.log("l2TimelockDelay", l2TimelockDelay);
+
+    const opIdBatch = await l2TimelockContract.hashOperationBatch(
+      [proposalTo],
+      [proposalValue],
+      [proposalCalldata],
+      constants.HashZero,
+      id(proposalDescription)
+    );
+    while (!(await l2TimelockContract.isOperationReady(opIdBatch))) {
+      console.log(
+        "isready",
+        await l2TimelockContract.isOperationReady(opIdBatch)
+      );
+
+      console.log("exists", await l2TimelockContract.isOperation(opIdBatch));
+      await mineBlock(l1Deployer);
+      await mineBlock(l2Deployer);
+      await wait(1000);
+    }
     const executionTx = await (
       await l2GovernorContract.connect(l2Signer)["execute(uint256)"](proposalId)
     ).wait();
@@ -407,7 +488,7 @@ describe("Governor", function () {
     return executionTx;
   };
 
-  it.only("L2 proposal", async () => {
+  it("L2 proposal", async () => {
     const { l1Signer, l2Signer, l1Deployer, l2Deployer } = await testSetup();
     // CHRIS: TODO: move these into test setup if we need them
     await fundL1(l1Signer, parseEther("1"));
@@ -419,7 +500,7 @@ describe("Governor", function () {
       l2GovernorContract,
       l2ProxyAdmin,
     } = await deployGovernance(l1Deployer, l2Deployer, l2Signer);
-    
+
     // give some tokens to the timelock contract
     const l2UpgradeExecutor = 10;
     const testUpgraderBalanceEnd = 7;
@@ -502,22 +583,7 @@ describe("Governor", function () {
       proposalString,
       proposalSuccess
     );
-
-    // the timelocks are the owners - instead of overriding the timelock obj
-    // we should create a new one. Overriding would be
-    // a) make sure we're called from the gateway, then continue?
-
-    // const l2GovernanceFac = await new L2GovernanceFactory__factory(
-    //   l2Signer
-    // ).deploy();
-
-    // const l1Governance = await l1GovernanceFac.deploy();
-    // const deployReceipt = await (
-    //   await l1Governance.deploy(l1TimeLockDelay)
-    // ).wait();
-
-    // console.log(deployReceipt)
-  }).timeout(300000);
+  }).timeout(180000);
 
   it("L2-L1 proposal", async () => {
     const { l1Signer, l2Signer, l1Deployer, l2Deployer } = await testSetup();
@@ -673,7 +739,7 @@ describe("Governor", function () {
     );
   }).timeout(360000);
 
-  it("L2-L1-L2 proposal", async () => {
+  it.only("L2-L1-L2 proposal", async () => {
     const { l1Signer, l2Signer, l1Deployer, l2Deployer } = await testSetup();
     // CHRIS: TODO: move these into test setup if we need them
     await fundL1(l1Signer, parseEther("1"));
@@ -754,10 +820,38 @@ describe("Governor", function () {
     //   }
     // )
 
+    // target: proposalTo,
+    // value: proposalValue,
+    // predecessor: constants.HashZero,
+    // salt: id(proposalString),
+    // maxSubmissionCost: params.maxSubmissionCost,
+    // excessFeeRefundAddress: l1SignerAddr,
+    // callValueRefundAddress: l1SignerAddr,
+    // gasLimit: params.gasLimit,
+    // maxFeePerGas: params.maxFeePerGas,
+    // payload: proposalCallData,
     // abi encode the upgrade data
+
+    const l1SignerAddr = await l1Signer.getAddress();
     const executionData = defaultAbiCoder.encode(
-      ["address", "uint256", "bytes"],
-      [l2UpgradeExecutor.address, 0, upgradeData]
+      [
+        "address",
+        "uint256",
+        "address",
+        "address",
+        "uint256",
+        "uint256",
+        "bytes",
+      ],
+      [
+        l2UpgradeExecutor.address,
+        0,
+        l1SignerAddr,
+        l1SignerAddr,
+        0,
+        0,
+        upgradeData,
+      ]
     );
 
     // 2. schedule a transfer on l1
@@ -806,6 +900,7 @@ describe("Governor", function () {
     );
 
     const l2Transaction = new L2TransactionReceipt(executionTx);
+    console.log("l2 executiong complete");
 
     // it should be non zero at the end
     const l1ProposalSuccess = async () => {
@@ -833,11 +928,18 @@ describe("Governor", function () {
       await l2TokenContract.balanceOf(randWallet.address)
     ).toNumber();
     expect(balanceBefore, "rand balance before").to.eq(0);
-    const messages = await l1Rec.getL1ToL2Messages(l2Deployer.provider!);
+    const messages = await l1Rec.getL1ToL2Messages(l2Signer);
     const status = await messages[0].waitForStatus();
-    expect(status.status, "Redeemed retryable").to.eq(
-      L1ToL2MessageStatus.REDEEMED
+
+    expect(status.status, "Funds deposited on L2").to.eq(
+      L1ToL2MessageStatus.FUNDS_DEPOSITED_ON_L2
     );
+
+    const manualRedeem = await messages[0].redeem();
+    await manualRedeem.wait();
+    const redeemStatus = await messages[0].waitForStatus();
+    expect(redeemStatus.status, "Redeem").to.eq(L1ToL2MessageStatus.REDEEMED);
+
     const balanceAfter = await (
       await l2TokenContract.balanceOf(randWallet.address)
     ).toNumber();
@@ -861,6 +963,7 @@ describe("Governor", function () {
     const l2ToL1Messages = await l2Tx.getL2ToL1Messages(l1Signer);
     const withdrawMessage = await l2ToL1Messages[0];
 
+    console.log("waiting for outbox");
     const state = { mining: true };
     await Promise.race([
       mineUntilStop(l1Deployer, state),
@@ -869,69 +972,106 @@ describe("Governor", function () {
     ]);
     state.mining = false;
 
+    console.log("outbox waiting complete, now scheduling l1");
+
     await (await withdrawMessage.execute(l2Deployer.provider!)).wait();
 
     // CHRIS: TODO: replace this with what we should actually have here
     await wait(5000);
+    console.log("executing l1");
 
-    if (!crossChain) {
-      // execute the proposal
-      const tx = await l1TimelockContract
-        .connect(l1Signer)
-        .execute(
-          proposalTo,
-          proposalValue,
-          proposalCallData,
-          constants.HashZero,
-          id(proposalString)
-        );
-
-      const rec = await tx.wait();
-
-      expect(await proposalSuccess(), "L1 proposal success").to.be.true;
-      return rec;
-    } else {
-      const l1SignerAddr = await l1Signer.getAddress();
-      const estimator = new L1ToL2MessageGasEstimator(l2Deployer.provider!);
-      const funcParams = await estimator.populateFunctionParams((params) => {
-        const data = l1TimelockContract.interface.encodeFunctionData(
-          "executeCrossChain",
-          [
-            {
-              target: proposalTo,
-              value: proposalValue,
-              predecessor: constants.HashZero,
-              salt: id(proposalString),
-              maxSubmissionCost: params.maxSubmissionCost,
-              excessFeeRefundAddress: l1SignerAddr,
-              callValueRefundAddress: l1SignerAddr,
-              gasLimit: params.gasLimit,
-              maxFeePerGas: params.maxFeePerGas,
-              payload: proposalCallData,
-            },
-          ]
-        );
-
-        return {
-          data,
-          to: l1TimelockContract.address,
-          from: l1SignerAddr,
-          value: params.gasLimit
-            .mul(params.maxFeePerGas)
-            .add(params.maxSubmissionCost)
-            .add(proposalValue),
-        };
-      }, l1Deployer.provider!);
-      const tx = await l1Signer.sendTransaction({
-        to: funcParams.to,
-        data: funcParams.data,
-        value: funcParams.value,
-      });
-
-      const rec = await tx.wait();
-      expect(await proposalSuccess(), "L1 proposal success").to.be.true;
-      return rec;
+    // execute the proposal
+    let value = BigNumber.from( 0);
+    if(crossChain) {
+      const res = defaultAbiCoder.decode(
+        ["address",
+          "uint256" ,
+          "address" ,
+          "address" ,
+          "uint256" ,
+          "uint256" ,
+          "bytes"], proposalCallData
+      )
+      const retryableCallData = res[6] as string;
+      console.log(retryableCallData)
+      const l2Network = await getL2Network(l2Deployer)
+      const inbox = Inbox__factory.connect(l2Network.ethBridge.inbox, l1Deployer.provider!);
+      const submissionFee = await inbox.callStatic.calculateRetryableSubmissionFee(
+        (retryableCallData.length - 2) / 2, 0
+      )
+      value = submissionFee.mul(2);
     }
+
+    const res = await l1TimelockContract
+      .connect(l1Signer)
+      .callStatic.execute(
+        proposalTo,
+        proposalValue,
+        proposalCallData,
+        constants.HashZero,
+        id(proposalString), 
+        {value: value}
+      );
+    const tx = await l1TimelockContract
+      .connect(l1Signer)
+      .execute(
+        proposalTo,
+        proposalValue,
+        proposalCallData,
+        constants.HashZero,
+        id(proposalString),
+        {value: value}
+      );
+    console.log("executing l1 wait");
+
+    const rec = await tx.wait();
+    console.log("executing l1 complete");
+
+    expect(await proposalSuccess(), "L1 proposal success").to.be.true;
+
+    return rec;
+    // } else {
+    //   const l1SignerAddr = await l1Signer.getAddress();
+    //   const estimator = new L1ToL2MessageGasEstimator(l2Deployer.provider!);
+    //   const funcParams = await estimator.populateFunctionParams((params) => {
+    //     const data = l1TimelockContract.interface.encodeFunctionData(
+    //       "executeCrossChain",
+    //       [
+    //         {
+    //           target: proposalTo,
+    //           value: proposalValue,
+    //           predecessor: constants.HashZero,
+    //           salt: id(proposalString),
+    //           maxSubmissionCost: params.maxSubmissionCost,
+    //           excessFeeRefundAddress: l1SignerAddr,
+    //           callValueRefundAddress: l1SignerAddr,
+    //           gasLimit: params.gasLimit,
+    //           maxFeePerGas: params.maxFeePerGas,
+    //           payload: proposalCallData,
+    //         },
+    //       ]
+    //     );
+
+    //     return {
+    //       data,
+    //       to: l1TimelockContract.address,
+    //       from: l1SignerAddr,
+    //       value: params.gasLimit
+    //         .mul(params.maxFeePerGas)
+    //         .add(params.maxSubmissionCost)
+    //         .add(proposalValue),
+    //     };
+    //   }, l1Deployer.provider!);
+    //   const tx = await l1Signer.sendTransaction({
+    //     to: funcParams.to,
+    //     data: funcParams.data,
+    //     value: funcParams.value,
+    //   });
+
+    //   const rec = await tx.wait();
+    //   expect(await proposalSuccess(), "L1 proposal success").to.be.true;
+    //   return rec;
+    // }
   };
 
   const mineUntilStop = async (miner: Signer, state: { mining: boolean }) => {

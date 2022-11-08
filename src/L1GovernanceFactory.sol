@@ -6,7 +6,6 @@ pragma solidity 0.8.16;
 import "./L1ArbitrumTimelock.sol";
 import "./UpgradeExecutor.sol";
 
-
 // @openzeppelin-contracts-upgradeable doesn't contain transparent proxies
 import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
@@ -53,13 +52,18 @@ contract L1GovernanceFactory {
 
     function deployUpgradeExecutor(ProxyAdmin _proxyAdmin) internal returns (UpgradeExecutor) {
         address logic = address(new UpgradeExecutor());
-        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(logic, address(_proxyAdmin), bytes(""));
+        TransparentUpgradeableProxy proxy =
+            new TransparentUpgradeableProxy(logic, address(_proxyAdmin), bytes(""));
         return UpgradeExecutor(address(proxy));
     }
 
-    function deployTimelock(ProxyAdmin _proxyAdmin) internal returns (L1ArbitrumTimelock timelock) {
+    function deployTimelock(ProxyAdmin _proxyAdmin)
+        internal
+        returns (L1ArbitrumTimelock timelock)
+    {
         address logic = address(new L1ArbitrumTimelock());
-        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(logic, address(_proxyAdmin), bytes(""));
+        TransparentUpgradeableProxy proxy =
+            new TransparentUpgradeableProxy(logic, address(_proxyAdmin), bytes(""));
         timelock = L1ArbitrumTimelock(payable(address(proxy)));
     }
 }

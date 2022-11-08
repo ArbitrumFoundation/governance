@@ -3,7 +3,6 @@ pragma solidity 0.8.16;
 
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
-
 // CHRIS: TODO: lets just use proper errors, better where we can
 error InnerCallFailed(bytes reason);
 
@@ -28,12 +27,6 @@ contract UpgradeExecutor is Initializable, OwnableUpgradeable {
         onlyOwner
         returns (bytes memory)
     {
-        // CHRIS: TODO: is this replay protection enough?
-        bytes32 executionHash = keccak256(abi.encode(to, amount, data, descriptionHash));
-        // CHRIS: TODO: clean up errors
-        require(!nonces[executionHash], "UpgradeExecutor: Nonce already used");
-        nonces[executionHash] = true;
-
         (bool success, bytes memory returnData) = address(to).delegatecall(data);
         // CHRIS: TODO: do we want to require succeed here?
         // CHRIS: TODO: I think it's important that we do, or we should a provided gas limit to make sure enough has been supplied
