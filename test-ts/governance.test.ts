@@ -219,12 +219,13 @@ describe("Governor", function () {
           _l2TokenOwner: l2SignerAddr,
           _l2TimeLockLogic: l2TimelockLogic.address,
           _l2GovernorLogic: l2GovernanceLogic.address,
-          _l2UpgradeExecutorInitialOwner: await l2Deployer.getAddress(),
+          _l2UpgradeExecutors: [await l2Deployer.getAddress()],
           _l2UpgradeExecutorLogic: l2UpgradeExecutorLogic.address,
           _proposalThreshold: 100,
           _quorumThreshold: 3,
           _votingDelay: 10,
           _votingPeriod: 10,
+          _minPeriodAfterQuorum: 1
         },
 
         { gasLimit: 30000000 }
@@ -546,7 +547,7 @@ describe("Governor", function () {
     await (
       await testUpgradeExecutor
         .connect(l2Deployer)
-        .initialize([l2TimelockContract.address])
+        .initialize(testUpgradeExecutor.address, [l2TimelockContract.address])
     ).wait();
     const testUpgrade = await new TestUpgrade__factory(l2Deployer).deploy();
 
@@ -840,33 +841,33 @@ describe("Governor", function () {
     // payload: proposalCallData,
     // abi encode the upgrade data
 
-    const l1SignerAddr = await l1Signer.getAddress();
     const executionData = defaultAbiCoder.encode(
       [
         "address",
+        "address",
         "uint256",
-        "address",
-        "address",
         "uint256",
         "uint256",
         "bytes",
       ],
       [
+        l2Network.ethBridge.inbox,
         l2UpgradeExecutor.address,
         0,
-        l1SignerAddr,
-        l1SignerAddr,
         0,
         0,
         upgradeData,
       ]
     );
 
+    // l1TimelockContract.
+    const magic = await l1TimelockContract.RETRYABLE_TICKET_MAGIC()
+
     // 2. schedule a transfer on l1
     const scheduleData = l1TimelockContract.interface.encodeFunctionData(
       "schedule",
       [
-        l2Network.ethBridge.inbox,
+        magic,
         0,
         executionData,
         constants.HashZero,

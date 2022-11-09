@@ -89,6 +89,6 @@ contract L2GovernanceFactoryTest is Test {
         vm.expectRevert("Initializable: contract is already initialized");
         address[] memory addresses = new address[](1);
         addresses[0] = addressStub;
-        upgradeExecutor.initialize(addresses);
+        upgradeExecutor.initialize(address(upgradeExecutor), addresses);
     }
 }

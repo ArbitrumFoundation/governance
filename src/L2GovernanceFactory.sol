@@ -7,7 +7,6 @@ import "./ArbitrumTimelock.sol";
 import "./TreasuryGovTimelock.sol";
 import "./UpgradeExecutor.sol";
 
-// @openzeppelin-contracts-upgradeable doesn't contain transparent proxies
 import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 
@@ -18,7 +17,7 @@ struct ConstructorParams {
     address _l1Token;
     uint256 _l2TokenInitialSupply;
     address _l2TokenOwner;
-    address[2] _l2UpgradeExecutors; // DG: TODO should be security council and l1 timelock alias?
+    address[] _l2UpgradeExecutors; // DG: TODO should be security council and l1 timelock alias?
     uint256 _votingPeriod;
     uint256 _votingDelay;
     uint256 _coreQuorumThreshold;
@@ -32,7 +31,7 @@ struct DeployCoreParams {
     address _l1Token;
     uint256 _l2TokenInitialSupply;
     address _l2TokenOwner;
-    address[2] _l2UpgradeExecutors;
+    address[] _l2UpgradeExecutors;
     uint256 _votingPeriod;
     uint256 _votingDelay;
     uint256 _coreQuorumThreshold;
@@ -130,7 +129,7 @@ contract L2GovernanceFactory {
             coreTimelock.initialize(params._l2MinTimelockDelay, proposers, executors);
         }
         executor = deployUpgradeExecutor(proxyAdmin, params._l2UpgradeExecutorLogic);
-        executor.initialize(params._l2UpgradeExecutors);
+        executor.initialize(address(executor), params._l2UpgradeExecutors);
         coreGov = deployGovernor(proxyAdmin, params._l2CoreGovernorLogic);
         coreGov.initialize({
             _token: token,
