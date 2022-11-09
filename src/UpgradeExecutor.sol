@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.16;
 
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 
 // CHRIS: TODO: what about where we need to send value round the chain - not currently
@@ -26,6 +25,8 @@ contract UpgradeExecutor is Initializable, AccessControlUpgradeable {
     }
 
     function initialize(address admin, address[] memory executors) public initializer {
+        require(admin != address(0), "UpgradeExecutor: zero admin");
+
         __AccessControl_init();
 
         _setRoleAdmin(ADMIN_ROLE, ADMIN_ROLE);
@@ -37,10 +38,12 @@ contract UpgradeExecutor is Initializable, AccessControlUpgradeable {
         }
     }
 
-    function execute(address to, bytes memory data) public payable onlyRole(EXECUTOR_ROLE) {
+    // CHRIS: TODO: discuss why it's ok to have re-entrancy here
+
+    function execute(address upgrade, bytes memory upgradeCallData) public payable onlyRole(EXECUTOR_ROLE) {
         // CHRIS: TODO: should we append the function to the data, so that we can be sure they
         // CHRIS: TODO: call proper upgrade???
-        (bool success,) = address(to).delegatecall(data);
+        (bool success,) = address(upgrade).delegatecall(upgradeCallData);
         require(success, "UpgradeExecutor: inner delegate call failed");
     }
 }

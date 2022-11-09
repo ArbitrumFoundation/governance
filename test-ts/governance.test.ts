@@ -219,7 +219,7 @@ describe("Governor", function () {
           _l2TokenOwner: l2SignerAddr,
           _l2TimeLockLogic: l2TimelockLogic.address,
           _l2GovernorLogic: l2GovernanceLogic.address,
-          _l2UpgradeExecutorInitialOwner: await l2Deployer.getAddress(),
+          _l2UpgradeExecutors: [await l2Deployer.getAddress()],
           _l2UpgradeExecutorLogic: l2UpgradeExecutorLogic.address,
           _proposalThreshold: 100,
           _quorumThreshold: 3,
@@ -547,7 +547,7 @@ describe("Governor", function () {
     await (
       await testUpgradeExecutor
         .connect(l2Deployer)
-        .initialize([l2TimelockContract.address])
+        .initialize(testUpgradeExecutor.address, [l2TimelockContract.address])
     ).wait();
     const testUpgrade = await new TestUpgrade__factory(l2Deployer).deploy();
 
