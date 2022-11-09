@@ -77,7 +77,7 @@ contract L1ArbitrumTimelock is TimelockControllerUpgradeable, L1ArbitrumMessenge
     }
 
     /// @dev If the target is the inbox we assume a cross chain call is intended
-    //       so instead of executing directly we create a retryable ticket 
+    //       so instead of executing directly we create a retryable ticket
     function _execute(address target, uint256 value, bytes calldata data)
         internal
         virtual
@@ -108,7 +108,7 @@ contract L1ArbitrumTimelock is TimelockControllerUpgradeable, L1ArbitrumMessenge
 
             // create a retryable ticket
             // note that the "value" argument has been completely ignored and is set based on
-            // what is calculated to be required. The msg.sender then needs to supply value to this 
+            // what is calculated to be required. The msg.sender then needs to supply value to this
             // function to cover the calculated value.
             sendTxToL2CustomRefund(
                 inbox,
@@ -126,10 +126,10 @@ contract L1ArbitrumTimelock is TimelockControllerUpgradeable, L1ArbitrumMessenge
             );
 
             // return any unspent value to the caller
-            // it's the responsbility of the sender to ensure they can 
+            // it's the responsbility of the sender to ensure they can
             // receive the funds
             address(msg.sender).call{value: address(this).balance}("");
-        } else {   
+        } else {
             super._execute(target, value, data);
         }
     }
