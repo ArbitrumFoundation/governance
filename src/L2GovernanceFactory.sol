@@ -131,18 +131,17 @@ contract L2GovernanceFactory {
         }
         executor = deployUpgradeExecutor(proxyAdmin, params._l2UpgradeExecutorLogic);
         executor.initialize(params._l2UpgradeExecutors);
-        // todo
         coreGov = deployGovernor(proxyAdmin, params._l2CoreGovernorLogic);
-        coreGov.initialize(
-            token,
-            coreTimelock,
-            address(executor),
-            params._votingDelay,
-            params._votingPeriod,
-            params._coreQuorumThreshold,
-            params._proposalThreshold,
-            params._minPeriodAfterQuorum
-        );
+        coreGov.initialize({
+            _token: token,
+            _timelock: coreTimelock,
+            _owner: address(executor),
+            _votingDelay: params._votingDelay,
+            _votingPeriod: params._votingPeriod,
+            _quorumNumerator: params._coreQuorumThreshold,
+            _proposalThreshold: params._proposalThreshold,
+            _minPeriodAfterQuorum: params._minPeriodAfterQuorum
+        });
 
         // the timelock itself and deployer are admins
         // CHRIS: TODO: set the same for the l1 contract?
@@ -184,7 +183,7 @@ contract L2GovernanceFactory {
             // Gov contrac requires a timelock, so we give it one with 0 delay
             treasuryTimelock.initialize(0, proposers, executors);
         }
-        // DG TODO: roles?
+        // DG TODO: Assign treasuryTimelock roles (?)
         L2ArbitrumGovernor treasuryGov =
             deployGovernor(params._proxyAdmin, params._l2TreasuryGovernorLogic);
         treasuryGov.initialize({
