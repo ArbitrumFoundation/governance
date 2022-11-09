@@ -358,8 +358,9 @@ contract L1ArbitrumTimelockTest is Test {
             rData.callValueRefundAddress,
             rData.gasLimit,
             rData.maxFeePerGas
-            // rData.data //  - make the data invalid
         );
+        // rData.data //  - make the data invalid
+
         bytes32 salt = keccak256(abi.encode("hi"));
 
         L1ArbitrumTimelock l1Timelock = deployAndInit();

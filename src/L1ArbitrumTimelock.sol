@@ -42,6 +42,16 @@ contract L1ArbitrumTimelock is TimelockControllerUpgradeable, L1ArbitrumMessenge
     }
 
     modifier onlyCounterpartTimelock() {
+        // this bridge == msg.sender check is redundant in all the places that
+        // we currently use this modififer  since we call a function on super 
+        // that also checks the proposer role, which we enforce is in the intializer above
+        // so although the msg.sender is being checked against the bridge twice we
+        // still leave this check here for consistency of this function and in case
+        // onlyCounterpartTimelock is used on other functions without this proposer check
+        // in future
+        address bridge = address(getBridge(inbox));
+        require(msg.sender == bridge, "L1ArbitrumTimelock: not from bridge");
+
         // the outbox reports that the L2 address of the sender is the counterpart gateway
         address l2ToL1Sender = super.getL2ToL1Sender(inbox);
         require(l2ToL1Sender == l2Timelock, "L1ArbitrumTimelock: not from l2 timelock");
@@ -77,7 +87,7 @@ contract L1ArbitrumTimelock is TimelockControllerUpgradeable, L1ArbitrumMessenge
     }
 
     /// @dev If the target is the inbox we assume a cross chain call is intended
-    //       so instead of executing directly we create a retryable ticket 
+    //       so instead of executing directly we create a retryable ticket
     function _execute(address target, uint256 value, bytes calldata data)
         internal
         virtual
@@ -108,7 +118,7 @@ contract L1ArbitrumTimelock is TimelockControllerUpgradeable, L1ArbitrumMessenge
 
             // create a retryable ticket
             // note that the "value" argument has been completely ignored and is set based on
-            // what is calculated to be required. The msg.sender then needs to supply value to this 
+            // what is calculated to be required. The msg.sender then needs to supply value to this
             // function to cover the calculated value.
             sendTxToL2CustomRefund(
                 inbox,
@@ -126,10 +136,10 @@ contract L1ArbitrumTimelock is TimelockControllerUpgradeable, L1ArbitrumMessenge
             );
 
             // return any unspent value to the caller
-            // it's the responsbility of the sender to ensure they can 
+            // it's the responsbility of the sender to ensure they can
             // receive the funds
             address(msg.sender).call{value: address(this).balance}("");
-        } else {   
+        } else {
             super._execute(target, value, data);
         }
     }
