@@ -241,10 +241,9 @@ contract L1ArbitrumTimelockTest is Test {
     }
 
     struct RetryableData {
+        address inbox;
         address l2Target;
         uint256 l2Value;
-        address excessFeeRefundAddress;
-        address callValueRefundAddress;
         uint256 gasLimit;
         uint256 maxFeePerGas;
         bytes data;
@@ -252,30 +251,29 @@ contract L1ArbitrumTimelockTest is Test {
 
     function testExecuteInbox() external {
         Setter setter = new Setter();
+        L1ArbitrumTimelock l1Timelock = deployAndInit();
+        InboxMock inbox = InboxMock(l1Timelock.inbox());
         RetryableData memory rData = RetryableData({
+            inbox: address(inbox),
             l2Target: address(235),
             l2Value: 10,
-            excessFeeRefundAddress: address(236),
-            callValueRefundAddress: address(237),
             gasLimit: 300_000,
             maxFeePerGas: 9 gwei,
             data: abi.encodeWithSelector(setter.setValue.selector, 10)
         });
         uint256 val = 105;
         bytes memory data = abi.encode(
+            rData.inbox,
             rData.l2Target,
             rData.l2Value,
-            rData.excessFeeRefundAddress,
-            rData.callValueRefundAddress,
             rData.gasLimit,
             rData.maxFeePerGas,
             rData.data
         );
         bytes32 salt = keccak256(abi.encode("hi"));
 
-        L1ArbitrumTimelock l1Timelock = deployAndInit();
-        InboxMock inbox = InboxMock(l1Timelock.inbox());
-        scheduleAndRoll(l1Timelock, address(inbox), val, data, salt);
+        address magic = l1Timelock.RETRYABLE_TICKET_MAGIC();
+        scheduleAndRoll(l1Timelock, magic, val, data, salt);
 
         vm.fee(21 gwei);
         uint256 submissionFee = inbox.calculateRetryableSubmissionFee(rData.data.length, 0);
@@ -283,44 +281,41 @@ contract L1ArbitrumTimelockTest is Test {
         // set up the sender
         address payable sender = payable(address(678));
         uint256 extra = 150;
-        sender.transfer(
-            submissionFee + rData.l2Value + (rData.maxFeePerGas * rData.gasLimit) + extra
-        );
+        uint256 execVal =
+            submissionFee + rData.l2Value + (rData.maxFeePerGas * rData.gasLimit) + extra;
+        sender.transfer(execVal);
 
         vm.prank(sender);
-        l1Timelock.execute{
-            value: submissionFee + rData.l2Value + (rData.maxFeePerGas * rData.gasLimit) + extra
-        }(address(inbox), val, data, 0, salt);
+        l1Timelock.execute{value: execVal}(magic, val, data, 0, salt);
         assertEq(inbox.msgNum(), 2, "Msg num not updated");
-        assertEq(sender.balance, extra, "Extra returned");
+        assertEq(sender.balance, 0, "None returned");
     }
 
     function testExecuteInboxNotEnoughVal() external {
         Setter setter = new Setter();
+        L1ArbitrumTimelock l1Timelock = deployAndInit();
+        InboxMock inbox = InboxMock(l1Timelock.inbox());
         RetryableData memory rData = RetryableData({
+            inbox: address(inbox),
             l2Target: address(235),
             l2Value: 10,
-            excessFeeRefundAddress: address(236),
-            callValueRefundAddress: address(237),
             gasLimit: 300_000,
             maxFeePerGas: 9 gwei,
             data: abi.encodeWithSelector(setter.setValue.selector, 10)
         });
         uint256 val = 105;
         bytes memory data = abi.encode(
+            rData.inbox,
             rData.l2Target,
             rData.l2Value,
-            rData.excessFeeRefundAddress,
-            rData.callValueRefundAddress,
             rData.gasLimit,
             rData.maxFeePerGas,
             rData.data
         );
         bytes32 salt = keccak256(abi.encode("hi"));
 
-        L1ArbitrumTimelock l1Timelock = deployAndInit();
-        InboxMock inbox = InboxMock(l1Timelock.inbox());
-        scheduleAndRoll(l1Timelock, address(inbox), val, data, salt);
+        address magic = l1Timelock.RETRYABLE_TICKET_MAGIC();
+        scheduleAndRoll(l1Timelock, magic, val, data, salt);
 
         vm.fee(21 gwei);
         uint256 submissionFee = inbox.calculateRetryableSubmissionFee(rData.data.length, 0);
@@ -328,44 +323,40 @@ contract L1ArbitrumTimelockTest is Test {
         // set up the sender
         address payable sender = payable(address(678));
         uint256 extra = 150;
-        sender.transfer(
-            submissionFee + rData.l2Value + (rData.maxFeePerGas * rData.gasLimit) + extra
-        );
+        uint256 execVal =
+            submissionFee + rData.l2Value + (rData.maxFeePerGas * rData.gasLimit) + extra;
+        sender.transfer(execVal);
 
-        vm.expectRevert();
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                InboxMock.InsufficientValue.selector, execVal - extra, execVal - extra - 1
+            )
+        );
         vm.prank(sender);
-        l1Timelock.execute{
-            value: submissionFee + rData.l2Value + (rData.maxFeePerGas * rData.gasLimit) - 1
-        }(address(inbox), val, data, 0, salt);
+        l1Timelock.execute{value: execVal - extra - 1}(magic, val, data, 0, salt);
     }
 
     function testExecuteInboxInvalidData() external {
         Setter setter = new Setter();
+        L1ArbitrumTimelock l1Timelock = deployAndInit();
+        InboxMock inbox = InboxMock(l1Timelock.inbox());
         RetryableData memory rData = RetryableData({
+            inbox: address(inbox),
             l2Target: address(235),
             l2Value: 10,
-            excessFeeRefundAddress: address(236),
-            callValueRefundAddress: address(237),
             gasLimit: 300_000,
             maxFeePerGas: 9 gwei,
             data: abi.encodeWithSelector(setter.setValue.selector, 10)
         });
         uint256 val = 105;
         bytes memory data = abi.encode(
-            rData.l2Target,
-            rData.l2Value,
-            rData.excessFeeRefundAddress,
-            rData.callValueRefundAddress,
-            rData.gasLimit,
-            rData.maxFeePerGas
+            rData.inbox, rData.l2Target, rData.l2Value, rData.gasLimit, rData.maxFeePerGas
         );
         // rData.data //  - make the data invalid
 
         bytes32 salt = keccak256(abi.encode("hi"));
-
-        L1ArbitrumTimelock l1Timelock = deployAndInit();
-        InboxMock inbox = InboxMock(l1Timelock.inbox());
-        scheduleAndRoll(l1Timelock, address(inbox), val, data, salt);
+        address magic = l1Timelock.RETRYABLE_TICKET_MAGIC();
+        scheduleAndRoll(l1Timelock, magic, val, data, salt);
 
         vm.fee(21 gwei);
         uint256 submissionFee = inbox.calculateRetryableSubmissionFee(rData.data.length, 0);
@@ -373,15 +364,13 @@ contract L1ArbitrumTimelockTest is Test {
         // set up the sender
         address payable sender = payable(address(678));
         uint256 extra = 150;
-        sender.transfer(
-            submissionFee + rData.l2Value + (rData.maxFeePerGas * rData.gasLimit) + extra
-        );
+        uint256 execVal =
+            submissionFee + rData.l2Value + (rData.maxFeePerGas * rData.gasLimit) + extra;
+        sender.transfer(execVal);
 
         vm.expectRevert();
         vm.prank(sender);
-        l1Timelock.execute{
-            value: submissionFee + rData.l2Value + (rData.maxFeePerGas * rData.gasLimit) + extra
-        }(address(inbox), val, data, 0, salt);
+        l1Timelock.execute{value: execVal}(magic, val, data, 0, salt);
     }
 
     function testSchedule() external {
@@ -417,17 +406,6 @@ contract L1ArbitrumTimelockTest is Test {
             keccak256(abi.encodePacked(sarg.salt))
         );
         assertEq(l1Timelock.isOperation(batchOpId), true, "is op");
-    }
-
-    function roleError(address account, bytes32 role) internal pure returns (string memory) {
-        return string(
-            abi.encodePacked(
-                "AccessControl: account ",
-                StringsUpgradeable.toHexString(uint160(account), 20),
-                " is missing role ",
-                StringsUpgradeable.toHexString(uint256(role), 32)
-            )
-        );
     }
 
     function testScheduleFailsBadSender() external {
@@ -473,5 +451,67 @@ contract L1ArbitrumTimelockTest is Test {
             keccak256(abi.encodePacked(sarg.salt)),
             minDelay
         );
+    }
+
+    function testCancel() external {
+        L1ArbitrumTimelock l1Timelock = deployAndInit();
+        ScheduleArgs memory sarg = dummyScheduleArgs();
+
+        mockActiveOutbox(outbox, l2Timelock);
+        vm.prank(bridge);
+        l1Timelock.schedule(
+            sarg.target, sarg.value, sarg.payload, sarg.predecessor, sarg.salt, minDelay
+        );
+
+        bytes32 opId = l1Timelock.hashOperation(
+            sarg.target, sarg.value, sarg.payload, sarg.predecessor, sarg.salt
+        );
+        assertEq(l1Timelock.isOperation(opId), true, "is op");
+
+        vm.prank(bridge);
+        l1Timelock.cancel(opId);
+
+        assertEq(l1Timelock.isOperation(opId), false, "is op");
+    }
+
+    function testCancelFailsBadSender() external {
+        L1ArbitrumTimelock l1Timelock = deployAndInit();
+        ScheduleArgs memory sarg = dummyScheduleArgs();
+
+        mockActiveOutbox(outbox, l2Timelock);
+        vm.prank(bridge);
+        l1Timelock.schedule(
+            sarg.target, sarg.value, sarg.payload, sarg.predecessor, sarg.salt, minDelay
+        );
+
+        bytes32 opId = l1Timelock.hashOperation(
+            sarg.target, sarg.value, sarg.payload, sarg.predecessor, sarg.salt
+        );
+        assertEq(l1Timelock.isOperation(opId), true, "is op");
+
+        vm.expectRevert("L1ArbitrumTimelock: not from bridge");
+        l1Timelock.cancel(opId);
+    }
+
+    function testCancelFailsBadL2Timelock() external {
+        L1ArbitrumTimelock l1Timelock = deployAndInit();
+        ScheduleArgs memory sarg = dummyScheduleArgs();
+
+        mockActiveOutbox(outbox, l2Timelock);
+        vm.prank(bridge);
+        l1Timelock.schedule(
+            sarg.target, sarg.value, sarg.payload, sarg.predecessor, sarg.salt, minDelay
+        );
+
+        address wrongL2Timelock = address(1245);
+        mockActiveOutbox(outbox, wrongL2Timelock);
+
+        bytes32 opId = l1Timelock.hashOperation(
+            sarg.target, sarg.value, sarg.payload, sarg.predecessor, sarg.salt
+        );
+        assertEq(l1Timelock.isOperation(opId), true, "is op");
+
+        vm.expectRevert("L1ArbitrumTimelock: not from bridge");
+        l1Timelock.cancel(opId);
     }
 }
