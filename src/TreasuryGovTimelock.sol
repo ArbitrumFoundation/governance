@@ -6,7 +6,6 @@ import "./L2ArbitrumGovernor.sol";
 import "./L2ArbitrumToken.sol";
 import "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorVotesUpgradeable.sol";
 
-// DG: TODO
 /// @title  Timelock to be used in Arbitrum governance
 /// @dev    Treasury excrow; delegates its votes the exclude address
 
