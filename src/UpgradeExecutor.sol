@@ -21,7 +21,7 @@ contract UpgradeExecutor is Initializable, AccessControlUpgradeable {
         _disableInitializers();
     }
 
-    function initialize(address[] memory owners) public initializer {
+    function initialize(address[2] memory owners) public initializer {
         __AccessControl_init();
         _setRoleAdmin(EXECUTOR_ROLE, EXECUTOR_ROLE);
         for (uint256 i = 0; i < owners.length; ++i) {
