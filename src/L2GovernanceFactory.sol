@@ -66,8 +66,8 @@ contract L2GovernanceFactory {
             timelock.initialize(params._l2MinTimelockDelay, proposers, executors);
         }
         executor = deployUpgradeExecutor(proxyAdmin, params._l2UpgradeExecutorLogic);
-        
-        executor.initialize(params._l2UpgradeExecutors);
+
+        executor.initialize(address(executor), params._l2UpgradeExecutors);
         // todo
         gov = deployGovernor(proxyAdmin, params._l2GovernorLogic);
         gov.initialize(
