@@ -21,7 +21,7 @@ struct DeployParams {
     address _l2TimeLockLogic;
     address _l2GovernorLogic;
     address _l2UpgradeExecutorLogic;
-    address _l2UpgradeExecutorInitialOwner;
+    address[] _l2UpgradeExecutors;
     uint256 _votingPeriod;
     uint256 _votingDelay;
     uint256 _quorumThreshold;
@@ -66,7 +66,8 @@ contract L2GovernanceFactory {
             timelock.initialize(params._l2MinTimelockDelay, proposers, executors);
         }
         executor = deployUpgradeExecutor(proxyAdmin, params._l2UpgradeExecutorLogic);
-        executor.initialize(params._l2UpgradeExecutorInitialOwner);
+        
+        executor.initialize(params._l2UpgradeExecutors);
         // todo
         gov = deployGovernor(proxyAdmin, params._l2GovernorLogic);
         gov.initialize(
