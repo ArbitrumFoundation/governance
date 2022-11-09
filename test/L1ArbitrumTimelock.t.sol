@@ -435,12 +435,12 @@ contract L1ArbitrumTimelockTest is Test {
         ScheduleArgs memory sarg = dummyScheduleArgs();
 
         mockActiveOutbox(outbox, l2Timelock);
-        vm.expectRevert(bytes(roleError(address(this), l1Timelock.PROPOSER_ROLE())));
+        vm.expectRevert("L1ArbitrumTimelock: not from bridge");
         l1Timelock.schedule(
             sarg.target, sarg.value, sarg.payload, sarg.predecessor, sarg.salt, minDelay
         );
 
-        vm.expectRevert(bytes(roleError(address(this), l1Timelock.PROPOSER_ROLE())));
+        vm.expectRevert("L1ArbitrumTimelock: not from bridge");
         l1Timelock.scheduleBatch(
             sarg.targets,
             sarg.values,

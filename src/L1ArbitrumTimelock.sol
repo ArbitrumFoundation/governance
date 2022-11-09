@@ -42,6 +42,16 @@ contract L1ArbitrumTimelock is TimelockControllerUpgradeable, L1ArbitrumMessenge
     }
 
     modifier onlyCounterpartTimelock() {
+        // this bridge == msg.sender check is redundant in all the places that
+        // we currently use this modififer  since we call a function on super
+        // that also checks the proposer role, which we enforce is in the intializer above
+        // so although the msg.sender is being checked against the bridge twice we
+        // still leave this check here for consistency of this function and in case
+        // onlyCounterpartTimelock is used on other functions without this proposer check
+        // in future
+        address bridge = address(getBridge(inbox));
+        require(msg.sender == bridge, "L1ArbitrumTimelock: not from bridge");
+
         // the outbox reports that the L2 address of the sender is the counterpart gateway
         address l2ToL1Sender = super.getL2ToL1Sender(inbox);
         require(l2ToL1Sender == l2Timelock, "L1ArbitrumTimelock: not from l2 timelock");
