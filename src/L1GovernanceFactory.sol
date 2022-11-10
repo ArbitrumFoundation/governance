@@ -17,7 +17,12 @@ contract L1GovernanceFactory is Ownable {
     event Deployed(L1ArbitrumTimelock timelock, ProxyAdmin proxyAdmin, UpgradeExecutor executor);
 
     // CHRIS: TODO: rename all the args to timelock where applicable? or remove them all on the l2 variant
-    function deployStep2(uint256 _minTimelockDelay, address inbox, address l2Timelock)
+    function deployStep2(
+        uint256 _minTimelockDelay,
+        address inbox,
+        address l2Timelock,
+        address l1SecurityCouncil
+    )
         external
         onlyOwner
         returns (L1ArbitrumTimelock timelock, ProxyAdmin proxyAdmin, UpgradeExecutor executor)
@@ -45,8 +50,9 @@ contract L1GovernanceFactory is Ownable {
         // CHRIS: TODO: the l1 upgrade executor should be the owner of the l2 upgrade exector?
 
         executor = deployUpgradeExecutor(proxyAdmin);
-        address[] memory upgradeExecutors = new address[](1);
+        address[] memory upgradeExecutors = new address[](2);
         upgradeExecutors[0] = address(timelock);
+        upgradeExecutors[1] = l1SecurityCouncil;
         executor.initialize(address(executor), upgradeExecutors);
 
         emit Deployed(timelock, proxyAdmin, executor);
