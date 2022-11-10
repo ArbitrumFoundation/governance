@@ -7,10 +7,6 @@ import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol"
 
 import "forge-std/Test.sol";
 
-// CHRIS: TODO: remove TestUpgrade from the src - it should only be in /test/
-
-// CHRIS: TODO: write a bunch of stuff about how the UpgradeExecutor should be used
-
 contract Setter {
     uint256 public val = 0;
     address public lastSender;
