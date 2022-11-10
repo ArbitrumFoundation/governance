@@ -7,10 +7,6 @@ import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol"
 
 import "forge-std/Test.sol";
 
-// CHRIS: TODO: remove TestUpgrade from the src - it should only be in /test/
-
-// CHRIS: TODO: write a bunch of stuff about how the UpgradeExecutor should be used
-
 contract Setter {
     uint256 public val = 0;
     address public lastSender;
@@ -127,7 +123,9 @@ contract UpgradeExecutorTest is Test {
         UpgradeExecutor ue = deployAndInit();
         AccessControlUpgrader ae = new AccessControlUpgrader();
 
-        bytes memory data = abi.encodeWithSelector(ae.grantRole.selector, address(ue), ue.EXECUTOR_ROLE(), executor2);
+        bytes memory data = abi.encodeWithSelector(
+            ae.grantRole.selector, address(ue), ue.EXECUTOR_ROLE(), executor2
+        );
 
         assertEq(ue.hasRole(ue.EXECUTOR_ROLE(), executor2), false, "executor 2 before");
         vm.prank(executor1);

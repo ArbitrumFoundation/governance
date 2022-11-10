@@ -3,19 +3,11 @@ pragma solidity 0.8.16;
 
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 
-// CHRIS: TODO: what about where we need to send value round the chain - not currently
-// CHRIS: TODO: possible as schedule isnt payable
-
-// CHRIS: TODO: lets just use proper errors, better where we can
-// error InnerCallFailed(bytes reason);
-
-// CHRIS: TODO: would be nice to constrain the execution to also call an execute function on migrating scripts
-// CHRIS: TODO: do we want to require succeed here?
-// CHRIS: TODO: I think it's important that we do, or we should a provided gas limit to make sure enough has been supplied
-// CHRIS: TODO: otherwise someone could execute this with insufficient gas causing the inner call to fail, but the outer would still store the noce
-
-// CHRIS: TODO: do a check that we have payable everywhere - try sending some value round
-
+/// @title  A root contract from which it execute upgrades
+/// @notice Does not contain upgrade logic itself, only the means to call upgrade contracts and execute them
+/// @dev    We use these upgrade contracts as they allow multiple actions to take place in an upgrade
+///         and for these actions to interact. However because we are delegatecalling into these upgrade
+///         contracts, it's important that these upgrade contract do not touch or modify contract state.
 contract UpgradeExecutor is Initializable, AccessControlUpgradeable {
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
     bytes32 public constant EXECUTOR_ROLE = keccak256("EXECUTOR_ROLE");
@@ -24,6 +16,9 @@ contract UpgradeExecutor is Initializable, AccessControlUpgradeable {
         _disableInitializers();
     }
 
+    /// @notice Initialise the upgrade executor
+    /// @param admin The admin who can update other roles, and itself - ADMIN_ROLE
+    /// @param executors Can call the execute function - EXECUTOR_ROLE
     function initialize(address admin, address[] memory executors) public initializer {
         require(admin != address(0), "UpgradeExecutor: zero admin");
 
@@ -38,11 +33,18 @@ contract UpgradeExecutor is Initializable, AccessControlUpgradeable {
         }
     }
 
-    // CHRIS: TODO: discuss why it's ok to have re-entrancy here
-
-    function execute(address upgrade, bytes memory upgradeCallData) public payable onlyRole(EXECUTOR_ROLE) {
-        // CHRIS: TODO: should we append the function to the data, so that we can be sure they
-        // CHRIS: TODO: call proper upgrade???
+    /// @notice Execute an upgrade by delegate calling an upgrade contract
+    /// @dev    Only executor can call this. Since we're using a delegatecall here the Upgrade contract
+    ///         will have access to the state of this contract - including the roles. Only upgrade contracts
+    ///         that do not touch local state should be used.
+    ///         This call does allow re-entrancy, and again, it's the responsibilty of those writing and
+    ///         accepting a specific upgrade contract to vet it for issues like this - this is the same
+    ///         assumption as the OZ TimelockController, which also allows re-entrancy.
+    function execute(address upgrade, bytes memory upgradeCallData)
+        public
+        payable
+        onlyRole(EXECUTOR_ROLE)
+    {
         (bool success,) = address(upgrade).delegatecall(upgradeCallData);
         require(success, "UpgradeExecutor: inner delegate call failed");
     }
