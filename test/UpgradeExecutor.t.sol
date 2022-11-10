@@ -123,7 +123,9 @@ contract UpgradeExecutorTest is Test {
         UpgradeExecutor ue = deployAndInit();
         AccessControlUpgrader ae = new AccessControlUpgrader();
 
-        bytes memory data = abi.encodeWithSelector(ae.grantRole.selector, address(ue), ue.EXECUTOR_ROLE(), executor2);
+        bytes memory data = abi.encodeWithSelector(
+            ae.grantRole.selector, address(ue), ue.EXECUTOR_ROLE(), executor2
+        );
 
         assertEq(ue.hasRole(ue.EXECUTOR_ROLE(), executor2), false, "executor 2 before");
         vm.prank(executor1);

@@ -40,7 +40,11 @@ contract UpgradeExecutor is Initializable, AccessControlUpgradeable {
     ///         This call does allow re-entrancy, and again, it's the responsibilty of those writing and
     ///         accepting a specific upgrade contract to vet it for issues like this - this is the same
     ///         assumption as the OZ TimelockController, which also allows re-entrancy.
-    function execute(address upgrade, bytes memory upgradeCallData) public payable onlyRole(EXECUTOR_ROLE) {
+    function execute(address upgrade, bytes memory upgradeCallData)
+        public
+        payable
+        onlyRole(EXECUTOR_ROLE)
+    {
         (bool success,) = address(upgrade).delegatecall(upgradeCallData);
         require(success, "UpgradeExecutor: inner delegate call failed");
     }
