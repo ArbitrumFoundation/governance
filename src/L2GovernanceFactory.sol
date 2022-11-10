@@ -12,11 +12,32 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 
 /// @title Factory contract that deploys the L2 components for Arbitrum governance
 
+/**
+ * @notice Governance Deployment Steps:
+ * 1. Deploy the following (in any order):
+ *     L1:
+ *         - L1GoveranceFactory
+ *         - L1 -oken
+ *         - Gnosis Safe Multisig Security Council
+ *     L2:
+ *         - L2GovernanceFactory
+ *         - Gnosis Safe Multisig Security Council
+ *
+ *     L1GoveranceFactory and L2GovernanceFactory deployers will be their respective owners, and will carry out the following steps.
+ * 2. Call L2GovernanceFactory.deployStep1
+ *     - Dependencies: L1-Token address
+ *
+ * 3. Call L1GoveranceFactory.deployStep2
+ *     - Dependencies: L1 security counsil address, L2 Timelock address (deployed in previous step)
+ *
+ * 4. Call L2GovernanceFactory.deployStep3
+ *     - Dependencies: (Aliased) L1-timelock address (deployed in previous step), L2 security council address
+ */
 struct DeployCoreParams {
     uint256 _l2MinTimelockDelay;
     address _l1Token;
     uint256 _l2TokenInitialSupply;
-    address _l2TokenOwner;
+    address _l2TokenOwner; // DG TODO: Who dis?
     uint256 _votingPeriod;
     uint256 _votingDelay;
     uint256 _coreQuorumThreshold;
