@@ -1,7 +1,7 @@
 import "./L2GovernanceFactory.sol";
 
 contract MainnetL2GovernanceFactory is L2GovernanceFactory {
-    function deploy(DeployCoreParams memory params)
+    function deployStep1(DeployCoreParams memory params)
         public
         override (L2GovernanceFactory)
         returns (
@@ -28,7 +28,7 @@ contract MainnetL2GovernanceFactory is L2GovernanceFactory {
         // TODO: update w/ actual mainnet values
         address[] memory l2UpgradeExecutors; // DG: TODO should be security council and l1 timelock alias?
 
-        return super.deploy(
+        return super.deployStep1(
             DeployCoreParams({
                 _l2MinTimelockDelay: 42,
                 _l1Token: address(42),
