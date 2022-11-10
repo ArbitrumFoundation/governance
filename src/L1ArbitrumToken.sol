@@ -54,8 +54,9 @@ interface IGatewayRouter {
     ) external payable returns (uint256);
 }
 
-// CHRIS: TODO: docs up in here?
 
+/// @title L1 representation of the Arbitrum token
+/// @notice Permit token that is registered with an Arb One and Nova counterpart   
 contract L1ArbitrumToken is
     INovaArbOneReverseToken,
     Initializable,
@@ -78,7 +79,7 @@ contract L1ArbitrumToken is
         _disableInitializers();
     }
 
-    /// @dev we only set shouldRegisterGateway to true when in `registerTokenOnL2`
+    /// @dev shouldRegisterGateway is set to true when in `registerTokenOnL2`
     function isArbitrumEnabled() external view override returns (uint8) {
         require(shouldRegisterGateway, "L1ArbitrumToken: not expecting gateway registration");
         return uint8(MAGIC_ARB_ONE);
@@ -109,6 +110,7 @@ contract L1ArbitrumToken is
         novaRouter = _novaRouter;
     }
 
+    /// @notice Allow the Arb One bridge to mint tokens
     function bridgeMint(address account, uint256 amount)
         public
         override (INovaArbOneReverseToken)
@@ -117,6 +119,7 @@ contract L1ArbitrumToken is
         _mint(account, amount);
     }
 
+    /// @notice Allow the Arb One bridge to burn tokens
     function bridgeBurn(address account, uint256 amount)
         public
         override (INovaArbOneReverseToken)
@@ -125,12 +128,15 @@ contract L1ArbitrumToken is
         _burn(account, amount);
     }
 
+    /// @notice Register the token on both Arb One and Nova
+    /// @dev    Called once by anyone immediately after the contract is deployed
     function registerTokenOnL2(
         RegistrationParams memory arbOneParams,
         RegistrationParams memory novaParams
     ) public payable {
         // we temporarily set `shouldRegisterGateway` to true for the callback in registerTokenToL2 to succeed
-        // CHRIS: TODO: better comments about this stuff
+        // this is so that we can be sure that this contract does currently mean to be
+        // doing a registration
         bool prev = shouldRegisterGateway;
         shouldRegisterGateway = true;
 

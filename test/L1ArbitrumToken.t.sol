@@ -8,8 +8,6 @@ import "@openzeppelin/contracts/utils/Address.sol";
 
 import "forge-std/Test.sol";
 
-// CHRIS: TODO: dont use address(1) anywhere! look for that in other tests
-
 contract MockGateway {
     address public l2Address;
     uint256 public maxGas;
