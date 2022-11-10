@@ -15,8 +15,9 @@ contract ArbTreasury {
     address public treasuryGov;
 
     /// @notice Arbitrum governance treasury. Exludes its votes from quorum count by delegating exclude address upon creation.
-    constructor(address payable _treasuryGovAddress) {
+    function initialize(address payable _treasuryGovAddress) public {
         require(_treasuryGovAddress != address(0), "NULL_TREASURYGOV");
+        require(treasuryGov == address(0), "ALREADY_INIT");
         L2ArbitrumGovernor _treasuryGov = L2ArbitrumGovernor(_treasuryGovAddress);
         IVotesUpgradeable _arbToken = IVotesUpgradeable(_treasuryGov.token());
         _arbToken.delegate(_treasuryGov.EXCLUDE_ADDRESS());

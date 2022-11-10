@@ -4,9 +4,8 @@ pragma solidity 0.8.16;
 import "./L2ArbitrumToken.sol";
 import "./L2ArbitrumGovernor.sol";
 import "./ArbitrumTimelock.sol";
-import "./TreasuryGovTimelock.sol";
 import "./UpgradeExecutor.sol";
-
+import "./ArbTreasury.sol";
 import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 
@@ -57,11 +56,14 @@ contract L2GovernanceFactory {
     address public l2UpgradeExecutorLogic;
     address public proxyAdminLogic;
     address public l2TreasuryTimelockLogic;
+    address public l2TreasuryLogic;
     address private deployer;
 
     constructor() {
         l2CoreTimelockLogic = address(new ArbitrumTimelock());
         l2CoreGovernorLogic = address(new L2ArbitrumGovernor());
+        l2TreasuryTimelockLogic = address(new ArbitrumTimelock());
+        l2TreasuryLogic = address(new ArbTreasury());
         l2TreasuryGovernorLogic = address(new L2ArbitrumGovernor());
         l2TokenLogic = address(new L2ArbitrumToken());
         l2UpgradeExecutorLogic = address(new UpgradeExecutor());
@@ -86,7 +88,7 @@ contract L2GovernanceFactory {
         )
     {
         require(msg.sender == deployer, "NOT_DEPLOYER");
-        require(l2TreasuryTimelockLogic == address(0), "ALREADY_DEPLOYED");
+        deployer = address(0); // Can't redeploy. DG TODO is this weird or bad practice or something
 
         // DG TODO:  does this make sense?
         proxyAdmin = ProxyAdmin(proxyAdminLogic);
@@ -121,7 +123,8 @@ contract L2GovernanceFactory {
         coreTimelock.revokeRole(coreTimelock.TIMELOCK_ADMIN_ROLE(), address(coreTimelock));
         coreTimelock.revokeRole(coreTimelock.TIMELOCK_ADMIN_ROLE(), address(this));
 
-        (L2ArbitrumGovernor treasuryGov, ArbitrumTimelock treasuryTimelock) = deployTreasury(
+        (L2ArbitrumGovernor treasuryGov, ArbitrumTimelock treasuryTimelock) =
+        deployTreasuryContracts(
             DeployTreasuryParams({
                 _proxyAdmin: proxyAdmin,
                 _token: token,
@@ -142,12 +145,10 @@ contract L2GovernanceFactory {
         return (token, coreGov, treasuryGov, proxyAdmin, executor);
     }
 
-    function deployTreasury(DeployTreasuryParams memory params)
+    function deployTreasuryContracts(DeployTreasuryParams memory params)
         internal
         returns (L2ArbitrumGovernor treasuryGov, ArbitrumTimelock treasuryTimelock)
     {
-        address _treasuryTimelockLogic = address(new TreasuryGovTimelock(params._coreGov));
-        l2TreasuryTimelockLogic = _treasuryTimelockLogic;
         treasuryTimelock = deployTimelock(params._proxyAdmin, l2TreasuryTimelockLogic);
         {
             address[] memory proposers;
@@ -175,6 +176,9 @@ contract L2GovernanceFactory {
             treasuryTimelock.TIMELOCK_ADMIN_ROLE(), address(treasuryTimelock)
         );
         treasuryTimelock.revokeRole(treasuryTimelock.TIMELOCK_ADMIN_ROLE(), address(this));
+
+        ArbTreasury arbTreasury = deployTreasury(params._proxyAdmin, l2TreasuryLogic);
+        arbTreasury.initialize(payable(address(treasuryGov)));
     }
 
     function deployUpgradeExecutor(ProxyAdmin _proxyAdmin, address _upgradeExecutorLogic)
@@ -211,6 +215,18 @@ contract L2GovernanceFactory {
             bytes("")
         );
         gov = L2ArbitrumGovernor(payable(address(proxy)));
+    }
+
+    function deployTreasury(ProxyAdmin _proxyAdmin, address _l2TreasuryLogic)
+        internal
+        returns (ArbTreasury arbTreasury)
+    {
+        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
+            _l2TreasuryLogic,
+            address(_proxyAdmin),
+            bytes("")
+        );
+        arbTreasury = ArbTreasury(payable(address(proxy)));
     }
 
     function deployTimelock(ProxyAdmin _proxyAdmin, address _l2TimelockLogic)
