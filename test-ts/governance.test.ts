@@ -112,7 +112,7 @@ describe("Governor", function () {
     ) {
       const l1ProposalData = l1UpgradeExecutor.interface.encodeFunctionData(
         "execute",
-        [upgradeAddr, upgradeValue, upgradeData, id(proposalDescription)]
+        [upgradeAddr, upgradeData]
       );
 
       const scheduleData = l1TimelockContract.interface.encodeFunctionData(
@@ -219,7 +219,7 @@ describe("Governor", function () {
           _l2TokenOwner: l2SignerAddr,
           _l2TimeLockLogic: l2TimelockLogic.address,
           _l2GovernorLogic: l2GovernanceLogic.address,
-          _l2UpgradeExecutorInitialOwner: await l2Deployer.getAddress(),
+          _l2UpgradeExecutors: [await l2Deployer.getAddress()],
           _l2UpgradeExecutorLogic: l2UpgradeExecutorLogic.address,
           _proposalThreshold: 100,
           _quorumThreshold: 3,
@@ -260,8 +260,19 @@ describe("Governor", function () {
     const l1TimelockAddress = new Address(l1DeployResult.timelock);
     const ow = l1TimelockAddress.applyAlias().value;
     await (
-      await l2UpgradeExecutor.connect(l2Deployer).transferOwnership(ow)
+      await l2UpgradeExecutor.connect(l2Deployer).grantRole(
+        await l2UpgradeExecutor.EXECUTOR_ROLE(),
+        ow
+      )
     ).wait();
+    await (
+      await l2UpgradeExecutor.connect(l2Deployer).revokeRole(
+        await l2UpgradeExecutor.EXECUTOR_ROLE(),
+        await l2Deployer.getAddress()
+      )
+    ).wait();
+
+
     // return contract objects
     const l2TokenContract = L2ArbitrumToken__factory.connect(
       l2DeployResult.token,
@@ -536,7 +547,7 @@ describe("Governor", function () {
     await (
       await testUpgradeExecutor
         .connect(l2Deployer)
-        .initialize(l2TimelockContract.address)
+        .initialize(testUpgradeExecutor.address, [l2TimelockContract.address])
     ).wait();
     const testUpgrade = await new TestUpgrade__factory(l2Deployer).deploy();
 
@@ -549,7 +560,7 @@ describe("Governor", function () {
 
     const upgradeProposal = testUpgradeExecutor.interface.encodeFunctionData(
       "execute",
-      [testUpgrade.address, 0, transferProposal, id(proposalString)]
+      [testUpgrade.address, transferProposal]
     );
 
     expect(
@@ -661,7 +672,7 @@ describe("Governor", function () {
 
     const upgradeProposal = l1UpgradeExecutor.interface.encodeFunctionData(
       "execute",
-      [transferUpgrade.address, 0, transferExecution, id(proposalString)]
+      [transferUpgrade.address, transferExecution]
     );
 
     // 2. schedule a transfer on l1
@@ -801,10 +812,7 @@ describe("Governor", function () {
       "execute",
       [
         transferUpgrade.address,
-        0,
         transferExecution,
-        // CHRIS: TODO: this should be created by the l1 timelock? or should be previous
-        id(proposalString),
       ]
     );
 

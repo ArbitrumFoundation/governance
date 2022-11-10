@@ -43,7 +43,9 @@ contract L1GovernanceFactory {
         // CHRIS: TODO: the l1 upgrade executor should be the owner of the l2 upgrade exector?
 
         executor = deployUpgradeExecutor(proxyAdmin);
-        executor.initialize(address(timelock));
+        address[] memory upgradeExecutors = new address[](1);
+        upgradeExecutors[0] = address(timelock);
+        executor.initialize(address(executor), upgradeExecutors);
 
         emit Deployed(timelock, proxyAdmin, executor);
 
