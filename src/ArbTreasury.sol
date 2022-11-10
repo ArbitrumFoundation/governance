@@ -7,10 +7,8 @@ import "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorVotesU
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
-// TODO
-/// @title  Timelock to be used in Arbitrum governance
-/// @dev    Treasury excrow; delegates its votes the exclude address
-
+/// @title  Givernance treasury excrow
+/// @dev delegates its votes the exclude address
 contract ArbTreasury is Initializable {
     address public arbToken;
     address public treasuryGov;
@@ -34,8 +32,8 @@ contract ArbTreasury is Initializable {
         require(msg.sender == treasuryGov, "NOT_FROM_TREASURYGOV");
         _;
     }
-    /// @notice treasuryGov can transfer arbitrary token from escrow
 
+    /// @notice treasuryGov can transfer arbitrary token from escrow
     function transferToken(address token, address to, uint256 amount)
         public
         onlyFromTreasuryGov
