@@ -8,6 +8,7 @@ import "./UpgradeExecutor.sol";
 import "./ArbTreasury.sol";
 import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
 /// @title Factory contract that deploys the L2 components for Arbitrum governance
 
@@ -38,7 +39,7 @@ struct DeployTreasuryParams {
     uint64 _minPeriodAfterQuorum;
 }
 
-contract L2GovernanceFactory {
+contract L2GovernanceFactory is Ownable {
     event Deployed(
         L2ArbitrumToken token,
         ArbitrumTimelock coreTimelock,
@@ -57,7 +58,8 @@ contract L2GovernanceFactory {
     address public proxyAdminLogic;
     address public l2TreasuryTimelockLogic;
     address public l2TreasuryLogic;
-    address private deployer;
+
+    address public l2Executor;
 
     constructor() {
         l2CoreTimelockLogic = address(new ArbitrumTimelock());
@@ -71,14 +73,14 @@ contract L2GovernanceFactory {
         // CHRIS: TODO: make sure to transfer it out
         // CHRIS: TODO: in both this and the L1gov fac
         proxyAdminLogic = address(new ProxyAdmin());
-        deployer = msg.sender;
     }
 
     // CHRIS: TODO: make this whole thing ownable? we want to avoid the missing steps, but that's not an issue right
 
-    function deploy(DeployCoreParams memory params)
+    function deployStep1(DeployCoreParams memory params)
         public
         virtual
+        onlyOwner
         returns (
             L2ArbitrumToken token,
             L2ArbitrumGovernor coreGov,
@@ -87,9 +89,7 @@ contract L2GovernanceFactory {
             UpgradeExecutor executor
         )
     {
-        require(msg.sender == deployer, "NOT_DEPLOYER");
-        deployer = address(0); // Can't redeploy. DG TODO is this weird or bad practice or something
-
+        require(l2Executor == address(0), "ALREADY_DEPLOYED");
         // DG TODO:  does this make sense?
         proxyAdmin = ProxyAdmin(proxyAdminLogic);
         token = deployToken(proxyAdmin, l2TokenLogic);
@@ -103,7 +103,8 @@ contract L2GovernanceFactory {
             coreTimelock.initialize(params._l2MinTimelockDelay, proposers, executors);
         }
         executor = deployUpgradeExecutor(proxyAdmin, l2UpgradeExecutorLogic);
-        executor.initialize(address(executor), params._l2UpgradeExecutors);
+        executor.preInit(address(this));
+        // executor.initialize(address(executor), params._l2UpgradeExecutors);
         coreGov = deployGovernor(proxyAdmin, l2CoreGovernorLogic);
         coreGov.initialize({
             _token: token,
@@ -143,6 +144,11 @@ contract L2GovernanceFactory {
             );
         // DG TODO: tests only pass with this explicit return, why
         return (token, coreGov, treasuryGov, proxyAdmin, executor);
+    }
+
+    function deployStep3(address[] memory _l2UpgradeExecutors) public onlyOwner {
+        require(l2Executor != address(0), "NOT_YET_DEPLAYED");
+        UpgradeExecutor(l2Executor).initialize(l2Executor, _l2UpgradeExecutors);
     }
 
     function deployTreasuryContracts(DeployTreasuryParams memory params)

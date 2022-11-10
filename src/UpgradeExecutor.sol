@@ -12,14 +12,24 @@ contract UpgradeExecutor is Initializable, AccessControlUpgradeable {
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
     bytes32 public constant EXECUTOR_ROLE = keccak256("EXECUTOR_ROLE");
 
+    address public initializeCaller;
+
     constructor() {
         _disableInitializers();
+    }
+
+    function preInit(address _initializeCaller) public {
+        require(initializeCaller != address(0), "INITIALIZER_SET");
+        initializeCaller = _initializeCaller;
     }
 
     /// @notice Initialise the upgrade executor
     /// @param admin The admin who can update other roles, and itself - ADMIN_ROLE
     /// @param executors Can call the execute function - EXECUTOR_ROLE
     function initialize(address admin, address[] memory executors) public initializer {
+        if (initializeCaller != address(0)) {
+            require(msg.sender == initializeCaller, "NOT_INITIALIZE_CALLER");
+        }
         require(admin != address(0), "UpgradeExecutor: zero admin");
 
         __AccessControl_init();

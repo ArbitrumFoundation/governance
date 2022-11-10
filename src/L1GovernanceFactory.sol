@@ -10,14 +10,16 @@ import "./UpgradeExecutor.sol";
 import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 import "@arbitrum/nitro-contracts/src/bridge/IInbox.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
 /// @title Factory contract that deploys the L1 components for Arbitrum governance
-contract L1GovernanceFactory {
+contract L1GovernanceFactory is Ownable {
     event Deployed(L1ArbitrumTimelock timelock, ProxyAdmin proxyAdmin, UpgradeExecutor executor);
 
     // CHRIS: TODO: rename all the args to timelock where applicable? or remove them all on the l2 variant
-    function deploy(uint256 _minTimelockDelay, address inbox, address l2Timelock)
+    function deployStep2(uint256 _minTimelockDelay, address inbox, address l2Timelock)
         external
+        onlyOwner
         returns (L1ArbitrumTimelock timelock, ProxyAdmin proxyAdmin, UpgradeExecutor executor)
     {
         proxyAdmin = new ProxyAdmin();
