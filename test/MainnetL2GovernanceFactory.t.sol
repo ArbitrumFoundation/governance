@@ -60,6 +60,5 @@ contract MainnetL2GovernanceFactoryTest is Test {
         vm.stopPrank();
         l2GovernanceFactory.deployMainnet();
         assertTrue(true, "deployMainnet didn't revert");
-
     }
 }

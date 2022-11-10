@@ -155,7 +155,6 @@ contract L2GovernanceFactory {
             // Gov contrac requires a timelock, so we give it one with 0 delay
             treasuryTimelock.initialize(0, proposers, executors);
         }
-        // DG TODO: Assign treasuryTimelock roles (?)
         treasuryGov = deployGovernor(params._proxyAdmin, l2TreasuryGovernorLogic);
         treasuryGov.initialize({
             _token: params._token,
@@ -167,6 +166,15 @@ contract L2GovernanceFactory {
             _proposalThreshold: params._proposalThreshold, // DG TODO: same as core okay?
             _minPeriodAfterQuorum: params._minPeriodAfterQuorum // DG TODO: same as core okay?
         });
+
+        // Only treasury can propose, anyone can execute, no admon (revoke defaults)
+        // DG TODO: Sanity check this
+        treasuryTimelock.grantRole(treasuryTimelock.PROPOSER_ROLE(), address(treasuryGov));
+        treasuryTimelock.grantRole(treasuryTimelock.EXECUTOR_ROLE(), address(0));
+        treasuryTimelock.revokeRole(
+            treasuryTimelock.TIMELOCK_ADMIN_ROLE(), address(treasuryTimelock)
+        );
+        treasuryTimelock.revokeRole(treasuryTimelock.TIMELOCK_ADMIN_ROLE(), address(this));
     }
 
     function deployUpgradeExecutor(ProxyAdmin _proxyAdmin, address _upgradeExecutorLogic)
