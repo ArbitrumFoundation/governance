@@ -17,7 +17,6 @@ struct DeployCoreParams {
     address _l1Token;
     uint256 _l2TokenInitialSupply;
     address _l2TokenOwner;
-    address[] _l2UpgradeExecutors;
     uint256 _votingPeriod;
     uint256 _votingDelay;
     uint256 _coreQuorumThreshold;
@@ -105,7 +104,6 @@ contract L2GovernanceFactory is Ownable {
         executor = deployUpgradeExecutor(proxyAdmin, l2UpgradeExecutorLogic);
         l2Executor = address(executor);
         executor.preInit(address(this));
-        // executor.initialize(address(executor), params._l2UpgradeExecutors);
         coreGov = deployGovernor(proxyAdmin, l2CoreGovernorLogic);
         coreGov.initialize({
             _token: token,

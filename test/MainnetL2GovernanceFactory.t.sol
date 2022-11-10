@@ -40,7 +40,6 @@ contract MainnetL2GovernanceFactoryTest is Test {
             _l1Token: l1Token,
             _l2TokenInitialSupply: l2TokenInitialSupply,
             _l2TokenOwner: l2TokenOwner,
-            _l2UpgradeExecutors: l2UpgradeExecutors,
             _votingPeriod: votingPeriod,
             _votingDelay: votingDelay,
             _coreQuorumThreshold: coreQuorumThreshold,

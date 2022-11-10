@@ -26,15 +26,12 @@ contract MainnetL2GovernanceFactory is L2GovernanceFactory {
         )
     {
         // TODO: update w/ actual mainnet values
-        address[] memory l2UpgradeExecutors; // DG: TODO should be security council and l1 timelock alias?
-
         return super.deployStep1(
             DeployCoreParams({
                 _l2MinTimelockDelay: 42,
                 _l1Token: address(42),
                 _l2TokenInitialSupply: 1e10,
                 _l2TokenOwner: address(42),
-                _l2UpgradeExecutors: l2UpgradeExecutors,
                 _votingPeriod: 42,
                 _votingDelay: 42,
                 _coreQuorumThreshold: 5,
