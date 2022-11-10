@@ -15,7 +15,7 @@ contract MainnetL2GovernanceFactory is L2GovernanceFactory {
         revert("ONLY_DEPLOYMAINNET");
     }
 
-    function deployMainnet()
+    function deployStep1Mainnet()
         public
         returns (
             L2ArbitrumToken token,

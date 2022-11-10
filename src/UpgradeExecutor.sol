@@ -19,7 +19,7 @@ contract UpgradeExecutor is Initializable, AccessControlUpgradeable {
     }
 
     function preInit(address _initializeCaller) public {
-        require(initializeCaller != address(0), "INITIALIZER_SET");
+        require(initializeCaller == address(0), "INITIALIZER_SET");
         initializeCaller = _initializeCaller;
     }
 

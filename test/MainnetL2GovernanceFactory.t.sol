@@ -51,14 +51,14 @@ contract MainnetL2GovernanceFactoryTest is Test {
 
         MainnetL2GovernanceFactory l2GovernanceFactory = new MainnetL2GovernanceFactory();
         vm.expectRevert("ONLY_DEPLOYMAINNET");
-        l2GovernanceFactory.deploy(deployParams);
+        l2GovernanceFactory.deployStep1(deployParams);
 
         vm.startPrank(someRando);
-        vm.expectRevert("NOT_DEPLOYER");
-        l2GovernanceFactory.deployMainnet();
+        vm.expectRevert("Ownable: caller is not the owner");
+        l2GovernanceFactory.deployStep1Mainnet();
 
         vm.stopPrank();
-        l2GovernanceFactory.deployMainnet();
-        assertTrue(true, "deployMainnet didn't revert");
+        l2GovernanceFactory.deployStep1Mainnet();
+        assertTrue(true, "deployStep1Mainnet didn't revert");
     }
 }

@@ -103,6 +103,7 @@ contract L2GovernanceFactory is Ownable {
             coreTimelock.initialize(params._l2MinTimelockDelay, proposers, executors);
         }
         executor = deployUpgradeExecutor(proxyAdmin, l2UpgradeExecutorLogic);
+        l2Executor = address(executor);
         executor.preInit(address(this));
         // executor.initialize(address(executor), params._l2UpgradeExecutors);
         coreGov = deployGovernor(proxyAdmin, l2CoreGovernorLogic);
