@@ -12,20 +12,6 @@ import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 
 /// @title Factory contract that deploys the L2 components for Arbitrum governance
 
-struct ConstructorParams {
-    uint256 _l2MinTimelockDelay;
-    address _l1Token;
-    uint256 _l2TokenInitialSupply;
-    address _l2TokenOwner;
-    address[] _l2UpgradeExecutors; // DG: TODO should be security council and l1 timelock alias?
-    uint256 _votingPeriod;
-    uint256 _votingDelay;
-    uint256 _coreQuorumThreshold;
-    uint256 _treasuryQuorumThreshold;
-    uint256 _proposalThreshold;
-    uint64 _minPeriodAfterQuorum;
-}
-
 struct DeployCoreParams {
     uint256 _l2MinTimelockDelay;
     address _l1Token;
@@ -38,12 +24,6 @@ struct DeployCoreParams {
     uint256 _treasuryQuorumThreshold;
     uint256 _proposalThreshold;
     uint64 _minPeriodAfterQuorum;
-    address _l2CoreTimelockLogic;
-    address _l2CoreGovernorLogic;
-    address _l2TreasuryGovernorLogic;
-    address _l2UpgradeExecutorLogic;
-    address _l2TokenLogic;
-    address _proxyAdminLogic;
 }
 
 struct DeployTreasuryParams {
@@ -70,67 +50,59 @@ contract L2GovernanceFactory {
         UpgradeExecutor executor
     );
 
-    constructor(ConstructorParams memory params) {
-        address tokenLogic = address(new L2ArbitrumToken());
-        address coreGovernerLogic = address(new L2ArbitrumGovernor());
-        address treasuryGovernerLogic = address(new L2ArbitrumGovernor());
-        address upgradeExecutorLogic = address(new UpgradeExecutor());
-        address coreTimeLockLogic = address(new ArbitrumTimelock());
+    address public l2CoreTimelockLogic;
+    address public l2CoreGovernorLogic;
+    address public l2TreasuryGovernorLogic;
+    address public l2TokenLogic;
+    address public l2UpgradeExecutorLogic;
+    address public proxyAdminLogic;
+    address public l2TreasuryTimelockLogic;
+    address private deployer;
+
+    constructor() {
+        l2CoreTimelockLogic = address(new ArbitrumTimelock());
+        l2CoreGovernorLogic = address(new L2ArbitrumGovernor());
+        l2TreasuryGovernorLogic = address(new L2ArbitrumGovernor());
+        l2TokenLogic = address(new L2ArbitrumToken());
+        l2UpgradeExecutorLogic = address(new UpgradeExecutor());
         // CHRIS: TODO: we dont want the owner of the proxy admin to be this address!
         // CHRIS: TODO: make sure to transfer it out
         // CHRIS: TODO: in both this and the L1gov fac
-        address proxyAdminLogic = address(new ProxyAdmin());
-
-        deploy(
-            DeployCoreParams({
-                _l2MinTimelockDelay: params._l2MinTimelockDelay,
-                _l1Token: params._l1Token,
-                _l2TokenInitialSupply: params._l2TokenInitialSupply,
-                _l2TokenOwner: params._l2TokenOwner,
-                _l2UpgradeExecutors: params._l2UpgradeExecutors,
-                _votingPeriod: params._votingPeriod,
-                _votingDelay: params._votingDelay,
-                _coreQuorumThreshold: params._coreQuorumThreshold,
-                _treasuryQuorumThreshold: params._treasuryQuorumThreshold,
-                _proposalThreshold: params._proposalThreshold,
-                _minPeriodAfterQuorum: params._minPeriodAfterQuorum,
-                _l2CoreTimelockLogic: coreTimeLockLogic,
-                _l2CoreGovernorLogic: coreGovernerLogic,
-                _l2TreasuryGovernorLogic: treasuryGovernerLogic,
-                _l2UpgradeExecutorLogic: upgradeExecutorLogic,
-                _l2TokenLogic: tokenLogic,
-                _proxyAdminLogic: proxyAdminLogic
-            })
-        );
+        proxyAdminLogic = address(new ProxyAdmin());
+        deployer = msg.sender;
     }
 
     // CHRIS: TODO: make this whole thing ownable? we want to avoid the missing steps, but that's not an issue right
 
     function deploy(DeployCoreParams memory params)
-        internal
+        public
+        virtual
         returns (
             L2ArbitrumToken token,
             L2ArbitrumGovernor coreGov,
-            ArbitrumTimelock coreTimelock,
+            L2ArbitrumGovernor treasuryGov,
             ProxyAdmin proxyAdmin,
             UpgradeExecutor executor
         )
     {
+        require(msg.sender == deployer, "NOT_DEPLOYER");
+        require(l2TreasuryTimelockLogic == address(0), "ALREADY_DEPLOYED");
+
         // DG TODO:  does this make sense?
-        ProxyAdmin proxyAdmin = ProxyAdmin(params._proxyAdminLogic);
-        token = deployToken(proxyAdmin, params._l2TokenLogic);
+        proxyAdmin = ProxyAdmin(proxyAdminLogic);
+        token = deployToken(proxyAdmin, l2TokenLogic);
         token.initialize(params._l1Token, params._l2TokenInitialSupply, params._l2TokenOwner);
 
-        coreTimelock = deployTimelock(proxyAdmin, params._l2CoreTimelockLogic);
+        ArbitrumTimelock coreTimelock = deployTimelock(proxyAdmin, l2CoreTimelockLogic);
         // CHRIS: TODO: can we remove this?
         {
             address[] memory proposers;
             address[] memory executors;
             coreTimelock.initialize(params._l2MinTimelockDelay, proposers, executors);
         }
-        executor = deployUpgradeExecutor(proxyAdmin, params._l2UpgradeExecutorLogic);
+        executor = deployUpgradeExecutor(proxyAdmin, l2UpgradeExecutorLogic);
         executor.initialize(address(executor), params._l2UpgradeExecutors);
-        coreGov = deployGovernor(proxyAdmin, params._l2CoreGovernorLogic);
+        coreGov = deployGovernor(proxyAdmin, l2CoreGovernorLogic);
         coreGov.initialize({
             _token: token,
             _timelock: coreTimelock,
@@ -154,7 +126,7 @@ contract L2GovernanceFactory {
                 _proxyAdmin: proxyAdmin,
                 _token: token,
                 _coreGov: payable(address(coreGov)),
-                _l2TreasuryGovernorLogic: params._l2TreasuryGovernorLogic,
+                _l2TreasuryGovernorLogic: l2TreasuryGovernorLogic,
                 _executor: address(executor),
                 _votingPeriod: params._votingPeriod,
                 _votingDelay: params._votingDelay,
@@ -172,10 +144,10 @@ contract L2GovernanceFactory {
         internal
         returns (L2ArbitrumGovernor treasuryGov, ArbitrumTimelock treasuryTimelock)
     {
-        address treasuryTimeLockLogic = address(new TreasuryGovTimelock(params._coreGov));
-
+        address _treasuryTimelockLogic = address(new TreasuryGovTimelock(params._coreGov));
+        l2TreasuryTimelockLogic = _treasuryTimelockLogic;
         ArbitrumTimelock treasuryTimelock =
-            deployTimelock(params._proxyAdmin, treasuryTimeLockLogic);
+            deployTimelock(params._proxyAdmin, l2TreasuryTimelockLogic);
         {
             address[] memory proposers;
             address[] memory executors;
@@ -183,8 +155,7 @@ contract L2GovernanceFactory {
             treasuryTimelock.initialize(0, proposers, executors);
         }
         // DG TODO: Assign treasuryTimelock roles (?)
-        L2ArbitrumGovernor treasuryGov =
-            deployGovernor(params._proxyAdmin, params._l2TreasuryGovernorLogic);
+        L2ArbitrumGovernor treasuryGov = deployGovernor(params._proxyAdmin, l2TreasuryGovernorLogic);
         treasuryGov.initialize({
             _token: params._token,
             _timelock: treasuryTimelock,

@@ -1,12 +1,35 @@
 import "./L2GovernanceFactory.sol";
 
-// TODO: add mainnet values
 contract MainnetL2GovernanceFactory is L2GovernanceFactory {
-    address[] l2UpgradeExecutors = [address(42), address(43)]; // DG: TODO should be security council and l1 timelock alias?
+    function deploy(DeployCoreParams memory params)
+        public
+        override (L2GovernanceFactory)
+        returns (
+            L2ArbitrumToken token,
+            L2ArbitrumGovernor coreGov,
+            L2ArbitrumGovernor treasuryGov,
+            ProxyAdmin proxyAdmin,
+            UpgradeExecutor executor
+        )
+    {
+        revert("ONLY_DEPLOYMAINNET");
+    }
 
-    constructor()
-        L2GovernanceFactory(
-            ConstructorParams({
+    function deployMainnet()
+        public
+        returns (
+            L2ArbitrumToken token,
+            L2ArbitrumGovernor coreGov,
+            L2ArbitrumGovernor treasuryGov,
+            ProxyAdmin proxyAdmin,
+            UpgradeExecutor executor
+        )
+    {
+        // TODO: update w/ actual mainnet values
+        address[] memory l2UpgradeExecutors; // DG: TODO should be security council and l1 timelock alias?
+
+        return super.deploy(
+            DeployCoreParams({
                 _l2MinTimelockDelay: 42,
                 _l1Token: address(42),
                 _l2TokenInitialSupply: 1e10,
@@ -19,6 +42,6 @@ contract MainnetL2GovernanceFactory is L2GovernanceFactory {
                 _proposalThreshold: 5e6,
                 _minPeriodAfterQuorum: 42
             })
-        )
-    {}
+        );
+    }
 }
