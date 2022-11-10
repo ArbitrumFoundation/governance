@@ -54,16 +54,21 @@ contract TokenDistributor is Ownable {
         require(_claimPeriodEnd > _claimPeriodStart, "TokenDistributor: start should be before end");
 
         token = _token;
-        sweepReceiver = _sweepReceiver;
+        _setSweepReciever(_sweepReceiver);
         claimPeriodStart = _claimPeriodStart;
         claimPeriodEnd = _claimPeriodEnd;
         _transferOwnership(_owner);
     }
 
     /// @notice Allows owner to update address of sweep receiver
-    function setSweepReciever(address payable _sweepReciever) external onlyOwner {
-        sweepReceiver = _sweepReciever;
-        emit SweepReceiverSet(_sweepReciever);
+    function setSweepReciever(address payable _sweepReceiver) external onlyOwner {
+        _setSweepReciever(_sweepReceiver);
+    }
+
+    function _setSweepReciever(address payable _sweepReceiver) internal {
+        require(_sweepReceiver != address(0), "TokenDistributor: zero sweep receiver address");
+        sweepReceiver = _sweepReceiver;
+        emit SweepReceiverSet(_sweepReceiver);
     }
 
     /// @notice Allows owner of the contract to withdraw tokens
