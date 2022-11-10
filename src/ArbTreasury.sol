@@ -7,7 +7,7 @@ import "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorVotesU
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
-/// @title  Givernance treasury excrow
+/// @title  Governance treasury excrow
 /// @dev delegates its votes the exclude address
 contract ArbTreasury is Initializable {
     address public arbToken;
