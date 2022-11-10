@@ -604,4 +604,11 @@ contract TokenDistributorTest is Test {
         vm.expectRevert("Ownable: caller is not the owner");
         td.setSweepReciever(newReceiver);
     }
+
+    function testSetSweepReceiverFailsNullAddress() public {
+        (TokenDistributor td, L2ArbitrumToken token,,,,) = deployAndSetRecipients();
+        vm.prank(tdOwner);
+        vm.expectRevert("TokenDistributor: zero sweep receiver address");
+        td.setSweepReciever(payable(address(0)));
+    }
 }

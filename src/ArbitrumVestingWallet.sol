@@ -69,4 +69,9 @@ contract ArbitrumVestingWallet is VestingWallet {
     function castVote(address governor, uint256 proposalId, uint8 support) public onlyBeneficiary {
         IGovernorUpgradeable(governor).castVote(proposalId, support);
     }
+
+    // @notice release vested tokens; only benefiary can call so VestingWallet retains voting power
+    function release(address token) public override onlyBeneficiary {
+        super.release(token);
+    }
 }
