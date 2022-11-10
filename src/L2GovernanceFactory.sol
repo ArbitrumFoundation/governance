@@ -138,6 +138,8 @@ contract L2GovernanceFactory {
         emit Deployed(
             token, coreTimelock, coreGov, treasuryGov, treasuryTimelock, proxyAdmin, executor
             );
+        // DG TODO: tests only pass with this explicit return, why
+        return (token, coreGov, treasuryGov, proxyAdmin, executor);
     }
 
     function deployTreasury(DeployTreasuryParams memory params)
@@ -146,8 +148,7 @@ contract L2GovernanceFactory {
     {
         address _treasuryTimelockLogic = address(new TreasuryGovTimelock(params._coreGov));
         l2TreasuryTimelockLogic = _treasuryTimelockLogic;
-        ArbitrumTimelock treasuryTimelock =
-            deployTimelock(params._proxyAdmin, l2TreasuryTimelockLogic);
+        treasuryTimelock = deployTimelock(params._proxyAdmin, l2TreasuryTimelockLogic);
         {
             address[] memory proposers;
             address[] memory executors;
@@ -155,7 +156,7 @@ contract L2GovernanceFactory {
             treasuryTimelock.initialize(0, proposers, executors);
         }
         // DG TODO: Assign treasuryTimelock roles (?)
-        L2ArbitrumGovernor treasuryGov = deployGovernor(params._proxyAdmin, l2TreasuryGovernorLogic);
+        treasuryGov = deployGovernor(params._proxyAdmin, l2TreasuryGovernorLogic);
         treasuryGov.initialize({
             _token: params._token,
             _timelock: treasuryTimelock,

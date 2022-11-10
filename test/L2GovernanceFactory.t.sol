@@ -30,11 +30,11 @@ contract L2GovernanceFactoryTest is Test {
             L2ArbitrumToken token,
             L2ArbitrumGovernor coreGov,
             ArbitrumTimelock coreTimelock,
+            L2ArbitrumGovernor treasuryGov,
+            ArbitrumTimelock treasuryTimelock,
             ProxyAdmin proxyAdmin,
             UpgradeExecutor executor
         )
-    // L2ArbitrumGovernor treasuryGov,
-    // ArbitrumTimelock treasuryTimelock
     {
         address[] memory l2UpgradeExecutors; // DG: TODO should be security council and l1 timelock alias?
         L2GovernanceFactory l2GovernanceFactory = new L2GovernanceFactory();
@@ -60,13 +60,11 @@ contract L2GovernanceFactoryTest is Test {
                 _minPeriodAfterQuorum: minPeriodAfterQuorum
             })
         );
-        address payable coreTimelockAddress = payable(coreGov.timelock());
-        ArbitrumTimelock coreTimelock = ArbitrumTimelock(coreTimelockAddress);
-        // DG TODO: treasuryGov.timelock()reverting, why
+        ArbitrumTimelock coreTimelock = ArbitrumTimelock(payable(coreGov.timelock()));
 
-        return (token, coreGov, coreTimelock, proxyAdmin, executor);
-        // L2ArbitrumGovernor treasuryGov,
-        // ArbitrumTimelock treasuryTimelock
+        ArbitrumTimelock treasuryTimelock = ArbitrumTimelock(payable(treasuryGov.timelock()));
+
+        return (token, coreGov, coreTimelock, treasuryGov, treasuryTimelock, proxyAdmin, executor);
     }
 
     function testContractsDeployed() external {
@@ -74,15 +72,16 @@ contract L2GovernanceFactoryTest is Test {
             L2ArbitrumToken token,
             L2ArbitrumGovernor coreGov,
             ArbitrumTimelock coreTimelock,
+            L2ArbitrumGovernor treasuryGov,
+            ArbitrumTimelock treasuryTimelock,
             ProxyAdmin proxyAdmin,
             UpgradeExecutor executor
-        ) =
-        // L2ArbitrumGovernor treasuryGov,
-        // ArbitrumTimelock treasuryTimelock
-         deploy();
+        ) = deploy();
         assertGt(address(token).code.length, 0, "no token deployed");
         assertGt(address(coreGov).code.length, 0, "no governer deployed");
         assertGt(address(coreTimelock).code.length, 0, "no timelock deployed");
+        assertGt(address(treasuryGov).code.length, 0, "no treasuryGov deployed");
+        assertGt(address(treasuryTimelock).code.length, 0, "no treasuryTimelock deployed");
         assertGt(address(proxyAdmin).code.length, 0, "no proxyAdmin deployed");
         assertGt(address(executor).code.length, 0, "no upgradeExecutor deployed");
     }
@@ -92,6 +91,8 @@ contract L2GovernanceFactoryTest is Test {
             L2ArbitrumToken token,
             L2ArbitrumGovernor gov,
             ArbitrumTimelock timelock,
+            L2ArbitrumGovernor treasuryGov,
+            ArbitrumTimelock treasuryTimelock,
             ProxyAdmin proxyAdmin,
             UpgradeExecutor upgradeExecutor
         ) = deploy();
@@ -113,7 +114,8 @@ contract L2GovernanceFactoryTest is Test {
 
 /**
  * Test TODOs:
+ * - testContractsInitialized: check treasury contracts
  * - Sanity checks - contracts init with expected values
- * - Only contract deployer can call deploy 
+ * - Only contract deployer can call deploy
  * - MainnetL2GovernanceFactory: can't call deploy, mainnetDeploy works
  */
