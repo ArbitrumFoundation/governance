@@ -26,7 +26,8 @@ contract L2GovernanceFactoryTest is Test {
     uint256 proposalThreshold = 5e6;
     uint64 minPeriodAfterQuorum = 41;
 
-    address[] l2UpgradeExecutors; // TODO
+    address[] l2UpgradeExecutors = [address(4), address(5)];
+
     address[] addressArrayStub = [address(777), address(888)];
 
     address someRando = address(3);
@@ -43,7 +44,6 @@ contract L2GovernanceFactoryTest is Test {
             UpgradeExecutor executor
         )
     {
-        address[] memory l2UpgradeExecutors; // DG: TODO should be security council and l1 timelock alias?
         L2GovernanceFactory l2GovernanceFactory = new L2GovernanceFactory();
 
         (
@@ -86,7 +86,7 @@ contract L2GovernanceFactoryTest is Test {
             UpgradeExecutor executor
         )
     {
-        address[] memory l2UpgradeExecutors; // DG: TODO should be security council and l1 timelock alias?
+        address[] memory l2UpgradeExecutors;
         L2GovernanceFactory l2GovernanceFactory = new L2GovernanceFactory();
         vm.prank(someRando);
         vm.expectRevert("NOT_DEPLOYER");
@@ -185,18 +185,31 @@ contract L2GovernanceFactoryTest is Test {
         assertEq(gov.votingDelay(), votingDelay, "gov.votingDelay()");
         assertEq(treasuryGov.votingDelay(), votingDelay, "treasuryGov.votingDelay()");
 
-        assertEq(gov.quorumNumerator(), coreQuorumThreshold, "");
-        assertEq(treasuryGov.quorumNumerator(), treasuryQuorumThreshold, "");
+        assertEq(gov.quorumNumerator(), coreQuorumThreshold, "gov.quorumNumerator()");
+        assertEq(
+            treasuryGov.quorumNumerator(), treasuryQuorumThreshold, "reasuryGov.quorumNumerator()"
+        );
 
-        assertEq(gov.proposalThreshold(), proposalThreshold, "");
-        assertEq(treasuryGov.proposalThreshold(), proposalThreshold, "");
+        assertEq(gov.proposalThreshold(), proposalThreshold, "gov.proposalThreshold()");
+        assertEq(
+            treasuryGov.proposalThreshold(), proposalThreshold, "treasuryGov.proposalThreshold()"
+        );
 
-        assertEq(gov.lateQuorumVoteExtension(), minPeriodAfterQuorum, "");
-        assertEq(treasuryGov.lateQuorumVoteExtension(), minPeriodAfterQuorum, "");
+        assertEq(
+            gov.lateQuorumVoteExtension(), minPeriodAfterQuorum, "gov.lateQuorumVoteExtension()"
+        );
+        assertEq(
+            treasuryGov.lateQuorumVoteExtension(),
+            minPeriodAfterQuorum,
+            "treasuryGov.lateQuorumVoteExtension()"
+        );
+
+        bytes32 executorRole = upgradeExecutor.EXECUTOR_ROLE();
+        for (uint256 i = 0; i < l2UpgradeExecutors.length; i++) {
+            assertTrue(
+                upgradeExecutor.hasRole(executorRole, l2UpgradeExecutors[i]),
+                "l2UpgradeExecutors are executors"
+            );
+        }
     }
 }
-
-/**
- * Test TODOs:
- * - MainnetL2GovernanceFactory: can't call deploy, mainnetDeploy works
- */
