@@ -5,19 +5,23 @@ import "./L2ArbitrumGovernor.sol";
 import "./L2ArbitrumToken.sol";
 import "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorVotesUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 // TODO
 /// @title  Timelock to be used in Arbitrum governance
 /// @dev    Treasury excrow; delegates its votes the exclude address
 
-contract ArbTreasury {
+contract ArbTreasury is Initializable {
     address public arbToken;
     address public treasuryGov;
 
+    constructor() {
+        _disableInitializers();
+    }
+
     /// @notice Arbitrum governance treasury. Exludes its votes from quorum count by delegating exclude address upon creation.
-    function initialize(address payable _treasuryGovAddress) public {
+    function initialize(address payable _treasuryGovAddress) public initializer {
         require(_treasuryGovAddress != address(0), "NULL_TREASURYGOV");
-        require(treasuryGov == address(0), "ALREADY_INIT");
         L2ArbitrumGovernor _treasuryGov = L2ArbitrumGovernor(_treasuryGovAddress);
         IVotesUpgradeable _arbToken = IVotesUpgradeable(_treasuryGov.token());
         _arbToken.delegate(_treasuryGov.EXCLUDE_ADDRESS());
