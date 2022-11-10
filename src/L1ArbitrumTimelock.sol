@@ -15,11 +15,13 @@ interface IInboxSubmissionFee {
 /// @title L1 timelock for executing propsals on L1 or forwarding them back to L2
 /// @dev   Only accepts proposals from a counterparty L2 timelock
 contract L1ArbitrumTimelock is TimelockControllerUpgradeable, L1ArbitrumMessenger {
+    /// @notice The magic address to be used when a retryable ticket is to be created
     /// @dev When the target of an proposal is this magic value then the proposal
     ///      will be formed into a retryable ticket and posted to an inbox provided in
     ///      the data
-    address public constant RETRYABLE_TICKET_MAGIC =
-        address(bytes20(bytes("retryable ticket magic")));
+    ///      address below is: address(bytes20(bytes("retryable ticket magic")));
+    ///      we hardcode the bytes rather than the string as it's slightly cheaper
+    address public constant RETRYABLE_TICKET_MAGIC = 0x726574727961626c65207469636b657420616464;
     /// @notice The inbox for the L2 where governance is based
     address public inbox;
     /// @notice The timelock of the governance contract on L2
