@@ -30,6 +30,9 @@ contract L2GovernanceFactoryTest is Test {
         address upgradeExecutorLogic = address(new UpgradeExecutor());
         address timeLockLogic = address(new ArbitrumTimelock());
 
+        address[] memory l2UpgradeExecutors = new address[](1);
+        l2UpgradeExecutors[0] = l2UpgradeExecutorInitialOwner;
+
         L2GovernanceFactory factory = new L2GovernanceFactory();
         return factory.deploy(
             DeployParams({
@@ -41,7 +44,7 @@ contract L2GovernanceFactoryTest is Test {
                 _l2TimeLockLogic: timeLockLogic,
                 _l2GovernorLogic: governerLogic,
                 _l2UpgradeExecutorLogic: upgradeExecutorLogic,
-                _l2UpgradeExecutorInitialOwner: l2UpgradeExecutorInitialOwner,
+                _l2UpgradeExecutors: l2UpgradeExecutors,
                 _votingPeriod: 1,
                 _votingDelay: 1,
                 _proposalThreshold: 1,
@@ -84,6 +87,8 @@ contract L2GovernanceFactoryTest is Test {
         timelock.initialize(1, addressArrayStub, addressArrayStub);
 
         vm.expectRevert("Initializable: contract is already initialized");
-        upgradeExecutor.initialize(addressStub);
+        address[] memory addresses = new address[](1);
+        addresses[0] = addressStub;
+        upgradeExecutor.initialize(address(upgradeExecutor), addresses);
     }
 }
