@@ -12,7 +12,7 @@ contract UpgradeExecutor is Initializable, AccessControlUpgradeable {
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
     bytes32 public constant EXECUTOR_ROLE = keccak256("EXECUTOR_ROLE");
 
-    address public initializeCaller;
+    address private initializeCaller;
 
     constructor() {
         _disableInitializers();
