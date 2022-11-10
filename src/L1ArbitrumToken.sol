@@ -44,7 +44,7 @@ interface IL1CustomGateway {
     ) external payable returns (uint256);
 }
 
-interface IGatewayRouter2 {
+interface IGatewayRouter {
     function setGateway(
         address _gateway,
         uint256 _maxGas,
@@ -54,10 +54,7 @@ interface IGatewayRouter2 {
     ) external payable returns (uint256);
 }
 
-// CHRIS: TOOD: in here and the l1 token, we want to import as many interfaces as possible
 // CHRIS: TODO: docs up in here?
-// CHRIS: TODO: tests, including an e2e registration test
-// CHRIS: TODO: with the reverse and the normal gateways
 
 contract L1ArbitrumToken is
     INovaArbOneReverseToken,
@@ -97,7 +94,7 @@ contract L1ArbitrumToken is
         address _arbOneGateway,
         address _novaRouter,
         address _novaGateway
-    ) public {
+    ) public initializer {
         require(_arbOneRouter != address(0), "L1ArbitrumToken: zero arb one router");
         require(_arbOneGateway != address(0), "L1ArbitrumToken: zero arb one gateway");
         require(_novaRouter != address(0), "L1ArbitrumToken: zero nova router");
@@ -145,7 +142,7 @@ contract L1ArbitrumToken is
             arbOneParams.creditBackAddress
         );
 
-        IGatewayRouter2(arbOneRouter).setGateway{value: arbOneParams.valueForRouter}(
+        IGatewayRouter(arbOneRouter).setGateway{value: arbOneParams.valueForRouter}(
             arbOneGateway,
             arbOneParams.maxGasForRouter,
             arbOneParams.gasPriceBid,
@@ -161,7 +158,7 @@ contract L1ArbitrumToken is
             novaParams.creditBackAddress
         );
 
-        IGatewayRouter2(novaRouter).setGateway{value: novaParams.valueForRouter}(
+        IGatewayRouter(novaRouter).setGateway{value: novaParams.valueForRouter}(
             novaGateway,
             novaParams.maxGasForRouter,
             novaParams.gasPriceBid,

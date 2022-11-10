@@ -49,6 +49,9 @@ import { L1ToL2MessageCreator } from "@arbitrum/sdk/dist/lib/message/L1ToL2Messa
 import { JsonRpcProvider } from "@ethersproject/providers";
 // CHRIS: TODO: move typechain types to the right place?
 
+// CHRIS: TODO: add tests for the token registration and bridging
+// CHRIS: TODO: with the reverse and the normal gateways
+
 const wait = async (ms: number) => new Promise((res) => setTimeout(res, ms));
 
 describe("Governor", function () {

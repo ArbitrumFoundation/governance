@@ -13,9 +13,9 @@ contract L2GovernanceFactoryTest is Test {
     address[] addressArrayStub = [address(777), address(888)];
     address owner = address(2323);
     uint256 l2MinTimelockDelay = 42;
-    address l1Token = address(1);
+    address l1Token = address(137);
     uint256 l2TokenInitialSupply = 43;
-    address l2TokenOwner = address(2);
+    address l2TokenOwner = address(238);
     address[] l2UpgradeExecutors;
     uint256 votingPeriod = 44;
     uint256 votingDelay = 45;

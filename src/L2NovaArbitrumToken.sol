@@ -17,7 +17,7 @@ contract NovaArbitrumToken is ERC20PermitUpgradeable, TransferAndCallToken, IArb
         _disableInitializers();
     }
 
-    function initialize(address _l1Address, address _l2Gateway) public {
+    function initialize(address _l1Address, address _l2Gateway) public initializer {
         require(_l1Address != address(0), "NovaArbitrumToken: zero l1 address");
         require(_l2Gateway != address(0), "NovaArbitrumToken: zero l2 gateway");
 

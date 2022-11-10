@@ -15,9 +15,9 @@ contract ArbitrumVestingWalletFactoryTest is Test {
         vm.warp(timestampNow);
 
         address[] memory beneficiaries = new address[](3);
-        beneficiaries[0] = address(1);
-        beneficiaries[1] = address(2);
-        beneficiaries[2] = address(3);
+        beneficiaries[0] = address(137);
+        beneficiaries[1] = address(237);
+        beneficiaries[2] = address(337);
 
         address[] memory wallets = fac.createWallets(startTimestamp, duration, beneficiaries);
         assertEq(
