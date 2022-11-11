@@ -197,35 +197,20 @@ describe("Governor", function () {
     const l1TokenAddress = "0x0000000000000000000000000000000000000001";
 
     // deploy L2
-    const l2TokenLogic = await new L2ArbitrumToken__factory(
-      l2Deployer
-    ).deploy();
-    const l2TimelockLogic = await new ArbitrumTimelock__factory(
-      l2Deployer
-    ).deploy();
-    const l2GovernanceLogic = await new L2ArbitrumGovernor__factory(
-      l2Deployer
-    ).deploy();
     const l2GovernanceFac = await new L2GovernanceFactory__factory(
-      l2Deployer
-    ).deploy();
-    const l2UpgradeExecutorLogic = await new UpgradeExecutor__factory(
       l2Deployer
     ).deploy();
     const l2GovDeployReceipt = await (
       await l2GovernanceFac.deploy(
         {
           _l2MinTimelockDelay: l2TimeLockDelay,
-          _l1TokenAddress: l1TokenAddress,
-          _l2TokenLogic: l2TokenLogic.address,
+          _coreQuorumThreshold: 5,
+          _l1Token: l1TokenAddress,
+          _treasuryQuorumThreshold: 3,
           _l2TokenInitialSupply: initialSupply,
           _l2TokenOwner: l2SignerAddr,
-          _l2TimeLockLogic: l2TimelockLogic.address,
-          _l2GovernorLogic: l2GovernanceLogic.address,
           _l2UpgradeExecutors: [await l2Deployer.getAddress()],
-          _l2UpgradeExecutorLogic: l2UpgradeExecutorLogic.address,
           _proposalThreshold: 100,
-          _quorumThreshold: 3,
           _votingDelay: 10,
           _votingPeriod: 10,
           _minPeriodAfterQuorum: 1
@@ -248,7 +233,7 @@ describe("Governor", function () {
       await l1GovernanceFac.deploy(
         l1TimeLockDelay,
         l2Network.ethBridge.inbox,
-        l2DeployResult.timelock
+        l2DeployResult.coreTimelock
       )
     ).wait();
     const l1DeployResult = l1GovDeployReceipt.events?.filter(
@@ -283,11 +268,11 @@ describe("Governor", function () {
     );
 
     const l2TimelockContract = ArbitrumTimelock__factory.connect(
-      l2DeployResult.timelock,
+      l2DeployResult.coreTimelock,
       l2Deployer.provider!
     );
     const l2GovernorContract = L2ArbitrumGovernor__factory.connect(
-      l2DeployResult.governor,
+      l2DeployResult.coreGoverner,
       l2Deployer.provider!
     );
     const l2ProxyAdmin = ProxyAdmin__factory.connect(
