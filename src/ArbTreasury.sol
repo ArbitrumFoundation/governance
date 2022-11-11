@@ -36,24 +36,24 @@ contract ArbTreasury is Initializable {
     }
 
     /// @notice treasuryGov can transfer arbitrary token from escrow
-    function transferToken(address token, address to, uint256 amount)
+    function transferToken(address _token, address _to, uint256 _amount)
         public
         onlyFromTreasuryGov
         returns (bool)
     {
-        bool success = IERC20(token).transfer(to, amount);
+        bool success = IERC20(_token).transfer(_to, _amount);
         require(success, "ArbTreasury: transfer failed");
         return success;
     }
 
     /// @notice treasuryGov can transfer Arb-Token from escrow (convenience method)
-    function transferArbToken(address to, uint256 amount) public returns (bool) {
-        return transferToken(arbToken, to, amount);
+    function transferArbToken(address _to, uint256 _amount) public returns (bool) {
+        return transferToken(arbToken, _to, _amount);
     }
 
     /// @notice treasuryGov can transfer ETH from escrow
-    function sendETH(address payable _to) public payable onlyFromTreasuryGov {
-        (bool sent,) = _to.call{value: msg.value}("");
+    function sendETH(address payable _to, uint256 _amount) public payable onlyFromTreasuryGov {
+        (bool sent,) = _to.call{value: _amount}("");
         require(sent, "ArbTreasury: Send failed");
     }
 }

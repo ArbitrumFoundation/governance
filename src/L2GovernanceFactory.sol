@@ -123,8 +123,7 @@ contract L2GovernanceFactory is Ownable {
         DeployedContracts memory dc;
 
         require(l2Executor == address(0), "L2GovernanceFactory: l2Executor already deployed");
-        // DG TODO:  does this make sense?
-        dc.proxyAdmin = ProxyAdmin(proxyAdminLogic);
+        dc.proxyAdmin = ProxyAdmin(proxyAdminLogic); // DG TODO:  does this make sense?
         dc.token = deployToken(dc.proxyAdmin, l2TokenLogic);
         dc.token.initialize(params._l1Token, params._l2TokenInitialSupply, params._l2TokenOwner);
 
@@ -186,6 +185,7 @@ contract L2GovernanceFactory is Ownable {
 
     function deployStep3(address[] memory _l2UpgradeExecutors) public onlyOwner {
         require(l2Executor != address(0), "L2GovernanceFactory: l2Executor not yet deployed");
+        // initializer reverts if deployStep3 called twice
         UpgradeExecutor(l2Executor).initialize(l2Executor, _l2UpgradeExecutors);
     }
 
