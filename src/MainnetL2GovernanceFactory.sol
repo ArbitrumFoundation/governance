@@ -5,11 +5,8 @@ contract MainnetL2GovernanceFactory is L2GovernanceFactory {
         public
         override (L2GovernanceFactory)
         returns (
-            L2ArbitrumToken token,
-            L2ArbitrumGovernor coreGov,
-            L2ArbitrumGovernor treasuryGov,
-            ProxyAdmin proxyAdmin,
-            UpgradeExecutor executor
+            DeployedContracts memory deployedCoreContracts,
+            DeployedTreasuryContracts memory deployedTreasuryContracts
         )
     {
         revert("MainnetL2GovernanceFactory: can only use deployStep1Mainnet");
@@ -18,11 +15,8 @@ contract MainnetL2GovernanceFactory is L2GovernanceFactory {
     function deployStep1Mainnet()
         public
         returns (
-            L2ArbitrumToken token,
-            L2ArbitrumGovernor coreGov,
-            L2ArbitrumGovernor treasuryGov,
-            ProxyAdmin proxyAdmin,
-            UpgradeExecutor executor
+            DeployedContracts memory deployedCoreContracts,
+            DeployedTreasuryContracts memory deployedTreasuryContracts
         )
     {
         // TODO: update w/ actual mainnet values

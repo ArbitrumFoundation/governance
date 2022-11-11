@@ -59,13 +59,27 @@ struct DeployTreasuryParams {
     uint64 _minPeriodAfterQuorum;
 }
 
+struct DeployedContracts {
+    ProxyAdmin proxyAdmin;
+    L2ArbitrumGovernor coreGov;
+    ArbitrumTimelock coreTimelock;
+    L2ArbitrumToken token;
+    UpgradeExecutor executor;
+}
+
+struct DeployedTreasuryContracts {
+    L2ArbitrumGovernor treasuryGov;
+    ArbitrumTimelock treasuryTimelock;
+    ArbTreasury arbTreasury;
+}
+
 contract L2GovernanceFactory is Ownable {
     event Deployed(
         L2ArbitrumToken token,
         ArbitrumTimelock coreTimelock,
         L2ArbitrumGovernor coreGoverner,
         L2ArbitrumGovernor treasuryGoverner,
-        ArbitrumTimelock treasuryTimelock,
+        ArbTreasury treasuryTimelock,
         ProxyAdmin proxyAdmin,
         UpgradeExecutor executor
     );
@@ -102,34 +116,33 @@ contract L2GovernanceFactory is Ownable {
         virtual
         onlyOwner
         returns (
-            L2ArbitrumToken token,
-            L2ArbitrumGovernor coreGov,
-            L2ArbitrumGovernor treasuryGov,
-            ProxyAdmin proxyAdmin,
-            UpgradeExecutor executor
+            DeployedContracts memory deployedCoreContracts,
+            DeployedTreasuryContracts memory deployedTreasuryContracts
         )
     {
+        DeployedContracts memory dc;
+
         require(l2Executor == address(0), "L2GovernanceFactory: l2Executor already deployed");
         // DG TODO:  does this make sense?
-        proxyAdmin = ProxyAdmin(proxyAdminLogic);
-        token = deployToken(proxyAdmin, l2TokenLogic);
-        token.initialize(params._l1Token, params._l2TokenInitialSupply, params._l2TokenOwner);
+        dc.proxyAdmin = ProxyAdmin(proxyAdminLogic);
+        dc.token = deployToken(dc.proxyAdmin, l2TokenLogic);
+        dc.token.initialize(params._l1Token, params._l2TokenInitialSupply, params._l2TokenOwner);
 
-        ArbitrumTimelock coreTimelock = deployTimelock(proxyAdmin, l2CoreTimelockLogic);
+        dc.coreTimelock = deployTimelock(dc.proxyAdmin, l2CoreTimelockLogic);
         // CHRIS: TODO: can we remove this?
         {
             address[] memory proposers;
             address[] memory executors;
-            coreTimelock.initialize(params._l2MinTimelockDelay, proposers, executors);
+            dc.coreTimelock.initialize(params._l2MinTimelockDelay, proposers, executors);
         }
-        executor = deployUpgradeExecutor(proxyAdmin, l2UpgradeExecutorLogic);
-        l2Executor = address(executor);
-        executor.preInit(address(this));
-        coreGov = deployGovernor(proxyAdmin, l2CoreGovernorLogic);
-        coreGov.initialize({
-            _token: token,
-            _timelock: coreTimelock,
-            _owner: address(executor),
+        dc.executor = deployUpgradeExecutor(dc.proxyAdmin, l2UpgradeExecutorLogic);
+        l2Executor = address(dc.executor);
+        dc.executor.preInit(address(this));
+        dc.coreGov = deployGovernor(dc.proxyAdmin, l2CoreGovernorLogic);
+        dc.coreGov.initialize({
+            _token: dc.token,
+            _timelock: dc.coreTimelock,
+            _owner: address(dc.executor),
             _votingDelay: params._votingDelay,
             _votingPeriod: params._votingPeriod,
             _quorumNumerator: params._coreQuorumThreshold,
@@ -139,19 +152,18 @@ contract L2GovernanceFactory is Ownable {
 
         // the timelock itself and deployer are admins
         // CHRIS: TODO: set the same for the l1 contract?
-        coreTimelock.grantRole(coreTimelock.PROPOSER_ROLE(), address(coreGov));
-        coreTimelock.grantRole(coreTimelock.EXECUTOR_ROLE(), address(0));
-        coreTimelock.revokeRole(coreTimelock.TIMELOCK_ADMIN_ROLE(), address(coreTimelock));
-        coreTimelock.revokeRole(coreTimelock.TIMELOCK_ADMIN_ROLE(), address(this));
+        dc.coreTimelock.grantRole(dc.coreTimelock.PROPOSER_ROLE(), address(dc.coreGov));
+        dc.coreTimelock.grantRole(dc.coreTimelock.EXECUTOR_ROLE(), address(0));
+        dc.coreTimelock.revokeRole(dc.coreTimelock.TIMELOCK_ADMIN_ROLE(), address(dc.coreTimelock));
+        dc.coreTimelock.revokeRole(dc.coreTimelock.TIMELOCK_ADMIN_ROLE(), address(this));
 
-        (L2ArbitrumGovernor treasuryGov, ArbitrumTimelock treasuryTimelock) =
-        deployTreasuryContracts(
+        DeployedTreasuryContracts memory dtc = deployTreasuryContracts(
             DeployTreasuryParams({
-                _proxyAdmin: proxyAdmin,
-                _token: token,
-                _coreGov: payable(address(coreGov)),
+                _proxyAdmin: dc.proxyAdmin,
+                _token: dc.token,
+                _coreGov: payable(address(dc.coreGov)),
                 _l2TreasuryGovernorLogic: l2TreasuryGovernorLogic,
-                _executor: address(executor),
+                _executor: address(dc.executor),
                 _votingPeriod: params._votingPeriod,
                 _votingDelay: params._votingDelay,
                 _treasuryQuorumThreshold: params._treasuryQuorumThreshold,
@@ -160,10 +172,16 @@ contract L2GovernanceFactory is Ownable {
             })
         );
         emit Deployed(
-            token, coreTimelock, coreGov, treasuryGov, treasuryTimelock, proxyAdmin, executor
+            dc.token,
+            dc.coreTimelock,
+            dc.coreGov,
+            dtc.treasuryGov,
+            dtc.arbTreasury,
+            dc.proxyAdmin,
+            dc.executor
             );
         // DG TODO: tests only pass with this explicit return, why
-        return (token, coreGov, treasuryGov, proxyAdmin, executor);
+        return (dc, dtc);
     }
 
     function deployStep3(address[] memory _l2UpgradeExecutors) public onlyOwner {
@@ -173,16 +191,17 @@ contract L2GovernanceFactory is Ownable {
 
     function deployTreasuryContracts(DeployTreasuryParams memory params)
         internal
-        returns (L2ArbitrumGovernor treasuryGov, ArbitrumTimelock treasuryTimelock)
+        returns (DeployedTreasuryContracts memory dtc)
     {
-        treasuryTimelock = deployTimelock(params._proxyAdmin, l2TreasuryTimelockLogic);
+        ArbitrumTimelock treasuryTimelock =
+            deployTimelock(params._proxyAdmin, l2TreasuryTimelockLogic);
         {
             address[] memory proposers;
             address[] memory executors;
             // Gov contrac requires a timelock, so we give it one with 0 delay
             treasuryTimelock.initialize(0, proposers, executors);
         }
-        treasuryGov = deployGovernor(params._proxyAdmin, l2TreasuryGovernorLogic);
+        L2ArbitrumGovernor treasuryGov = deployGovernor(params._proxyAdmin, l2TreasuryGovernorLogic);
         treasuryGov.initialize({
             _token: params._token,
             _timelock: treasuryTimelock,
@@ -205,6 +224,11 @@ contract L2GovernanceFactory is Ownable {
 
         ArbTreasury arbTreasury = deployTreasury(params._proxyAdmin, l2TreasuryLogic);
         arbTreasury.initialize(payable(address(treasuryGov)));
+        return DeployedTreasuryContracts({
+            arbTreasury: arbTreasury,
+            treasuryTimelock: treasuryTimelock,
+            treasuryGov: treasuryGov
+        });
     }
 
     function deployUpgradeExecutor(ProxyAdmin _proxyAdmin, address _upgradeExecutorLogic)
