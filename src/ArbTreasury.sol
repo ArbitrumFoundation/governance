@@ -19,7 +19,7 @@ contract ArbTreasury is Initializable {
 
     /// @notice Arbitrum governance treasury. Exludes its votes from quorum count by delegating exclude address upon creation.
     function initialize(address payable _treasuryGovAddress) public initializer {
-        require(_treasuryGovAddress != address(0), "NULL_TREASURYGOV");
+        require(_treasuryGovAddress != address(0), "ArbTreasury: zero treasury gov address");
         L2ArbitrumGovernor _treasuryGov = L2ArbitrumGovernor(_treasuryGovAddress);
         IVotesUpgradeable _arbToken = IVotesUpgradeable(_treasuryGov.token());
         _arbToken.delegate(_treasuryGov.EXCLUDE_ADDRESS());
@@ -29,7 +29,7 @@ contract ArbTreasury is Initializable {
     }
 
     modifier onlyFromTreasuryGov() {
-        require(msg.sender == treasuryGov, "NOT_FROM_TREASURYGOV");
+        require(msg.sender == treasuryGov, "ArbTreasury: not from treasury gov");
         _;
     }
 
@@ -40,7 +40,7 @@ contract ArbTreasury is Initializable {
         returns (bool)
     {
         bool success = IERC20(token).transfer(to, amount);
-        require(success, "TRANSFER_FAILED");
+        require(success, "ArbTreasury: transfer failed");
         return success;
     }
 
@@ -52,6 +52,6 @@ contract ArbTreasury is Initializable {
     /// @notice treasuryGov can transfer ETH from escrow
     function sendETH(address payable _to) public payable onlyFromTreasuryGov {
         (bool sent,) = _to.call{value: msg.value}("");
-        require(sent, "SEND_FAULED");
+        require(sent, "ArbTreasury: Send failed");
     }
 }

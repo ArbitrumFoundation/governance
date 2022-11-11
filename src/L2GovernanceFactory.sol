@@ -109,7 +109,7 @@ contract L2GovernanceFactory is Ownable {
             UpgradeExecutor executor
         )
     {
-        require(l2Executor == address(0), "ALREADY_DEPLOYED");
+        require(l2Executor == address(0), "L2GovernanceFactory: l2Executor already deployed");
         // DG TODO:  does this make sense?
         proxyAdmin = ProxyAdmin(proxyAdminLogic);
         token = deployToken(proxyAdmin, l2TokenLogic);
@@ -167,7 +167,7 @@ contract L2GovernanceFactory is Ownable {
     }
 
     function deployStep3(address[] memory _l2UpgradeExecutors) public onlyOwner {
-        require(l2Executor != address(0), "NOT_YET_DEPLAYED");
+        require(l2Executor != address(0), "L2GovernanceFactory: l2Executor not yet deployed");
         UpgradeExecutor(l2Executor).initialize(l2Executor, _l2UpgradeExecutors);
     }
 

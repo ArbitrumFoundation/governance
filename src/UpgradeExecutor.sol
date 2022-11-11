@@ -19,7 +19,7 @@ contract UpgradeExecutor is Initializable, AccessControlUpgradeable {
     }
 
     function preInit(address _initializeCaller) public {
-        require(initializeCaller == address(0), "INITIALIZER_SET");
+        require(initializeCaller == address(0), "UpgradeExecutor: initializeCaller already set");
         initializeCaller = _initializeCaller;
     }
 
@@ -28,7 +28,7 @@ contract UpgradeExecutor is Initializable, AccessControlUpgradeable {
     /// @param executors Can call the execute function - EXECUTOR_ROLE
     function initialize(address admin, address[] memory executors) public initializer {
         if (initializeCaller != address(0)) {
-            require(msg.sender == initializeCaller, "NOT_INITIALIZE_CALLER");
+            require(msg.sender == initializeCaller, "UpgradeExecutor: not initializeCaller");
         }
         require(admin != address(0), "UpgradeExecutor: zero admin");
 

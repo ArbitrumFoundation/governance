@@ -12,7 +12,7 @@ contract MainnetL2GovernanceFactory is L2GovernanceFactory {
             UpgradeExecutor executor
         )
     {
-        revert("ONLY_DEPLOYMAINNET");
+        revert("MainnetL2GovernanceFactory: can only use deployStep1Mainnet");
     }
 
     function deployStep1Mainnet()

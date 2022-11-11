@@ -49,7 +49,7 @@ contract MainnetL2GovernanceFactoryTest is Test {
         });
 
         MainnetL2GovernanceFactory l2GovernanceFactory = new MainnetL2GovernanceFactory();
-        vm.expectRevert("ONLY_DEPLOYMAINNET");
+        vm.expectRevert("MainnetL2GovernanceFactory: can only use deployStep1Mainnet");
         l2GovernanceFactory.deployStep1(deployParams);
 
         vm.startPrank(someRando);
