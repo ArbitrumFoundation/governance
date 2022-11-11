@@ -46,13 +46,8 @@ contract L2GovernanceFactoryTest is Test {
     {
         L2GovernanceFactory l2GovernanceFactory = new L2GovernanceFactory();
 
-        (
-            L2ArbitrumToken token,
-            L2ArbitrumGovernor coreGov,
-            L2ArbitrumGovernor treasuryGov,
-            ProxyAdmin proxyAdmin,
-            UpgradeExecutor executor
-        ) = l2GovernanceFactory.deployStep1(
+        (DeployedContracts memory dc, DeployedTreasuryContracts memory dtc) = l2GovernanceFactory
+            .deployStep1(
             DeployCoreParams({
                 _l2MinTimelockDelay: l2MinTimelockDelay,
                 _l1Token: l1Token,
@@ -67,11 +62,16 @@ contract L2GovernanceFactoryTest is Test {
             })
         );
         l2GovernanceFactory.deployStep3(l2UpgradeExecutors);
-        ArbitrumTimelock coreTimelock = ArbitrumTimelock(payable(coreGov.timelock()));
 
-        ArbitrumTimelock treasuryTimelock = ArbitrumTimelock(payable(treasuryGov.timelock()));
-
-        return (token, coreGov, coreTimelock, treasuryGov, treasuryTimelock, proxyAdmin, executor);
+        return (
+            dc.token,
+            dc.coreGov,
+            dc.coreTimelock,
+            dtc.treasuryGov,
+            dtc.treasuryTimelock,
+            dc.proxyAdmin,
+            dc.executor
+        );
     }
 
     function testDeplyPermisson()
@@ -90,13 +90,7 @@ contract L2GovernanceFactoryTest is Test {
         L2GovernanceFactory l2GovernanceFactory = new L2GovernanceFactory();
         vm.prank(someRando);
         vm.expectRevert("Ownable: caller is not the owner");
-        (
-            L2ArbitrumToken token,
-            L2ArbitrumGovernor coreGov,
-            L2ArbitrumGovernor treasuryGov,
-            ProxyAdmin proxyAdmin,
-            UpgradeExecutor executor
-        ) = l2GovernanceFactory.deployStep1(
+        l2GovernanceFactory.deployStep1(
             DeployCoreParams({
                 _l2MinTimelockDelay: l2MinTimelockDelay,
                 _l1Token: l1Token,
