@@ -79,17 +79,6 @@ contract L1ArbitrumToken is
         _disableInitializers();
     }
 
-    /// @dev shouldRegisterGateway is set to true when in `registerTokenOnL2`
-    function isArbitrumEnabled() external view override returns (uint8) {
-        require(shouldRegisterGateway, "L1ArbitrumToken: not expecting gateway registration");
-        return uint8(MAGIC_ARB_ONE);
-    }
-
-    modifier onlyArbOneGateway() {
-        require(msg.sender == arbOneGateway, "L1ArbitrumToken: only l1 arb one gateway");
-        _;
-    }
-
     function initialize(
         address _arbOneRouter,
         address _arbOneGateway,
@@ -108,6 +97,17 @@ contract L1ArbitrumToken is
         arbOneRouter = _arbOneRouter;
         novaGateway = _novaGateway;
         novaRouter = _novaRouter;
+    }
+
+    /// @dev shouldRegisterGateway is set to true when in `registerTokenOnL2`
+    function isArbitrumEnabled() external view override returns (uint8) {
+        require(shouldRegisterGateway, "L1ArbitrumToken: not expecting gateway registration");
+        return uint8(MAGIC_ARB_ONE);
+    }
+
+    modifier onlyArbOneGateway() {
+        require(msg.sender == arbOneGateway, "L1ArbitrumToken: only l1 arb one gateway");
+        _;
     }
 
     /// @notice Allow the Arb One bridge to mint tokens
