@@ -17,6 +17,8 @@ contract ArbTreasury is Initializable {
         _disableInitializers();
     }
 
+    receive() external payable {}
+
     /// @notice Arbitrum governance treasury. Exludes its votes from quorum count by delegating exclude address upon creation.
     function initialize(address payable _treasuryGovAddress) public initializer {
         require(_treasuryGovAddress != address(0), "ArbTreasury: zero treasury gov address");
