@@ -13,6 +13,9 @@ contract ArbTreasury is Initializable {
     address public arbToken;
     address public treasuryGov;
 
+    event EthSent(address indexed recipient, uint256 amount);
+    event TokenSent(address indexed token, address indexed recipient, uint256 amount);
+
     constructor() {
         _disableInitializers();
     }
@@ -43,6 +46,7 @@ contract ArbTreasury is Initializable {
     {
         bool success = IERC20(_token).transfer(_to, _amount);
         require(success, "ArbTreasury: transfer failed");
+        emit TokenSent(_token, _to, _amount);
         return success;
     }
 
@@ -52,8 +56,15 @@ contract ArbTreasury is Initializable {
     }
 
     /// @notice treasuryGov can transfer ETH from escrow
-    function sendETH(address payable _to, uint256 _amount) public payable onlyFromTreasuryGov {
+    function sendETH(address payable _to, uint256 _amount)
+        public
+        payable
+        onlyFromTreasuryGov
+        returns (bool)
+    {
         (bool sent,) = _to.call{value: _amount}("");
         require(sent, "ArbTreasury: Send failed");
+        emit EthSent(_to, _amount);
+        return sent;
     }
 }
