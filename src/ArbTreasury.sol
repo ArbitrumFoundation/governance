@@ -14,7 +14,7 @@ contract ArbTreasury is Initializable {
     address public treasuryGov;
 
     event EthSent(address indexed recipient, uint256 amount);
-    event TokenSent(address indexed token, address indexed recipient, uint256 amount);
+    event TokensSent(address indexed token, address indexed recipient, uint256 amount);
 
     constructor() {
         _disableInitializers();
@@ -46,7 +46,7 @@ contract ArbTreasury is Initializable {
     {
         bool success = IERC20(_token).transfer(_to, _amount);
         require(success, "ArbTreasury: transfer failed");
-        emit TokenSent(_token, _to, _amount);
+        emit TokensSent(_token, _to, _amount);
         return success;
     }
 
