@@ -54,9 +54,8 @@ interface IGatewayRouter {
     ) external payable returns (uint256);
 }
 
-
 /// @title L1 representation of the Arbitrum token
-/// @notice Permit token that is registered with an Arb One and Nova counterpart   
+/// @notice Permit token that is registered with an Arb One and Nova counterpart
 contract L1ArbitrumToken is
     INovaArbOneReverseToken,
     Initializable,
