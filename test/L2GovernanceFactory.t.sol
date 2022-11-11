@@ -261,16 +261,15 @@ contract L2GovernanceFactoryTest is Test {
 
         assertEq(token.balanceOf(address(arbTreasury)), 900, "tokens not transfered");
 
-        vm.deal(address(treasuryGov), 1000);
+        vm.deal(address(arbTreasury), 1000);
         vm.prank(someRando);
         vm.expectRevert("ArbTreasury: not from treasury gov");
         arbTreasury.sendETH(payable(someRando), 100);
 
-        assertEq(address(treasuryGov).balance, 1000, "arbtreasury not funded");
+        assertEq(address(arbTreasury).balance, 1000, "arbtreasury not funded");
         vm.prank(address(treasuryGov));
 
-        // TODO failing:
         arbTreasury.sendETH(payable(someRando), 100);
-        assertEq(address(treasuryGov).balance, 900, "eth not sent");
+        assertEq(address(arbTreasury).balance, 900, "eth not sent");
     }
 }
