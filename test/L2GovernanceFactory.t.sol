@@ -271,6 +271,6 @@ contract L2GovernanceFactoryTest is Test {
 
         // TODO failing:
         arbTreasury.sendETH(payable(someRando), 100);
-        assertEq(address(treasuryGov).balance, 999, "eth not sent");
+        assertEq(address(treasuryGov).balance, 900, "eth not sent");
     }
 }
