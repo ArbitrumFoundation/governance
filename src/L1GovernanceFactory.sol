@@ -16,7 +16,9 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 contract L1GovernanceFactory is Ownable {
     event Deployed(L1ArbitrumTimelock timelock, ProxyAdmin proxyAdmin, UpgradeExecutor executor);
 
+    bool private done = false;
     // CHRIS: TODO: rename all the args to timelock where applicable? or remove them all on the l2 variant
+
     function deployStep2(
         uint256 _minTimelockDelay,
         address inbox,
@@ -27,6 +29,8 @@ contract L1GovernanceFactory is Ownable {
         onlyOwner
         returns (L1ArbitrumTimelock timelock, ProxyAdmin proxyAdmin, UpgradeExecutor executor)
     {
+        require(!done, "L1GovernanceFactory: already executed");
+        done = true;
         proxyAdmin = new ProxyAdmin();
 
         timelock = deployTimelock(proxyAdmin);
@@ -37,7 +41,7 @@ contract L1GovernanceFactory is Ownable {
         // CHRIS: TODO: we need to grant a role for the receiver
 
         // CHRIS: TODO: review access control on each of the contracts, and defo the timelocks
-        timelock.grantRole(timelock.EXECUTOR_ROLE(), address(0));
+        timelock.grantRole(timelock.EXECUTOR_ROLE(), address(0)); // DG TODO: why?
 
         // the timelock itself and deployer are admins
         timelock.revokeRole(timelock.TIMELOCK_ADMIN_ROLE(), address(this));
