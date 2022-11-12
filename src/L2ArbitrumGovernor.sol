@@ -123,8 +123,8 @@ contract L2ArbitrumGovernor is
 
     /// @notice Get "circulating" votes supply; i.e., total minus excluded vote exclude address.
     function getPastCirculatingSupply(uint256 blockNumber) public view virtual returns (uint256) {
-        return
-            token.getPastTotalSupply(blockNumber) - token.getPastVotes(EXCLUDE_ADDRESS, blockNumber);
+        return token.getPastTotalSupply(blockNumber)
+            - token.getPastVotes(EXCLUDE_ADDRESS, blockNumber);
     }
 
     /// @notice Calculates the quorum size, excludes token delegated to the exclude address
@@ -169,8 +169,9 @@ contract L2ArbitrumGovernor is
         override (GovernorUpgradeable, GovernorCompatibilityBravoUpgradeable, IGovernorUpgradeable)
         returns (uint256)
     {
-        return
-            GovernorCompatibilityBravoUpgradeable.propose(targets, values, calldatas, description);
+        return GovernorCompatibilityBravoUpgradeable.propose(
+            targets, values, calldatas, description
+        );
     }
 
     function _castVote(
@@ -220,8 +221,9 @@ contract L2ArbitrumGovernor is
         override (GovernorUpgradeable, GovernorTimelockControlUpgradeable)
         returns (uint256)
     {
-        return
-            GovernorTimelockControlUpgradeable._cancel(targets, values, calldatas, descriptionHash);
+        return GovernorTimelockControlUpgradeable._cancel(
+            targets, values, calldatas, descriptionHash
+        );
     }
 
     function supportsInterface(bytes4 interfaceId)

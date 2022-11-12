@@ -12,8 +12,8 @@ import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.so
 
 contract L2GovernanceFactoryTest is Test {
     // token
-    address l2TokenOwner = address(2);
-    address l1Token = address(1);
+    address l2TokenOwner = address(123);
+    address l1Token = address(139);
     uint256 l2TokenInitialSupply = 1e10;
 
     // timelock
