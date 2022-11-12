@@ -47,7 +47,7 @@ contract L1ArbitrumTimelockTest is Test {
     function testDoesDeploy() external {
         (L1ArbitrumTimelock l1Timelock, InboxMock inbox) = deployAndInitInbox();
 
-        assertEq(l1Timelock.inbox(), address(inbox), "inbox");
+        assertEq(l1Timelock.governanceChainInbox(), address(inbox), "inbox");
         assertEq(l1Timelock.l2Timelock(), l2Timelock, "timelock");
         assertEq(l1Timelock.hasRole(l1Timelock.PROPOSER_ROLE(), bridge), true, "bridge proposer");
         assertEq(l1Timelock.hasRole(l1Timelock.EXECUTOR_ROLE(), address(0)), true, "any executor");
@@ -177,7 +177,7 @@ contract L1ArbitrumTimelockTest is Test {
     function testExecuteInbox() external {
         Setter setter = new Setter();
         L1ArbitrumTimelock l1Timelock = deployAndInit();
-        InboxMock inbox = InboxMock(l1Timelock.inbox());
+        InboxMock inbox = InboxMock(l1Timelock.governanceChainInbox());
         RetryableData memory rData = RetryableData({
             inbox: address(inbox),
             l2Target: address(235),
@@ -219,7 +219,7 @@ contract L1ArbitrumTimelockTest is Test {
     function testExecuteInboxNotEnoughVal() external {
         Setter setter = new Setter();
         L1ArbitrumTimelock l1Timelock = deployAndInit();
-        InboxMock inbox = InboxMock(l1Timelock.inbox());
+        InboxMock inbox = InboxMock(l1Timelock.governanceChainInbox());
         RetryableData memory rData = RetryableData({
             inbox: address(inbox),
             l2Target: address(235),
@@ -264,7 +264,7 @@ contract L1ArbitrumTimelockTest is Test {
     function testExecuteInboxInvalidData() external {
         Setter setter = new Setter();
         L1ArbitrumTimelock l1Timelock = deployAndInit();
-        InboxMock inbox = InboxMock(l1Timelock.inbox());
+        InboxMock inbox = InboxMock(l1Timelock.governanceChainInbox());
         RetryableData memory rData = RetryableData({
             inbox: address(inbox),
             l2Target: address(235),

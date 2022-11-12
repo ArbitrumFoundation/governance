@@ -31,7 +31,7 @@ contract L1GovernanceFactoryTest is Test {
         l1GovernanceFactory.deployStep2(minDelay, address(inbox), l2Timelock, l1SecurityCouncil);
 
         assertGt(address(timelock).code.length, 0, "timelock deployed");
-        assertEq(timelock.inbox(), address(inbox), "timelock inbox set");
+        assertEq(timelock.governanceChainInbox(), address(inbox), "timelock inbox set");
         assertEq(timelock.l2Timelock(), l2Timelock, "timelock l2Timelock set");
         assertEq(timelock.getMinDelay(), minDelay, "timelock minDelay set");
         address[] memory proposers;
