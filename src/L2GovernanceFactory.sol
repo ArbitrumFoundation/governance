@@ -5,101 +5,253 @@ import "./L2ArbitrumToken.sol";
 import "./L2ArbitrumGovernor.sol";
 import "./ArbitrumTimelock.sol";
 import "./UpgradeExecutor.sol";
-
+import "./FixedDelegateErc20Wallet.sol";
 import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
 /// @title Factory contract that deploys the L2 components for Arbitrum governance
 
-struct DeployParams {
+/**
+ * @notice Governance Deployment Steps:
+ * 1. Deploy the following (in any order):
+ *     L1:
+ *         - L1GoveranceFactory
+ *         - L1Token
+ *         - Gnosis Safe Multisig Security Council
+ *     L2:
+ *         - L2GovernanceFactory
+ *         - Gnosis Safe Multisig 9 of 12 Security Council
+ *         - Gnosis Safe Multisig 7 of 12 Security Council
+ *
+ *     L1GoveranceFactory and L2GovernanceFactory deployers will be their respective owners, and will carry out the following steps.
+ * 2. Call L2GovernanceFactory.deployStep1
+ *     - Dependencies: L1-Token address, 7 of 12 multisig (as _upgradeProposer)
+ *
+ * 3. Call L1GoveranceFactory.deployStep2
+ *     - Dependencies: L1 security council address, L2 Timelock address (deployed in previous step)
+ *
+ * 4. Call L2GovernanceFactory.deployStep3
+ *     - Dependencies: (Aliased) L1-timelock address (deployed in previous step), L2 security council address (as _l2UpgradeExecutors)
+ */
+struct DeployCoreParams {
     uint256 _l2MinTimelockDelay;
-    address _l1TokenAddress;
-    address _l2TokenLogic;
+    address _l1Token;
     uint256 _l2TokenInitialSupply;
-    address _l2TokenOwner;
-    address _l2TimeLockLogic;
-    address _l2GovernorLogic;
-    address _l2UpgradeExecutorLogic;
-    address[] _l2UpgradeExecutors;
+    address _l2TokenOwner; // DG TODO: Who dis?
     uint256 _votingPeriod;
     uint256 _votingDelay;
-    uint256 _quorumThreshold;
+    uint256 _coreQuorumThreshold;
+    uint256 _treasuryQuorumThreshold;
+    uint256 _proposalThreshold;
+    uint64 _minPeriodAfterQuorum;
+    address _upgradeProposer; // in addition to core gov
+}
+
+struct DeployTreasuryParams {
+    ProxyAdmin _proxyAdmin;
+    L2ArbitrumToken _token;
+    address _l2TreasuryGovernorLogic;
+    address payable _coreGov;
+    address _executor;
+    uint256 _votingPeriod;
+    uint256 _votingDelay;
+    uint256 _treasuryQuorumThreshold;
     uint256 _proposalThreshold;
     uint64 _minPeriodAfterQuorum;
 }
 
-contract L2GovernanceFactory {
+struct DeployedContracts {
+    ProxyAdmin proxyAdmin;
+    L2ArbitrumGovernor coreGov;
+    ArbitrumTimelock coreTimelock;
+    L2ArbitrumToken token;
+    UpgradeExecutor executor;
+}
+
+struct DeployedTreasuryContracts {
+    L2ArbitrumGovernor treasuryGov;
+    ArbitrumTimelock treasuryTimelock;
+    FixedDelegateErc20Wallet arbTreasury;
+}
+
+contract L2GovernanceFactory is Ownable {
     event Deployed(
         L2ArbitrumToken token,
-        ArbitrumTimelock timelock,
-        L2ArbitrumGovernor governor,
+        ArbitrumTimelock coreTimelock,
+        L2ArbitrumGovernor coreGoverner,
+        L2ArbitrumGovernor treasuryGoverner,
+        FixedDelegateErc20Wallet treasuryTimelock,
         ProxyAdmin proxyAdmin,
         UpgradeExecutor executor
     );
 
-    // CHRIS: TODO: make this whole thing ownable? we want to avoid the missing steps, but that's not an issue right
+    address public l2CoreTimelockLogic;
+    address public l2CoreGovernorLogic;
+    address public l2TreasuryGovernorLogic;
+    address public l2TokenLogic;
+    address public l2UpgradeExecutorLogic;
+    address public proxyAdminLogic;
+    address public l2TreasuryTimelockLogic;
+    address public l2TreasuryLogic;
 
-    function deploy(DeployParams memory params)
-        external
-        returns (
-            L2ArbitrumToken token,
-            L2ArbitrumGovernor gov,
-            ArbitrumTimelock timelock,
-            ProxyAdmin proxyAdmin,
-            UpgradeExecutor executor
-        )
-    {
+    address public l2Executor;
+
+    constructor() {
+        l2CoreTimelockLogic = address(new ArbitrumTimelock());
+        l2CoreGovernorLogic = address(new L2ArbitrumGovernor());
+        l2TreasuryTimelockLogic = address(new ArbitrumTimelock());
+        l2TreasuryLogic = address(new FixedDelegateErc20Wallet());
+        l2TreasuryGovernorLogic = address(new L2ArbitrumGovernor());
+        l2TokenLogic = address(new L2ArbitrumToken());
+        l2UpgradeExecutorLogic = address(new UpgradeExecutor());
         // CHRIS: TODO: we dont want the owner of the proxy admin to be this address!
         // CHRIS: TODO: make sure to transfer it out
-        // CHRIS: TODO: in both this and the L1gov fac
-        proxyAdmin = new ProxyAdmin();
+        // CHRIS: TODO: in both this and the L1gov fac // DG TODO: See below
+        proxyAdminLogic = address(new ProxyAdmin());
+    }
 
-        token = deployToken(proxyAdmin, params._l2TokenLogic);
-        token.initialize(params._l1TokenAddress, params._l2TokenInitialSupply, params._l2TokenOwner);
+    // CHRIS: TODO: make this whole thing ownable? we want to avoid the missing steps, but that's not an issue right
 
-        timelock = deployTimelock(proxyAdmin, params._l2TimeLockLogic);
+    function deployStep1(DeployCoreParams memory params)
+        public
+        virtual
+        onlyOwner
+        returns (
+            DeployedContracts memory deployedCoreContracts,
+            DeployedTreasuryContracts memory deployedTreasuryContracts
+        )
+    {
+        DeployedContracts memory dc;
+
+        require(l2Executor == address(0), "L2GovernanceFactory: l2Executor already deployed");
+        dc.proxyAdmin = ProxyAdmin(proxyAdminLogic); // DG TODO:  does this make sense?
+        dc.token = deployToken(dc.proxyAdmin, l2TokenLogic);
+        dc.token.initialize(params._l1Token, params._l2TokenInitialSupply, params._l2TokenOwner);
+
+        dc.coreTimelock = deployTimelock(dc.proxyAdmin, l2CoreTimelockLogic);
         // CHRIS: TODO: can we remove this?
         {
             address[] memory proposers;
             address[] memory executors;
-            timelock.initialize(params._l2MinTimelockDelay, proposers, executors);
+            dc.coreTimelock.initialize(params._l2MinTimelockDelay, proposers, executors);
         }
-        executor = deployUpgradeExecutor(proxyAdmin, params._l2UpgradeExecutorLogic);
+        dc.executor = deployUpgradeExecutor(dc.proxyAdmin, l2UpgradeExecutorLogic);
+        l2Executor = address(dc.executor);
+        // DG TODO: double check / add to diagram
+        dc.proxyAdmin.transferOwnership(address(dc.executor));
 
-        executor.initialize(address(executor), params._l2UpgradeExecutors);
-        // todo
-        gov = deployGovernor(proxyAdmin, params._l2GovernorLogic);
-        gov.initialize(
-            token,
-            timelock,
-            address(executor),
-            params._votingDelay,
-            params._votingPeriod,
-            params._quorumThreshold,
-            params._proposalThreshold,
-            params._minPeriodAfterQuorum
-        );
+        dc.coreGov = deployGovernor(dc.proxyAdmin, l2CoreGovernorLogic);
+        dc.coreGov.initialize({
+            _token: dc.token,
+            _timelock: dc.coreTimelock,
+            _owner: address(dc.executor),
+            _votingDelay: params._votingDelay,
+            _votingPeriod: params._votingPeriod,
+            _quorumNumerator: params._coreQuorumThreshold,
+            _proposalThreshold: params._proposalThreshold,
+            _minPeriodAfterQuorum: params._minPeriodAfterQuorum
+        });
 
         // the timelock itself and deployer are admins
         // CHRIS: TODO: set the same for the l1 contract?
-        timelock.grantRole(timelock.PROPOSER_ROLE(), address(gov));
-        timelock.grantRole(timelock.EXECUTOR_ROLE(), address(0));
-        timelock.revokeRole(timelock.TIMELOCK_ADMIN_ROLE(), address(timelock));
-        timelock.revokeRole(timelock.TIMELOCK_ADMIN_ROLE(), address(this));
+        dc.coreTimelock.grantRole(dc.coreTimelock.PROPOSER_ROLE(), address(dc.coreGov));
+        dc.coreTimelock.grantRole(dc.coreTimelock.PROPOSER_ROLE(), address(params._upgradeProposer));
+        dc.coreTimelock.grantRole(dc.coreTimelock.EXECUTOR_ROLE(), address(0));
 
-        emit Deployed(token, timelock, gov, proxyAdmin, executor);
+        dc.coreTimelock.grantRole(dc.coreTimelock.CANCELLER_ROLE(), address(dc.coreGov));
+        // we don't give _upgradeProposer the canceller role since it shouldn't
+        // have the affordance to cancel proposals proposed by others
+
+        dc.coreTimelock.revokeRole(dc.coreTimelock.TIMELOCK_ADMIN_ROLE(), address(dc.coreTimelock));
+        dc.coreTimelock.revokeRole(dc.coreTimelock.TIMELOCK_ADMIN_ROLE(), address(this));
+
+        DeployedTreasuryContracts memory dtc = deployTreasuryContracts(
+            DeployTreasuryParams({
+                _proxyAdmin: dc.proxyAdmin,
+                _token: dc.token,
+                _coreGov: payable(address(dc.coreGov)),
+                _l2TreasuryGovernorLogic: l2TreasuryGovernorLogic,
+                _executor: address(dc.executor),
+                _votingPeriod: params._votingPeriod,
+                _votingDelay: params._votingDelay,
+                _treasuryQuorumThreshold: params._treasuryQuorumThreshold,
+                _proposalThreshold: params._proposalThreshold,
+                _minPeriodAfterQuorum: params._minPeriodAfterQuorum
+            })
+        );
+        emit Deployed(
+            dc.token,
+            dc.coreTimelock,
+            dc.coreGov,
+            dtc.treasuryGov,
+            dtc.arbTreasury,
+            dc.proxyAdmin,
+            dc.executor
+            );
+        // DG TODO: tests only pass with this explicit return, why
+        return (dc, dtc);
+    }
+
+    function deployStep3(address[] memory _l2UpgradeExecutors) public onlyOwner {
+        require(l2Executor != address(0), "L2GovernanceFactory: l2Executor not yet deployed");
+        // initializer reverts if deployStep3 called twice
+        UpgradeExecutor(l2Executor).initialize(l2Executor, _l2UpgradeExecutors);
+    }
+
+    function deployTreasuryContracts(DeployTreasuryParams memory params)
+        internal
+        returns (DeployedTreasuryContracts memory dtc)
+    {
+        ArbitrumTimelock treasuryTimelock =
+            deployTimelock(params._proxyAdmin, l2TreasuryTimelockLogic);
+        {
+            address[] memory proposers;
+            address[] memory executors;
+            // Gov contrac requires a timelock, so we give it one with 0 delay
+            treasuryTimelock.initialize(0, proposers, executors);
+        }
+        L2ArbitrumGovernor treasuryGov = deployGovernor(params._proxyAdmin, l2TreasuryGovernorLogic);
+        treasuryGov.initialize({
+            _token: params._token,
+            _timelock: treasuryTimelock,
+            _owner: params._executor, // DG TODO: ...yes?
+            _votingDelay: params._votingDelay, // DG TODO: same as core okay?
+            _votingPeriod: params._votingPeriod, // DG TODO: same as core okay?
+            _quorumNumerator: params._treasuryQuorumThreshold,
+            _proposalThreshold: params._proposalThreshold, // DG TODO: same as core okay?
+            _minPeriodAfterQuorum: params._minPeriodAfterQuorum // DG TODO: same as core okay?
+        });
+
+        // Only treasury can propose, anyone can execute, no admin (revoke defaults)
+        // DG TODO: Sanity check this
+        treasuryTimelock.grantRole(treasuryTimelock.PROPOSER_ROLE(), address(treasuryGov));
+        treasuryTimelock.grantRole(treasuryTimelock.EXECUTOR_ROLE(), address(0));
+        treasuryTimelock.revokeRole(
+            treasuryTimelock.TIMELOCK_ADMIN_ROLE(), address(treasuryTimelock)
+        );
+        treasuryTimelock.revokeRole(treasuryTimelock.TIMELOCK_ADMIN_ROLE(), address(this));
+
+        FixedDelegateErc20Wallet arbTreasury = deployTreasury(params._proxyAdmin, l2TreasuryLogic);
+        address excludeAddress = treasuryGov.EXCLUDE_ADDRESS();
+        arbTreasury.initialize(address(params._token), excludeAddress, address(treasuryGov));
+        return DeployedTreasuryContracts({
+            arbTreasury: arbTreasury,
+            treasuryTimelock: treasuryTimelock,
+            treasuryGov: treasuryGov
+        });
     }
 
     function deployUpgradeExecutor(ProxyAdmin _proxyAdmin, address _upgradeExecutorLogic)
         internal
-        returns (UpgradeExecutor)
+        returns (UpgradeExecutor upgradeExecutor)
     {
         TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
             _upgradeExecutorLogic,
             address(_proxyAdmin),
             bytes("")
         );
-        return UpgradeExecutor(address(proxy));
+        upgradeExecutor = UpgradeExecutor(address(proxy));
     }
 
     function deployToken(ProxyAdmin _proxyAdmin, address _l2TokenLogic)
@@ -124,6 +276,18 @@ contract L2GovernanceFactory {
             bytes("")
         );
         gov = L2ArbitrumGovernor(payable(address(proxy)));
+    }
+
+    function deployTreasury(ProxyAdmin _proxyAdmin, address _l2TreasuryLogic)
+        internal
+        returns (FixedDelegateErc20Wallet arbTreasury)
+    {
+        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
+            _l2TreasuryLogic,
+            address(_proxyAdmin),
+            bytes("")
+        );
+        arbTreasury = FixedDelegateErc20Wallet(payable(address(proxy)));
     }
 
     function deployTimelock(ProxyAdmin _proxyAdmin, address _l2TimelockLogic)

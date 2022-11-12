@@ -10,16 +10,27 @@ import "./UpgradeExecutor.sol";
 import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 import "@arbitrum/nitro-contracts/src/bridge/IInbox.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
 /// @title Factory contract that deploys the L1 components for Arbitrum governance
-contract L1GovernanceFactory {
+contract L1GovernanceFactory is Ownable {
     event Deployed(L1ArbitrumTimelock timelock, ProxyAdmin proxyAdmin, UpgradeExecutor executor);
 
+    bool private done = false;
     // CHRIS: TODO: rename all the args to timelock where applicable? or remove them all on the l2 variant
-    function deploy(uint256 _minTimelockDelay, address inbox, address l2Timelock)
+
+    function deployStep2(
+        uint256 _minTimelockDelay,
+        address inbox,
+        address l2Timelock,
+        address l1SecurityCouncil
+    )
         external
+        onlyOwner
         returns (L1ArbitrumTimelock timelock, ProxyAdmin proxyAdmin, UpgradeExecutor executor)
     {
+        require(!done, "L1GovernanceFactory: already executed");
+        done = true;
         proxyAdmin = new ProxyAdmin();
 
         timelock = deployTimelock(proxyAdmin);
@@ -43,9 +54,13 @@ contract L1GovernanceFactory {
         // CHRIS: TODO: the l1 upgrade executor should be the owner of the l2 upgrade exector?
 
         executor = deployUpgradeExecutor(proxyAdmin);
-        address[] memory upgradeExecutors = new address[](1);
+        address[] memory upgradeExecutors = new address[](2);
         upgradeExecutors[0] = address(timelock);
+        upgradeExecutors[1] = l1SecurityCouncil;
         executor.initialize(address(executor), upgradeExecutors);
+
+        // DG: TODO: double check / add to diagram
+        proxyAdmin.transferOwnership(address(executor));
 
         emit Deployed(timelock, proxyAdmin, executor);
 

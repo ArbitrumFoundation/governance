@@ -12,19 +12,19 @@ import "./util/TestUtil.sol";
 import "forge-std/Test.sol";
 
 contract L2ArbitrumGovernorTest is Test {
-    address l1TokenAddress = address(1);
+    address l1TokenAddress = address(137);
     uint256 initialTokenSupply = 50_000;
-    address tokenOwner = address(2);
+    address tokenOwner = address(238);
     uint256 votingPeriod = 6;
     uint256 votingDelay = 9;
-    address excludeListMember = address(3);
+    address excludeListMember = address(339);
     uint256 quorumNumerator = 5;
     uint256 proposalThreshold = 1;
     uint64 initialVoteExtension = 5;
 
-    address[] stubAddressArray = [address(6)];
-    address someRando = address(7);
-    address executor = address(8);
+    address[] stubAddressArray = [address(640)];
+    address someRando = address(741);
+    address executor = address(842);
 
     function deployAndInit()
         private
