@@ -228,7 +228,7 @@ contract L2GovernanceFactory is Ownable {
         treasuryTimelock.grantRole(treasuryTimelock.EXECUTOR_ROLE(), address(0));
 
         treasuryTimelock.grantRole(treasuryTimelock.TIMELOCK_ADMIN_ROLE(), upExecutor);
-        
+
         treasuryTimelock.revokeRole(
             treasuryTimelock.TIMELOCK_ADMIN_ROLE(), address(treasuryTimelock)
         );
