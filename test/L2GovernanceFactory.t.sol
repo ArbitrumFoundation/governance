@@ -56,7 +56,7 @@ contract L2GovernanceFactoryTest is Test {
             ArbitrumTimelock coreTimelock,
             L2ArbitrumGovernor treasuryGov,
             ArbitrumTimelock treasuryTimelock,
-            ArbTreasury arbTreasury,
+            FixedDelegateErc20Wallet arbTreasury,
             ProxyAdmin proxyAdmin,
             UpgradeExecutor executor
         )
@@ -87,7 +87,7 @@ contract L2GovernanceFactoryTest is Test {
             ArbitrumTimelock coreTimelock,
             L2ArbitrumGovernor treasuryGov,
             ArbitrumTimelock treasuryTimelock,
-            ArbTreasury arbTreasury,
+            FixedDelegateErc20Wallet arbTreasury,
             ProxyAdmin proxyAdmin,
             UpgradeExecutor executor
         )
@@ -136,7 +136,7 @@ contract L2GovernanceFactoryTest is Test {
             ArbitrumTimelock coreTimelock,
             L2ArbitrumGovernor treasuryGov,
             ArbitrumTimelock treasuryTimelock,
-            ArbTreasury arbTreasury,
+            FixedDelegateErc20Wallet arbTreasury,
             ProxyAdmin proxyAdmin,
             UpgradeExecutor executor
         ) = deploy();
@@ -157,7 +157,7 @@ contract L2GovernanceFactoryTest is Test {
             ArbitrumTimelock timelock,
             L2ArbitrumGovernor treasuryGov,
             ArbitrumTimelock treasuryTimelock,
-            ArbTreasury arbTreasury,
+            FixedDelegateErc20Wallet arbTreasury,
             ProxyAdmin proxyAdmin,
             UpgradeExecutor upgradeExecutor
         ) = deploy();
@@ -176,8 +176,9 @@ contract L2GovernanceFactoryTest is Test {
         vm.expectRevert("Initializable: contract is already initialized");
         treasuryTimelock.initialize(1, addressArrayStub, addressArrayStub);
 
+        address excludeAddress = treasuryGov.EXCLUDE_ADDRESS();
         vm.expectRevert("Initializable: contract is already initialized");
-        arbTreasury.initialize(payable(address(treasuryGov)));
+        arbTreasury.initialize(address(token), excludeAddress, address(treasuryGov));
 
         vm.expectRevert("Initializable: contract is already initialized");
         address[] memory addresses = new address[](1);
@@ -192,7 +193,7 @@ contract L2GovernanceFactoryTest is Test {
             ArbitrumTimelock coreTimelock,
             L2ArbitrumGovernor treasuryGov,
             ArbitrumTimelock treasuryTimelock,
-            ArbTreasury arbTreasury,
+            FixedDelegateErc20Wallet arbTreasury,
             ProxyAdmin proxyAdmin,
             UpgradeExecutor upgradeExecutor
         ) = deploy();
@@ -234,46 +235,11 @@ contract L2GovernanceFactoryTest is Test {
                 "l2UpgradeExecutors are executors"
             );
         }
-
-        assertEq(arbTreasury.treasuryGov(), payable(address(treasuryGov)), "arbTreasury gov set");
-        assertEq(arbTreasury.arbToken(), address(token), "arbTreasury token set");
-    }
-
-    function testArbTreasury() public {
-        (
-            L2ArbitrumToken token,
-            L2ArbitrumGovernor gov,
-            ArbitrumTimelock coreTimelock,
-            L2ArbitrumGovernor treasuryGov,
-            ArbitrumTimelock treasuryTimelock,
-            ArbTreasury arbTreasury,
-            ProxyAdmin proxyAdmin,
-            UpgradeExecutor upgradeExecutor
-        ) = deploy();
-        vm.startPrank(l2TokenOwner);
-        vm.warp(block.timestamp + token.MIN_MINT_INTERVAL());
-
-        token.mint(address(arbTreasury), 1000);
-
-        vm.expectRevert("ArbTreasury: not from treasury gov"); //
-        arbTreasury.transferArbToken(someRando, 100);
-        vm.stopPrank();
-
-        vm.prank(address(treasuryGov));
-        arbTreasury.transferArbToken(someRando, 100);
-
-        assertEq(token.balanceOf(address(arbTreasury)), 900, "tokens not transfered");
-
-        vm.deal(address(arbTreasury), 1000);
-        vm.prank(someRando);
-        vm.expectRevert("ArbTreasury: not from treasury gov");
-        arbTreasury.sendETH(payable(someRando), 100);
-
-        assertEq(address(arbTreasury).balance, 1000, "arbtreasury not funded");
-        vm.prank(address(treasuryGov));
-
-        arbTreasury.sendETH(payable(someRando), 100);
-        assertEq(address(arbTreasury).balance, 900, "eth not sent");
+        assertEq(
+            token.delegates(address(arbTreasury)),
+            treasuryGov.EXCLUDE_ADDRESS(),
+            "Exclude address delegation"
+        );
     }
 
     function testProxyAdminOwnership() public {
@@ -283,7 +249,7 @@ contract L2GovernanceFactoryTest is Test {
             ArbitrumTimelock coreTimelock,
             L2ArbitrumGovernor treasuryGov,
             ArbitrumTimelock treasuryTimelock,
-            ArbTreasury arbTreasury,
+            FixedDelegateErc20Wallet arbTreasury,
             ProxyAdmin proxyAdmin,
             UpgradeExecutor executor
         ) = deploy();
@@ -317,7 +283,7 @@ contract L2GovernanceFactoryTest is Test {
             ArbitrumTimelock coreTimelock,
             L2ArbitrumGovernor treasuryGov,
             ArbitrumTimelock treasuryTimelock,
-            ArbTreasury arbTreasury,
+            FixedDelegateErc20Wallet arbTreasury,
             ProxyAdmin proxyAdmin,
             UpgradeExecutor executor
         ) = deploy();

@@ -5,7 +5,7 @@ import "./L2ArbitrumToken.sol";
 import "./L2ArbitrumGovernor.sol";
 import "./ArbitrumTimelock.sol";
 import "./UpgradeExecutor.sol";
-import "./ArbTreasury.sol";
+import "./FixedDelegateErc20Wallet.sol";
 import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -72,7 +72,7 @@ struct DeployedContracts {
 struct DeployedTreasuryContracts {
     L2ArbitrumGovernor treasuryGov;
     ArbitrumTimelock treasuryTimelock;
-    ArbTreasury arbTreasury;
+    FixedDelegateErc20Wallet arbTreasury;
 }
 
 contract L2GovernanceFactory is Ownable {
@@ -81,7 +81,7 @@ contract L2GovernanceFactory is Ownable {
         ArbitrumTimelock coreTimelock,
         L2ArbitrumGovernor coreGoverner,
         L2ArbitrumGovernor treasuryGoverner,
-        ArbTreasury treasuryTimelock,
+        FixedDelegateErc20Wallet treasuryTimelock,
         ProxyAdmin proxyAdmin,
         UpgradeExecutor executor
     );
@@ -101,7 +101,7 @@ contract L2GovernanceFactory is Ownable {
         l2CoreTimelockLogic = address(new ArbitrumTimelock());
         l2CoreGovernorLogic = address(new L2ArbitrumGovernor());
         l2TreasuryTimelockLogic = address(new ArbitrumTimelock());
-        l2TreasuryLogic = address(new ArbTreasury());
+        l2TreasuryLogic = address(new FixedDelegateErc20Wallet());
         l2TreasuryGovernorLogic = address(new L2ArbitrumGovernor());
         l2TokenLogic = address(new L2ArbitrumToken());
         l2UpgradeExecutorLogic = address(new UpgradeExecutor());
@@ -232,8 +232,9 @@ contract L2GovernanceFactory is Ownable {
         );
         treasuryTimelock.revokeRole(treasuryTimelock.TIMELOCK_ADMIN_ROLE(), address(this));
 
-        ArbTreasury arbTreasury = deployTreasury(params._proxyAdmin, l2TreasuryLogic);
-        arbTreasury.initialize(payable(address(treasuryGov)));
+        FixedDelegateErc20Wallet arbTreasury = deployTreasury(params._proxyAdmin, l2TreasuryLogic);
+        address excludeAddress = treasuryGov.EXCLUDE_ADDRESS();
+        arbTreasury.initialize(address(params._token), excludeAddress, address(treasuryGov));
         return DeployedTreasuryContracts({
             arbTreasury: arbTreasury,
             treasuryTimelock: treasuryTimelock,
@@ -279,14 +280,14 @@ contract L2GovernanceFactory is Ownable {
 
     function deployTreasury(ProxyAdmin _proxyAdmin, address _l2TreasuryLogic)
         internal
-        returns (ArbTreasury arbTreasury)
+        returns (FixedDelegateErc20Wallet arbTreasury)
     {
         TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
             _l2TreasuryLogic,
             address(_proxyAdmin),
             bytes("")
         );
-        arbTreasury = ArbTreasury(payable(address(proxy)));
+        arbTreasury = FixedDelegateErc20Wallet(payable(address(proxy)));
     }
 
     function deployTimelock(ProxyAdmin _proxyAdmin, address _l2TimelockLogic)
