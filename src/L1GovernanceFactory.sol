@@ -47,8 +47,8 @@ contract L1GovernanceFactory is Ownable {
 
         // revoke admin rights and give them to the upgrade executor
         timelock.grantRole(timelock.TIMELOCK_ADMIN_ROLE(), address(executor));
-        timelock.revokeRole(timelock.TIMELOCK_ADMIN_ROLE(), address(this));
         timelock.revokeRole(timelock.TIMELOCK_ADMIN_ROLE(), address(timelock));
+        timelock.revokeRole(timelock.TIMELOCK_ADMIN_ROLE(), address(this));
 
         // DG: TODO: double check / add to diagram
         proxyAdmin.transferOwnership(address(executor));

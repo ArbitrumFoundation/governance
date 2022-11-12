@@ -38,9 +38,6 @@ contract UpgradeExecutor is Initializable, AccessControlUpgradeable, ReentrancyG
     /// @dev    Only executor can call this. Since we're using a delegatecall here the Upgrade contract
     ///         will have access to the state of this contract - including the roles. Only upgrade contracts
     ///         that do not touch local state should be used.
-    ///         This call does allow re-entrancy, and again, it's the responsibilty of those writing and
-    ///         accepting a specific upgrade contract to vet it for issues like this - this is the same
-    ///         assumption as the OZ TimelockController, which also allows re-entrancy.
     function execute(address upgrade, bytes memory upgradeCallData)
         public
         payable

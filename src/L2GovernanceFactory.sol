@@ -11,6 +11,7 @@ import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 // CHRIS: TODO: re review the roles test in the gov factory
+// CHRIS: TODO: consider doing some xchain stuff in forge
 
 struct DeployCoreParams {
     uint256 _l2MinTimelockDelay;
