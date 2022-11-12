@@ -40,7 +40,7 @@ contract L1ArbitrumTimelock is TimelockControllerUpgradeable, L1ArbitrumMessenge
     ///                     For the Arbitrum DAO this the Arbitrum DAO timelock on Arb1
     function initialize(
         uint256 minDelay,
-        address[] memory proposers,
+        address[] memory proposers, // CHRIS: TODO: there's no point in these - they cant work
         address[] memory executors,
         address _inbox,
         address _l2Timelock

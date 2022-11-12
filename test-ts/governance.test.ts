@@ -19,7 +19,14 @@ import {
 } from "../typechain-types";
 import { fundL1, fundL2, testSetup } from "./testSetup";
 import { defaultAbiCoder, Interface } from "@ethersproject/abi";
-import { BigNumber, BigNumberish, constants, Signer, Wallet } from "ethers";
+import {
+  BigNumber,
+  BigNumberish,
+  constants,
+  ethers,
+  Signer,
+  Wallet,
+} from "ethers";
 import { id, keccak256, parseEther } from "ethers/lib/utils";
 import {
   DeployedEvent as L1DeployedEvent,
@@ -47,6 +54,7 @@ import { ArbSys__factory } from "@arbitrum/sdk/dist/lib/abi/factories/ArbSys__fa
 import { Inbox__factory } from "@arbitrum/sdk/dist/lib/abi/factories/Inbox__factory";
 import { L1ToL2MessageCreator } from "@arbitrum/sdk/dist/lib/message/L1ToL2MessageCreator";
 import { JsonRpcProvider } from "@ethersproject/providers";
+import { RequiredPick } from "@arbitrum/sdk/dist/lib/utils/types";
 // CHRIS: TODO: move typechain types to the right place?
 
 // CHRIS: TODO: add tests for the token registration and bridging
@@ -89,6 +97,147 @@ describe("Governor", function () {
       if ((await l2GovernorContract.state(proposalId)) === state) break;
     }
   };
+
+  // 1. provide a proposal - it will be executed from the owner
+  // 2. create a proposal class from it
+  // 3.   it has all the transactions on it
+  // 4.   it has status on it?
+  // 5.   it has "next" on it - with a check?
+  // 6.   waitNext()
+
+  interface ArbOneGovernorConfig {
+    readonly constitutionalGovernorAddr: string;
+    readonly provider: JsonRpcProvider;
+  }
+
+  interface L1Config {
+    readonly timelockAddr: string;
+    readonly provider: JsonRpcProvider;
+  }
+
+  interface UpgradeConfig {
+    readonly upgradeExecutorAddr: string;
+    readonly provider: JsonRpcProvider;
+    readonly inbox: string; // CHRIS: TODO: should be optional, or inheritted etc
+  }
+
+  interface UpgradePathConfig {
+    readonly arbOneGovernorConfig: ArbOneGovernorConfig;
+    readonly l1Config: L1Config;
+    readonly upgradeConfig: UpgradeConfig;
+  }
+
+  class Proposal {
+    constructor(
+      public readonly upgradeAddr: string,
+      // CHRIS: TODO: add value throughout
+      // public readonly upgradeValue: string,
+      public readonly upgradeData: string,
+      public readonly proposalDescription: string,
+      public readonly pathConfig: UpgradePathConfig
+    ) {}
+
+    public async formItUp() { //: RequiredPick<ethers.providers.TransactionRequest, "to" | "data" | "value">
+      // start from the upgrade executor
+      // the upgrade should have the function `upgrade` on it that accepts a single
+      // arg "bytes memory data"
+      const descriptionHash = id(this.proposalDescription);
+
+      // the upgrade contract itself
+      const iUpgrade = new Interface([
+        "function execute(bytes memory data) public",
+      ]);
+      const upgradeTo = this.upgradeAddr;
+      const upgradeCallData = iUpgrade.encodeFunctionData("execute", [
+        this.upgradeData,
+      ]);
+
+      // the upgrade executor
+      const iUpgradeExecutor = UpgradeExecutor__factory.createInterface();
+      const upgradeExecutorCallData = iUpgradeExecutor.encodeFunctionData(
+        "execute",
+        [upgradeTo, upgradeCallData]
+      );
+      const upgradeExecutorTo =
+        this.pathConfig.upgradeConfig.upgradeExecutorAddr;
+      const upgradeExecGasLimit =
+        await this.pathConfig.upgradeConfig.provider.estimateGas({
+          to: upgradeExecutorTo,
+          data: upgradeExecutorCallData,
+        });
+      const currentGasPrice =
+        await this.pathConfig.upgradeConfig.provider.getGasPrice();
+
+      // the l1 timelock
+      const l1TimelockTo = this.pathConfig.l1Config.timelockAddr;
+      const l1Timelock = L1ArbitrumTimelock__factory.connect(
+        l1TimelockTo,
+        this.pathConfig.l1Config.provider
+      );
+      const minDelay = await l1Timelock.getMinDelay();
+
+      const magicRetryableAddr = ""; // CHRIS: TODO: find the propper magic
+      const innerTimelockData = defaultAbiCoder.encode(
+        ["address", "address", "uint256", "uint256", "uint256", "bytes"],
+        [
+          this.pathConfig.upgradeConfig.inbox,
+          upgradeExecutorTo,
+          0, // CHRIS: TODO: value
+          upgradeExecGasLimit,
+          currentGasPrice.mul(2),
+          upgradeExecutorCallData,
+        ]
+      );
+      const l1TImelockScheduleCallData =
+        l1Timelock.interface.encodeFunctionData("schedule", [
+          magicRetryableAddr,
+          0, // CHRIS: TODO: value
+          innerTimelockData,
+          "0x",
+          descriptionHash,
+          minDelay,
+        ]);
+      const l1TimelockExecuteCallData = l1Timelock.interface.encodeFunctionData(
+        "execute",
+        [
+          magicRetryableAddr,
+          0, // CHRIS: TODO: value
+          innerTimelockData,
+          "0x",
+          descriptionHash
+        ]
+      )
+
+      const iArbSys = ArbSys__factory.createInterface()
+      const proposalCallData = iArbSys.encodeFunctionData("sendTxToL1", [
+        l1TimelockTo,
+        l1TImelockScheduleCallData
+      ])
+      
+      const arbGovInterface = L2ArbitrumGovernor__factory.createInterface();
+      const proposeTo = this.pathConfig.arbOneGovernorConfig.constitutionalGovernorAddr;
+      const proposeData = arbGovInterface.encodeFunctionData(
+        "propose(address[],uint256[],bytes[],string)",
+        [
+          [ ARB_SYS_ADDRESS ],
+          [ 0 ],
+          [ proposalCallData ],
+          descriptionHash
+        ]
+      );
+
+      const proposalId = keccak256(
+        defaultAbiCoder.encode(
+          ["address[]", "uint256[]", "bytes[]", "bytes32"],
+          [[ARB_SYS_ADDRESS], [0], [proposalCallData], descriptionHash]
+        )
+      );
+
+      const queueCallData = arbGovInterface.encodeFunctionData("queue(uint256)", [
+        proposalId
+      ])
+    }
+  }
 
   class UpgradeProposalGenerator {
     private getProposalId(
@@ -213,7 +362,7 @@ describe("Governor", function () {
           _proposalThreshold: 100,
           _votingDelay: 10,
           _votingPeriod: 10,
-          _minPeriodAfterQuorum: 1
+          _minPeriodAfterQuorum: 1,
         },
 
         { gasLimit: 30000000 }
@@ -248,18 +397,18 @@ describe("Governor", function () {
     const l1TimelockAddress = new Address(l1DeployResult.timelock);
     const ow = l1TimelockAddress.applyAlias().value;
     await (
-      await l2UpgradeExecutor.connect(l2Deployer).grantRole(
-        await l2UpgradeExecutor.EXECUTOR_ROLE(),
-        ow
-      )
+      await l2UpgradeExecutor
+        .connect(l2Deployer)
+        .grantRole(await l2UpgradeExecutor.EXECUTOR_ROLE(), ow)
     ).wait();
     await (
-      await l2UpgradeExecutor.connect(l2Deployer).revokeRole(
-        await l2UpgradeExecutor.EXECUTOR_ROLE(),
-        await l2Deployer.getAddress()
-      )
+      await l2UpgradeExecutor
+        .connect(l2Deployer)
+        .revokeRole(
+          await l2UpgradeExecutor.EXECUTOR_ROLE(),
+          await l2Deployer.getAddress()
+        )
     ).wait();
-
 
     // return contract objects
     const l2TokenContract = L2ArbitrumToken__factory.connect(
@@ -798,10 +947,7 @@ describe("Governor", function () {
     // 1. a
     const upgradeData = l2UpgradeExecutor.interface.encodeFunctionData(
       "execute",
-      [
-        transferUpgrade.address,
-        transferExecution,
-      ]
+      [transferUpgrade.address, transferExecution]
     );
 
     const l2Network = await getL2Network(l2Deployer);
@@ -830,14 +976,7 @@ describe("Governor", function () {
     // abi encode the upgrade data
 
     const executionData = defaultAbiCoder.encode(
-      [
-        "address",
-        "address",
-        "uint256",
-        "uint256",
-        "uint256",
-        "bytes",
-      ],
+      ["address", "address", "uint256", "uint256", "uint256", "bytes"],
       [
         l2Network.ethBridge.inbox,
         l2UpgradeExecutor.address,
@@ -849,7 +988,7 @@ describe("Governor", function () {
     );
 
     // l1TimelockContract.
-    const magic = await l1TimelockContract.RETRYABLE_TICKET_MAGIC()
+    const magic = await l1TimelockContract.RETRYABLE_TICKET_MAGIC();
 
     // 2. schedule a transfer on l1
     const scheduleData = l1TimelockContract.interface.encodeFunctionData(
@@ -978,24 +1117,32 @@ describe("Governor", function () {
     console.log("executing l1");
 
     // execute the proposal
-    let value = BigNumber.from( 0);
-    if(crossChain) {
+    let value = BigNumber.from(0);
+    if (crossChain) {
       const res = defaultAbiCoder.decode(
-        ["address",
-          "uint256" ,
-          "address" ,
-          "address" ,
-          "uint256" ,
-          "uint256" ,
-          "bytes"], proposalCallData
-      )
+        [
+          "address",
+          "uint256",
+          "address",
+          "address",
+          "uint256",
+          "uint256",
+          "bytes",
+        ],
+        proposalCallData
+      );
       const retryableCallData = res[6] as string;
-      console.log(retryableCallData)
-      const l2Network = await getL2Network(l2Deployer)
-      const inbox = Inbox__factory.connect(l2Network.ethBridge.inbox, l1Deployer.provider!);
-      const submissionFee = await inbox.callStatic.calculateRetryableSubmissionFee(
-        (retryableCallData.length - 2) / 2, 0
-      )
+      console.log(retryableCallData);
+      const l2Network = await getL2Network(l2Deployer);
+      const inbox = Inbox__factory.connect(
+        l2Network.ethBridge.inbox,
+        l1Deployer.provider!
+      );
+      const submissionFee =
+        await inbox.callStatic.calculateRetryableSubmissionFee(
+          (retryableCallData.length - 2) / 2,
+          0
+        );
       value = submissionFee.mul(2);
     }
 
@@ -1006,8 +1153,8 @@ describe("Governor", function () {
         proposalValue,
         proposalCallData,
         constants.HashZero,
-        id(proposalString), 
-        {value: value}
+        id(proposalString),
+        { value: value }
       );
     const tx = await l1TimelockContract
       .connect(l1Signer)
@@ -1017,7 +1164,7 @@ describe("Governor", function () {
         proposalCallData,
         constants.HashZero,
         id(proposalString),
-        {value: value}
+        { value: value }
       );
     console.log("executing l1 wait");
 
