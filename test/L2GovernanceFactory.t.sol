@@ -8,6 +8,7 @@ import "../src/ArbitrumTimelock.sol";
 
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
+import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 
 contract L2GovernanceFactoryTest is Test {
     // token
@@ -271,5 +272,39 @@ contract L2GovernanceFactoryTest is Test {
 
         arbTreasury.sendETH(payable(someRando), 100);
         assertEq(address(arbTreasury).balance, 900, "eth not sent");
+    }
+
+    function testProxyAdminOwnership() public {
+        (
+            L2ArbitrumToken token,
+            L2ArbitrumGovernor coreGov,
+            ArbitrumTimelock coreTimelock,
+            L2ArbitrumGovernor treasuryGov,
+            ArbitrumTimelock treasuryTimelock,
+            ArbTreasury arbTreasury,
+            ProxyAdmin proxyAdmin,
+            UpgradeExecutor executor
+        ) = deploy();
+        assertEq(proxyAdmin.owner(), address(executor), "L2 Executor owns l2 proxyAdmin");
+
+        address[7] memory deployments = [
+            address(token),
+            address(coreGov),
+            address(coreTimelock),
+            address(treasuryGov),
+            address(treasuryTimelock),
+            address(arbTreasury),
+            address(executor)
+        ];
+        address proxyAdminAddress = address(proxyAdmin);
+        vm.startPrank(proxyAdminAddress);
+        for (uint256 i = 0; i < deployments.length; i++) {
+            assertEq(
+                TransparentUpgradeableProxy(payable(deployments[i])).admin(),
+                proxyAdminAddress,
+                "proxyAdmin is admin"
+            );
+        }
+        vm.stopPrank();
     }
 }

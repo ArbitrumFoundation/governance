@@ -59,6 +59,9 @@ contract L1GovernanceFactory is Ownable {
         upgradeExecutors[1] = l1SecurityCouncil;
         executor.initialize(address(executor), upgradeExecutors);
 
+        // DG: TODO: double check / add to diagram
+        proxyAdmin.transferOwnership(address(executor));
+
         emit Deployed(timelock, proxyAdmin, executor);
 
         // CHRIS: TODO: we should full describe the flow of doing an upgrade somewhere

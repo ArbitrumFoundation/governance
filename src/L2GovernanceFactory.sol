@@ -105,7 +105,7 @@ contract L2GovernanceFactory is Ownable {
         l2UpgradeExecutorLogic = address(new UpgradeExecutor());
         // CHRIS: TODO: we dont want the owner of the proxy admin to be this address!
         // CHRIS: TODO: make sure to transfer it out
-        // CHRIS: TODO: in both this and the L1gov fac
+        // CHRIS: TODO: in both this and the L1gov fac // DG TODO: See below
         proxyAdminLogic = address(new ProxyAdmin());
     }
 
@@ -137,6 +137,9 @@ contract L2GovernanceFactory is Ownable {
         dc.executor = deployUpgradeExecutor(dc.proxyAdmin, l2UpgradeExecutorLogic);
         l2Executor = address(dc.executor);
         dc.executor.preInit(address(this));
+        // DG TODO: double check / add to diagram
+        dc.proxyAdmin.transferOwnership(address(dc.executor));
+
         dc.coreGov = deployGovernor(dc.proxyAdmin, l2CoreGovernorLogic);
         dc.coreGov.initialize({
             _token: dc.token,

@@ -2,11 +2,10 @@
 pragma solidity 0.8.16;
 
 import "../src/L1GovernanceFactory.sol";
-// import "../src/UpgradeExecutor.sol";
-// import "../src/ArbitrumTimelock.sol";
 import "./util/InboxMock.sol";
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
+import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 
 contract L1GovernanceFactoryTest is Test {
     address l2Timelock = address(1);
@@ -51,6 +50,21 @@ contract L1GovernanceFactoryTest is Test {
         assertTrue(executor.hasRole(executorRole, address(timelock)), "timelock is executor");
         bytes32 adminRole = executor.ADMIN_ROLE();
         assertTrue(executor.hasRole(adminRole, address(executor)), "executor is admin to itself");
+        vm.stopPrank();
+
+        assertEq(proxyAdmin.owner(), address(executor), "L1 Executor owns L1 proxyAdmin");
+        vm.startPrank(address(proxyAdmin));
+        assertEq(
+            TransparentUpgradeableProxy(payable(address(executor))).admin(),
+            address(proxyAdmin),
+            "L1 proxyAdmin is admin of executor"
+        );
+        assertEq(
+            TransparentUpgradeableProxy(payable(address(timelock))).admin(),
+            address(proxyAdmin),
+            "L1 proxyAdmin is admin of timelock"
+        );
+
         vm.stopPrank();
     }
 }
