@@ -34,7 +34,7 @@ contract L1ArbitrumTimelockTest is Test {
         address[] memory executors = new address[](1);
         executors[0] = address(0);
 
-        l1Timelock.initialize(minDelay, new address[](0), executors, address(inbox), l2Timelock);
+        l1Timelock.initialize(minDelay, executors, address(inbox), l2Timelock);
 
         return (l1Timelock, inbox);
     }
@@ -74,7 +74,7 @@ contract L1ArbitrumTimelockTest is Test {
             address(inbox), bytes.concat(IInbox(address(inbox)).bridge.selector), abi.encode(bridge)
         );
         vm.expectRevert("L1ArbitrumTimelock: zero inbox");
-        l1Timelock.initialize(minDelay, new address[](0), executors, address(0), l2Timelock);
+        l1Timelock.initialize(minDelay, executors, address(0), l2Timelock);
     }
 
     function testDoesNotDeployZeroL2Timelock() external {
@@ -87,7 +87,7 @@ contract L1ArbitrumTimelockTest is Test {
             address(inbox), bytes.concat(IInbox(address(inbox)).bridge.selector), abi.encode(bridge)
         );
         vm.expectRevert("L1ArbitrumTimelock: zero l2 timelock");
-        l1Timelock.initialize(minDelay, new address[](0), executors, address(inbox), address(0));
+        l1Timelock.initialize(minDelay, executors, address(inbox), address(0));
     }
 
     struct ScheduleArgs {
