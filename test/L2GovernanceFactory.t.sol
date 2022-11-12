@@ -32,6 +32,7 @@ contract L2GovernanceFactoryTest is Test {
     address[] addressArrayStub = [address(777), address(888)];
 
     address someRando = address(3);
+    address upgradeProposer = address(1234);
 
     DeployCoreParams deployCoreParams = DeployCoreParams({
         _l2MinTimelockDelay: l2MinTimelockDelay,
@@ -43,7 +44,8 @@ contract L2GovernanceFactoryTest is Test {
         _coreQuorumThreshold: coreQuorumThreshold,
         _treasuryQuorumThreshold: treasuryQuorumThreshold,
         _proposalThreshold: proposalThreshold,
-        _minPeriodAfterQuorum: minPeriodAfterQuorum
+        _minPeriodAfterQuorum: minPeriodAfterQuorum,
+        _upgradeProposer: upgradeProposer
     });
 
     function deploy()
@@ -306,5 +308,42 @@ contract L2GovernanceFactoryTest is Test {
             );
         }
         vm.stopPrank();
+    }
+
+    function testTimelockRoles() public {
+        (
+            L2ArbitrumToken token,
+            L2ArbitrumGovernor coreGov,
+            ArbitrumTimelock coreTimelock,
+            L2ArbitrumGovernor treasuryGov,
+            ArbitrumTimelock treasuryTimelock,
+            ArbTreasury arbTreasury,
+            ProxyAdmin proxyAdmin,
+            UpgradeExecutor executor
+        ) = deploy();
+        assertTrue(
+            coreTimelock.hasRole(coreTimelock.PROPOSER_ROLE(), address(coreGov)),
+            "core gov can propose"
+        );
+        assertTrue(
+            coreTimelock.hasRole(coreTimelock.PROPOSER_ROLE(), address(upgradeProposer)),
+            "upgradeProposer can propose"
+        );
+        assertTrue(
+            coreTimelock.hasRole(coreTimelock.CANCELLER_ROLE(), address(coreGov)),
+            "core gov can cancel"
+        );
+
+        assertTrue(
+            coreTimelock.hasRole(coreTimelock.EXECUTOR_ROLE(), address(0)), "anyone can execute"
+        );
+        assertTrue(
+            treasuryTimelock.hasRole(treasuryTimelock.PROPOSER_ROLE(), address(treasuryGov)),
+            "treasuryGov can propose"
+        );
+        assertTrue(
+            treasuryTimelock.hasRole(treasuryTimelock.EXECUTOR_ROLE(), address(0)),
+            "anyone can execute"
+        );
     }
 }

@@ -54,28 +54,6 @@ contract UpgradeExecutorTest is Test {
         assertEq(ue.getRoleAdmin(ue.EXECUTOR_ROLE()), ue.ADMIN_ROLE(), "executor admin");
     }
 
-    function testPreInit() external {
-        address initializeCaller = address(123);
-        address someRando = address(456);
-
-        UpgradeExecutor ue = UpgradeExecutor(TestUtil.deployProxy(address(new UpgradeExecutor())));
-        address[] memory executors = new address[](2);
-        executors[0] = executor0;
-        executors[1] = executor1;
-
-        ue.preInit(initializeCaller);
-        vm.expectRevert("UpgradeExecutor: initializeCaller already set");
-        ue.preInit(someRando);
-
-        vm.prank(someRando);
-        vm.expectRevert("UpgradeExecutor: not initializeCaller");
-        ue.initialize(address(ue), executors);
-
-        vm.prank(initializeCaller);
-        ue.initialize(address(ue), executors);
-        assertTrue(true, "initializeCalller can cann initialize");
-    }
-
     function testInitFailsZeroAdmin() external {
         UpgradeExecutor ue = UpgradeExecutor(TestUtil.deployProxy(address(new UpgradeExecutor())));
         address[] memory executors = new address[](2);

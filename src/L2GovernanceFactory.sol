@@ -22,16 +22,17 @@ import "@openzeppelin/contracts/access/Ownable.sol";
  *     L2:
  *         - L2GovernanceFactory
  *         - Gnosis Safe Multisig 9 of 12 Security Council
+ *         - Gnosis Safe Multisig 7 of 12 Security Council
  *
  *     L1GoveranceFactory and L2GovernanceFactory deployers will be their respective owners, and will carry out the following steps.
  * 2. Call L2GovernanceFactory.deployStep1
- *     - Dependencies: L1-Token address
+ *     - Dependencies: L1-Token address, 7 of 12 multisig (as _upgradeProposer)
  *
  * 3. Call L1GoveranceFactory.deployStep2
  *     - Dependencies: L1 security council address, L2 Timelock address (deployed in previous step)
  *
  * 4. Call L2GovernanceFactory.deployStep3
- *     - Dependencies: (Aliased) L1-timelock address (deployed in previous step), L2 security council address
+ *     - Dependencies: (Aliased) L1-timelock address (deployed in previous step), L2 security council address (as _l2UpgradeExecutors)
  */
 struct DeployCoreParams {
     uint256 _l2MinTimelockDelay;
@@ -44,6 +45,7 @@ struct DeployCoreParams {
     uint256 _treasuryQuorumThreshold;
     uint256 _proposalThreshold;
     uint64 _minPeriodAfterQuorum;
+    address _upgradeProposer; // in addition to core gov
 }
 
 struct DeployTreasuryParams {
@@ -136,7 +138,6 @@ contract L2GovernanceFactory is Ownable {
         }
         dc.executor = deployUpgradeExecutor(dc.proxyAdmin, l2UpgradeExecutorLogic);
         l2Executor = address(dc.executor);
-        dc.executor.preInit(address(this));
         // DG TODO: double check / add to diagram
         dc.proxyAdmin.transferOwnership(address(dc.executor));
 
@@ -155,7 +156,13 @@ contract L2GovernanceFactory is Ownable {
         // the timelock itself and deployer are admins
         // CHRIS: TODO: set the same for the l1 contract?
         dc.coreTimelock.grantRole(dc.coreTimelock.PROPOSER_ROLE(), address(dc.coreGov));
+        dc.coreTimelock.grantRole(dc.coreTimelock.PROPOSER_ROLE(), address(params._upgradeProposer));
         dc.coreTimelock.grantRole(dc.coreTimelock.EXECUTOR_ROLE(), address(0));
+
+        dc.coreTimelock.grantRole(dc.coreTimelock.CANCELLER_ROLE(), address(dc.coreGov));
+        // we don't give _upgradeProposer the canceller role since it shouldn't
+        // have the affordance to cancel proposals proposed by others
+
         dc.coreTimelock.revokeRole(dc.coreTimelock.TIMELOCK_ADMIN_ROLE(), address(dc.coreTimelock));
         dc.coreTimelock.revokeRole(dc.coreTimelock.TIMELOCK_ADMIN_ROLE(), address(this));
 
@@ -216,7 +223,7 @@ contract L2GovernanceFactory is Ownable {
             _minPeriodAfterQuorum: params._minPeriodAfterQuorum // DG TODO: same as core okay?
         });
 
-        // Only treasury can propose, anyone can execute, no admon (revoke defaults)
+        // Only treasury can propose, anyone can execute, no admin (revoke defaults)
         // DG TODO: Sanity check this
         treasuryTimelock.grantRole(treasuryTimelock.PROPOSER_ROLE(), address(treasuryGov));
         treasuryTimelock.grantRole(treasuryTimelock.EXECUTOR_ROLE(), address(0));

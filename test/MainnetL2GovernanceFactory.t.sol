@@ -33,6 +33,7 @@ contract MainnetL2GovernanceFactoryTest is Test {
     address[] addressArrayStub = [address(777), address(888)];
 
     address someRando = address(3);
+    address upgradeProposer = address(1234);
 
     function testDeploy() public {
         DeployCoreParams memory deployParams = DeployCoreParams({
@@ -45,7 +46,8 @@ contract MainnetL2GovernanceFactoryTest is Test {
             _coreQuorumThreshold: coreQuorumThreshold,
             _treasuryQuorumThreshold: treasuryQuorumThreshold,
             _proposalThreshold: proposalThreshold,
-            _minPeriodAfterQuorum: minPeriodAfterQuorum
+            _minPeriodAfterQuorum: minPeriodAfterQuorum,
+            _upgradeProposer: upgradeProposer
         });
 
         MainnetL2GovernanceFactory l2GovernanceFactory = new MainnetL2GovernanceFactory();
