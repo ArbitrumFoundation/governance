@@ -41,7 +41,7 @@ contract L1GovernanceFactory is Ownable {
         // CHRIS: TODO: we need to grant a role for the receiver
 
         // CHRIS: TODO: review access control on each of the contracts, and defo the timelocks
-        timelock.grantRole(timelock.EXECUTOR_ROLE(), address(0)); // DG TODO: why?
+        timelock.grantRole(timelock.EXECUTOR_ROLE(), address(0));
 
         // the timelock itself and deployer are admins
         timelock.revokeRole(timelock.TIMELOCK_ADMIN_ROLE(), address(this));

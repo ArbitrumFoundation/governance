@@ -17,18 +17,18 @@ import "@openzeppelin/contracts/access/Ownable.sol";
  * 1. Deploy the following (in any order):
  *     L1:
  *         - L1GoveranceFactory
- *         - L1 -oken
+ *         - L1Token
  *         - Gnosis Safe Multisig Security Council
  *     L2:
  *         - L2GovernanceFactory
- *         - Gnosis Safe Multisig Security Council
+ *         - Gnosis Safe Multisig 9 of 12 Security Council
  *
  *     L1GoveranceFactory and L2GovernanceFactory deployers will be their respective owners, and will carry out the following steps.
  * 2. Call L2GovernanceFactory.deployStep1
  *     - Dependencies: L1-Token address
  *
  * 3. Call L1GoveranceFactory.deployStep2
- *     - Dependencies: L1 security counsil address, L2 Timelock address (deployed in previous step)
+ *     - Dependencies: L1 security council address, L2 Timelock address (deployed in previous step)
  *
  * 4. Call L2GovernanceFactory.deployStep3
  *     - Dependencies: (Aliased) L1-timelock address (deployed in previous step), L2 security council address
