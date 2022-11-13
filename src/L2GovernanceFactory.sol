@@ -17,7 +17,6 @@ struct DeployCoreParams {
     uint256 _l2MinTimelockDelay;
     address _l1Token;
     uint256 _l2TokenInitialSupply;
-    address _l2TokenOwner; // DG TODO: Who dis?
     uint256 _votingPeriod;
     uint256 _votingDelay;
     uint256 _coreQuorumThreshold;
@@ -138,18 +137,19 @@ contract L2GovernanceFactory is Ownable {
         DeployedContracts memory dc;
 
         require(upExecutor == address(0), "L2GovernanceFactory: l2Executor already deployed");
-        dc.proxyAdmin = ProxyAdmin(proxyAdminLogic); // DG TODO:  does this make sense?
-        dc.token = deployToken(dc.proxyAdmin, l2TokenLogic);
-        dc.token.initialize(params._l1Token, params._l2TokenInitialSupply, params._l2TokenOwner);
+        dc.proxyAdmin = ProxyAdmin(proxyAdminLogic);
 
         dc.coreTimelock = deployTimelock(dc.proxyAdmin, coreTimelockLogic);
-
         address[] memory proposers;
         address[] memory executors;
         dc.coreTimelock.initialize(params._l2MinTimelockDelay, proposers, executors);
         dc.executor = deployUpgradeExecutor(dc.proxyAdmin, upgradeExecutorLogic);
         upExecutor = address(dc.executor);
-        // DG TODO: double check / add to diagram
+
+        dc.token = deployToken(dc.proxyAdmin, l2TokenLogic);
+        dc.token.initialize(params._l1Token, params._l2TokenInitialSupply, address(dc.executor));
+
+        // give proxyAdmin affordance to upgrade gov contracts (via governance)
         dc.proxyAdmin.transferOwnership(address(dc.executor));
 
         dc.coreGov = deployGovernor(dc.proxyAdmin, coreGovernorLogic);
@@ -164,7 +164,6 @@ contract L2GovernanceFactory is Ownable {
             _minPeriodAfterQuorum: params._minPeriodAfterQuorum
         });
 
-        // the timelock itself and deployer are admins
         dc.coreTimelock.grantRole(dc.coreTimelock.PROPOSER_ROLE(), address(dc.coreGov));
         dc.coreTimelock.grantRole(dc.coreTimelock.PROPOSER_ROLE(), address(params._upgradeProposer));
         // anyone is allowed to execute on the timelock
@@ -174,11 +173,11 @@ contract L2GovernanceFactory is Ownable {
         // we don't give _upgradeProposer the canceller role since it shouldn't
         // have the affordance to cancel proposals proposed by others
 
-        // after initialisation be sure to revoke admin roles from the timelock
+        // allow the upgrade executor manage roles
         dc.coreTimelock.grantRole(dc.coreTimelock.TIMELOCK_ADMIN_ROLE(), upExecutor);
+        // revoke admin roles from the timelock and the deployer
         dc.coreTimelock.revokeRole(dc.coreTimelock.TIMELOCK_ADMIN_ROLE(), address(dc.coreTimelock));
         dc.coreTimelock.revokeRole(dc.coreTimelock.TIMELOCK_ADMIN_ROLE(), address(this));
-        // allow the upgrade executor manage roles
 
         DeployedTreasuryContracts memory dtc = deployTreasuryContracts(
             DeployTreasuryParams({
@@ -203,7 +202,6 @@ contract L2GovernanceFactory is Ownable {
             dc.proxyAdmin,
             dc.executor
             );
-        // DG TODO: tests only pass with this explicit return, why
         return (dc, dtc);
     }
 
@@ -229,16 +227,15 @@ contract L2GovernanceFactory is Ownable {
         treasuryGov.initialize({
             _token: params._token,
             _timelock: treasuryTimelock,
-            _owner: params._executor, // DG TODO: ...yes?
-            _votingDelay: params._votingDelay, // DG TODO: same as core okay?
-            _votingPeriod: params._votingPeriod, // DG TODO: same as core okay?
+            _owner: params._executor,
+            _votingDelay: params._votingDelay,
+            _votingPeriod: params._votingPeriod,
             _quorumNumerator: params._treasuryQuorumThreshold,
-            _proposalThreshold: params._proposalThreshold, // DG TODO: same as core okay?
-            _minPeriodAfterQuorum: params._minPeriodAfterQuorum // DG TODO: same as core okay?
+            _proposalThreshold: params._proposalThreshold,
+            _minPeriodAfterQuorum: params._minPeriodAfterQuorum
         });
 
         // Only treasury can propose, anyone can execute, no admin (revoke defaults)
-        // DG TODO: Sanity check this
         treasuryTimelock.grantRole(treasuryTimelock.PROPOSER_ROLE(), address(treasuryGov));
         treasuryTimelock.grantRole(treasuryTimelock.CANCELLER_ROLE(), address(treasuryGov));
 

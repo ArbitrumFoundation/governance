@@ -13,7 +13,6 @@ import "forge-std/console.sol";
 
 contract MainnetL2GovernanceFactoryTest is Test {
     // token
-    address l2TokenOwner = address(2);
     address l1Token = address(1);
     uint256 l2TokenInitialSupply = 43;
 
@@ -40,7 +39,6 @@ contract MainnetL2GovernanceFactoryTest is Test {
             _l2MinTimelockDelay: l2MinTimelockDelay,
             _l1Token: l1Token,
             _l2TokenInitialSupply: l2TokenInitialSupply,
-            _l2TokenOwner: l2TokenOwner,
             _votingPeriod: votingPeriod,
             _votingDelay: votingDelay,
             _coreQuorumThreshold: coreQuorumThreshold,

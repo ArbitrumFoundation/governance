@@ -45,7 +45,6 @@ contract MainnetL2GovernanceFactory is L2GovernanceFactory {
                 _l2MinTimelockDelay: 42,
                 _l1Token: address(42),
                 _l2TokenInitialSupply: 1e10,
-                _l2TokenOwner: address(42),
                 _upgradeProposer: address(42),
                 _votingPeriod: 42,
                 _votingDelay: 42,

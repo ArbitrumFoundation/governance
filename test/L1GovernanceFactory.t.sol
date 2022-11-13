@@ -45,7 +45,6 @@ contract L1GovernanceFactoryTest is Test {
         address[] memory executors;
         vm.expectRevert("Initializable: contract is already initialized");
         timelock.initialize(minDelay, executors, address(inbox), l2Timelock);
-        // DG TODO: check roles
 
         assertGt(address(proxyAdmin).code.length, 0, "proxyAdmin deployed");
 
