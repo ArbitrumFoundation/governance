@@ -1,5 +1,5 @@
-// SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.16;
+// // SPDX-License-Identifier: Apache-2.0
+// pragma solidity 0.8.16;
 
 import "../src/L2GovernanceFactory.sol";
 import "../src/L2ArbitrumGovernor.sol";
@@ -61,7 +61,26 @@ contract L2GovernanceFactoryTest is Test {
             UpgradeExecutor executor
         )
     {
-        L2GovernanceFactory l2GovernanceFactory = new L2GovernanceFactory();
+        L2GovernanceFactory l2GovernanceFactory;
+        {
+            address _coreTimelockLogic = address(new ArbitrumTimelock());
+            address _coreGovernorLogic = address(new L2ArbitrumGovernor());
+            address _treasuryTimelockLogic = address(new ArbitrumTimelock());
+            address _treasuryLogic = address(new FixedDelegateErc20Wallet());
+            address _treasuryGovernorLogic = address(new L2ArbitrumGovernor());
+            address _l2TokenLogic = address(new L2ArbitrumToken());
+            address _upgradeExecutorLogic = address(new UpgradeExecutor());
+
+            l2GovernanceFactory = new L2GovernanceFactory(
+            _coreTimelockLogic,
+            _coreGovernorLogic,
+            _treasuryTimelockLogic,
+            _treasuryLogic,
+            _treasuryGovernorLogic,
+            _l2TokenLogic,
+            _upgradeExecutorLogic
+        );
+        }
 
         (DeployedContracts memory dc, DeployedTreasuryContracts memory dtc) =
             l2GovernanceFactory.deployStep1(deployCoreParams);
@@ -93,8 +112,24 @@ contract L2GovernanceFactoryTest is Test {
         )
     {
         address owner = address(232_323);
+        address _coreTimelockLogic = address(new ArbitrumTimelock());
+        address _coreGovernorLogic = address(new L2ArbitrumGovernor());
+        address _treasuryTimelockLogic = address(new ArbitrumTimelock());
+        address _treasuryLogic = address(new FixedDelegateErc20Wallet());
+        address _treasuryGovernorLogic = address(new L2ArbitrumGovernor());
+        address _l2TokenLogic = address(new L2ArbitrumToken());
+        address _upgradeExecutorLogic = address(new UpgradeExecutor());
+
         vm.prank(owner);
-        L2GovernanceFactory l2GovernanceFactory = new L2GovernanceFactory();
+        L2GovernanceFactory l2GovernanceFactory = new L2GovernanceFactory(
+            _coreTimelockLogic,
+            _coreGovernorLogic,
+            _treasuryTimelockLogic,
+            _treasuryLogic,
+            _treasuryGovernorLogic,
+            _l2TokenLogic,
+            _upgradeExecutorLogic
+        );
 
         // rando can't start deploy
         vm.prank(someRando);

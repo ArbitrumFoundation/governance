@@ -4,6 +4,7 @@ import { expect, util } from "chai";
 import {
   ArbitrumTimelock,
   ArbitrumTimelock__factory,
+  FixedDelegateErc20Wallet__factory,
   L1ArbitrumTimelock,
   L1ArbitrumTimelock__factory,
   L1GovernanceFactory__factory,
@@ -197,10 +198,24 @@ describe("Governor", function () {
     const l1TokenAddress = "0x0000000000000000000000000000000000000001";
     const sevenSecurityCouncil = Wallet.createRandom();
 
+    const timelockLogic = await new ArbitrumTimelock__factory(l2Deployer).deploy();
+    const governorLogic = await new L2ArbitrumGovernor__factory(l2Deployer).deploy();
+    const fixedDelegateLogic = await new FixedDelegateErc20Wallet__factory(l2Deployer).deploy();
+    const l2TokenLogic = await new L2ArbitrumToken__factory(l2Deployer).deploy();
+    const upgradeExecutor = await new UpgradeExecutor__factory(l2Deployer).deploy();
+
     // deploy L2
     const l2GovernanceFac = await new L2GovernanceFactory__factory(
       l2Deployer
-    ).deploy();
+    ).deploy(
+      timelockLogic.address,
+      governorLogic.address,
+      timelockLogic.address,
+      fixedDelegateLogic.address,
+      governorLogic.address,
+      l2TokenLogic.address,
+      upgradeExecutor.address
+    );
     const l2GovDeployReceipt = await (
       await l2GovernanceFac.deployStep1(
         {
@@ -228,11 +243,13 @@ describe("Governor", function () {
     // deploy L1
     const l1SecurityCouncil = Wallet.createRandom();
     const l2Network = await getL2Network(l2Deployer);
+    const l1UpgradeExecutorLogic = await new UpgradeExecutor__factory(l1Deployer).deploy()
     const l1GovernanceFac = await new L1GovernanceFactory__factory(
       l1Deployer
     ).deploy();
     const l1GovDeployReceipt = await (
       await l1GovernanceFac.deployStep2(
+        l1UpgradeExecutorLogic.address,
         l1TimeLockDelay,
         l2Network.ethBridge.inbox,
         l2DeployResult.coreTimelock,

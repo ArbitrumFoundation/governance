@@ -98,14 +98,22 @@ contract L2GovernanceFactory is Ownable {
 
     address public upExecutor;
 
-    constructor() {
-        coreTimelockLogic = address(new ArbitrumTimelock());
-        coreGovernorLogic = address(new L2ArbitrumGovernor());
-        treasuryTimelockLogic = address(new ArbitrumTimelock());
-        treasuryLogic = address(new FixedDelegateErc20Wallet());
-        treasuryGovernorLogic = address(new L2ArbitrumGovernor());
-        l2TokenLogic = address(new L2ArbitrumToken());
-        upgradeExecutorLogic = address(new UpgradeExecutor());
+    constructor(
+        address _coreTimelockLogic,
+        address _coreGovernorLogic,
+        address _treasuryTimelockLogic,
+        address _treasuryLogic,
+        address _treasuryGovernorLogic,
+        address _l2TokenLogic,
+        address _upgradeExecutorLogic
+    ) {
+        coreTimelockLogic = _coreTimelockLogic;
+        coreGovernorLogic = _coreGovernorLogic;
+        treasuryTimelockLogic = _treasuryTimelockLogic;
+        treasuryLogic = _treasuryLogic;
+        treasuryGovernorLogic = _treasuryGovernorLogic;
+        l2TokenLogic = _l2TokenLogic;
+        upgradeExecutorLogic = _upgradeExecutorLogic;
         proxyAdminLogic = address(new ProxyAdmin());
     }
 

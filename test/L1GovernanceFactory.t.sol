@@ -14,6 +14,7 @@ contract L1GovernanceFactoryTest is Test {
     address l1SecurityCouncil = address(4);
     address someRando = address(5);
     uint256 minDelay = 42;
+    UpgradeExecutor upgradeExecutorLogic = new UpgradeExecutor();
 
     function testL1GovernanceFactory() external {
         vm.prank(factoryOwner);
@@ -22,13 +23,19 @@ contract L1GovernanceFactoryTest is Test {
 
         vm.prank(someRando);
         vm.expectRevert("Ownable: caller is not the owner");
-        l1GovernanceFactory.deployStep2(minDelay, address(inbox), l2Timelock, l1SecurityCouncil);
+        l1GovernanceFactory.deployStep2(
+            address(upgradeExecutorLogic), minDelay, address(inbox), l2Timelock, l1SecurityCouncil
+        );
 
         vm.startPrank(factoryOwner);
         (L1ArbitrumTimelock timelock, ProxyAdmin proxyAdmin, UpgradeExecutor executor) =
-            l1GovernanceFactory.deployStep2(minDelay, address(inbox), l2Timelock, l1SecurityCouncil);
+        l1GovernanceFactory.deployStep2(
+            address(upgradeExecutorLogic), minDelay, address(inbox), l2Timelock, l1SecurityCouncil
+        );
         vm.expectRevert("L1GovernanceFactory: already executed");
-        l1GovernanceFactory.deployStep2(minDelay, address(inbox), l2Timelock, l1SecurityCouncil);
+        l1GovernanceFactory.deployStep2(
+            address(upgradeExecutorLogic), minDelay, address(inbox), l2Timelock, l1SecurityCouncil
+        );
 
         assertGt(address(timelock).code.length, 0, "timelock deployed");
         assertEq(timelock.governanceChainInbox(), address(inbox), "timelock inbox set");

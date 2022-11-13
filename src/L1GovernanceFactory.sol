@@ -20,6 +20,7 @@ contract L1GovernanceFactory is Ownable {
     bool private done = false;
 
     function deployStep2(
+        address upgradeExecutorLogic,
         uint256 _minTimelockDelay,
         address inbox,
         address l2Timelock,
@@ -39,7 +40,7 @@ contract L1GovernanceFactory is Ownable {
 
         timelock.grantRole(timelock.EXECUTOR_ROLE(), address(0));
 
-        executor = deployUpgradeExecutor(proxyAdmin);
+        executor = deployUpgradeExecutor(proxyAdmin, upgradeExecutorLogic);
         address[] memory upgradeExecutors = new address[](2);
         upgradeExecutors[0] = address(timelock);
         upgradeExecutors[1] = l1SecurityCouncil;
@@ -56,10 +57,12 @@ contract L1GovernanceFactory is Ownable {
         emit Deployed(timelock, proxyAdmin, executor);
     }
 
-    function deployUpgradeExecutor(ProxyAdmin _proxyAdmin) internal returns (UpgradeExecutor) {
-        address logic = address(new UpgradeExecutor());
+    function deployUpgradeExecutor(ProxyAdmin _proxyAdmin, address upgradeExecutorLogic)
+        internal
+        returns (UpgradeExecutor)
+    {
         TransparentUpgradeableProxy proxy =
-            new TransparentUpgradeableProxy(logic, address(_proxyAdmin), bytes(""));
+            new TransparentUpgradeableProxy(upgradeExecutorLogic, address(_proxyAdmin), bytes(""));
         return UpgradeExecutor(address(proxy));
     }
 

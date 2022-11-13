@@ -1,6 +1,26 @@
 import "./L2GovernanceFactory.sol";
 
 contract MainnetL2GovernanceFactory is L2GovernanceFactory {
+    constructor(
+        address _coreTimelockLogic,
+        address _coreGovernorLogic,
+        address _treasuryTimelockLogic,
+        address _treasuryLogic,
+        address _treasuryGovernorLogic,
+        address _l2TokenLogic,
+        address _upgradeExecutorLogic
+    )
+        L2GovernanceFactory(
+            _coreTimelockLogic,
+            _coreGovernorLogic,
+            _treasuryTimelockLogic,
+            _treasuryLogic,
+            _treasuryGovernorLogic,
+            _l2TokenLogic,
+            _upgradeExecutorLogic
+        )
+    {}
+
     function deployStep1(DeployCoreParams memory params)
         public
         override (L2GovernanceFactory)
