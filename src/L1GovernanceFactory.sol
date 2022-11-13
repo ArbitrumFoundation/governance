@@ -51,7 +51,6 @@ contract L1GovernanceFactory is Ownable {
         timelock.revokeRole(timelock.TIMELOCK_ADMIN_ROLE(), address(timelock));
         timelock.revokeRole(timelock.TIMELOCK_ADMIN_ROLE(), address(this));
 
-        // DG: TODO: double check / add to diagram
         proxyAdmin.transferOwnership(address(executor));
 
         emit Deployed(timelock, proxyAdmin, executor);
