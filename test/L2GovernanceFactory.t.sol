@@ -136,14 +136,14 @@ contract L2GovernanceFactoryTest is Test {
 
         // owner can't skip to step 3
         vm.startPrank(owner);
-        vm.expectRevert("L2GovernanceFactory: l2Executor not yet deployed");
+        vm.expectRevert("L2GovernanceFactory: not step three");
         l2GovernanceFactory.deployStep3(l2UpgradeExecutors);
 
         // owner should successfully carry out step 1
         l2GovernanceFactory.deployStep1(deployCoreParams);
 
         // owner can't repeat step 1
-        vm.expectRevert("L2GovernanceFactory: l2Executor already deployed");
+        vm.expectRevert("L2GovernanceFactory: not step one");
         l2GovernanceFactory.deployStep1(deployCoreParams);
         vm.stopPrank();
 
@@ -157,7 +157,7 @@ contract L2GovernanceFactoryTest is Test {
         l2GovernanceFactory.deployStep3(l2UpgradeExecutors);
 
         // owner can't repeat step 3
-        vm.expectRevert("Initializable: contract is already initialized");
+        vm.expectRevert("L2GovernanceFactory: not step three");
         l2GovernanceFactory.deployStep3(l2UpgradeExecutors);
         vm.stopPrank();
     }

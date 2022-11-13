@@ -1,10 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.16;
 
-// CHRIS: TODO: review access control on each of the contracts, and defo the timelocks
-// CHRIS: TODO: more docs on the factories
-// CHRIS: TODO: check the factories match the diagrams
-
 import "./L1ArbitrumTimelock.sol";
 import "./UpgradeExecutor.sol";
 
@@ -35,22 +31,27 @@ contract L1GovernanceFactory is Ownable {
         proxyAdmin = new ProxyAdmin();
 
         timelock = deployTimelock(proxyAdmin);
-        address[] memory executors;
-        timelock.initialize(_minTimelockDelay, executors, inbox, l2Timelock);
+        // proposers for this timelock are set in the initialise function
+        timelock.initialize(_minTimelockDelay, new address[](0), inbox, l2Timelock);
 
-        timelock.grantRole(timelock.EXECUTOR_ROLE(), address(0));
-
+        // there's an upgrade executor on every network
         executor = deployUpgradeExecutor(proxyAdmin, upgradeExecutorLogic);
         address[] memory upgradeExecutors = new address[](2);
+        // the upgrade executor can be executed by the timelock or directly
+        // by the security council
         upgradeExecutors[0] = address(timelock);
         upgradeExecutors[1] = l1SecurityCouncil;
         executor.initialize(address(executor), upgradeExecutors);
+
+        // anyone can execute
+        timelock.grantRole(timelock.EXECUTOR_ROLE(), address(0));
 
         // revoke admin rights and give them to the upgrade executor
         timelock.grantRole(timelock.TIMELOCK_ADMIN_ROLE(), address(executor));
         timelock.revokeRole(timelock.TIMELOCK_ADMIN_ROLE(), address(timelock));
         timelock.revokeRole(timelock.TIMELOCK_ADMIN_ROLE(), address(this));
 
+        // executor owns the proxy admin
         proxyAdmin.transferOwnership(address(executor));
 
         emit Deployed(timelock, proxyAdmin, executor);
