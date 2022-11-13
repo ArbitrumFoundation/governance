@@ -50,8 +50,6 @@ struct DeployedTreasuryContracts {
     FixedDelegateErc20Wallet arbTreasury;
 }
 
-
-
 /// @title Factory contract that deploys the L2 components for Arbitrum governance
 /// @notice Governance Deployment Steps:
 /// 1. Deploy the following pre-requiste logic contracts:
