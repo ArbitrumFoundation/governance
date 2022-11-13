@@ -231,7 +231,6 @@ describe("Governor", function () {
         {
           _l2MinTimelockDelay: l2TimeLockDelay,
           _l2TokenInitialSupply: initialSupply,
-          _l2TokenOwner: l2SignerAddr,
           _upgradeProposer: sevenSecurityCouncil.address,
           _coreQuorumThreshold: 5,
           _l1Token: l1TokenAddress,
