@@ -12,7 +12,6 @@ import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.so
 
 contract L2GovernanceFactoryTest is Test {
     // token
-    address l2TokenOwner = address(123);
     address l1Token = address(139);
     uint256 l2TokenInitialSupply = 1e10;
 
@@ -38,7 +37,6 @@ contract L2GovernanceFactoryTest is Test {
         _l2MinTimelockDelay: l2MinTimelockDelay,
         _l1Token: l1Token,
         _l2TokenInitialSupply: l2TokenInitialSupply,
-        _l2TokenOwner: l2TokenOwner,
         _votingPeriod: votingPeriod,
         _votingDelay: votingDelay,
         _coreQuorumThreshold: coreQuorumThreshold,
@@ -232,7 +230,7 @@ contract L2GovernanceFactoryTest is Test {
             ProxyAdmin proxyAdmin,
             UpgradeExecutor upgradeExecutor
         ) = deploy();
-        assertEq(token.owner(), l2TokenOwner, "token.owner()");
+        assertEq(token.owner(), address(upgradeExecutor), "token.l1Address()");
         assertEq(token.l1Address(), l1Token, "token.l1Address()");
         assertEq(token.totalSupply(), l2TokenInitialSupply, "token.totalSupply()");
 

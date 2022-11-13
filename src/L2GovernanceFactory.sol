@@ -17,7 +17,6 @@ struct DeployCoreParams {
     uint256 _l2MinTimelockDelay;
     address _l1Token;
     uint256 _l2TokenInitialSupply;
-    address _l2TokenOwner; // DG TODO: Who dis?
     uint256 _votingPeriod;
     uint256 _votingDelay;
     uint256 _coreQuorumThreshold;
@@ -139,16 +138,16 @@ contract L2GovernanceFactory is Ownable {
 
         require(upExecutor == address(0), "L2GovernanceFactory: l2Executor already deployed");
         dc.proxyAdmin = ProxyAdmin(proxyAdminLogic);
-        dc.token = deployToken(dc.proxyAdmin, l2TokenLogic);
-        dc.token.initialize(params._l1Token, params._l2TokenInitialSupply, params._l2TokenOwner);
 
         dc.coreTimelock = deployTimelock(dc.proxyAdmin, coreTimelockLogic);
-
         address[] memory proposers;
         address[] memory executors;
         dc.coreTimelock.initialize(params._l2MinTimelockDelay, proposers, executors);
         dc.executor = deployUpgradeExecutor(dc.proxyAdmin, upgradeExecutorLogic);
         upExecutor = address(dc.executor);
+
+        dc.token = deployToken(dc.proxyAdmin, l2TokenLogic);
+        dc.token.initialize(params._l1Token, params._l2TokenInitialSupply, address(dc.executor));
 
         // give proxyAdmin affordance to upgrade gov contracts (via governance)
         dc.proxyAdmin.transferOwnership(address(dc.executor));
@@ -228,7 +227,7 @@ contract L2GovernanceFactory is Ownable {
         treasuryGov.initialize({
             _token: params._token,
             _timelock: treasuryTimelock,
-            _owner: params._executor, 
+            _owner: params._executor,
             _votingDelay: params._votingDelay,
             _votingPeriod: params._votingPeriod,
             _quorumNumerator: params._treasuryQuorumThreshold,
