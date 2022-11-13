@@ -4,6 +4,7 @@ import { expect, util } from "chai";
 import {
   ArbitrumTimelock,
   ArbitrumTimelock__factory,
+  FixedDelegateErc20Wallet__factory,
   L1ArbitrumTimelock,
   L1ArbitrumTimelock__factory,
   L1GovernanceFactory__factory,
@@ -195,25 +196,50 @@ describe("Governor", function () {
     // we use a non zero dummy address for the l1 token
     // it doesnt exist yet but we plan to upgrade the l2 token contract add this address
     const l1TokenAddress = "0x0000000000000000000000000000000000000001";
+    const sevenSecurityCouncil = Wallet.createRandom();
+
+    const timelockLogic = await new ArbitrumTimelock__factory(
+      l2Deployer
+    ).deploy();
+    const governorLogic = await new L2ArbitrumGovernor__factory(
+      l2Deployer
+    ).deploy();
+    const fixedDelegateLogic = await new FixedDelegateErc20Wallet__factory(
+      l2Deployer
+    ).deploy();
+    const l2TokenLogic = await new L2ArbitrumToken__factory(
+      l2Deployer
+    ).deploy();
+    const upgradeExecutor = await new UpgradeExecutor__factory(
+      l2Deployer
+    ).deploy();
 
     // deploy L2
     const l2GovernanceFac = await new L2GovernanceFactory__factory(
       l2Deployer
-    ).deploy();
+    ).deploy(
+      timelockLogic.address,
+      governorLogic.address,
+      timelockLogic.address,
+      fixedDelegateLogic.address,
+      governorLogic.address,
+      l2TokenLogic.address,
+      upgradeExecutor.address
+    );
     const l2GovDeployReceipt = await (
-      await l2GovernanceFac.deploy(
+      await l2GovernanceFac.deployStep1(
         {
           _l2MinTimelockDelay: l2TimeLockDelay,
+          _l2TokenInitialSupply: initialSupply,
+          _l2TokenOwner: l2SignerAddr,
+          _upgradeProposer: sevenSecurityCouncil.address,
           _coreQuorumThreshold: 5,
           _l1Token: l1TokenAddress,
           _treasuryQuorumThreshold: 3,
-          _l2TokenInitialSupply: initialSupply,
-          _l2TokenOwner: l2SignerAddr,
-          _l2UpgradeExecutors: [await l2Deployer.getAddress()],
           _proposalThreshold: 100,
           _votingDelay: 10,
           _votingPeriod: 10,
-          _minPeriodAfterQuorum: 1
+          _minPeriodAfterQuorum: 1,
         },
 
         { gasLimit: 30000000 }
@@ -225,15 +251,21 @@ describe("Governor", function () {
     )[0].args as unknown as L2DeployedEventObject;
 
     // deploy L1
+    const l1SecurityCouncil = Wallet.createRandom();
     const l2Network = await getL2Network(l2Deployer);
+    const l1UpgradeExecutorLogic = await new UpgradeExecutor__factory(
+      l1Deployer
+    ).deploy();
     const l1GovernanceFac = await new L1GovernanceFactory__factory(
       l1Deployer
     ).deploy();
     const l1GovDeployReceipt = await (
-      await l1GovernanceFac.deploy(
+      await l1GovernanceFac.deployStep2(
+        l1UpgradeExecutorLogic.address,
         l1TimeLockDelay,
         l2Network.ethBridge.inbox,
-        l2DeployResult.coreTimelock
+        l2DeployResult.coreTimelock,
+        l1SecurityCouncil.address
       )
     ).wait();
     const l1DeployResult = l1GovDeployReceipt.events?.filter(
@@ -241,25 +273,14 @@ describe("Governor", function () {
     )[0].args as unknown as L1DeployedEventObject;
 
     // after deploying transfer ownership of the upgrader to the l1 contract
+    const nineTwelthSecurityCouncil = Wallet.createRandom();
     const l2UpgradeExecutor = UpgradeExecutor__factory.connect(
       l2DeployResult.executor,
       l2Deployer.provider!
     );
     const l1TimelockAddress = new Address(l1DeployResult.timelock);
     const ow = l1TimelockAddress.applyAlias().value;
-    await (
-      await l2UpgradeExecutor.connect(l2Deployer).grantRole(
-        await l2UpgradeExecutor.EXECUTOR_ROLE(),
-        ow
-      )
-    ).wait();
-    await (
-      await l2UpgradeExecutor.connect(l2Deployer).revokeRole(
-        await l2UpgradeExecutor.EXECUTOR_ROLE(),
-        await l2Deployer.getAddress()
-      )
-    ).wait();
-
+    await l2GovernanceFac.deployStep3([ow, nineTwelthSecurityCouncil.address]);
 
     // return contract objects
     const l2TokenContract = L2ArbitrumToken__factory.connect(
@@ -798,10 +819,7 @@ describe("Governor", function () {
     // 1. a
     const upgradeData = l2UpgradeExecutor.interface.encodeFunctionData(
       "execute",
-      [
-        transferUpgrade.address,
-        transferExecution,
-      ]
+      [transferUpgrade.address, transferExecution]
     );
 
     const l2Network = await getL2Network(l2Deployer);
@@ -830,14 +848,7 @@ describe("Governor", function () {
     // abi encode the upgrade data
 
     const executionData = defaultAbiCoder.encode(
-      [
-        "address",
-        "address",
-        "uint256",
-        "uint256",
-        "uint256",
-        "bytes",
-      ],
+      ["address", "address", "uint256", "uint256", "uint256", "bytes"],
       [
         l2Network.ethBridge.inbox,
         l2UpgradeExecutor.address,
@@ -849,7 +860,7 @@ describe("Governor", function () {
     );
 
     // l1TimelockContract.
-    const magic = await l1TimelockContract.RETRYABLE_TICKET_MAGIC()
+    const magic = await l1TimelockContract.RETRYABLE_TICKET_MAGIC();
 
     // 2. schedule a transfer on l1
     const scheduleData = l1TimelockContract.interface.encodeFunctionData(
@@ -912,7 +923,7 @@ describe("Governor", function () {
         l2Signer,
         l1TimelockContract,
         l2Transaction,
-        l2Network.ethBridge.inbox,
+        magic,
         BigNumber.from(0),
         executionData,
         proposalString,
@@ -977,25 +988,39 @@ describe("Governor", function () {
     await wait(5000);
     console.log("executing l1");
 
+    const opId = l1TimelockContract.hashOperation(
+      proposalTo,
+      proposalValue,
+      proposalCallData,
+      constants.HashZero,
+      id(proposalString),
+
+    )
+    while(true) {
+      await mineBlock(l1Signer);
+      await mineBlock(l2Signer);
+      if(await l1TimelockContract.isOperationReady(opId)) break;
+      await wait(1000);
+    }
+
     // execute the proposal
-    let value = BigNumber.from( 0);
-    if(crossChain) {
+    let value = BigNumber.from(0);
+    if (crossChain) {
       const res = defaultAbiCoder.decode(
-        ["address",
-          "uint256" ,
-          "address" ,
-          "address" ,
-          "uint256" ,
-          "uint256" ,
-          "bytes"], proposalCallData
-      )
-      const retryableCallData = res[6] as string;
-      console.log(retryableCallData)
-      const l2Network = await getL2Network(l2Deployer)
-      const inbox = Inbox__factory.connect(l2Network.ethBridge.inbox, l1Deployer.provider!);
-      const submissionFee = await inbox.callStatic.calculateRetryableSubmissionFee(
-        (retryableCallData.length - 2) / 2, 0
-      )
+        ["address", "address", "uint256", "uint256", "uint256", "bytes"],
+        proposalCallData
+      );
+      const retryableCallData = res[5] as string;
+      const l2Network = await getL2Network(l2Deployer);
+      const inbox = Inbox__factory.connect(
+        l2Network.ethBridge.inbox,
+        l1Deployer.provider!
+      );
+      const submissionFee =
+        await inbox.callStatic.calculateRetryableSubmissionFee(
+          (retryableCallData.length - 2) / 2,
+          0
+        );
       value = submissionFee.mul(2);
     }
 
@@ -1006,8 +1031,8 @@ describe("Governor", function () {
         proposalValue,
         proposalCallData,
         constants.HashZero,
-        id(proposalString), 
-        {value: value}
+        id(proposalString),
+        { value: value }
       );
     const tx = await l1TimelockContract
       .connect(l1Signer)
@@ -1017,7 +1042,7 @@ describe("Governor", function () {
         proposalCallData,
         constants.HashZero,
         id(proposalString),
-        {value: value}
+        { value: value }
       );
     console.log("executing l1 wait");
 

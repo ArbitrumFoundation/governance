@@ -14,6 +14,6 @@ snapshot  		:; forge snapshot
 test-unit		:; forge test -vvv
 clean     		:; forge clean
 fmt       		:; forge fmt
-gen-network		:; echo 'stubbed for now'
+gen-network		:; yarn gen:network
 test      		:  test-unit
-test-integration:; echo 'stubbed for now'
+test-integration:; yarn test:integration

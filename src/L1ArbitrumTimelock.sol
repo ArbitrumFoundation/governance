@@ -33,8 +33,6 @@ contract L1ArbitrumTimelock is TimelockControllerUpgradeable, L1ArbitrumMessenge
 
     /// @notice             Initialise the L1 timelock
     /// @param minDelay     The minimum amount of delay this timelock should enforce
-    /// @param proposers    Additional addresses that can schedule a proposal -
-    ///                     the bridge of attached to the provided inbox will also be added as a proposer
     /// @param executors    The addresses that can execute a proposal (set address(0) for open execution)
     /// @param _governanceChainInbox       The address of the inbox contract, for the L2 chain on which governance is based.
     ///                     For the Arbitrum DAO this the Arb1 inbox
@@ -42,13 +40,15 @@ contract L1ArbitrumTimelock is TimelockControllerUpgradeable, L1ArbitrumMessenge
     ///                     For the Arbitrum DAO this the Arbitrum DAO timelock on Arb1
     function initialize(
         uint256 minDelay,
-        address[] memory proposers,
         address[] memory executors,
         address _governanceChainInbox,
         address _l2Timelock
     ) external initializer {
         require(_governanceChainInbox != address(0), "L1ArbitrumTimelock: zero inbox");
         require(_l2Timelock != address(0), "L1ArbitrumTimelock: zero l2 timelock");
+        // this timelock doesnt accept any proposers since they wont pass the
+        // onlyCounterpartTimelock check
+        address[] memory proposers;
         __TimelockController_init(minDelay, proposers, executors);
 
         governanceChainInbox = _governanceChainInbox;

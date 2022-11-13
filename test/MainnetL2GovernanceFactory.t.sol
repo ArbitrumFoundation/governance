@@ -50,7 +50,23 @@ contract MainnetL2GovernanceFactoryTest is Test {
             _upgradeProposer: upgradeProposer
         });
 
-        MainnetL2GovernanceFactory l2GovernanceFactory = new MainnetL2GovernanceFactory();
+        address _coreTimelockLogic = address(new ArbitrumTimelock());
+        address _coreGovernorLogic = address(new L2ArbitrumGovernor());
+        address _treasuryTimelockLogic = address(new ArbitrumTimelock());
+        address _treasuryLogic = address(new FixedDelegateErc20Wallet());
+        address _treasuryGovernorLogic = address(new L2ArbitrumGovernor());
+        address _l2TokenLogic = address(new L2ArbitrumToken());
+        address _upgradeExecutorLogic = address(new UpgradeExecutor());
+
+        MainnetL2GovernanceFactory l2GovernanceFactory = new MainnetL2GovernanceFactory(
+            _coreTimelockLogic,
+            _coreGovernorLogic,
+            _treasuryTimelockLogic,
+            _treasuryLogic,
+            _treasuryGovernorLogic,
+            _l2TokenLogic,
+            _upgradeExecutorLogic
+        );
         vm.expectRevert("MainnetL2GovernanceFactory: can only use deployStep1Mainnet");
         l2GovernanceFactory.deployStep1(deployParams);
 
