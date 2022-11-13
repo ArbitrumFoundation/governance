@@ -85,7 +85,7 @@ contract L2ArbitrumGovernor is
     ///         You can read more about this in the comments on onlyGovernance()
     ///         This flow doesn't work for Arbitrum governance as we require an proposal on L2 to first
     ///         be relayed to L1, and then back again to L2 before calling into the governor to update
-    ///         settings. This means that updating settings cant be done in a single transaction.
+    ///         settings. This means that updating settings can't be done in a single transaction.
     ///         There are two potential solutions to this problem:
     ///         1.  Use a more persistent record that a specific upgrade is taking place. This adds
     ///             a lot of complexity, as we have multiple layers of calldata wrapping each other to
