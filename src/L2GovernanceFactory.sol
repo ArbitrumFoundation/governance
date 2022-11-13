@@ -56,24 +56,33 @@ struct DeployedTreasuryContracts {
 
 /// @title Factory contract that deploys the L2 components for Arbitrum governance
 /// @notice Governance Deployment Steps:
-/// 1. Deploy the following (in any order):
+/// 1. Deploy the following pre-requiste logic contracts:
+///     L1:
+///         - UpgradeExecutor logic
+///     L2:
+///         - ArbitrumTimelock logic
+///         - L2ArbitrumGovernor logic
+///         - FixedDelegateErc20 logic
+///         - L2ArbitrumToken logic
+///         - UpgradeExecutor logic
+/// 2. Then deploy the following (in any order):
 ///     L1:
 ///         - L1GoveranceFactory
 ///         - L1Token
-///         - Gnosis Safe Multisig Security Council
+///         - Gnosis Safe Multisig 9 of 12 Security Council
 ///     L2:
 ///         - L2GovernanceFactory
 ///         - Gnosis Safe Multisig 9 of 12 Security Council
 ///         - Gnosis Safe Multisig 7 of 12 Security Council
 ///
 ///     L1GoveranceFactory and L2GovernanceFactory deployers will be their respective owners, and will carry out the following steps.
-/// 2. Call L2GovernanceFactory.deployStep1
+/// 3. Call L2GovernanceFactory.deployStep1
 ///     - Dependencies: L1-Token address, 7 of 12 multisig (as _upgradeProposer)
 ///
-/// 3. Call L1GoveranceFactory.deployStep2
+/// 4. Call L1GoveranceFactory.deployStep2
 ///     - Dependencies: L1 security council address, L2 Timelock address (deployed in previous step)
 ///
-/// 4. Call L2GovernanceFactory.deployStep3
+/// 5. Call L2GovernanceFactory.deployStep3
 ///     - Dependencies: (Aliased) L1-timelock address (deployed in previous step), L2 security council address (as _l2UpgradeExecutors)
 ///
 contract L2GovernanceFactory is Ownable {
