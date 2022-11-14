@@ -26,12 +26,14 @@ contract L2GovernanceFactoryTest is Test {
     uint256 proposalThreshold = 5e6;
     uint64 minPeriodAfterQuorum = 41;
 
-    address[] l2UpgradeExecutors = [address(4), address(5)];
+    address[] l2UpgradeExecutors = [address(404), address(504)];
 
     address[] addressArrayStub = [address(777), address(888)];
 
-    address someRando = address(3);
+    address someRando = address(390);
     address upgradeProposer = address(1234);
+
+    address l2InitialSupplyRecipient = address(456);
 
     DeployCoreParams deployCoreParams = DeployCoreParams({
         _l2MinTimelockDelay: l2MinTimelockDelay,
@@ -43,7 +45,8 @@ contract L2GovernanceFactoryTest is Test {
         _treasuryQuorumThreshold: treasuryQuorumThreshold,
         _proposalThreshold: proposalThreshold,
         _minPeriodAfterQuorum: minPeriodAfterQuorum,
-        _upgradeProposer: upgradeProposer
+        _upgradeProposer: upgradeProposer,
+        _l2InitialSupplyRecipient: l2InitialSupplyRecipient
     });
 
     function deploy()
@@ -83,6 +86,9 @@ contract L2GovernanceFactoryTest is Test {
         (DeployedContracts memory dc, DeployedTreasuryContracts memory dtc) =
             l2GovernanceFactory.deployStep1(deployCoreParams);
         l2GovernanceFactory.deployStep3(l2UpgradeExecutors);
+
+        vm.prank(l2InitialSupplyRecipient);
+        dc.token.transferOwnership(address(dc.executor));
 
         return (
             dc.token,
@@ -230,7 +236,7 @@ contract L2GovernanceFactoryTest is Test {
             ProxyAdmin proxyAdmin,
             UpgradeExecutor upgradeExecutor
         ) = deploy();
-        assertEq(token.owner(), address(upgradeExecutor), "token.l1Address()");
+        assertEq(token.owner(), address(upgradeExecutor), "token.owner()");
         assertEq(token.l1Address(), l1Token, "token.l1Address()");
         assertEq(token.totalSupply(), l2TokenInitialSupply, "token.totalSupply()");
 
@@ -273,6 +279,7 @@ contract L2GovernanceFactoryTest is Test {
             treasuryGov.EXCLUDE_ADDRESS(),
             "Exclude address delegation"
         );
+        assertEq(token.balanceOf(l2InitialSupplyRecipient), l2TokenInitialSupply, "Initial supply");
     }
 
     function testProxyAdminOwnership() public {

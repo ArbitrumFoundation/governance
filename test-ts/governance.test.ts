@@ -239,6 +239,7 @@ describe("Governor", function () {
           _votingDelay: 10,
           _votingPeriod: 10,
           _minPeriodAfterQuorum: 1,
+          _l2InitialSupplyRecipient: l2SignerAddr
         },
 
         { gasLimit: 30000000 }
@@ -286,7 +287,6 @@ describe("Governor", function () {
       l2DeployResult.token,
       l2Deployer.provider!
     );
-
     const l2TimelockContract = ArbitrumTimelock__factory.connect(
       l2DeployResult.coreTimelock,
       l2Deployer.provider!
@@ -522,9 +522,9 @@ describe("Governor", function () {
     } = await deployGovernance(l1Deployer, l2Deployer, l2Signer);
 
     // give some tokens to the timelock contract
-    const l2UpgradeExecutor = 10;
+    const l2UpgradeExecutorBalance = 10;
     const testUpgraderBalanceEnd = 7;
-    const randWalletEnd = l2UpgradeExecutor - testUpgraderBalanceEnd;
+    const randWalletEnd = l2UpgradeExecutorBalance - testUpgraderBalanceEnd;
     const randWallet = Wallet.createRandom();
 
     // upgrade executor and upgrade
@@ -545,12 +545,12 @@ describe("Governor", function () {
     await (
       await l2TokenContract
         .connect(l2Signer)
-        .transfer(testUpgradeExecutor.address, l2UpgradeExecutor)
+        .transfer(testUpgradeExecutor.address, l2UpgradeExecutorBalance)
     ).wait();
     expect(
       (await l2TokenContract.balanceOf(testUpgradeExecutor.address)).toNumber(),
       "Upgrade executor balance start"
-    ).to.eq(l2UpgradeExecutor);
+    ).to.eq(l2UpgradeExecutorBalance);
 
     await (
       await testUpgradeExecutor
@@ -759,7 +759,7 @@ describe("Governor", function () {
     );
   }).timeout(360000);
 
-  it.only("L2-L1-L2 proposal", async () => {
+  it("L2-L1-L2 proposal", async () => {
     const { l1Signer, l2Signer, l1Deployer, l2Deployer } = await testSetup();
     // CHRIS: TODO: move these into test setup if we need them
     await fundL1(l1Signer, parseEther("1"));
@@ -779,11 +779,13 @@ describe("Governor", function () {
     const randWallet = Wallet.createRandom();
 
     // send some tokens to the forwarder
+    console.log("a")
     await (
       await l2TokenContract
         .connect(l2Signer)
         .transfer(l2UpgradeExecutor.address, l2UpgraderBalanceStart)
     ).wait();
+    console.log("b")
     expect(
       (await l2TokenContract.balanceOf(l2UpgradeExecutor.address)).toNumber(),
       "Upgrader balance start"

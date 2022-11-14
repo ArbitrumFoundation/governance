@@ -21,6 +21,7 @@ struct DeployCoreParams {
     uint256 _proposalThreshold;
     uint64 _minPeriodAfterQuorum;
     address _upgradeProposer; // in addition to core gov
+    address _l2InitialSupplyRecipient;
 }
 
 struct DeployTreasuryParams {
@@ -80,7 +81,8 @@ struct DeployedTreasuryContracts {
 ///
 /// 5. Call L2GovernanceFactory.deployStep3
 ///     - Dependencies: (Aliased) L1-timelock address (deployed in previous step), L2 security council address (as _l2UpgradeExecutors)
-///
+/// 6. From the _l2InitialSupplyRecipient transfer ownership of the L2ArbitrumToken to the UpgradeExecutor
+///    Then transfer tokens from _l2InitialSupplyRecipient to the treasury and other token distributor
 contract L2GovernanceFactory is Ownable {
     event Deployed(
         L2ArbitrumToken token,
@@ -155,7 +157,7 @@ contract L2GovernanceFactory is Ownable {
         upExecutor = address(dc.executor);
 
         dc.token = deployToken(dc.proxyAdmin, l2TokenLogic);
-        dc.token.initialize(params._l1Token, params._l2TokenInitialSupply, address(dc.executor));
+        dc.token.initialize(params._l1Token, params._l2TokenInitialSupply, params._l2InitialSupplyRecipient);
 
         dc.coreGov = deployGovernor(dc.proxyAdmin, coreGovernorLogic);
         dc.coreGov.initialize({
