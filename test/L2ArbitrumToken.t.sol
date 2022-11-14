@@ -10,9 +10,9 @@ import "./util/Reverter.sol";
 import "forge-std/Test.sol";
 
 contract L2ArbitrumTokenTest is Test {
-    address owner = address(1);
-    address mintRecipient = address(3);
-    address emptyAddr = address(5);
+    address owner = address(137);
+    address mintRecipient = address(338);
+    address emptyAddr = address(539);
     uint256 initialSupply = 10 * 1_000_000_000 * (10 ** 18);
     address l1Token = address(1_234_578);
 

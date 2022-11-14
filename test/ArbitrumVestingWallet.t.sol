@@ -13,7 +13,7 @@ import "./util/TestUtil.sol";
 import "forge-std/Test.sol";
 
 contract ArbitrumVestingWalletTest is Test {
-    address beneficiary = address(1);
+    address beneficiary = address(137);
     uint64 secondsPerYear = 60 * 60 * 24 * 365;
     uint64 timestampNow = secondsPerYear;
     uint64 startTimestamp = secondsPerYear * 2; // starts at 2 years
@@ -28,6 +28,7 @@ contract ArbitrumVestingWalletTest is Test {
     address owner = address(12_345_789);
     address payable sweepTo = payable(address(123_457_891));
     address delegatee = address(138);
+    address someRando = address(123);
 
     function deployDeps() public returns (L2ArbitrumToken, L2ArbitrumGovernor, TokenDistributor) {
         address token = TestUtil.deployProxy(address(new L2ArbitrumToken()));
@@ -51,7 +52,7 @@ contract ArbitrumVestingWalletTest is Test {
         L2ArbitrumGovernor(governor).initialize(
             IVotesUpgradeable(token),
             ArbitrumTimelock(timelock),
-            address(1),
+            address(137),
             10_000,
             10_000,
             3,
@@ -162,7 +163,7 @@ contract ArbitrumVestingWalletTest is Test {
         (ArbitrumVestingWallet wallet,, L2ArbitrumGovernor gov,) = deployClaimAndDelegate();
 
         address[] memory targets = new address[](1);
-        targets[0] = address(5);
+        targets[0] = address(555);
         uint256[] memory amounts = new uint256[](1);
         amounts[0] = 0;
         bytes[] memory data = new bytes[](1);
@@ -181,7 +182,7 @@ contract ArbitrumVestingWalletTest is Test {
         (ArbitrumVestingWallet wallet,, L2ArbitrumGovernor gov,) = deployClaimAndDelegate();
 
         address[] memory targets = new address[](1);
-        targets[0] = address(5);
+        targets[0] = address(555);
         uint256[] memory amounts = new uint256[](1);
         amounts[0] = 0;
         bytes[] memory data = new bytes[](1);
@@ -283,5 +284,12 @@ contract ArbitrumVestingWalletTest is Test {
             (beneficiaryClaim),
             "Way into the future"
         );
+    }
+
+    function testReleaseAffordance() external {
+        (ArbitrumVestingWallet wallet, L2ArbitrumToken token,,) = deployAndClaim();
+        vm.prank(someRando);
+        vm.expectRevert("ArbitrumVestingWallet: not beneficiary");
+        wallet.release(address(token));
     }
 }
