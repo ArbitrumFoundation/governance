@@ -1,4 +1,4 @@
-import { getL2Network } from "@arbitrum/sdk";
+import { Address, getL2Network } from "@arbitrum/sdk";
 import { Wallet } from "ethers";
 import { parseEther } from "ethers/lib/utils";
 import { testSetup } from "../test-ts/testSetup";
@@ -12,6 +12,7 @@ import {
   L2GovernanceFactory__factory,
   UpgradeExecutor__factory,
 } from "../typechain-types";
+import { DeployedEventObject as L1DeployedEventObject } from "../typechain-types/src/L1GovernanceFactory";
 import { DeployedEventObject as L2DeployedEventObject } from "../typechain-types/src/L2GovernanceFactory";
 
 const deployGovernance = async (): Promise<ArbitrumTimelock> => {
@@ -76,13 +77,27 @@ const deployGovernance = async (): Promise<ArbitrumTimelock> => {
   const l1SecurityCouncil = Wallet.createRandom();
   const l2Network = await getL2Network(l2Deployer);
   const l1GovernanceFactory = await new L1GovernanceFactory__factory(l1Deployer).deploy();
-  await l1GovernanceFactory.deployStep2(
-    l1UpgradeExecutorLogic.address,
-    l1TimeLockDelay,
-    l2Network.ethBridge.inbox,
-    l2DeployResult.coreTimelock,
-    l1SecurityCouncil.address
-  );
+
+  const l1GovDeployReceipt = await (
+    await l1GovernanceFactory.deployStep2(
+      l1UpgradeExecutorLogic.address,
+      l1TimeLockDelay,
+      l2Network.ethBridge.inbox,
+      l2DeployResult.coreTimelock,
+      l1SecurityCouncil.address
+    )
+  ).wait();
+
+  const l1DeployResult = l1GovDeployReceipt.events?.filter(
+    (e) => e.topics[0] === l1GovernanceFactory.interface.getEventTopic("Deployed")
+  )[0].args as unknown as L1DeployedEventObject;
+
+  // step 3
+  console.log("Set executor roles");
+  const nineTwelthSecurityCouncil = Wallet.createRandom();
+  const l1TimelockAddress = new Address(l1DeployResult.timelock);
+  const l1TimelockAliased = l1TimelockAddress.applyAlias().value;
+  await l2GovernanceFactory.deployStep3([l1TimelockAliased, nineTwelthSecurityCouncil.address]);
 
   return timelockLogic;
 };
