@@ -14,6 +14,7 @@ import {
 } from "../typechain-types";
 import { DeployedEventObject as L1DeployedEventObject } from "../typechain-types/src/L1GovernanceFactory";
 import { DeployedEventObject as L2DeployedEventObject } from "../typechain-types/src/L2GovernanceFactory";
+import * as GovernanceConstants from "./governance.constants";
 
 const deployGovernance = async (): Promise<ArbitrumTimelock> => {
   console.log("Get deployers and signers");
@@ -42,24 +43,22 @@ const deployGovernance = async (): Promise<ArbitrumTimelock> => {
   );
 
   const initialSupply = parseEther("1");
-  const l2TimeLockDelay = 7;
   const l2SignerAddr = await l2Signer.getAddress();
   const l1TokenAddress = "0x0000000000000000000000000000000000000001";
-  const sevenSecurityCouncil = Wallet.createRandom();
 
   const l2GovDeployReceipt = await (
     await l2GovernanceFactory.deployStep1(
       {
-        _l2MinTimelockDelay: l2TimeLockDelay,
+        _l2MinTimelockDelay: GovernanceConstants.L2_TIMELOCK_DELAY,
         _l2TokenInitialSupply: initialSupply,
-        _upgradeProposer: sevenSecurityCouncil.address,
-        _coreQuorumThreshold: 5,
+        _upgradeProposer: GovernanceConstants.L2_7_OF_12_SECURITY_COUNCIL,
+        _coreQuorumThreshold: GovernanceConstants.L2_CORE_QUORUM_TRESHOLD,
         _l1Token: l1TokenAddress,
-        _treasuryQuorumThreshold: 3,
-        _proposalThreshold: 100,
-        _votingDelay: 10,
-        _votingPeriod: 10,
-        _minPeriodAfterQuorum: 1,
+        _treasuryQuorumThreshold: GovernanceConstants.L2_TREASURY_QUORUM_TRESHOLD,
+        _proposalThreshold: GovernanceConstants.L2_PROPOSAL_TRESHOLD,
+        _votingDelay: GovernanceConstants.L2_VOTING_DELAY,
+        _votingPeriod: GovernanceConstants.L2_VOTING_PERIOD,
+        _minPeriodAfterQuorum: GovernanceConstants.L2_MIN_PERIOD_AFTER_QUORUM,
         _l2InitialSupplyRecipient: l2SignerAddr,
       },
 
@@ -73,18 +72,16 @@ const deployGovernance = async (): Promise<ArbitrumTimelock> => {
 
   // step 2
   console.log("Deploy and init L1 governance");
-  const l1TimeLockDelay = 5;
-  const l1SecurityCouncil = Wallet.createRandom();
   const l2Network = await getL2Network(l2Deployer);
   const l1GovernanceFactory = await new L1GovernanceFactory__factory(l1Deployer).deploy();
 
   const l1GovDeployReceipt = await (
     await l1GovernanceFactory.deployStep2(
       l1UpgradeExecutorLogic.address,
-      l1TimeLockDelay,
+      GovernanceConstants.L1_TIMELOCK_DELAY,
       l2Network.ethBridge.inbox,
       l2DeployResult.coreTimelock,
-      l1SecurityCouncil.address
+      GovernanceConstants.L1_9_OF_12_SECURITY_COUNCIL
     )
   ).wait();
 
@@ -94,10 +91,12 @@ const deployGovernance = async (): Promise<ArbitrumTimelock> => {
 
   // step 3
   console.log("Set executor roles");
-  const nineTwelthSecurityCouncil = Wallet.createRandom();
   const l1TimelockAddress = new Address(l1DeployResult.timelock);
   const l1TimelockAliased = l1TimelockAddress.applyAlias().value;
-  await l2GovernanceFactory.deployStep3([l1TimelockAliased, nineTwelthSecurityCouncil.address]);
+  await l2GovernanceFactory.deployStep3([
+    l1TimelockAliased,
+    GovernanceConstants.L2_9_OF_12_SECURITY_COUNCIL,
+  ]);
 
   return timelockLogic;
 };
