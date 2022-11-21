@@ -1,7 +1,7 @@
 import { Address, getL2Network } from "@arbitrum/sdk";
 import { Signer, Wallet } from "ethers";
 import { parseEther } from "ethers/lib/utils";
-import { fundL1, testSetup } from "../test-ts/testSetup";
+import { fundL1, fundL2, testSetup } from "../test-ts/testSetup";
 import {
   ArbitrumTimelock,
   ArbitrumTimelock__factory,
@@ -38,6 +38,7 @@ const deployGovernance = async (): Promise<ArbitrumTimelock> => {
   console.log("Get deployers and signers");
   const { l2Deployer, l2Signer, l1Deployer, l1Signer } = await testSetup();
   await fundL1(l1Signer, parseEther("1"));
+  await fundL2(l2Signer, parseEther("1"));
 
   console.log("Deploy L1 logic contracts");
   const l1UpgradeExecutorLogic = await deployL1LogicContracts(l1Deployer);
@@ -81,7 +82,7 @@ const deployGovernance = async (): Promise<ArbitrumTimelock> => {
 
   // post deployment
   console.log("Execute post deployment tasks");
-  await postDeploymentTasks(l1TokenProxy, l1DeployResult);
+  await postDeploymentTasks(l1TokenProxy, l1DeployResult, l2Signer, l2DeployResult);
 
   return timelockLogic;
 };
@@ -228,10 +229,16 @@ async function setExecutorRoles(
 
 async function postDeploymentTasks(
   l1TokenProxy: TransparentUpgradeableProxy,
-  l1DeployResult: L1DeployedEventObject
+  l1DeployResult: L1DeployedEventObject,
+  l2Signer: Signer,
+  l2DeployResult: L2DeployedEventObject
 ) {
   // set L1 proxy admin as L1 token's admin
   await l1TokenProxy.changeAdmin(l1DeployResult.proxyAdmin);
+
+  // transfer L2 token ownership to upgradeExecutor
+  const l2Token = L2ArbitrumToken__factory.connect(l2DeployResult.token, l2Signer.provider!);
+  await l2Token.connect(l2Signer).transferOwnership(l2DeployResult.executor);
 }
 
 async function main() {
