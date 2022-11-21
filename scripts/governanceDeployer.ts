@@ -1,7 +1,6 @@
 import { Address, getL2Network } from "@arbitrum/sdk";
-import { Signer, Wallet } from "ethers";
+import { Signer } from "ethers";
 import { parseEther } from "ethers/lib/utils";
-import { fundL1, fundL2, testSetup } from "../test-ts/testSetup";
 import {
   ArbitrumTimelock,
   ArbitrumTimelock__factory,
@@ -28,9 +27,11 @@ import {
   L2GovernanceFactory,
 } from "../typechain-types/src/L2GovernanceFactory";
 import * as GovernanceConstants from "./governance.constants";
+import { getDeployers } from "./providerSetup";
 
 /**
- * Performs each step of the Arbitrum governance deployment process
+ * Performs each step of the Arbitrum governance deployment process.
+ *
  * /// @notice Governance Deployment Steps:
  * /// 1. Deploy the following pre-requiste logic contracts:
  * ///     L1:
@@ -64,29 +65,27 @@ import * as GovernanceConstants from "./governance.constants";
  * ///    Then transfer tokens from _l2InitialSupplyRecipient to the treasury and other token distributor
  * @returns
  */
-export const deployGovernance = async (): Promise<ArbitrumTimelock> => {
-  // test version of deployers/signers (TODO - pull those from .env)
+export const deployGovernance = async () => {
+  // fetch deployers and token reciver
   console.log("Get deployers and signers");
-  const { l2Deployer, l2Signer, l1Deployer, l1Signer } = await testSetup();
-  await fundL1(l1Signer, parseEther("1"));
-  await fundL2(l2Signer, parseEther("1"));
+  const { ethDeployer, arbDeployer, arbInitialSupplyRecipient } = await getDeployers();
 
   console.log("Deploy L1 logic contracts");
-  const l1UpgradeExecutorLogic = await deployL1LogicContracts(l1Deployer);
+  const l1UpgradeExecutorLogic = await deployL1LogicContracts(ethDeployer);
 
   console.log("Deploy L2 logic contracts");
   const { timelockLogic, governorLogic, fixedDelegateLogic, l2TokenLogic, upgradeExecutor } =
-    await deployL2LogicContracts(l2Deployer);
+    await deployL2LogicContracts(arbDeployer);
 
   console.log("Deploy L1 governance factory");
-  const l1GovernanceFactory = await deployL1GovernanceFactory(l1Deployer);
+  const l1GovernanceFactory = await deployL1GovernanceFactory(ethDeployer);
 
   console.log("Deploy and init L1 Arbitrum token");
-  const { l1Token, l1TokenProxy } = await deployAndInitL1Token(l1Deployer, l1Signer);
+  const { l1Token, l1TokenProxy } = await deployAndInitL1Token(ethDeployer);
 
   console.log("Deploy L2 governance factory");
   const l2GovernanceFactory = await deployL2GovernanceFactory(
-    l2Deployer,
+    arbDeployer,
     timelockLogic,
     governorLogic,
     fixedDelegateLogic,
@@ -96,12 +95,16 @@ export const deployGovernance = async (): Promise<ArbitrumTimelock> => {
 
   // step 1
   console.log("Deploy and init L2 governance");
-  const l2DeployResult = await deployL2Governance(l2Signer, l2GovernanceFactory, l1Token.address);
+  const l2DeployResult = await deployL2Governance(
+    arbInitialSupplyRecipient,
+    l2GovernanceFactory,
+    l1Token.address
+  );
 
   // step 2
   console.log("Deploy and init L1 governance");
   const l1DeployResult = await deployL1Governance(
-    l2Deployer,
+    arbDeployer,
     l1GovernanceFactory,
     l1UpgradeExecutorLogic,
     l2DeployResult
@@ -113,54 +116,53 @@ export const deployGovernance = async (): Promise<ArbitrumTimelock> => {
 
   // post deployment
   console.log("Execute post deployment tasks");
-  await postDeploymentTasks(l1TokenProxy, l1DeployResult, l2Signer, l2DeployResult);
-
-  return timelockLogic;
+  await postDeploymentTasks(
+    l1TokenProxy,
+    l1DeployResult,
+    arbInitialSupplyRecipient,
+    l2DeployResult
+  );
 };
 
-async function deployL1LogicContracts(l1Deployer: Signer) {
-  const l1UpgradeExecutorLogic = await new UpgradeExecutor__factory(l1Deployer).deploy();
+async function deployL1LogicContracts(ethDeployer: Signer) {
+  const l1UpgradeExecutorLogic = await new UpgradeExecutor__factory(ethDeployer).deploy();
   return l1UpgradeExecutorLogic;
 }
 
-async function deployL2LogicContracts(l2Deployer: Signer) {
-  const timelockLogic = await new ArbitrumTimelock__factory(l2Deployer).deploy();
-  const governorLogic = await new L2ArbitrumGovernor__factory(l2Deployer).deploy();
-  const fixedDelegateLogic = await new FixedDelegateErc20Wallet__factory(l2Deployer).deploy();
-  const l2TokenLogic = await new L2ArbitrumToken__factory(l2Deployer).deploy();
-  const upgradeExecutor = await new UpgradeExecutor__factory(l2Deployer).deploy();
+async function deployL2LogicContracts(arbDeployer: Signer) {
+  const timelockLogic = await new ArbitrumTimelock__factory(arbDeployer).deploy();
+  const governorLogic = await new L2ArbitrumGovernor__factory(arbDeployer).deploy();
+  const fixedDelegateLogic = await new FixedDelegateErc20Wallet__factory(arbDeployer).deploy();
+  const l2TokenLogic = await new L2ArbitrumToken__factory(arbDeployer).deploy();
+  const upgradeExecutor = await new UpgradeExecutor__factory(arbDeployer).deploy();
   return { timelockLogic, governorLogic, fixedDelegateLogic, l2TokenLogic, upgradeExecutor };
 }
 
-async function deployL1GovernanceFactory(l1Deployer: Signer) {
-  const l1GovernanceFactory = await new L1GovernanceFactory__factory(l1Deployer).deploy();
+async function deployL1GovernanceFactory(ethDeployer: Signer) {
+  const l1GovernanceFactory = await new L1GovernanceFactory__factory(ethDeployer).deploy();
   return l1GovernanceFactory;
 }
 
-async function deployAndInitL1Token(l1Deployer: Signer, l1Signer: Signer) {
+async function deployAndInitL1Token(ethDeployer: Signer) {
   // deploy logic
-  const l1TokenLogic = await new L1ArbitrumToken__factory(l1Deployer).deploy();
+  const l1TokenLogic = await new L1ArbitrumToken__factory(ethDeployer).deploy();
 
   // deploy proxy
-  const l1TokenProxy = await new TransparentUpgradeableProxy__factory(l1Deployer).deploy(
+  const l1TokenProxy = await new TransparentUpgradeableProxy__factory(ethDeployer).deploy(
     l1TokenLogic.address,
-    l1Deployer.getAddress(),
+    ethDeployer.getAddress(),
     "0x",
     { gasLimit: 3000000 }
   );
 
   // initialize token
-  const l1Token = L1ArbitrumToken__factory.connect(l1TokenProxy.address, l1Deployer.provider!);
-  await (
-    await l1Token
-      .connect(l1Signer)
-      .initialize(
-        GovernanceConstants.L1_ARB_ROUTER,
-        GovernanceConstants.L1_ARB_GATEWAY,
-        GovernanceConstants.L1_NOVA_ROUTER,
-        GovernanceConstants.L1_NOVA_GATEWAY
-      )
-  ).wait();
+  const l1Token = L1ArbitrumToken__factory.connect(l1TokenProxy.address, ethDeployer);
+  await l1Token.initialize(
+    GovernanceConstants.L1_ARB_ROUTER,
+    GovernanceConstants.L1_ARB_GATEWAY,
+    GovernanceConstants.L1_NOVA_ROUTER,
+    GovernanceConstants.L1_NOVA_GATEWAY
+  );
 
   ////
   //TODO register token on L2
@@ -170,14 +172,14 @@ async function deployAndInitL1Token(l1Deployer: Signer, l1Signer: Signer) {
 }
 
 async function deployL2GovernanceFactory(
-  l2Deployer: Signer,
+  arbDeployer: Signer,
   timelockLogic: ArbitrumTimelock,
   governorLogic: L2ArbitrumGovernor,
   fixedDelegateLogic: FixedDelegateErc20Wallet,
   l2TokenLogic: L2ArbitrumToken,
   upgradeExecutor: UpgradeExecutor
 ) {
-  const l2GovernanceFactory = await new L2GovernanceFactory__factory(l2Deployer).deploy(
+  const l2GovernanceFactory = await new L2GovernanceFactory__factory(arbDeployer).deploy(
     timelockLogic.address,
     governorLogic.address,
     timelockLogic.address,
@@ -190,11 +192,11 @@ async function deployL2GovernanceFactory(
 }
 
 async function deployL2Governance(
-  l2Signer: Signer,
+  arbInitialSupplyRecipient: Signer,
   l2GovernanceFactory: L2GovernanceFactory,
   l1TokenAddress: string
 ) {
-  const l2SignerAddr = await l2Signer.getAddress();
+  const arbInitialSupplyRecipientAddr = await arbInitialSupplyRecipient.getAddress();
 
   const l2GovDeployReceipt = await (
     await l2GovernanceFactory.deployStep1(
@@ -209,7 +211,7 @@ async function deployL2Governance(
         _votingDelay: GovernanceConstants.L2_VOTING_DELAY,
         _votingPeriod: GovernanceConstants.L2_VOTING_PERIOD,
         _minPeriodAfterQuorum: GovernanceConstants.L2_MIN_PERIOD_AFTER_QUORUM,
-        _l2InitialSupplyRecipient: l2SignerAddr,
+        _l2InitialSupplyRecipient: arbInitialSupplyRecipientAddr,
       },
 
       { gasLimit: 30000000 }
@@ -223,12 +225,12 @@ async function deployL2Governance(
 }
 
 async function deployL1Governance(
-  l2Deployer: Signer,
+  arbDeployer: Signer,
   l1GovernanceFactory: L1GovernanceFactory,
   l1UpgradeExecutorLogic: UpgradeExecutor,
   l2DeployResult: L2DeployedEventObject
 ) {
-  const l2Network = await getL2Network(l2Deployer);
+  const l2Network = await getL2Network(arbDeployer);
   const l1GovDeployReceipt = await (
     await l1GovernanceFactory.deployStep2(
       l1UpgradeExecutorLogic.address,
@@ -260,19 +262,22 @@ async function setExecutorRoles(
 async function postDeploymentTasks(
   l1TokenProxy: TransparentUpgradeableProxy,
   l1DeployResult: L1DeployedEventObject,
-  l2Signer: Signer,
+  arbInitialSupplyRecipient: Signer,
   l2DeployResult: L2DeployedEventObject
 ) {
   // set L1 proxy admin as L1 token's admin
   await l1TokenProxy.changeAdmin(l1DeployResult.proxyAdmin);
 
   // transfer L2 token ownership to upgradeExecutor
-  const l2Token = L2ArbitrumToken__factory.connect(l2DeployResult.token, l2Signer.provider!);
-  await l2Token.connect(l2Signer).transferOwnership(l2DeployResult.executor);
+  const l2Token = L2ArbitrumToken__factory.connect(
+    l2DeployResult.token,
+    arbInitialSupplyRecipient.provider!
+  );
+  await l2Token.connect(arbInitialSupplyRecipient).transferOwnership(l2DeployResult.executor);
 
   // transfer tokens from _l2InitialSupplyRecipient to the treasury
   await l2Token
-    .connect(l2Signer)
+    .connect(arbInitialSupplyRecipient)
     .transfer(l2DeployResult.treasuryTimelock, GovernanceConstants.L2_NUM_OF_TOKENS_FOR_TREASURY);
 
   // tokens should be transfered to TokenDistributor as well, but only after all recipients are correctly set.
@@ -280,24 +285,18 @@ async function postDeploymentTasks(
 
 async function main() {
   console.log("Start governance deployment process...");
-  const timelock = await deployGovernance();
+  await deployGovernance();
   console.log("Deployment finished!");
 
-  const verificationSuccess = await verifyDeployment(timelock.address);
+  const verificationSuccess = await verifyDeployment();
   if (!verificationSuccess) {
     throw new Error("Deployment verification failed");
   }
   console.log("Verification successful!");
 }
 
-const verifyDeployment = async (timelockLogic: string): Promise<Boolean> => {
-  const { l2Deployer } = await testSetup();
-
-  let code = await l2Deployer.provider?.getCode(timelockLogic);
-  if (code == "0x") {
-    return false;
-  }
-
+const verifyDeployment = async (): Promise<Boolean> => {
+  //TODO
   return true;
 };
 
