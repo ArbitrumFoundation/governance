@@ -33,8 +33,8 @@ import * as GovernanceConstants from "./governance.constants";
  * Performs each step of the Arbitrum governance deployment process
  * @returns
  */
-const deployGovernance = async (): Promise<ArbitrumTimelock> => {
-  // test version of deployers/signers
+export const deployGovernance = async (): Promise<ArbitrumTimelock> => {
+  // test version of deployers/signers (TODO - pull those from .env)
   console.log("Get deployers and signers");
   const { l2Deployer, l2Signer, l1Deployer, l1Signer } = await testSetup();
   await fundL1(l1Signer, parseEther("1"));
@@ -163,14 +163,13 @@ async function deployL2Governance(
   l2GovernanceFactory: L2GovernanceFactory,
   l1TokenAddress: string
 ) {
-  const initialSupply = parseEther("1");
   const l2SignerAddr = await l2Signer.getAddress();
 
   const l2GovDeployReceipt = await (
     await l2GovernanceFactory.deployStep1(
       {
         _l2MinTimelockDelay: GovernanceConstants.L2_TIMELOCK_DELAY,
-        _l2TokenInitialSupply: initialSupply,
+        _l2TokenInitialSupply: parseEther(GovernanceConstants.L2_TOKEN_INITIAL_SUPPLY),
         _upgradeProposer: GovernanceConstants.L2_7_OF_12_SECURITY_COUNCIL,
         _coreQuorumThreshold: GovernanceConstants.L2_CORE_QUORUM_TRESHOLD,
         _l1Token: l1TokenAddress,
@@ -239,6 +238,19 @@ async function postDeploymentTasks(
   // transfer L2 token ownership to upgradeExecutor
   const l2Token = L2ArbitrumToken__factory.connect(l2DeployResult.token, l2Signer.provider!);
   await l2Token.connect(l2Signer).transferOwnership(l2DeployResult.executor);
+
+  // transfer tokens from _l2InitialSupplyRecipient to the treasury
+  await l2Token
+    .connect(l2Signer)
+    .transfer(l2DeployResult.treasuryTimelock, GovernanceConstants.L2_NUM_OF_TOKENS_FOR_TREASURY);
+
+  // transfer tokens from _l2InitialSupplyRecipient to the token distributor
+  await l2Token
+    .connect(l2Signer)
+    .transfer(
+      GovernanceConstants.L2_TOKEN_DISTRIBUTOR_CONTRACT,
+      GovernanceConstants.L2_NUM_OF_TOKENS_FOR_TOKEN_DISTRIBUTOR
+    );
 }
 
 async function main() {

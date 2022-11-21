@@ -16,3 +16,13 @@ export const L2_PROPOSAL_TRESHOLD = 100;
 export const L2_VOTING_DELAY = 10;
 export const L2_VOTING_PERIOD = 10;
 export const L2_MIN_PERIOD_AFTER_QUORUM = 1;
+
+//// L2 token
+// 10 billion tokens (we use parseEther in script to add decimals)
+export const L2_TOKEN_INITIAL_SUPPLY = "10000000000";
+// 2 billion tokens (dummy value atm)
+export const L2_NUM_OF_TOKENS_FOR_TREASURY = "2000000000";
+// 8 billion tokens (dummy value atm)
+export const L2_NUM_OF_TOKENS_FOR_TOKEN_DISTRIBUTOR = "8000000000";
+// ARB token distributor (dummy value atm)
+export const L2_TOKEN_DISTRIBUTOR_CONTRACT = "0xB991F7D5aa28762996BFc7AaA6DDF5D8591380cd"
