@@ -31,6 +31,37 @@ import * as GovernanceConstants from "./governance.constants";
 
 /**
  * Performs each step of the Arbitrum governance deployment process
+ * /// @notice Governance Deployment Steps:
+ * /// 1. Deploy the following pre-requiste logic contracts:
+ * ///     L1:
+ * ///         - UpgradeExecutor logic
+ * ///     L2:
+ * ///         - ArbitrumTimelock logic
+ * ///         - L2ArbitrumGovernor logic
+ * ///         - FixedDelegateErc20 logic
+ * ///         - L2ArbitrumToken logic
+ * ///         - UpgradeExecutor logic
+ * /// 2. Then deploy the following (in any order):
+ * ///     L1:
+ * ///         - L1GoveranceFactory
+ * ///         - L1Token
+ * ///         - Gnosis Safe Multisig 9 of 12 Security Council
+ * ///     L2:
+ * ///         - L2GovernanceFactory
+ * ///         - Gnosis Safe Multisig 9 of 12 Security Council
+ * ///         - Gnosis Safe Multisig 7 of 12 Security Council
+ * ///
+ * ///     L1GoveranceFactory and L2GovernanceFactory deployers will be their respective owners, and will carry out the following steps.
+ * /// 3. Call L2GovernanceFactory.deployStep1
+ * ///     - Dependencies: L1-Token address, 7 of 12 multisig (as _upgradeProposer)
+ * ///
+ * /// 4. Call L1GoveranceFactory.deployStep2
+ * ///     - Dependencies: L1 security council address, L2 Timelock address (deployed in previous step)
+ * ///
+ * /// 5. Call L2GovernanceFactory.deployStep3
+ * ///     - Dependencies: (Aliased) L1-timelock address (deployed in previous step), L2 security council address (as _l2UpgradeExecutors)
+ * /// 6. From the _l2InitialSupplyRecipient transfer ownership of the L2ArbitrumToken to the UpgradeExecutor
+ * ///    Then transfer tokens from _l2InitialSupplyRecipient to the treasury and other token distributor
  * @returns
  */
 export const deployGovernance = async (): Promise<ArbitrumTimelock> => {
@@ -244,13 +275,7 @@ async function postDeploymentTasks(
     .connect(l2Signer)
     .transfer(l2DeployResult.treasuryTimelock, GovernanceConstants.L2_NUM_OF_TOKENS_FOR_TREASURY);
 
-  // transfer tokens from _l2InitialSupplyRecipient to the token distributor
-  await l2Token
-    .connect(l2Signer)
-    .transfer(
-      GovernanceConstants.L2_TOKEN_DISTRIBUTOR_CONTRACT,
-      GovernanceConstants.L2_NUM_OF_TOKENS_FOR_TOKEN_DISTRIBUTOR
-    );
+  // tokens should be transfered to TokenDistributor as well, but only after all recipients are correctly set.
 }
 
 async function main() {
