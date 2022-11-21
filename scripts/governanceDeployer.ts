@@ -13,6 +13,7 @@ import {
   L2ArbitrumToken,
   L2ArbitrumToken__factory,
   L2GovernanceFactory__factory,
+  TokenDistributor__factory,
   TransparentUpgradeableProxy,
   TransparentUpgradeableProxy__factory,
   UpgradeExecutor,
@@ -113,6 +114,10 @@ export const deployGovernance = async () => {
   // step 3
   console.log("Set executor roles");
   await setExecutorRoles(l1DeployResult, l2GovernanceFactory);
+
+  // deploy ARB distributor
+  console.log("Deploy TokenDistributor");
+  await deployTokenDistributor(arbDeployer, l2DeployResult);
 
   // post deployment
   console.log("Execute post deployment tasks");
@@ -281,6 +286,16 @@ async function postDeploymentTasks(
     .transfer(l2DeployResult.treasuryTimelock, GovernanceConstants.L2_NUM_OF_TOKENS_FOR_TREASURY);
 
   // tokens should be transfered to TokenDistributor as well, but only after all recipients are correctly set.
+}
+
+async function deployTokenDistributor(arbDeployer: Signer, l2DeployResult: L2DeployedEventObject) {
+  await new TokenDistributor__factory(arbDeployer).deploy(
+    l2DeployResult.token,
+    GovernanceConstants.L2_SWEEP_RECECIVER,
+    GovernanceConstants.L2_TOKEN_DISTRIBUTOR_OWNER,
+    GovernanceConstants.L2_CLAIM_PERIOD_START,
+    GovernanceConstants.L2_CLAIM_PERIOD_END
+  );
 }
 
 async function main() {
