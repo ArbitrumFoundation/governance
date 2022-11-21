@@ -21,7 +21,8 @@ pragma solidity ^0.8.16;
 import "@arbitrum/nitro-contracts/src/bridge/IInbox.sol";
 import "@arbitrum/nitro-contracts/src/bridge/IOutbox.sol";
 
-// CHRIS: TODO: Consider removing the unused stuff - or just copying it through
+// Direct copy of https://github.com/OffchainLabs/token-bridge-contracts/blob/7f5800351175008ba676ae6ee166a6069f659c20/contracts/tokenbridge/ethereum/L1ArbitrumMessenger.sol
+// Copied rather than imported because of clashing solidity versions
 
 /// @notice L1 utility contract to assist with L1 <=> L2 interactions
 /// @dev this is an abstract contract instead of library so the functions can be easily overriden when testing

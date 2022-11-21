@@ -28,6 +28,7 @@ contract ArbitrumVestingWalletTest is Test {
     address owner = address(12_345_789);
     address payable sweepTo = payable(address(123_457_891));
     address delegatee = address(138);
+    address someRando = address(123);
 
     function deployDeps() public returns (L2ArbitrumToken, L2ArbitrumGovernor, TokenDistributor) {
         address token = TestUtil.deployProxy(address(new L2ArbitrumToken()));
@@ -283,5 +284,12 @@ contract ArbitrumVestingWalletTest is Test {
             (beneficiaryClaim),
             "Way into the future"
         );
+    }
+
+    function testReleaseAffordance() external {
+        (ArbitrumVestingWallet wallet, L2ArbitrumToken token,,) = deployAndClaim();
+        vm.prank(someRando);
+        vm.expectRevert("ArbitrumVestingWallet: not beneficiary");
+        wallet.release(address(token));
     }
 }
