@@ -27,7 +27,7 @@ import { parseEther } from "ethers/lib/utils";
 dotenv.config();
 
 // dotenv config used in case of deploying to production
-// in case of local env testing, config is extracted in `testSetup()` 
+// in case of local env testing, config is extracted in `testSetup()`
 export const config = {
   isLocalDeployment: process.env["DEPLOY_TO_LOCAL_ENVIRONMENT"] as string,
   ethRpc: process.env["MAINNET_RPC"] as string,
@@ -45,8 +45,8 @@ export const getSigner = (provider: JsonRpcProvider, key?: string) => {
 
 /**
  * Fetch deployers and token receiver.
- * If script is used in local testing environment, use `testSetup` script for sset up testing environment. 
- * @returns 
+ * If script is used in local testing environment it uses `testSetup` to set up testing environment.
+ * @returns
  */
 export const getDeployers = async (): Promise<{
   ethDeployer: Signer;

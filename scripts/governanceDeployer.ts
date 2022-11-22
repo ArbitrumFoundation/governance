@@ -67,7 +67,6 @@ import { getDeployers } from "./providerSetup";
  * @returns
  */
 export const deployGovernance = async () => {
-  // fetch deployers and token reciver
   console.log("Get deployers and signers");
   const { ethDeployer, arbDeployer, arbInitialSupplyRecipient } = await getDeployers();
 
@@ -122,6 +121,7 @@ export const deployGovernance = async () => {
   // post deployment
   console.log("Execute post deployment tasks");
   await postDeploymentTasks(
+    ethDeployer,
     l1TokenProxy,
     l1DeployResult,
     arbInitialSupplyRecipient,
@@ -168,10 +168,6 @@ async function deployAndInitL1Token(ethDeployer: Signer) {
     GovernanceConstants.L1_NOVA_ROUTER,
     GovernanceConstants.L1_NOVA_GATEWAY
   );
-
-  ////
-  //TODO register token on L2
-  ////
 
   return { l1Token, l1TokenProxy };
 }
@@ -265,11 +261,43 @@ async function setExecutorRoles(
 }
 
 async function postDeploymentTasks(
+  ethDeployer: Signer,
   l1TokenProxy: TransparentUpgradeableProxy,
   l1DeployResult: L1DeployedEventObject,
   arbInitialSupplyRecipient: Signer,
   l2DeployResult: L2DeployedEventObject
 ) {
+  ////
+  // TODO register token on L2
+  //
+  // const l1Token = L1ArbitrumToken__factory.connect(l1TokenProxy.address, ethDeployer);
+  // const ethDeployerAddress = await ethDeployer.getAddress();
+  // l1Token.registerTokenOnL2(
+  //   {
+  //     l2TokenAddress: l2DeployResult.token,
+  //     maxSubmissionCostForCustomGateway: 0,
+  //     maxSubmissionCostForRouter: 0,
+  //     maxGasForCustomGateway: 0,
+  //     maxGasForRouter: 0,
+  //     gasPriceBid: 0,
+  //     valueForGateway: 0,
+  //     valueForRouter: 0,
+  //     creditBackAddress: ethDeployerAddress,
+  //   },
+  //   {
+  //     l2TokenAddress: novatoken,
+  //     maxSubmissionCostForCustomGateway: 0,
+  //     maxSubmissionCostForRouter: 0,
+  //     maxGasForCustomGateway: 0,
+  //     maxGasForRouter: 0,
+  //     gasPriceBid: 0,
+  //     valueForGateway: 0,
+  //     valueForRouter: 0,
+  //     creditBackAddress: ethDeployerAddress,
+  //   }
+  // );
+  ////
+
   // set L1 proxy admin as L1 token's admin
   await l1TokenProxy.changeAdmin(l1DeployResult.proxyAdmin);
 
