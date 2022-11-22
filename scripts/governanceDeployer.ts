@@ -13,6 +13,7 @@ import {
   L2ArbitrumToken,
   L2ArbitrumToken__factory,
   L2GovernanceFactory__factory,
+  ProxyAdmin__factory,
   TokenDistributor__factory,
   TransparentUpgradeableProxy,
   TransparentUpgradeableProxy__factory,
@@ -68,7 +69,8 @@ import { getDeployers } from "./providerSetup";
  */
 export const deployGovernance = async () => {
   console.log("Get deployers and signers");
-  const { ethDeployer, arbDeployer, arbInitialSupplyRecipient } = await getDeployers();
+  const { ethDeployer, arbDeployer, arbInitialSupplyRecipient, novaDeployer } =
+    await getDeployers();
 
   console.log("Deploy L1 logic contracts");
   const l1UpgradeExecutorLogic = await deployL1LogicContracts(ethDeployer);
@@ -92,6 +94,9 @@ export const deployGovernance = async () => {
     l2TokenLogic,
     upgradeExecutor
   );
+
+  console.log("Deploy UpgradeExector to Nova");
+  await deployNovaUpgradeExecutor(novaDeployer);
 
   // step 1
   console.log("Deploy and init L2 governance");
@@ -146,6 +151,24 @@ async function deployL2LogicContracts(arbDeployer: Signer) {
 async function deployL1GovernanceFactory(ethDeployer: Signer) {
   const l1GovernanceFactory = await new L1GovernanceFactory__factory(ethDeployer).deploy();
   return l1GovernanceFactory;
+}
+
+async function deployNovaUpgradeExecutor(novaDeployer: Signer) {
+  // deploy proxy admin
+  const proxyAdmin = await new ProxyAdmin__factory().connect(novaDeployer).deploy();
+  await proxyAdmin.deployed();
+
+  // deploy logic
+  const novaUpgradeExecutorLogic = await new UpgradeExecutor__factory(novaDeployer).deploy();
+
+  // deploy proxy with proxyAdmin as owner
+  const novaUpgradeExecutorProxy = await new TransparentUpgradeableProxy__factory(
+    novaDeployer
+  ).deploy(novaUpgradeExecutorLogic.address, proxyAdmin.address, "0x");
+  await novaUpgradeExecutorProxy.deployed();
+
+  // transfer ownership over proxy admin to multisig
+  await proxyAdmin.transferOwnership(GovernanceConstants.NOVA_9_OF_12_SECURITY_COUNCIL);
 }
 
 async function deployAndInitL1Token(ethDeployer: Signer) {

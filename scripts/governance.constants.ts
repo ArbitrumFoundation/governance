@@ -32,6 +32,10 @@ export const L2_VOTING_PERIOD = 10;
 // the number of blocks that are required to pass since a proposal reaches quorum until its voting period ends (dummy value atm)
 export const L2_MIN_PERIOD_AFTER_QUORUM = 1;
 
+//// Nova
+// 9/12 security council can perform emergency upgrades (dummy value atm)
+export const NOVA_9_OF_12_SECURITY_COUNCIL = "0xB3594078bFab918F022f8cD90721a543E39083D7";
+
 //// L2 Arbitrum token
 // 10 billion tokens (we use parseEther in script to add decimals)
 export const L2_TOKEN_INITIAL_SUPPLY = "10000000000";
