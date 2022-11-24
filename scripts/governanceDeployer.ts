@@ -13,6 +13,7 @@ import {
   L2ArbitrumToken,
   L2ArbitrumToken__factory,
   L2GovernanceFactory__factory,
+  ProxyAdmin,
   ProxyAdmin__factory,
   TokenDistributor__factory,
   TransparentUpgradeableProxy,
@@ -20,6 +21,8 @@ import {
   UpgradeExecutor,
   UpgradeExecutor__factory,
 } from "../typechain-types";
+import { L2CustomGatewayToken__factory } from "../typechain-types-imported/index";
+
 import {
   DeployedEventObject as L1DeployedEventObject,
   L1GovernanceFactory,
@@ -96,7 +99,10 @@ export const deployGovernance = async () => {
   );
 
   console.log("Deploy UpgradeExector to Nova");
-  await deployNovaUpgradeExecutor(novaDeployer);
+  const proxyAdmin = await deployNovaUpgradeExecutor(novaDeployer);
+
+  console.log("Deploy token to Nova");
+  await deployTokenToNova(novaDeployer, proxyAdmin);
 
   // step 1
   console.log("Deploy and init L2 governance");
@@ -155,7 +161,7 @@ async function deployL1GovernanceFactory(ethDeployer: Signer) {
 
 async function deployNovaUpgradeExecutor(novaDeployer: Signer) {
   // deploy proxy admin
-  const proxyAdmin = await new ProxyAdmin__factory().connect(novaDeployer).deploy();
+  const proxyAdmin = await new ProxyAdmin__factory(novaDeployer).deploy();
   await proxyAdmin.deployed();
 
   // deploy logic
@@ -169,6 +175,32 @@ async function deployNovaUpgradeExecutor(novaDeployer: Signer) {
 
   // transfer ownership over proxy admin to multisig
   await proxyAdmin.transferOwnership(GovernanceConstants.NOVA_9_OF_12_SECURITY_COUNCIL);
+
+  return proxyAdmin;
+}
+
+async function deployTokenToNova(novaDeployer: Signer, proxyAdmin: ProxyAdmin) {
+  // deploy token logic
+  const tokenOnNovaLogic = await new L2CustomGatewayToken__factory(novaDeployer).deploy();
+  await tokenOnNovaLogic.deployed();
+
+  // deploy token proxy
+  const tokenOnNovaProxy = await new TransparentUpgradeableProxy__factory(novaDeployer).deploy(
+    tokenOnNovaLogic.address,
+    proxyAdmin.address,
+    "0x"
+  );
+  await tokenOnNovaProxy.deployed();
+
+  // init
+  const tokenOnNova = L2CustomGatewayToken__factory.connect(tokenOnNovaProxy.address, novaDeployer);
+  await tokenOnNova.initialize(
+    GovernanceConstants.NOVA_TOKEN_NAME,
+    GovernanceConstants.NOVA_TOKEN_SYMBOL,
+    GovernanceConstants.NOVA_TOKEN_DECIMALS,
+    GovernanceConstants.NOVA_TOKEN_GATEWAY,
+    GovernanceConstants.L1_NOVA_GATEWAY
+  );
 }
 
 async function deployAndInitL1Token(ethDeployer: Signer) {
