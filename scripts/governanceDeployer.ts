@@ -98,11 +98,11 @@ export const deployGovernance = async () => {
     upgradeExecutor
   );
 
-  console.log("Deploy UpgradeExector to Nova");
-  const proxyAdmin = await deployNovaUpgradeExecutor(novaDeployer);
+  console.log("Deploy UpgradeExecutor to Nova");
+  const novaProxyAdmin = await deployNovaUpgradeExecutor(novaDeployer);
 
   console.log("Deploy token to Nova");
-  await deployTokenToNova(novaDeployer, proxyAdmin);
+  await deployTokenToNova(novaDeployer, novaProxyAdmin);
 
   // step 1
   console.log("Deploy and init L2 governance");
@@ -166,12 +166,20 @@ async function deployNovaUpgradeExecutor(novaDeployer: Signer) {
 
   // deploy logic
   const novaUpgradeExecutorLogic = await new UpgradeExecutor__factory(novaDeployer).deploy();
+  await novaUpgradeExecutorLogic.deployed();
 
   // deploy proxy with proxyAdmin as owner
   const novaUpgradeExecutorProxy = await new TransparentUpgradeableProxy__factory(
     novaDeployer
   ).deploy(novaUpgradeExecutorLogic.address, proxyAdmin.address, "0x");
   await novaUpgradeExecutorProxy.deployed();
+
+  // init executor
+  const novaUpgradeExecutor = UpgradeExecutor__factory.connect(novaUpgradeExecutorProxy.address, novaDeployer);
+  await novaUpgradeExecutor.initialize(
+    proxyAdmin.address,
+    [GovernanceConstants.NOVA_9_OF_12_SECURITY_COUNCIL]
+  )
 
   // transfer ownership over proxy admin to multisig
   await proxyAdmin.transferOwnership(GovernanceConstants.NOVA_9_OF_12_SECURITY_COUNCIL);
