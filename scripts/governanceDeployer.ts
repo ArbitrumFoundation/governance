@@ -33,6 +33,9 @@ import {
 import * as GovernanceConstants from "./governance.constants";
 import { getDeployers } from "./providerSetup";
 
+// store address for every deployed contract
+let deployedContracts: { [key: string]: string } = {};
+
 /**
  * Performs each step of the Arbitrum governance deployment process.
  *
@@ -138,10 +141,17 @@ export const deployGovernance = async () => {
 
   console.log("Post deployment L2 token tasks");
   await postDeploymentL2TokenTasks(arbInitialSupplyRecipient, l2DeployResult);
+
+  console.log("Write deployed contract addresses to deployedContracts.json");
+  writeAddresses();
 };
 
 async function deployL1LogicContracts(ethDeployer: Signer) {
   const l1UpgradeExecutorLogic = await new UpgradeExecutor__factory(ethDeployer).deploy();
+
+  // store address
+  deployedContracts["l1UpgradeExecutorLogic"] = l1UpgradeExecutorLogic.address;
+
   return l1UpgradeExecutorLogic;
 }
 
@@ -151,12 +161,24 @@ async function deployL2LogicContracts(arbDeployer: Signer) {
   const fixedDelegateLogic = await new FixedDelegateErc20Wallet__factory(arbDeployer).deploy();
   const l2TokenLogic = await new L2ArbitrumToken__factory(arbDeployer).deploy();
   const upgradeExecutor = await new UpgradeExecutor__factory(arbDeployer).deploy();
+
+  // store addresses
+  deployedContracts["l2timelockLogic"] = timelockLogic.address;
+  deployedContracts["l2governorLogic"] = governorLogic.address;
+  deployedContracts["l2fixedDelegateLogic"] = fixedDelegateLogic.address;
+  deployedContracts["l2TokenLogic"] = l2TokenLogic.address;
+  deployedContracts["l2upgradeExecutor"] = upgradeExecutor.address;
+
   return { timelockLogic, governorLogic, fixedDelegateLogic, l2TokenLogic, upgradeExecutor };
 }
 
 async function deployL1GovernanceFactory(ethDeployer: Signer) {
   const l1GovernanceFactory = await new L1GovernanceFactory__factory(ethDeployer).deploy();
   await l1GovernanceFactory.deployed();
+
+  // store address
+  deployedContracts["l1GovernanceFactory"] = l1GovernanceFactory.address;
+
   return l1GovernanceFactory;
 }
 
@@ -175,6 +197,10 @@ async function deployAndInitL1Token(ethDeployer: Signer) {
   await l1TokenProxy.deployed();
 
   const l1Token = L1ArbitrumToken__factory.connect(l1TokenProxy.address, ethDeployer);
+
+  // store addresses
+  deployedContracts["l1TokenLogic"] = l1TokenLogic.address;
+  deployedContracts["l1TokenProxy"] = l1TokenProxy.address;
 
   return { l1Token, l1TokenProxy };
 }
@@ -196,6 +222,10 @@ async function deployL2GovernanceFactory(
     l2TokenLogic.address,
     upgradeExecutor.address
   );
+
+  // store address
+  deployedContracts["l2GovernanceFactory"] = l2GovernanceFactory.address;
+
   return l2GovernanceFactory;
 }
 
@@ -226,6 +256,10 @@ async function deployNovaUpgradeExecutor(novaDeployer: Signer) {
   // transfer ownership over novaProxyAdmin to executor
   await novaProxyAdmin.transferOwnership(novaUpgradeExecutor.address);
 
+  // store addresses
+  deployedContracts["novaProxyAdmin"] = novaProxyAdmin.address;
+  deployedContracts["novaUpgradeExecutorLogic"] = novaUpgradeExecutorLogic.address;
+
   return novaProxyAdmin;
 }
 
@@ -252,6 +286,10 @@ async function deployTokenToNova(novaDeployer: Signer, proxyAdmin: ProxyAdmin) {
     GovernanceConstants.L1_NOVA_GATEWAY
   );
 
+  // store addresses
+  deployedContracts["novaTokenLogic"] = novaTokenLogic.address;
+  deployedContracts["novaTokenProxy"] = novaTokenProxy.address;
+
   return novaToken;
 }
 
@@ -262,6 +300,7 @@ async function initL2Governance(
 ) {
   const arbInitialSupplyRecipientAddr = await arbInitialSupplyRecipient.getAddress();
 
+  // deploy
   const l2GovDeployReceipt = await (
     await l2GovernanceFactory.deployStep1(
       {
@@ -282,9 +321,20 @@ async function initL2Governance(
     )
   ).wait();
 
+  // get deployed contract addresses
   const l2DeployResult = l2GovDeployReceipt.events?.filter(
     (e) => e.topics[0] === l2GovernanceFactory.interface.getEventTopic("Deployed")
   )[0].args as unknown as L2DeployedEventObject;
+
+  // store addresses
+  deployedContracts["l2coreGoverner"] = l2DeployResult.coreGoverner;
+  deployedContracts["l2coreTimelock"] = l2DeployResult.coreTimelock;
+  deployedContracts["l2executor"] = l2DeployResult.executor;
+  deployedContracts["l2proxyAdmin"] = l2DeployResult.proxyAdmin;
+  deployedContracts["l2token"] = l2DeployResult.token;
+  deployedContracts["l2treasuryGoverner"] = l2DeployResult.treasuryGoverner;
+  deployedContracts["l2treasuryTimelock"] = l2DeployResult.treasuryTimelock;
+
   return l2DeployResult;
 }
 
@@ -293,6 +343,7 @@ async function initL1Governance(
   l1UpgradeExecutorLogic: UpgradeExecutor,
   l2DeployResult: L2DeployedEventObject
 ) {
+  // deploy
   const l1GovDeployReceipt = await (
     await l1GovernanceFactory.deployStep2(
       l1UpgradeExecutorLogic.address,
@@ -304,9 +355,16 @@ async function initL1Governance(
     )
   ).wait();
 
+  // get deployed contract addresses
   const l1DeployResult = l1GovDeployReceipt.events?.filter(
     (e) => e.topics[0] === l1GovernanceFactory.interface.getEventTopic("Deployed")
   )[0].args as unknown as L1DeployedEventObject;
+
+  // store contract addresses
+  deployedContracts["l1executor"] = l1DeployResult.executor;
+  deployedContracts["l1proxyAdmin"] = l1DeployResult.proxyAdmin;
+  deployedContracts["l1proxyAdmin"] = l1DeployResult.proxyAdmin;
+
   return l1DeployResult;
 }
 
@@ -391,13 +449,21 @@ async function postDeploymentL2TokenTasks(
 }
 
 async function deployTokenDistributor(arbDeployer: Signer, l2DeployResult: L2DeployedEventObject) {
-  await new TokenDistributor__factory(arbDeployer).deploy(
+  const tokenDistrbutor = await new TokenDistributor__factory(arbDeployer).deploy(
     l2DeployResult.token,
     GovernanceConstants.L2_SWEEP_RECECIVER,
     GovernanceConstants.L2_TOKEN_DISTRIBUTOR_OWNER,
     GovernanceConstants.L2_CLAIM_PERIOD_START,
     GovernanceConstants.L2_CLAIM_PERIOD_END
   );
+
+  // store address
+  deployedContracts["l2TokenDistributor"] = tokenDistrbutor.address;
+}
+
+function writeAddresses() {
+  const fs = require("fs");
+  fs.writeFileSync("deployedContracts.json", JSON.stringify(deployedContracts));
 }
 
 async function main() {
