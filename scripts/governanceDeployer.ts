@@ -168,7 +168,7 @@ async function deployL2LogicContracts(arbDeployer: Signer) {
   deployedContracts["l2governorLogic"] = governorLogic.address;
   deployedContracts["l2fixedDelegateLogic"] = fixedDelegateLogic.address;
   deployedContracts["l2TokenLogic"] = l2TokenLogic.address;
-  deployedContracts["l2upgradeExecutor"] = upgradeExecutor.address;
+  deployedContracts["l2upgradeExecutorLogic"] = upgradeExecutor.address;
 
   return { timelockLogic, governorLogic, fixedDelegateLogic, l2TokenLogic, upgradeExecutor };
 }
@@ -448,16 +448,17 @@ async function postDeploymentL2TokenTasks(
 }
 
 async function deployTokenDistributor(arbDeployer: Signer, l2DeployResult: L2DeployedEventObject) {
-  const tokenDistrbutor = await new TokenDistributor__factory(arbDeployer).deploy(
+  const tokenDistributor = await new TokenDistributor__factory(arbDeployer).deploy(
     l2DeployResult.token,
     GovernanceConstants.L2_SWEEP_RECECIVER,
     GovernanceConstants.L2_TOKEN_DISTRIBUTOR_OWNER,
     GovernanceConstants.L2_CLAIM_PERIOD_START,
     GovernanceConstants.L2_CLAIM_PERIOD_END
   );
+  await tokenDistributor.deployed();
 
   // store address
-  deployedContracts["l2TokenDistributor"] = tokenDistrbutor.address;
+  deployedContracts["l2TokenDistributor"] = tokenDistributor.address;
 }
 
 function writeAddresses() {
