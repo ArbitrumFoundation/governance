@@ -35,6 +35,7 @@ import { getDeployers } from "./providerSetup";
 
 // store address for every deployed contract
 let deployedContracts: { [key: string]: string } = {};
+const DEPLOYED_CONTRACTS_FILE_NAME = "deployedContracts.json";
 
 /**
  * Performs each step of the Arbitrum governance deployment process.
@@ -185,7 +186,6 @@ async function deployL1GovernanceFactory(ethDeployer: Signer) {
 async function deployAndInitL1Token(ethDeployer: Signer) {
   // deploy logic
   const l1TokenLogic = await new L1ArbitrumToken__factory(ethDeployer).deploy();
-  await l1TokenLogic.deployed();
 
   // deploy proxy
   const l1TokenProxy = await new TransparentUpgradeableProxy__factory(ethDeployer).deploy(
@@ -236,7 +236,6 @@ async function deployNovaUpgradeExecutor(novaDeployer: Signer) {
 
   // deploy logic
   const novaUpgradeExecutorLogic = await new UpgradeExecutor__factory(novaDeployer).deploy();
-  await novaUpgradeExecutorLogic.deployed();
 
   // deploy proxy with proxyAdmin as owner
   const novaUpgradeExecutorProxy = await new TransparentUpgradeableProxy__factory(
@@ -266,7 +265,6 @@ async function deployNovaUpgradeExecutor(novaDeployer: Signer) {
 async function deployTokenToNova(novaDeployer: Signer, proxyAdmin: ProxyAdmin) {
   // deploy token logic
   const novaTokenLogic = await new L2CustomGatewayToken__factory(novaDeployer).deploy();
-  await novaTokenLogic.deployed();
 
   // deploy token proxy
   const novaTokenProxy = await new TransparentUpgradeableProxy__factory(novaDeployer).deploy(
@@ -463,25 +461,14 @@ async function deployTokenDistributor(arbDeployer: Signer, l2DeployResult: L2Dep
 
 function writeAddresses() {
   const fs = require("fs");
-  fs.writeFileSync("deployedContracts.json", JSON.stringify(deployedContracts));
+  fs.writeFileSync(DEPLOYED_CONTRACTS_FILE_NAME, JSON.stringify(deployedContracts));
 }
 
 async function main() {
   console.log("Start governance deployment process...");
   await deployGovernance();
   console.log("Deployment finished!");
-
-  const verificationSuccess = await verifyDeployment();
-  if (!verificationSuccess) {
-    throw new Error("Deployment verification failed");
-  }
-  console.log("Verification successful!");
 }
-
-const verifyDeployment = async (): Promise<Boolean> => {
-  //TODO
-  return true;
-};
 
 main()
   .then(() => console.log("Done."))

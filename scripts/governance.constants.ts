@@ -12,7 +12,7 @@ export const L1_NOVA_ROUTER = "0xC840838Bc438d73C16c2f8b22D2Ce3669963cD48";
 // nova gateway
 export const L1_NOVA_GATEWAY = "0xB2535b988dcE19f9D71dfB22dB6da744aCac21bf";
 // Arbitrum inbox on L1 (local network value atm)
-export const L1_ARB_INBOX = "0xf5f495a108acc0b75b9a532f2f28836d7f059b8b";
+export const L1_ARB_INBOX = "0x6695f63567bbc8bc0ba40d6f6d2eb8bdade77ff1";
 
 //// L2
 // minimum delay for an operation to become valid (dummy value atm)
@@ -55,3 +55,4 @@ export const L2_TOKEN_DISTRIBUTOR_OWNER = "0x59D74CC054A520217D6eC7eAED6C3650734
 export const L2_CLAIM_PERIOD_START = 16100000;
 // airdrop claim end block number (dummy value atm)
 export const L2_CLAIM_PERIOD_END = 16200000;
+

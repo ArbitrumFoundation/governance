@@ -8,6 +8,7 @@
   "scripts": {
     "gen:network": "ts-node ./scripts/genNetwork.ts",
     "deploy:governance": "ts-node ./scripts/governanceDeployer.ts",
+    "verify:governance": "ts-node ./scripts/governanceDeploymentVerifier.ts",
     "test:integration": "hardhat test",
     "format:sol": "forge fmt"
   },
