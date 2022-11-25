@@ -258,6 +258,7 @@ async function deployNovaUpgradeExecutor(novaDeployer: Signer) {
   // store addresses
   deployedContracts["novaProxyAdmin"] = novaProxyAdmin.address;
   deployedContracts["novaUpgradeExecutorLogic"] = novaUpgradeExecutorLogic.address;
+  deployedContracts["novaUpgradeExecutorProxy"] = novaUpgradeExecutorProxy.address;
 
   return novaProxyAdmin;
 }
