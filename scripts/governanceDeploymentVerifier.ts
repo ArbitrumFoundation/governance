@@ -28,6 +28,7 @@ export const verifyDeployment = async () => {
   await verifyNovaContractOwners(contracts, novaDeployer);
 
   await verifyArbitrumTimelockParams(contracts);
+  await verifyL2GovernanceFactory(contracts);
 };
 
 async function verifyL1ContractOwners(contracts: { [key: string]: any }, ethDeployer: Signer) {
@@ -129,6 +130,23 @@ async function verifyNovaContractOwners(contracts: { [key: string]: any }, novaD
     await getProxyOwner(contracts["novaTokenProxy"].address, novaDeployer),
     contracts["novaProxyAdmin"].address,
     "Wrong novaTokenProxy owner"
+  );
+}
+
+/**
+ * Verify:
+ * - factory has completed job
+ * @param contracts
+ */
+async function verifyL2GovernanceFactory(contracts: { [key: string]: any }) {
+  const l2govFactory = contracts["l2GovernanceFactory"];
+
+  // check factory has completed job
+  // 2 == Step.Complete
+  assertEquals(
+    await l2govFactory.step(),
+    "2",
+    "L2 governance factory should be in 'Complete'(2) step"
   );
 }
 
