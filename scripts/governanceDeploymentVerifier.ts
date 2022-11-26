@@ -16,6 +16,7 @@ import * as GovernanceConstants from "./governance.constants";
 
 // JSON file which contains all the deployed contract addresses
 const DEPLOYED_CONTRACTS_FILE_NAME = "deployedContracts.json";
+const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
 export const verifyDeployment = async () => {
   const { ethDeployer, arbDeployer, novaDeployer } = await getDeployers();
@@ -25,6 +26,8 @@ export const verifyDeployment = async () => {
   await verifyL1ContractOwners(contracts, ethDeployer);
   await verifyL2ContractOwners(contracts, arbDeployer);
   await verifyNovaContractOwners(contracts, novaDeployer);
+
+  await verifyArbitrumTimelockParams(contracts);
 };
 
 async function verifyL1ContractOwners(contracts: { [key: string]: any }, ethDeployer: Signer) {
@@ -129,6 +132,61 @@ async function verifyNovaContractOwners(contracts: { [key: string]: any }, novaD
   );
 }
 
+/**
+ * Verify:
+ * - initialization params are correctly set
+ * - roles are correctly assigned
+ * @param contracts
+ */
+async function verifyArbitrumTimelockParams(contracts: { [key: string]: any }) {
+  const l2timelock = contracts["l2coreTimelock"];
+
+  //// check initialization params are correctly set
+  assertEquals(
+    (await l2timelock.getMinDelay()).toString(),
+    GovernanceConstants.L2_TIMELOCK_DELAY.toString(),
+    "L2 timelock has wrong min delay"
+  );
+
+  //// check assigned/revoked roles are correctly set
+  const proposerRole = await l2timelock.PROPOSER_ROLE();
+  const cancelerRole = await l2timelock.CANCELLER_ROLE();
+  const executorRole = await l2timelock.EXECUTOR_ROLE();
+  const timelockAdminRole = await l2timelock.TIMELOCK_ADMIN_ROLE();
+
+  assert(
+    await l2timelock.hasRole(proposerRole, contracts["l2coreGoverner"].address),
+    "L2 core governor should have proposer role on L2 timelock"
+  );
+  assert(
+    await l2timelock.hasRole(cancelerRole, contracts["l2coreGoverner"].address),
+    "L2 core governor should have canceller role on L2 timelock"
+  );
+  assert(
+    await l2timelock.hasRole(
+      proposerRole,
+      GovernanceConstants.L2_7_OF_12_SECURITY_COUNCIL.toString()
+    ),
+    "L2 7/12 council should have proposer role on L2 timelock"
+  );
+  assert(
+    await l2timelock.hasRole(executorRole, ZERO_ADDRESS),
+    "Executor role should be assigned to zero address on L2 timelock"
+  );
+  assert(
+    await l2timelock.hasRole(timelockAdminRole, contracts["l2executor"].address),
+    "L2 upgrade executor should have timelock admin role on L2 timelock"
+  );
+  assert(
+    !(await l2timelock.hasRole(timelockAdminRole, l2timelock.address)),
+    "L2 timelock should not have timelock admin role on itself"
+  );
+  assert(
+    !(await l2timelock.hasRole(timelockAdminRole, contracts["l2GovernanceFactory"].address)),
+    "L2 governance factory should not have timelock admin role on L2 timelock"
+  );
+}
+
 async function loadContracts(ethDeployer: Signer, arbDeployer: Signer, novaDeployer: Signer) {
   const contractAddresses = require("../" + DEPLOYED_CONTRACTS_FILE_NAME);
   let contracts: { [key: string]: any } = {};
@@ -228,6 +286,12 @@ async function assertEquals(actual: string, expected: string, message: string) {
   if (actual != expected) {
     console.error("Actual: ", actual);
     console.error("Expected: ", expected);
+    throw new Error(message);
+  }
+}
+
+async function assert(condition: Boolean, message: string) {
+  if (!condition) {
     throw new Error(message);
   }
 }
