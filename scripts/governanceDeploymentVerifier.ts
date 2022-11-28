@@ -11,11 +11,13 @@ import {
   L2GovernanceFactory__factory,
   ProxyAdmin__factory,
   TokenDistributor__factory,
+  UpgradeExecutor,
   UpgradeExecutor__factory,
 } from "../typechain-types";
 import { L2CustomGatewayToken__factory } from "../typechain-types-imported";
 import { getDeployers } from "./providerSetup";
 import * as GovernanceConstants from "./governance.constants";
+import { Address } from "@arbitrum/sdk";
 
 // JSON file which contains all the deployed contract addresses
 const DEPLOYED_CONTRACTS_FILE_NAME = "deployedContracts.json";
@@ -33,6 +35,7 @@ export const verifyDeployment = async () => {
   await verifyArbitrumTimelockParams(contracts);
   await verifyL2GovernanceFactory(contracts);
   await verifyL2CoreGovernor(contracts);
+  await verifyL2UpgradeExecutor(contracts);
 };
 
 async function verifyL1ContractOwners(contracts: { [key: string]: any }, ethDeployer: Signer) {
@@ -52,6 +55,12 @@ async function verifyL1ContractOwners(contracts: { [key: string]: any }, ethDepl
     await getProxyOwner(contracts["l1executor"].address, ethDeployer),
     contracts["l1proxyAdmin"].address,
     "Wrong l1executor owner"
+  );
+
+  assertEquals(
+    await getProxyOwner(contracts["l1timelock"].address, ethDeployer),
+    contracts["l1proxyAdmin"].address,
+    "Wrong l1timelock owner"
   );
 
   assertEquals(
@@ -268,6 +277,34 @@ async function verifyL2CoreGovernor(contracts: { [key: string]: any }) {
   );
 }
 
+/**
+ * Verify:
+ * - roles are correctly assigned
+ * @param contracts
+ */
+async function verifyL2UpgradeExecutor(contracts: { [key: string]: any }) {
+  const l2Executor: UpgradeExecutor = contracts["l2executor"];
+
+  //// check assigned/revoked roles are correctly set
+  const adminRole = await l2Executor.ADMIN_ROLE();
+  const executorRole = await l2Executor.EXECUTOR_ROLE();
+
+  assert(
+    await l2Executor.hasRole(adminRole, contracts["l2executor"].address),
+    "L2 upgrade executor should have admin role on itself"
+  );
+
+  const l1TimelockAddressAliased = new Address(contracts["l1timelock"].address).applyAlias().value;
+  assert(
+    await l2Executor.hasRole(executorRole, l1TimelockAddressAliased),
+    "L1 timelock (aliased) should have executor role on L2 upgrade executor"
+  );
+  assert(
+    await l2Executor.hasRole(executorRole, GovernanceConstants.L2_9_OF_12_SECURITY_COUNCIL),
+    "L2 9/12 council should have executor role on L2 upgrade executor"
+  );
+}
+
 async function loadContracts(ethDeployer: Signer, arbDeployer: Signer, novaDeployer: Signer) {
   const contractAddresses = require("../" + DEPLOYED_CONTRACTS_FILE_NAME);
   let contracts: { [key: string]: any } = {};
@@ -283,6 +320,10 @@ async function loadContracts(ethDeployer: Signer, arbDeployer: Signer, novaDeplo
   );
   contracts["l1executor"] = UpgradeExecutor__factory.connect(
     contractAddresses["l1executor"],
+    ethDeployer
+  );
+  contracts["l1timelock"] = UpgradeExecutor__factory.connect(
+    contractAddresses["l1timelock"],
     ethDeployer
   );
   contracts["l1proxyAdmin"] = ProxyAdmin__factory.connect(

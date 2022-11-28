@@ -362,7 +362,7 @@ async function initL1Governance(
   // store contract addresses
   deployedContracts["l1executor"] = l1DeployResult.executor;
   deployedContracts["l1proxyAdmin"] = l1DeployResult.proxyAdmin;
-  deployedContracts["l1proxyAdmin"] = l1DeployResult.proxyAdmin;
+  deployedContracts["l1timelock"] = l1DeployResult.timelock;
 
   return l1DeployResult;
 }
