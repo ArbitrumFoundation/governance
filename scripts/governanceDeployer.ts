@@ -172,11 +172,11 @@ async function deployL2LogicContracts(arbDeployer: Signer) {
   const upgradeExecutor = await new UpgradeExecutor__factory(arbDeployer).deploy();
 
   // store addresses
-  deployedContracts["l2timelockLogic"] = timelockLogic.address;
-  deployedContracts["l2governorLogic"] = governorLogic.address;
-  deployedContracts["l2fixedDelegateLogic"] = fixedDelegateLogic.address;
+  deployedContracts["l2TimelockLogic"] = timelockLogic.address;
+  deployedContracts["l2GovernorLogic"] = governorLogic.address;
+  deployedContracts["l2FixedDelegateLogic"] = fixedDelegateLogic.address;
   deployedContracts["l2TokenLogic"] = l2TokenLogic.address;
-  deployedContracts["l2upgradeExecutorLogic"] = upgradeExecutor.address;
+  deployedContracts["l2UpgradeExecutorLogic"] = upgradeExecutor.address;
 
   return { timelockLogic, governorLogic, fixedDelegateLogic, l2TokenLogic, upgradeExecutor };
 }
@@ -322,13 +322,13 @@ async function initL2Governance(
   )[0].args as unknown as L2DeployedEventObject;
 
   // store addresses
-  deployedContracts["l2coreGoverner"] = l2DeployResult.coreGoverner;
-  deployedContracts["l2coreTimelock"] = l2DeployResult.coreTimelock;
-  deployedContracts["l2executor"] = l2DeployResult.executor;
-  deployedContracts["l2proxyAdmin"] = l2DeployResult.proxyAdmin;
-  deployedContracts["l2token"] = l2DeployResult.token;
-  deployedContracts["l2treasuryGoverner"] = l2DeployResult.treasuryGoverner;
-  deployedContracts["l2treasuryTimelock"] = l2DeployResult.treasuryTimelock;
+  deployedContracts["l2CoreGoverner"] = l2DeployResult.coreGoverner;
+  deployedContracts["l2CoreTimelock"] = l2DeployResult.coreTimelock;
+  deployedContracts["l2Executor"] = l2DeployResult.executor;
+  deployedContracts["l2ProxyAdmin"] = l2DeployResult.proxyAdmin;
+  deployedContracts["l2Token"] = l2DeployResult.token;
+  deployedContracts["l2TreasuryGoverner"] = l2DeployResult.treasuryGoverner;
+  deployedContracts["l2TreasuryTimelock"] = l2DeployResult.treasuryTimelock;
 
   return l2DeployResult;
 }
@@ -356,9 +356,9 @@ async function initL1Governance(
   )[0].args as unknown as L1DeployedEventObject;
 
   // store contract addresses
-  deployedContracts["l1executor"] = l1DeployResult.executor;
-  deployedContracts["l1proxyAdmin"] = l1DeployResult.proxyAdmin;
-  deployedContracts["l1timelock"] = l1DeployResult.timelock;
+  deployedContracts["l1Executor"] = l1DeployResult.executor;
+  deployedContracts["l1ProxyAdmin"] = l1DeployResult.proxyAdmin;
+  deployedContracts["l1Timelock"] = l1DeployResult.timelock;
 
   return l1DeployResult;
 }

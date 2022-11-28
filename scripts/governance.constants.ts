@@ -40,6 +40,7 @@ export const NOVA_9_OF_12_SECURITY_COUNCIL = "0xB3594078bFab918F022f8cD90721a543
 export const NOVA_TOKEN_NAME = "Arbitrum";
 export const NOVA_TOKEN_SYMBOL = "ARB";
 export const NOVA_TOKEN_DECIMALS = 18;
+// token gateway on Nova (dummy value atm)
 export const NOVA_TOKEN_GATEWAY = "0xb19DAC9ab07f9ee2F8002446De0bCA04e44Ec3D9";
 
 //// L2 Arbitrum token
@@ -55,4 +56,3 @@ export const L2_TOKEN_DISTRIBUTOR_OWNER = "0x59D74CC054A520217D6eC7eAED6C3650734
 export const L2_CLAIM_PERIOD_START = 16100000;
 // airdrop claim end block number (dummy value atm)
 export const L2_CLAIM_PERIOD_END = 16200000;
-

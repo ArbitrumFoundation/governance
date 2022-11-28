@@ -2,19 +2,25 @@ import { ethers, Signer } from "ethers";
 import {
   ArbitrumTimelock,
   ArbitrumTimelock__factory,
+  L1ArbitrumTimelock,
+  L1ArbitrumToken,
   L1ArbitrumToken__factory,
+  L1GovernanceFactory,
   L1GovernanceFactory__factory,
   L2ArbitrumGovernor,
   L2ArbitrumGovernor__factory,
+  L2ArbitrumToken,
   L2ArbitrumToken__factory,
   L2GovernanceFactory,
   L2GovernanceFactory__factory,
+  ProxyAdmin,
   ProxyAdmin__factory,
+  TokenDistributor,
   TokenDistributor__factory,
   UpgradeExecutor,
   UpgradeExecutor__factory,
 } from "../typechain-types";
-import { L2CustomGatewayToken__factory } from "../typechain-types-imported";
+import { L2CustomGatewayToken, L2CustomGatewayToken__factory } from "../typechain-types-imported";
 import { getDeployers } from "./providerSetup";
 import * as GovernanceConstants from "./governance.constants";
 import { Address } from "@arbitrum/sdk";
@@ -28,120 +34,155 @@ export const verifyDeployment = async () => {
 
   const contracts = await loadContracts(ethDeployer, arbDeployer, novaDeployer);
 
-  await verifyL1ContractOwners(contracts, ethDeployer);
-  await verifyL2ContractOwners(contracts, arbDeployer);
-  await verifyNovaContractOwners(contracts, novaDeployer);
+  await verifyL1ContractOwners(
+    contracts["l1GovernanceFactory"],
+    contracts["l1TokenProxy"],
+    contracts["l1ProxyAdmin"],
+    contracts["l1Executor"],
+    ethDeployer
+  );
+  await verifyL2ContractOwners(
+    contracts["l2GovernanceFactory"],
+    contracts["l2CoreGoverner"],
+    contracts["l2ProxyAdmin"],
+    contracts["l2CoreTimelock"],
+    contracts["l2Executor"],
+    contracts["l2Token"],
+    contracts["l2TreasuryGoverner"],
+    contracts["l2TreasuryTimelock"],
+    contracts["l2TokenDistributor"],
+    arbDeployer
+  );
+  await verifyNovaContractOwners(
+    contracts["novaProxyAdmin"],
+    contracts["novaUpgradeExecutorProxy"],
+    contracts["novaTokenProxy"],
+    novaDeployer
+  );
 
-  await verifyArbitrumTimelockParams(contracts);
-  await verifyL2GovernanceFactory(contracts);
-  await verifyL2CoreGovernor(contracts);
-  await verifyL2UpgradeExecutor(contracts);
+  await verifyArbitrumTimelockParams(
+    contracts["l2CoreTimelock"],
+    contracts["l2CoreGoverner"],
+    contracts["l2Executor"],
+    contracts["l2GovernanceFactory"]
+  );
+  await verifyL2GovernanceFactory(contracts["l2GovernanceFactory"]);
+  await verifyL2CoreGovernor(
+    contracts["l2CoreGoverner"],
+    contracts["l2Token"],
+    contracts["l2CoreTimelock"]
+  );
+  await verifyL2UpgradeExecutor(contracts["l2Executor"], contracts["l1Timelock"]);
 };
 
-async function verifyL1ContractOwners(contracts: { [key: string]: any }, ethDeployer: Signer) {
+async function verifyL1ContractOwners(
+  l1GovernanceFactory: L1GovernanceFactory,
+  l1TokenProxy: L1ArbitrumToken,
+  l1ProxyAdmin: ProxyAdmin,
+  l1Executor: UpgradeExecutor,
+  ethDeployer: Signer
+) {
   assertEquals(
-    await contracts["l1GovernanceFactory"].owner(),
+    await l1GovernanceFactory.owner(),
     await ethDeployer.getAddress(),
     "Wrong l1GovernanceFactory owner"
   );
 
   assertEquals(
-    await getProxyOwner(contracts["l1TokenProxy"].address, ethDeployer),
-    contracts["l1proxyAdmin"].address,
+    await getProxyOwner(l1TokenProxy.address, ethDeployer),
+    l1ProxyAdmin.address,
     "Wrong l1GovernanceFactory owner"
   );
 
   assertEquals(
-    await getProxyOwner(contracts["l1executor"].address, ethDeployer),
-    contracts["l1proxyAdmin"].address,
-    "Wrong l1executor owner"
+    await getProxyOwner(l1Executor.address, ethDeployer),
+    l1ProxyAdmin.address,
+    "Wrong l1Executor owner"
   );
 
   assertEquals(
-    await getProxyOwner(contracts["l1timelock"].address, ethDeployer),
-    contracts["l1proxyAdmin"].address,
-    "Wrong l1timelock owner"
+    await getProxyOwner(l1Executor.address, ethDeployer),
+    l1ProxyAdmin.address,
+    "Wrong l1Timelock owner"
   );
 
-  assertEquals(
-    await contracts["l1proxyAdmin"].owner(),
-    contracts["l1executor"].address,
-    "Wrong l1proxyAdmin owner"
-  );
+  assertEquals(await l1ProxyAdmin.owner(), l1Executor.address, "Wrong l1ProxyAdmin owner");
 }
 
-async function verifyL2ContractOwners(contracts: { [key: string]: any }, arbDeployer: Signer) {
+async function verifyL2ContractOwners(
+  l2GovernanceFactory: L2GovernanceFactory,
+  l2CoreGovernor: L2ArbitrumGovernor,
+  l2ProxyAdmin: ProxyAdmin,
+  l2CoreTimelock: ArbitrumTimelock,
+  l2Executor: UpgradeExecutor,
+  l2Token: L2ArbitrumToken,
+  l2TreasuryGoverner: L2ArbitrumGovernor,
+  l2TreasuryTimelock: ArbitrumTimelock,
+  l2TokenDistributor: TokenDistributor,
+  arbDeployer: Signer
+) {
   assertEquals(
-    await contracts["l2GovernanceFactory"].owner(),
+    await l2GovernanceFactory.owner(),
     await arbDeployer.getAddress(),
     "Wrong l2GovernanceFactory owner"
   );
-
   assertEquals(
-    await getProxyOwner(contracts["l2coreGoverner"].address, arbDeployer),
-    contracts["l2proxyAdmin"].address,
-    "Wrong l2coreGoverner owner"
+    await getProxyOwner(l2CoreGovernor.address, arbDeployer),
+    l2ProxyAdmin.address,
+    "Wrong l2CoreGoverner owner"
   );
-
   assertEquals(
-    await getProxyOwner(contracts["l2coreTimelock"].address, arbDeployer),
-    contracts["l2proxyAdmin"].address,
-    "Wrong l2coreTimelock owner"
+    await getProxyOwner(l2CoreTimelock.address, arbDeployer),
+    l2ProxyAdmin.address,
+    "Wrong l2CoreTimelock owner"
   );
-
   assertEquals(
-    await getProxyOwner(contracts["l2executor"].address, arbDeployer),
-    contracts["l2proxyAdmin"].address,
-    "Wrong l2executor owner"
+    await getProxyOwner(l2Executor.address, arbDeployer),
+    l2ProxyAdmin.address,
+    "Wrong l2Executor owner"
   );
-
   assertEquals(
-    await getProxyOwner(contracts["l2token"].address, arbDeployer),
-    contracts["l2proxyAdmin"].address,
-    "Wrong l2token owner"
+    await getProxyOwner(l2Token.address, arbDeployer),
+    l2ProxyAdmin.address,
+    "Wrong l2Token owner"
   );
-
   assertEquals(
-    await getProxyOwner(contracts["l2treasuryGoverner"].address, arbDeployer),
-    contracts["l2proxyAdmin"].address,
-    "Wrong l2treasuryGoverner owner"
+    await getProxyOwner(l2TreasuryGoverner.address, arbDeployer),
+    l2ProxyAdmin.address,
+    "Wrong l2TreasuryGoverner owner"
   );
-
   assertEquals(
-    await getProxyOwner(contracts["l2treasuryTimelock"].address, arbDeployer),
-    contracts["l2proxyAdmin"].address,
-    "Wrong l2treasuryTimelock owner"
+    await getProxyOwner(l2TreasuryTimelock.address, arbDeployer),
+    l2ProxyAdmin.address,
+    "Wrong l2TreasuryTimelock owner"
   );
-
   assertEquals(
-    await contracts["l2TokenDistributor"].owner(),
+    await l2TokenDistributor.owner(),
     GovernanceConstants.L2_TOKEN_DISTRIBUTOR_OWNER,
     "Wrong l2TokenDistributor owner"
   );
-
-  assertEquals(
-    await contracts["l2proxyAdmin"].owner(),
-    contracts["l2executor"].address,
-    "Wrong l2proxyAdmin owner"
-  );
+  assertEquals(await l2ProxyAdmin.owner(), l2Executor.address, "Wrong l2ProxyAdmin owner");
 }
 
-async function verifyNovaContractOwners(contracts: { [key: string]: any }, novaDeployer: Signer) {
+async function verifyNovaContractOwners(
+  novaProxyAdmin: ProxyAdmin,
+  novaUpgradeExecutorProxy: UpgradeExecutor,
+  novaTokenProxy: L2CustomGatewayToken,
+  novaDeployer: Signer
+) {
   assertEquals(
-    await contracts["novaProxyAdmin"].owner(),
-    contracts["novaUpgradeExecutorProxy"].address,
+    await novaProxyAdmin.owner(),
+    novaUpgradeExecutorProxy.address,
     "Wrong novaProxyAdmin owner"
   );
-
   assertEquals(
-    await getProxyOwner(contracts["novaUpgradeExecutorProxy"].address, novaDeployer),
-    contracts["novaProxyAdmin"].address,
+    await getProxyOwner(novaUpgradeExecutorProxy.address, novaDeployer),
+    novaProxyAdmin.address,
     "Wrong novaUpgradeExecutorProxy owner"
   );
-
   assertEquals(
-    await getProxyOwner(contracts["novaTokenProxy"].address, novaDeployer),
-    contracts["novaProxyAdmin"].address,
+    await getProxyOwner(novaTokenProxy.address, novaDeployer),
+    novaProxyAdmin.address,
     "Wrong novaTokenProxy owner"
   );
 }
@@ -149,11 +190,8 @@ async function verifyNovaContractOwners(contracts: { [key: string]: any }, novaD
 /**
  * Verify:
  * - factory has completed job
- * @param contracts
  */
-async function verifyL2GovernanceFactory(contracts: { [key: string]: any }) {
-  const l2govFactory: L2GovernanceFactory = contracts["l2GovernanceFactory"];
-
+async function verifyL2GovernanceFactory(l2govFactory: L2GovernanceFactory) {
   // check factory has completed job
   // 2 == Step.Complete
   assertEquals(
@@ -167,53 +205,55 @@ async function verifyL2GovernanceFactory(contracts: { [key: string]: any }) {
  * Verify:
  * - initialization params are correctly set
  * - roles are correctly assigned
- * @param contracts
  */
-async function verifyArbitrumTimelockParams(contracts: { [key: string]: any }) {
-  const l2timelock: ArbitrumTimelock = contracts["l2coreTimelock"];
-
+async function verifyArbitrumTimelockParams(
+  l2Timelock: ArbitrumTimelock,
+  l2CoreGovernor: L2ArbitrumGovernor,
+  l2Executor: UpgradeExecutor,
+  l2GovernanceFactory: L2GovernanceFactory
+) {
   //// check initialization params are correctly set
   assertEquals(
-    (await l2timelock.getMinDelay()).toString(),
+    (await l2Timelock.getMinDelay()).toString(),
     GovernanceConstants.L2_TIMELOCK_DELAY.toString(),
     "L2 timelock has wrong min delay"
   );
 
   //// check assigned/revoked roles are correctly set
-  const proposerRole = await l2timelock.PROPOSER_ROLE();
-  const cancelerRole = await l2timelock.CANCELLER_ROLE();
-  const executorRole = await l2timelock.EXECUTOR_ROLE();
-  const timelockAdminRole = await l2timelock.TIMELOCK_ADMIN_ROLE();
+  const proposerRole = await l2Timelock.PROPOSER_ROLE();
+  const cancelerRole = await l2Timelock.CANCELLER_ROLE();
+  const executorRole = await l2Timelock.EXECUTOR_ROLE();
+  const timelockAdminRole = await l2Timelock.TIMELOCK_ADMIN_ROLE();
 
   assert(
-    await l2timelock.hasRole(proposerRole, contracts["l2coreGoverner"].address),
+    await l2Timelock.hasRole(proposerRole, l2CoreGovernor.address),
     "L2 core governor should have proposer role on L2 timelock"
   );
   assert(
-    await l2timelock.hasRole(cancelerRole, contracts["l2coreGoverner"].address),
+    await l2Timelock.hasRole(cancelerRole, l2CoreGovernor.address),
     "L2 core governor should have canceller role on L2 timelock"
   );
   assert(
-    await l2timelock.hasRole(
+    await l2Timelock.hasRole(
       proposerRole,
       GovernanceConstants.L2_7_OF_12_SECURITY_COUNCIL.toString()
     ),
     "L2 7/12 council should have proposer role on L2 timelock"
   );
   assert(
-    await l2timelock.hasRole(executorRole, ZERO_ADDRESS),
+    await l2Timelock.hasRole(executorRole, ZERO_ADDRESS),
     "Executor role should be assigned to zero address on L2 timelock"
   );
   assert(
-    await l2timelock.hasRole(timelockAdminRole, contracts["l2executor"].address),
+    await l2Timelock.hasRole(timelockAdminRole, l2Executor.address),
     "L2 upgrade executor should have timelock admin role on L2 timelock"
   );
   assert(
-    !(await l2timelock.hasRole(timelockAdminRole, l2timelock.address)),
+    !(await l2Timelock.hasRole(timelockAdminRole, l2Timelock.address)),
     "L2 timelock should not have timelock admin role on itself"
   );
   assert(
-    !(await l2timelock.hasRole(timelockAdminRole, contracts["l2GovernanceFactory"].address)),
+    !(await l2Timelock.hasRole(timelockAdminRole, l2GovernanceFactory.address)),
     "L2 governance factory should not have timelock admin role on L2 timelock"
   );
 }
@@ -221,57 +261,58 @@ async function verifyArbitrumTimelockParams(contracts: { [key: string]: any }) {
 /**
  * Verify:
  * - initialization params are correctly set
- * @param contracts
  */
-async function verifyL2CoreGovernor(contracts: { [key: string]: any }) {
-  const l2coreGovernor: L2ArbitrumGovernor = contracts["l2coreGoverner"];
-
+async function verifyL2CoreGovernor(
+  l2CoreGovernor: L2ArbitrumGovernor,
+  l2Token: L2ArbitrumToken,
+  l2Timelock: ArbitrumTimelock
+) {
   //// check initialization params are correctly set
 
   assertEquals(
-    await l2coreGovernor.name(),
+    await l2CoreGovernor.name(),
     "L2ArbitrumGovernor",
     "Incorrect L2 core governor's name"
   );
 
   assertEquals(
-    (await l2coreGovernor.votingDelay()).toString(),
+    (await l2CoreGovernor.votingDelay()).toString(),
     GovernanceConstants.L2_VOTING_DELAY.toString(),
     "Incorrect voting delay set for L2 core governor"
   );
 
   assertEquals(
-    (await l2coreGovernor.votingPeriod()).toString(),
+    (await l2CoreGovernor.votingPeriod()).toString(),
     GovernanceConstants.L2_VOTING_PERIOD.toString(),
     "Incorrect voting period set for L2 core governor"
   );
 
   assertEquals(
-    (await l2coreGovernor.proposalThreshold()).toString(),
+    (await l2CoreGovernor.proposalThreshold()).toString(),
     GovernanceConstants.L2_PROPOSAL_TRESHOLD.toString(),
     "Incorrect proposal threshold set for L2 core governor"
   );
 
   assertEquals(
-    await l2coreGovernor.token(),
-    contracts["l2token"].address,
+    await l2CoreGovernor.token(),
+    l2Token.address,
     "Incorrect token set for L2 core governor"
   );
 
   assertEquals(
-    await l2coreGovernor.timelock(),
-    contracts["l2coreTimelock"].address,
+    await l2CoreGovernor.timelock(),
+    l2Timelock.address,
     "Incorrect timelock set for L2 core governor"
   );
 
   assertEquals(
-    (await l2coreGovernor["quorumNumerator()"]()).toString(),
+    (await l2CoreGovernor["quorumNumerator()"]()).toString(),
     GovernanceConstants.L2_CORE_QUORUM_TRESHOLD.toString(),
     "Incorrect quorum treshold set for L2 core governor"
   );
 
   assertEquals(
-    (await l2coreGovernor.lateQuorumVoteExtension()).toString(),
+    (await l2CoreGovernor.lateQuorumVoteExtension()).toString(),
     GovernanceConstants.L2_MIN_PERIOD_AFTER_QUORUM.toString(),
     "Incorrect min period after quorum set for L2 core governor"
   );
@@ -280,21 +321,21 @@ async function verifyL2CoreGovernor(contracts: { [key: string]: any }) {
 /**
  * Verify:
  * - roles are correctly assigned
- * @param contracts
  */
-async function verifyL2UpgradeExecutor(contracts: { [key: string]: any }) {
-  const l2Executor: UpgradeExecutor = contracts["l2executor"];
-
+async function verifyL2UpgradeExecutor(
+  l2Executor: UpgradeExecutor,
+  l1Timelock: L1ArbitrumTimelock
+) {
   //// check assigned/revoked roles are correctly set
   const adminRole = await l2Executor.ADMIN_ROLE();
   const executorRole = await l2Executor.EXECUTOR_ROLE();
 
   assert(
-    await l2Executor.hasRole(adminRole, contracts["l2executor"].address),
+    await l2Executor.hasRole(adminRole, l2Executor.address),
     "L2 upgrade executor should have admin role on itself"
   );
 
-  const l1TimelockAddressAliased = new Address(contracts["l1timelock"].address).applyAlias().value;
+  const l1TimelockAddressAliased = new Address(l1Timelock.address).applyAlias().value;
   assert(
     await l2Executor.hasRole(executorRole, l1TimelockAddressAliased),
     "L1 timelock (aliased) should have executor role on L2 upgrade executor"
@@ -305,7 +346,11 @@ async function verifyL2UpgradeExecutor(contracts: { [key: string]: any }) {
   );
 }
 
-async function loadContracts(ethDeployer: Signer, arbDeployer: Signer, novaDeployer: Signer) {
+async function loadContracts(
+  ethDeployer: Signer,
+  arbDeployer: Signer,
+  novaDeployer: Signer
+): Promise<{ [key: string]: any }> {
   const contractAddresses = require("../" + DEPLOYED_CONTRACTS_FILE_NAME);
   let contracts: { [key: string]: any } = {};
 
@@ -318,50 +363,50 @@ async function loadContracts(ethDeployer: Signer, arbDeployer: Signer, novaDeplo
     contractAddresses["l1TokenProxy"],
     ethDeployer
   );
-  contracts["l1executor"] = UpgradeExecutor__factory.connect(
-    contractAddresses["l1executor"],
+  contracts["l1Executor"] = UpgradeExecutor__factory.connect(
+    contractAddresses["l1Executor"],
     ethDeployer
   );
-  contracts["l1timelock"] = UpgradeExecutor__factory.connect(
-    contractAddresses["l1timelock"],
+  contracts["l1Timelock"] = UpgradeExecutor__factory.connect(
+    contractAddresses["l1Timelock"],
     ethDeployer
   );
-  contracts["l1proxyAdmin"] = ProxyAdmin__factory.connect(
-    contractAddresses["l1proxyAdmin"],
+  contracts["l1ProxyAdmin"] = ProxyAdmin__factory.connect(
+    contractAddresses["l1ProxyAdmin"],
     ethDeployer
   );
 
   // load L2 contracts
-  contracts["l2token"] = L2ArbitrumToken__factory.connect(
-    contractAddresses["l2token"],
+  contracts["l2Token"] = L2ArbitrumToken__factory.connect(
+    contractAddresses["l2Token"],
     arbDeployer
   );
-  contracts["l2executor"] = UpgradeExecutor__factory.connect(
-    contractAddresses["l2executor"],
+  contracts["l2Executor"] = UpgradeExecutor__factory.connect(
+    contractAddresses["l2Executor"],
     arbDeployer
   );
   contracts["l2GovernanceFactory"] = L2GovernanceFactory__factory.connect(
     contractAddresses["l2GovernanceFactory"],
     arbDeployer
   );
-  contracts["l2coreGoverner"] = L2ArbitrumGovernor__factory.connect(
-    contractAddresses["l2coreGoverner"],
+  contracts["l2CoreGoverner"] = L2ArbitrumGovernor__factory.connect(
+    contractAddresses["l2CoreGoverner"],
     arbDeployer
   );
-  contracts["l2coreTimelock"] = ArbitrumTimelock__factory.connect(
-    contractAddresses["l2coreTimelock"],
+  contracts["l2CoreTimelock"] = ArbitrumTimelock__factory.connect(
+    contractAddresses["l2CoreTimelock"],
     arbDeployer
   );
-  contracts["l2proxyAdmin"] = ProxyAdmin__factory.connect(
-    contractAddresses["l2proxyAdmin"],
+  contracts["l2ProxyAdmin"] = ProxyAdmin__factory.connect(
+    contractAddresses["l2ProxyAdmin"],
     arbDeployer
   );
-  contracts["l2treasuryGoverner"] = L2ArbitrumGovernor__factory.connect(
-    contractAddresses["l2treasuryGoverner"],
+  contracts["l2TreasuryGoverner"] = L2ArbitrumGovernor__factory.connect(
+    contractAddresses["l2TreasuryGoverner"],
     arbDeployer
   );
-  contracts["l2treasuryTimelock"] = ArbitrumTimelock__factory.connect(
-    contractAddresses["l2treasuryTimelock"],
+  contracts["l2TreasuryTimelock"] = ArbitrumTimelock__factory.connect(
+    contractAddresses["l2TreasuryTimelock"],
     arbDeployer
   );
   contracts["l2TokenDistributor"] = TokenDistributor__factory.connect(
