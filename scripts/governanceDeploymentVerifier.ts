@@ -1,10 +1,13 @@
 import { ethers, Signer } from "ethers";
 import {
+  ArbitrumTimelock,
   ArbitrumTimelock__factory,
   L1ArbitrumToken__factory,
   L1GovernanceFactory__factory,
+  L2ArbitrumGovernor,
   L2ArbitrumGovernor__factory,
   L2ArbitrumToken__factory,
+  L2GovernanceFactory,
   L2GovernanceFactory__factory,
   ProxyAdmin__factory,
   TokenDistributor__factory,
@@ -29,6 +32,7 @@ export const verifyDeployment = async () => {
 
   await verifyArbitrumTimelockParams(contracts);
   await verifyL2GovernanceFactory(contracts);
+  await verifyL2CoreGovernor(contracts);
 };
 
 async function verifyL1ContractOwners(contracts: { [key: string]: any }, ethDeployer: Signer) {
@@ -139,12 +143,12 @@ async function verifyNovaContractOwners(contracts: { [key: string]: any }, novaD
  * @param contracts
  */
 async function verifyL2GovernanceFactory(contracts: { [key: string]: any }) {
-  const l2govFactory = contracts["l2GovernanceFactory"];
+  const l2govFactory: L2GovernanceFactory = contracts["l2GovernanceFactory"];
 
   // check factory has completed job
   // 2 == Step.Complete
   assertEquals(
-    await l2govFactory.step(),
+    (await l2govFactory.step()).toString(),
     "2",
     "L2 governance factory should be in 'Complete'(2) step"
   );
@@ -157,7 +161,7 @@ async function verifyL2GovernanceFactory(contracts: { [key: string]: any }) {
  * @param contracts
  */
 async function verifyArbitrumTimelockParams(contracts: { [key: string]: any }) {
-  const l2timelock = contracts["l2coreTimelock"];
+  const l2timelock: ArbitrumTimelock = contracts["l2coreTimelock"];
 
   //// check initialization params are correctly set
   assertEquals(
@@ -202,6 +206,65 @@ async function verifyArbitrumTimelockParams(contracts: { [key: string]: any }) {
   assert(
     !(await l2timelock.hasRole(timelockAdminRole, contracts["l2GovernanceFactory"].address)),
     "L2 governance factory should not have timelock admin role on L2 timelock"
+  );
+}
+
+/**
+ * Verify:
+ * - initialization params are correctly set
+ * @param contracts
+ */
+async function verifyL2CoreGovernor(contracts: { [key: string]: any }) {
+  const l2coreGovernor: L2ArbitrumGovernor = contracts["l2coreGoverner"];
+
+  //// check initialization params are correctly set
+
+  assertEquals(
+    await l2coreGovernor.name(),
+    "L2ArbitrumGovernor",
+    "Incorrect L2 core governor's name"
+  );
+
+  assertEquals(
+    (await l2coreGovernor.votingDelay()).toString(),
+    GovernanceConstants.L2_VOTING_DELAY.toString(),
+    "Incorrect voting delay set for L2 core governor"
+  );
+
+  assertEquals(
+    (await l2coreGovernor.votingPeriod()).toString(),
+    GovernanceConstants.L2_VOTING_PERIOD.toString(),
+    "Incorrect voting period set for L2 core governor"
+  );
+
+  assertEquals(
+    (await l2coreGovernor.proposalThreshold()).toString(),
+    GovernanceConstants.L2_PROPOSAL_TRESHOLD.toString(),
+    "Incorrect proposal threshold set for L2 core governor"
+  );
+
+  assertEquals(
+    await l2coreGovernor.token(),
+    contracts["l2token"].address,
+    "Incorrect token set for L2 core governor"
+  );
+
+  assertEquals(
+    await l2coreGovernor.timelock(),
+    contracts["l2coreTimelock"].address,
+    "Incorrect timelock set for L2 core governor"
+  );
+
+  assertEquals(
+    (await l2coreGovernor["quorumNumerator()"]()).toString(),
+    GovernanceConstants.L2_CORE_QUORUM_TRESHOLD.toString(),
+    "Incorrect quorum treshold set for L2 core governor"
+  );
+
+  assertEquals(
+    (await l2coreGovernor.lateQuorumVoteExtension()).toString(),
+    GovernanceConstants.L2_MIN_PERIOD_AFTER_QUORUM.toString(),
+    "Incorrect min period after quorum set for L2 core governor"
   );
 }
 
