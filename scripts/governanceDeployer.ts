@@ -102,7 +102,9 @@ export const deployGovernance = async () => {
   );
 
   console.log("Deploy UpgradeExecutor to Nova");
-  const novaProxyAdmin = await deployNovaUpgradeExecutor(novaDeployer);
+  const { novaProxyAdmin, novaUpgradeExecutorProxy } = await deployNovaUpgradeExecutor(
+    novaDeployer
+  );
 
   console.log("Deploy token to Nova");
   const novaToken = await deployTokenToNova(novaDeployer, novaProxyAdmin);
@@ -125,7 +127,13 @@ export const deployGovernance = async () => {
 
   // step 3
   console.log("Set executor roles");
-  await setExecutorRoles(l1DeployResult, l2GovernanceFactory);
+  await setExecutorRoles(
+    l1DeployResult,
+    l2GovernanceFactory,
+    novaUpgradeExecutorProxy,
+    novaProxyAdmin,
+    novaDeployer
+  );
 
   // deploy ARB distributor
   console.log("Deploy TokenDistributor");
@@ -243,24 +251,12 @@ async function deployNovaUpgradeExecutor(novaDeployer: Signer) {
   ).deploy(novaUpgradeExecutorLogic.address, novaProxyAdmin.address, "0x");
   await novaUpgradeExecutorProxy.deployed();
 
-  // init executor
-  const novaUpgradeExecutor = UpgradeExecutor__factory.connect(
-    novaUpgradeExecutorProxy.address,
-    novaDeployer
-  );
-  await novaUpgradeExecutor.initialize(novaUpgradeExecutor.address, [
-    GovernanceConstants.NOVA_9_OF_12_SECURITY_COUNCIL,
-  ]);
-
-  // transfer ownership over novaProxyAdmin to executor
-  await novaProxyAdmin.transferOwnership(novaUpgradeExecutor.address);
-
   // store addresses
   deployedContracts["novaProxyAdmin"] = novaProxyAdmin.address;
   deployedContracts["novaUpgradeExecutorLogic"] = novaUpgradeExecutorLogic.address;
   deployedContracts["novaUpgradeExecutorProxy"] = novaUpgradeExecutorProxy.address;
 
-  return novaProxyAdmin;
+  return { novaProxyAdmin, novaUpgradeExecutorProxy };
 }
 
 async function deployTokenToNova(novaDeployer: Signer, proxyAdmin: ProxyAdmin) {
@@ -369,14 +365,32 @@ async function initL1Governance(
 
 async function setExecutorRoles(
   l1DeployResult: L1DeployedEventObject,
-  l2GovernanceFactory: L2GovernanceFactory
+  l2GovernanceFactory: L2GovernanceFactory,
+  novaUpgradeExecutorProxy: TransparentUpgradeableProxy,
+  novaProxyAdmin: ProxyAdmin,
+  novaDeployer: Signer
 ) {
   const l1TimelockAddress = new Address(l1DeployResult.timelock);
   const l1TimelockAliased = l1TimelockAddress.applyAlias().value;
+
+  // set executors on L2
   await l2GovernanceFactory.deployStep3([
     l1TimelockAliased,
     GovernanceConstants.L2_9_OF_12_SECURITY_COUNCIL,
   ]);
+
+  // set executors on Nova
+  const novaUpgradeExecutor = UpgradeExecutor__factory.connect(
+    novaUpgradeExecutorProxy.address,
+    novaDeployer
+  );
+  await novaUpgradeExecutor.initialize(novaUpgradeExecutor.address, [
+    l1TimelockAliased,
+    GovernanceConstants.NOVA_9_OF_12_SECURITY_COUNCIL,
+  ]);
+
+  // transfer ownership over novaProxyAdmin to executor
+  await novaProxyAdmin.transferOwnership(novaUpgradeExecutor.address);
 }
 
 async function postDeploymentL1TokenTasks(
