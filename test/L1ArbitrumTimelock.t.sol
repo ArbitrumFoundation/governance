@@ -4,6 +4,7 @@ pragma solidity 0.8.16;
 import "../src/L1ArbitrumTimelock.sol";
 import "./util/TestUtil.sol";
 import "./util/InboxMock.sol";
+import "@openzeppelin/contracts-upgradeable/utils/StringsUpgradeable.sol";
 
 import "forge-std/Test.sol";
 
@@ -20,6 +21,7 @@ contract L1ArbitrumTimelockTest is Test {
     uint256 minDelay = 10;
     address l2Timelock = address(139);
     address outbox = address(140);
+    address l1Council = address(141);
 
     function deploy() internal returns (L1ArbitrumTimelock) {
         L1ArbitrumTimelock timelock =
@@ -393,7 +395,10 @@ contract L1ArbitrumTimelockTest is Test {
         );
         assertEq(l1Timelock.isOperation(opId), true, "is op");
 
-        vm.prank(bridge);
+        // L1GovernanceFactory will set l1Council as canceller on timelock
+        l1Timelock.grantRole(l1Timelock.CANCELLER_ROLE(), l1Council);
+
+        vm.prank(l1Council);
         l1Timelock.cancel(opId);
 
         assertEq(l1Timelock.isOperation(opId), false, "is op");
@@ -414,29 +419,19 @@ contract L1ArbitrumTimelockTest is Test {
         );
         assertEq(l1Timelock.isOperation(opId), true, "is op");
 
-        vm.expectRevert("L1ArbitrumTimelock: not from bridge");
-        l1Timelock.cancel(opId);
-    }
+        // cancel should revert when called from bridge
+        address account = address(bridge);
+        bytes32 role = l1Timelock.CANCELLER_ROLE();
+        vm.expectRevert(
+            abi.encodePacked(
+                "AccessControl: account ",
+                StringsUpgradeable.toHexString(uint160(account), 20),
+                " is missing role ",
+                StringsUpgradeable.toHexString(uint256(role), 32)
+            )
+        );
 
-    function testCancelFailsBadL2Timelock() external {
-        L1ArbitrumTimelock l1Timelock = deployAndInit();
-        ScheduleArgs memory sarg = dummyScheduleArgs();
-
-        mockActiveOutbox(outbox, l2Timelock);
         vm.prank(bridge);
-        l1Timelock.schedule(
-            sarg.target, sarg.value, sarg.payload, sarg.predecessor, sarg.salt, minDelay
-        );
-
-        address wrongL2Timelock = address(1245);
-        mockActiveOutbox(outbox, wrongL2Timelock);
-
-        bytes32 opId = l1Timelock.hashOperation(
-            sarg.target, sarg.value, sarg.payload, sarg.predecessor, sarg.salt
-        );
-        assertEq(l1Timelock.isOperation(opId), true, "is op");
-
-        vm.expectRevert("L1ArbitrumTimelock: not from bridge");
         l1Timelock.cancel(opId);
     }
 }

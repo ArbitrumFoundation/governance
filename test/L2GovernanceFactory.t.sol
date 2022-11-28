@@ -26,7 +26,9 @@ contract L2GovernanceFactoryTest is Test {
     uint256 proposalThreshold = 5e6;
     uint64 minPeriodAfterQuorum = 41;
 
-    address[] l2UpgradeExecutors = [address(404), address(504)];
+    // councils
+    address l2EmergencyCouncil = address(504);
+    address aliasedL1Timelock = address(404);
 
     address[] addressArrayStub = [address(777), address(888)];
 
@@ -46,7 +48,8 @@ contract L2GovernanceFactoryTest is Test {
         _proposalThreshold: proposalThreshold,
         _minPeriodAfterQuorum: minPeriodAfterQuorum,
         _upgradeProposer: upgradeProposer,
-        _l2InitialSupplyRecipient: l2InitialSupplyRecipient
+        _l2InitialSupplyRecipient: l2InitialSupplyRecipient,
+        _l2EmergencySecurityCouncil: l2EmergencyCouncil
     });
 
     function deploy()
@@ -85,7 +88,7 @@ contract L2GovernanceFactoryTest is Test {
 
         (DeployedContracts memory dc, DeployedTreasuryContracts memory dtc) =
             l2GovernanceFactory.deployStep1(deployCoreParams);
-        l2GovernanceFactory.deployStep3(l2UpgradeExecutors);
+        l2GovernanceFactory.deployStep3(aliasedL1Timelock);
 
         vm.prank(l2InitialSupplyRecipient);
         dc.token.transferOwnership(address(dc.executor));
@@ -143,7 +146,7 @@ contract L2GovernanceFactoryTest is Test {
         // owner can't skip to step 3
         vm.startPrank(owner);
         vm.expectRevert("L2GovernanceFactory: not step three");
-        l2GovernanceFactory.deployStep3(l2UpgradeExecutors);
+        l2GovernanceFactory.deployStep3(aliasedL1Timelock);
 
         // owner should successfully carry out step 1
         l2GovernanceFactory.deployStep1(deployCoreParams);
@@ -156,15 +159,15 @@ contract L2GovernanceFactoryTest is Test {
         // rando can't trigger step 3
         vm.prank(someRando);
         vm.expectRevert("Ownable: caller is not the owner");
-        l2GovernanceFactory.deployStep3(l2UpgradeExecutors);
+        l2GovernanceFactory.deployStep3(aliasedL1Timelock);
 
         // owner shoud successfully carrout out step 3
         vm.startPrank(owner);
-        l2GovernanceFactory.deployStep3(l2UpgradeExecutors);
+        l2GovernanceFactory.deployStep3(aliasedL1Timelock);
 
         // owner can't repeat step 3
         vm.expectRevert("L2GovernanceFactory: not step three");
-        l2GovernanceFactory.deployStep3(l2UpgradeExecutors);
+        l2GovernanceFactory.deployStep3(aliasedL1Timelock);
         vm.stopPrank();
     }
 
@@ -268,12 +271,15 @@ contract L2GovernanceFactoryTest is Test {
         );
 
         bytes32 executorRole = upgradeExecutor.EXECUTOR_ROLE();
-        for (uint256 i = 0; i < l2UpgradeExecutors.length; i++) {
-            assertTrue(
-                upgradeExecutor.hasRole(executorRole, l2UpgradeExecutors[i]),
-                "l2UpgradeExecutors are executors"
-            );
-        }
+        assertTrue(
+            upgradeExecutor.hasRole(executorRole, l2EmergencyCouncil),
+            "l2EmergencyCouncil is executor"
+        );
+        assertTrue(
+            upgradeExecutor.hasRole(executorRole, aliasedL1Timelock),
+            "aliasedL1Timelock is executor"
+        );
+
         assertEq(
             token.delegates(address(arbTreasury)),
             treasuryGov.EXCLUDE_ADDRESS(),
@@ -343,6 +349,10 @@ contract L2GovernanceFactoryTest is Test {
         assertTrue(
             coreTimelock.hasRole(coreTimelock.EXECUTOR_ROLE(), address(0)), "anyone can execute"
         );
+        assertTrue(
+            coreTimelock.hasRole(coreTimelock.CANCELLER_ROLE(), l2EmergencyCouncil), "9/12 council can cancel"
+        );
+
         assertTrue(
             treasuryTimelock.hasRole(treasuryTimelock.PROPOSER_ROLE(), address(treasuryGov)),
             "treasuryGov can propose"
