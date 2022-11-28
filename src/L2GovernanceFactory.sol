@@ -157,7 +157,9 @@ contract L2GovernanceFactory is Ownable {
         upExecutor = address(dc.executor);
 
         dc.token = deployToken(dc.proxyAdmin, l2TokenLogic);
-        dc.token.initialize(params._l1Token, params._l2TokenInitialSupply, params._l2InitialSupplyRecipient);
+        dc.token.initialize(
+            params._l1Token, params._l2TokenInitialSupply, params._l2InitialSupplyRecipient
+        );
 
         dc.coreGov = deployGovernor(dc.proxyAdmin, coreGovernorLogic);
         dc.coreGov.initialize({
