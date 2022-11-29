@@ -56,6 +56,11 @@ contract L1GovernanceFactoryTest is Test {
         assertTrue(executor.hasRole(executorRole, address(timelock)), "timelock is executor");
         bytes32 adminRole = executor.ADMIN_ROLE();
         assertTrue(executor.hasRole(adminRole, address(executor)), "executor is admin to itself");
+
+        assertTrue(
+            timelock.hasRole(timelock.CANCELLER_ROLE(), l1SecurityCouncil),
+            "l1SecurityCouncil is canceler"
+        );
         vm.stopPrank();
 
         assertEq(proxyAdmin.owner(), address(executor), "L1 Executor owns L1 proxyAdmin");
