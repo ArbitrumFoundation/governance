@@ -297,23 +297,20 @@ async function initL2Governance(
 
   // deploy
   const l2GovDeployReceipt = await (
-    await l2GovernanceFactory.deployStep1(
-      {
-        _l2MinTimelockDelay: GovernanceConstants.L2_TIMELOCK_DELAY,
-        _l2TokenInitialSupply: parseEther(GovernanceConstants.L2_TOKEN_INITIAL_SUPPLY),
-        _upgradeProposer: GovernanceConstants.L2_7_OF_12_SECURITY_COUNCIL,
-        _coreQuorumThreshold: GovernanceConstants.L2_CORE_QUORUM_TRESHOLD,
-        _l1Token: l1TokenAddress,
-        _treasuryQuorumThreshold: GovernanceConstants.L2_TREASURY_QUORUM_TRESHOLD,
-        _proposalThreshold: GovernanceConstants.L2_PROPOSAL_TRESHOLD,
-        _votingDelay: GovernanceConstants.L2_VOTING_DELAY,
-        _votingPeriod: GovernanceConstants.L2_VOTING_PERIOD,
-        _minPeriodAfterQuorum: GovernanceConstants.L2_MIN_PERIOD_AFTER_QUORUM,
-        _l2InitialSupplyRecipient: arbInitialSupplyRecipientAddr,
-      },
-
-      { gasLimit: 30000000 }
-    )
+    await l2GovernanceFactory.deployStep1({
+      _l2MinTimelockDelay: GovernanceConstants.L2_TIMELOCK_DELAY,
+      _l2TokenInitialSupply: parseEther(GovernanceConstants.L2_TOKEN_INITIAL_SUPPLY),
+      _upgradeProposer: GovernanceConstants.L2_7_OF_12_SECURITY_COUNCIL,
+      _coreQuorumThreshold: GovernanceConstants.L2_CORE_QUORUM_TRESHOLD,
+      _l1Token: l1TokenAddress,
+      _treasuryQuorumThreshold: GovernanceConstants.L2_TREASURY_QUORUM_TRESHOLD,
+      _proposalThreshold: GovernanceConstants.L2_PROPOSAL_TRESHOLD,
+      _votingDelay: GovernanceConstants.L2_VOTING_DELAY,
+      _votingPeriod: GovernanceConstants.L2_VOTING_PERIOD,
+      _minPeriodAfterQuorum: GovernanceConstants.L2_MIN_PERIOD_AFTER_QUORUM,
+      _l2InitialSupplyRecipient: arbInitialSupplyRecipientAddr,
+      _l2EmergencySecurityCouncil: GovernanceConstants.L2_9_OF_12_SECURITY_COUNCIL,
+    })
   ).wait();
 
   // get deployed contract addresses
@@ -345,8 +342,7 @@ async function initL1Governance(
       GovernanceConstants.L1_TIMELOCK_DELAY,
       GovernanceConstants.L1_ARB_INBOX,
       l2DeployResult.coreTimelock,
-      GovernanceConstants.L1_9_OF_12_SECURITY_COUNCIL,
-      { gasLimit: 30000000 }
+      GovernanceConstants.L1_9_OF_12_SECURITY_COUNCIL
     )
   ).wait();
 
@@ -374,10 +370,7 @@ async function setExecutorRoles(
   const l1TimelockAliased = l1TimelockAddress.applyAlias().value;
 
   // set executors on L2
-  await l2GovernanceFactory.deployStep3([
-    l1TimelockAliased,
-    GovernanceConstants.L2_9_OF_12_SECURITY_COUNCIL,
-  ]);
+  await l2GovernanceFactory.deployStep3(l1TimelockAliased);
 
   // set executors on Nova
   const novaUpgradeExecutor = UpgradeExecutor__factory.connect(
