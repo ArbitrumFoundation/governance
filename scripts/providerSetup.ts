@@ -26,6 +26,10 @@ import { parseEther } from "ethers/lib/utils";
 
 dotenv.config();
 
+const ETH_CHAIN_ID = 1;
+const ARBITRUM_ONE_CHAIN_ID = 42161;
+const ARBITRUM_NOVA_CHAIN_ID = 42170;
+
 // dotenv config used in case of deploying to production
 // in case of local env testing, config is extracted in `testSetup()`
 export const config = {
@@ -64,18 +68,52 @@ export const getDeployers = async (): Promise<{
     const novaProvider = new JsonRpcProvider(process.env["NOVA_URL"] as string);
     const novaDeployer = getSigner(novaProvider, process.env["NOVA_KEY"] as string);
 
+    // check that production chains are not mistakenly used in local env
+    if (l1Deployer.provider) {
+      const l1ChainId = (await l1Deployer.provider.getNetwork()).chainId;
+      if (l1ChainId == ETH_CHAIN_ID) {
+        throw new Error("Production chain ID used in test env for L1");
+      }
+    }
+    if (l2Deployer.provider) {
+      const l2ChainId = (await l2Deployer.provider.getNetwork()).chainId;
+      if (l2ChainId == ARBITRUM_ONE_CHAIN_ID) {
+        throw new Error("Production chain ID used in test env for L2");
+      }
+    }
+    if (novaDeployer.provider) {
+      const novaChainId = (await novaDeployer.provider.getNetwork()).chainId;
+      if (novaChainId == ARBITRUM_NOVA_CHAIN_ID) {
+        throw new Error("Production chain ID used in test env for Nova");
+      }
+    }
+
     await fundL2(l2Signer, parseEther("1"));
     return {
       ethDeployer: l1Deployer,
       arbDeployer: l2Deployer,
       arbInitialSupplyRecipient: l2Signer,
-      novaDeployer: novaDeployer
+      novaDeployer: novaDeployer,
     };
   } else {
     // deploying to production
     const ethProvider = new JsonRpcProvider(config.ethRpc);
     const arbProvider = new JsonRpcProvider(config.arbRpc);
     const novaProvider = new JsonRpcProvider(config.novaRpc);
+
+    // check that production chain IDs are used in production mode
+    const ethChainId = (await ethProvider.getNetwork()).chainId;
+    if (ethChainId != ETH_CHAIN_ID) {
+      throw new Error("Production chain ID should be used in production mode for L1");
+    }
+    const arbChainId = (await arbProvider.getNetwork()).chainId;
+    if (arbChainId != ARBITRUM_ONE_CHAIN_ID) {
+      throw new Error("Production chain ID should be used in production mode for L2");
+    }
+    const novaChainId = (await novaProvider.getNetwork()).chainId;
+    if (novaChainId != ARBITRUM_NOVA_CHAIN_ID) {
+      throw new Error("Production chain ID should be used in production mode for Nova");
+    }
 
     const ethDeployer = getSigner(ethProvider, config.ethDeployerKey);
     const arbDeployer = getSigner(arbProvider, config.arbDeployerKey);
