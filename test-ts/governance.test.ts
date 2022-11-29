@@ -270,6 +270,7 @@ describe("Governor", function () {
     // it doesnt exist yet but we plan to upgrade the l2 token contract add this address
     const l1TokenAddress = "0x0000000000000000000000000000000000000001";
     const sevenSecurityCouncil = Wallet.createRandom();
+    const nineTwelthSecurityCouncil = Wallet.createRandom();
 
     const timelockLogic = await new ArbitrumTimelock__factory(
       l2Deployer
@@ -313,6 +314,7 @@ describe("Governor", function () {
           _votingPeriod: 10,
           _minPeriodAfterQuorum: 1,
           _l2InitialSupplyRecipient: l2SignerAddr,
+          _l2EmergencySecurityCouncil: nineTwelthSecurityCouncil.address
         },
 
         { gasLimit: 30000000 }
@@ -346,14 +348,13 @@ describe("Governor", function () {
     )[0].args as unknown as L1DeployedEventObject;
 
     // after deploying transfer ownership of the upgrader to the l1 contract
-    const nineTwelthSecurityCouncil = Wallet.createRandom();
     const l2UpgradeExecutor = UpgradeExecutor__factory.connect(
       l2DeployResult.executor,
       l2Deployer.provider!
     );
     const l1TimelockAddress = new Address(l1DeployResult.timelock);
-    const ow = l1TimelockAddress.applyAlias().value;
-    await l2GovernanceFac.deployStep3([ow, nineTwelthSecurityCouncil.address]);
+    const aliasedL1Timelock = l1TimelockAddress.applyAlias().value;
+    await l2GovernanceFac.deployStep3(aliasedL1Timelock);
 
     // return contract objects
     const l2TokenContract = L2ArbitrumToken__factory.connect(

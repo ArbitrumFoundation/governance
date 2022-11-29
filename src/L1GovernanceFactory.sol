@@ -46,6 +46,9 @@ contract L1GovernanceFactory is Ownable {
         // anyone can execute
         timelock.grantRole(timelock.EXECUTOR_ROLE(), address(0));
 
+        // L1 9/12 council can cancel proposals
+        timelock.grantRole(timelock.CANCELLER_ROLE(), l1SecurityCouncil);
+
         // revoke admin rights and give them to the upgrade executor
         timelock.grantRole(timelock.TIMELOCK_ADMIN_ROLE(), address(executor));
         timelock.revokeRole(timelock.TIMELOCK_ADMIN_ROLE(), address(timelock));

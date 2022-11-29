@@ -59,7 +59,6 @@ contract L1ArbitrumTimelock is TimelockControllerUpgradeable, L1ArbitrumMessenge
         // by using the onlyCounterpartTimelock modifier
         address bridge = address(getBridge(_governanceChainInbox));
         grantRole(PROPOSER_ROLE, bridge);
-        grantRole(CANCELLER_ROLE, bridge);
     }
 
     modifier onlyCounterpartTimelock() {
@@ -105,17 +104,6 @@ contract L1ArbitrumTimelock is TimelockControllerUpgradeable, L1ArbitrumMessenge
         uint256 delay
     ) public virtual override (TimelockControllerUpgradeable) onlyCounterpartTimelock {
         TimelockControllerUpgradeable.schedule(target, value, data, predecessor, salt, delay);
-    }
-
-    /// @inheritdoc TimelockControllerUpgradeable
-    /// @dev Adds the restriction that only the counterparty timelock can call this func
-    function cancel(bytes32 id)
-        public
-        virtual
-        override (TimelockControllerUpgradeable)
-        onlyCounterpartTimelock
-    {
-        TimelockControllerUpgradeable.cancel(id);
     }
 
     /// @dev If the target is reserved "magic" retryable ticket address address(bytes20(bytes("retryable ticket magic")))

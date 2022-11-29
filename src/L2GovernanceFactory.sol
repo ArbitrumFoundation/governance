@@ -22,6 +22,7 @@ struct DeployCoreParams {
     uint64 _minPeriodAfterQuorum;
     address _upgradeProposer; // in addition to core gov
     address _l2InitialSupplyRecipient;
+    address _l2EmergencySecurityCouncil; // 9/12 security council
 }
 
 struct DeployTreasuryParams {
@@ -110,6 +111,8 @@ contract L2GovernanceFactory is Ownable {
     address public treasuryLogic;
 
     address public upExecutor;
+    address public l2EmergencySecurityCouncil; // 9/12 security council
+
     Step public step;
 
     constructor(
@@ -146,6 +149,9 @@ contract L2GovernanceFactory is Ownable {
         require(step == Step.One, "L2GovernanceFactory: not step one");
         dc.proxyAdmin = ProxyAdmin(proxyAdminLogic);
 
+        // store it so it can be used in step 3
+        l2EmergencySecurityCouncil = params._l2EmergencySecurityCouncil;
+
         // deploy the timelock
         dc.coreTimelock = deployTimelock(dc.proxyAdmin, coreTimelockLogic);
         dc.coreTimelock.initialize(params._l2MinTimelockDelay, new address[](0), new address[](0));
@@ -174,7 +180,12 @@ contract L2GovernanceFactory is Ownable {
         });
 
         dc.coreTimelock.grantRole(dc.coreTimelock.PROPOSER_ROLE(), address(dc.coreGov));
-        dc.coreTimelock.grantRole(dc.coreTimelock.CANCELLER_ROLE(), address(dc.coreGov));
+
+        bytes32 cancellerRole = dc.coreTimelock.CANCELLER_ROLE();
+        dc.coreTimelock.grantRole(cancellerRole, address(dc.coreGov));
+        // L2 9/12 council can cancel proposals
+        dc.coreTimelock.grantRole(cancellerRole, params._l2EmergencySecurityCouncil);
+
         // allow the 7/12 security council to schedule actions
         // we don't give _upgradeProposer the canceller role since it shouldn't
         // have the affordance to cancel proposals proposed by others
@@ -221,13 +232,13 @@ contract L2GovernanceFactory is Ownable {
         return (dc, dtc);
     }
 
-    function deployStep3(address[] memory _l2UpgradeExecutors) public onlyOwner {
+    function deployStep3(address _aliasedL1Timelock) public onlyOwner {
         require(step == Step.Three, "L2GovernanceFactory: not step three");
-        // now that we all the address we can grant roles to them on the upgrade executor
+        // now that we have all the addresses we can grant roles to them on the upgrade executor
         UpgradeExecutor exec = UpgradeExecutor(upExecutor);
-        for (uint256 i = 0; i < _l2UpgradeExecutors.length; ++i) {
-            exec.grantRole(exec.EXECUTOR_ROLE(), _l2UpgradeExecutors[i]);
-        }
+        exec.grantRole(exec.EXECUTOR_ROLE(), l2EmergencySecurityCouncil);
+        exec.grantRole(exec.EXECUTOR_ROLE(), _aliasedL1Timelock);
+
         exec.grantRole(exec.ADMIN_ROLE(), upExecutor);
 
         step = Step.Complete;
