@@ -64,6 +64,11 @@ export const verifyDeployment = async () => {
     novaDeployer
   );
 
+  //// verify L1 contracts are correctly initialized
+  await verifyL1Token(contracts["l1TokenProxy"]);
+
+  //// verify L2 contracts are correctly initialized
+
   await verifyArbitrumTimelockParams(
     contracts["l2CoreTimelock"],
     contracts["l2CoreGoverner"],
@@ -77,18 +82,14 @@ export const verifyDeployment = async () => {
     contracts["l2CoreTimelock"]
   );
   await verifyL2UpgradeExecutor(contracts["l2Executor"], contracts["l1Timelock"]);
-
   await verifyL2Token(contracts["l2Token"], contracts["l2ArbTreasury"], contracts["l1TokenProxy"]);
-
   await verifyL2TreasuryGovernor(contracts["l2TreasuryGoverner"], contracts["l2Token"]);
-
   await verifyL2ArbTreasury(
     contracts["l2ArbTreasury"],
     contracts["l2Token"],
     contracts["l2TreasuryGoverner"],
     arbDeployer
   );
-
   await verifyL2TokenDistributor(contracts["l2TokenDistributor"], contracts["l2Token"]);
 };
 
@@ -227,6 +228,37 @@ async function verifyNovaContractOwners(
     novaProxyAdmin.address,
     "NovaProxyAdmin should be NovaToken's owner"
   );
+}
+
+/**
+ * Verify:
+ * - initialization params are correctly set
+ */
+async function verifyL1Token(l1Token: L1ArbitrumToken) {
+  assertEquals(await l1Token.name(), "Arbitrum", "Incorrect token name set for L1Token");
+  assertEquals(await l1Token.symbol(), "ARB", "Incorrect token symbol set on L1Token");
+  assertEquals(
+    await l1Token.arbOneGateway(),
+    GovernanceConstants.L1_ARB_GATEWAY,
+    "Incorrect arb gateway set on L1Token"
+  );
+  assertEquals(
+    await l1Token.arbOneRouter(),
+    GovernanceConstants.L1_ARB_ROUTER,
+    "Incorrect arb router set on L1Token"
+  );
+  assertEquals(
+    await l1Token.novaGateway(),
+    GovernanceConstants.L1_NOVA_GATEWAY,
+    "Incorrect Nova gateway set on L1Token"
+  );
+  assertEquals(
+    await l1Token.novaRouter(),
+    GovernanceConstants.L1_NOVA_ROUTER,
+    "Incorrect Nova router set on L1Token"
+  );
+
+  //// TODO add token registration check
 }
 
 /**
