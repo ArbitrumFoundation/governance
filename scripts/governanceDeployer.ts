@@ -325,7 +325,7 @@ async function initL2Governance(
   deployedContracts["l2ProxyAdmin"] = l2DeployResult.proxyAdmin;
   deployedContracts["l2Token"] = l2DeployResult.token;
   deployedContracts["l2TreasuryGoverner"] = l2DeployResult.treasuryGoverner;
-  deployedContracts["l2TreasuryTimelock"] = l2DeployResult.treasuryTimelock;
+  deployedContracts["l2ArbTreasury"] = l2DeployResult.arbTreasury;
 
   return l2DeployResult;
 }
@@ -449,7 +449,7 @@ async function postDeploymentL2TokenTasks(
   // transfer tokens from _l2InitialSupplyRecipient to the treasury
   await l2Token
     .connect(arbInitialSupplyRecipient)
-    .transfer(l2DeployResult.treasuryTimelock, GovernanceConstants.L2_NUM_OF_TOKENS_FOR_TREASURY);
+    .transfer(l2DeployResult.arbTreasury, GovernanceConstants.L2_NUM_OF_TOKENS_FOR_TREASURY);
 
   // tokens should be transfered to TokenDistributor as well, but only after all recipients are correctly set.
 }

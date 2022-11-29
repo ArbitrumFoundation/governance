@@ -90,7 +90,7 @@ contract L2GovernanceFactory is Ownable {
         ArbitrumTimelock coreTimelock,
         L2ArbitrumGovernor coreGoverner,
         L2ArbitrumGovernor treasuryGoverner,
-        FixedDelegateErc20Wallet treasuryTimelock,
+        FixedDelegateErc20Wallet arbTreasury,
         ProxyAdmin proxyAdmin,
         UpgradeExecutor executor
     );

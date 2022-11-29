@@ -2,6 +2,8 @@ import { ethers, Signer } from "ethers";
 import {
   ArbitrumTimelock,
   ArbitrumTimelock__factory,
+  FixedDelegateErc20Wallet,
+  FixedDelegateErc20Wallet__factory,
   L1ArbitrumTimelock,
   L1ArbitrumToken,
   L1ArbitrumToken__factory,
@@ -50,7 +52,7 @@ export const verifyDeployment = async () => {
     contracts["l2Executor"],
     contracts["l2Token"],
     contracts["l2TreasuryGoverner"],
-    contracts["l2TreasuryTimelock"],
+    contracts["l2ArbTreasury"],
     contracts["l2TokenDistributor"],
     arbDeployer
   );
@@ -119,7 +121,7 @@ async function verifyL2ContractOwners(
   l2Executor: UpgradeExecutor,
   l2Token: L2ArbitrumToken,
   l2TreasuryGoverner: L2ArbitrumGovernor,
-  l2TreasuryTimelock: ArbitrumTimelock,
+  l2ArbTreasury: FixedDelegateErc20Wallet,
   l2TokenDistributor: TokenDistributor,
   arbDeployer: Signer
 ) {
@@ -169,9 +171,14 @@ async function verifyL2ContractOwners(
     "L2UpgradeExecutor should be treasury L2ArbitrumGovernor's owner"
   );
   assertEquals(
-    await getProxyOwner(l2TreasuryTimelock.address, arbDeployer),
+    await getProxyOwner(l2ArbTreasury.address, arbDeployer),
     l2ProxyAdmin.address,
-    "L2ProxyAdmin should be treasury ArbitrumTimelock's proxy admin"
+    "L2ProxyAdmin should be arbTreasury's proxy admin"
+  );
+  assertEquals(
+    await l2ArbTreasury.owner(),
+    await l2TreasuryGoverner.timelock(),
+    "L2TreasuryGoverner's timelock should be arbTreasury's owner"
   );
   assertEquals(
     await l2TokenDistributor.owner(),
@@ -440,8 +447,8 @@ async function loadContracts(
     contractAddresses["l2TreasuryGoverner"],
     arbDeployer
   );
-  contracts["l2TreasuryTimelock"] = ArbitrumTimelock__factory.connect(
-    contractAddresses["l2TreasuryTimelock"],
+  contracts["l2ArbTreasury"] = FixedDelegateErc20Wallet__factory.connect(
+    contractAddresses["l2ArbTreasury"],
     arbDeployer
   );
   contracts["l2TokenDistributor"] = TokenDistributor__factory.connect(
