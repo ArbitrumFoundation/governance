@@ -4,6 +4,7 @@ import {
   ArbitrumTimelock__factory,
   FixedDelegateErc20Wallet,
   FixedDelegateErc20Wallet__factory,
+  IVotesUpgradeable__factory,
   L1ArbitrumTimelock,
   L1ArbitrumToken,
   L1ArbitrumToken__factory,
@@ -80,6 +81,13 @@ export const verifyDeployment = async () => {
   await verifyL2Token(contracts["l2Token"], contracts["l2ArbTreasury"], contracts["l1TokenProxy"]);
 
   await verifyL2TreasuryGovernor(contracts["l2TreasuryGoverner"], contracts["l2Token"]);
+
+  await verifyL2ArbTreasury(
+    contracts["l2ArbTreasury"],
+    contracts["l2Token"],
+    contracts["l2TreasuryGoverner"],
+    arbDeployer
+  );
 };
 
 async function verifyL1ContractOwners(
@@ -458,6 +466,25 @@ async function verifyL2TreasuryGovernor(
     await l2TreasuryGoverner.lateQuorumVoteExtension(),
     BigNumber.from(GovernanceConstants.L2_MIN_PERIOD_AFTER_QUORUM),
     "Incorrect min period after quorum set for L2 treasury governor"
+  );
+}
+
+/**
+ * Verify:
+ * - delegate is properly set
+ */
+async function verifyL2ArbTreasury(
+  l2ArbTreasury: FixedDelegateErc20Wallet,
+  l2Token: L2ArbitrumToken,
+  l2TreasuryGoverner: L2ArbitrumGovernor,
+  arbDeployer: Signer
+) {
+  const voteToken = IVotesUpgradeable__factory.connect(l2Token.address, arbDeployer);
+
+  assertEquals(
+    await voteToken.delegates(l2ArbTreasury.address),
+    await l2TreasuryGoverner.EXCLUDE_ADDRESS(),
+    "L2ArbTreasury should delegate to EXCLUDE_ADDRESS"
   );
 }
 
