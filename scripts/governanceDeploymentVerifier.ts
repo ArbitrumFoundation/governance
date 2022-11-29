@@ -78,6 +78,8 @@ export const verifyDeployment = async () => {
   await verifyL2UpgradeExecutor(contracts["l2Executor"], contracts["l1Timelock"]);
 
   await verifyL2Token(contracts["l2Token"], contracts["l2ArbTreasury"], contracts["l1TokenProxy"]);
+
+  await verifyL2TreasuryGovernor(contracts["l2TreasuryGoverner"], contracts["l2Token"]);
 };
 
 async function verifyL1ContractOwners(
@@ -312,49 +314,41 @@ async function verifyL2CoreGovernor(
   l2Timelock: ArbitrumTimelock
 ) {
   //// check initialization params are correctly set
-
   assertEquals(
     await l2CoreGovernor.name(),
     "L2ArbitrumGovernor",
     "Incorrect L2 core governor's name"
   );
-
   assertNumbersEquals(
     await l2CoreGovernor.votingDelay(),
     BigNumber.from(GovernanceConstants.L2_VOTING_DELAY),
     "Incorrect voting delay set for L2 core governor"
   );
-
   assertNumbersEquals(
     await l2CoreGovernor.votingPeriod(),
     BigNumber.from(GovernanceConstants.L2_VOTING_PERIOD),
     "Incorrect voting period set for L2 core governor"
   );
-
   assertNumbersEquals(
     await l2CoreGovernor.proposalThreshold(),
     BigNumber.from(GovernanceConstants.L2_PROPOSAL_TRESHOLD),
     "Incorrect proposal threshold set for L2 core governor"
   );
-
   assertEquals(
     await l2CoreGovernor.token(),
     l2Token.address,
     "Incorrect token set for L2 core governor"
   );
-
   assertEquals(
     await l2CoreGovernor.timelock(),
     l2Timelock.address,
     "Incorrect timelock set for L2 core governor"
   );
-
   assertNumbersEquals(
     await l2CoreGovernor["quorumNumerator()"](),
     BigNumber.from(GovernanceConstants.L2_CORE_QUORUM_TRESHOLD),
     "Incorrect quorum treshold set for L2 core governor"
   );
-
   assertNumbersEquals(
     await l2CoreGovernor.lateQuorumVoteExtension(),
     BigNumber.from(GovernanceConstants.L2_MIN_PERIOD_AFTER_QUORUM),
@@ -418,6 +412,52 @@ async function verifyL2Token(
     await l2Token.l1Address(),
     l1Token.address,
     "L2Token's l1Token reference should be" + l1Token.address
+  );
+}
+
+/**
+ * Verify:
+ * - initialization params are correctly set
+ */
+async function verifyL2TreasuryGovernor(
+  l2TreasuryGoverner: L2ArbitrumGovernor,
+  l2Token: L2ArbitrumToken
+) {
+  //// check initialization params are correctly set
+  assertEquals(
+    await l2TreasuryGoverner.name(),
+    "L2ArbitrumGovernor",
+    "Incorrect L2 core governor's name"
+  );
+  assertNumbersEquals(
+    await l2TreasuryGoverner.votingDelay(),
+    BigNumber.from(GovernanceConstants.L2_VOTING_DELAY),
+    "Incorrect voting delay set for L2 treasury governor"
+  );
+  assertNumbersEquals(
+    await l2TreasuryGoverner.votingPeriod(),
+    BigNumber.from(GovernanceConstants.L2_VOTING_PERIOD),
+    "Incorrect voting period set for L2 treasury governor"
+  );
+  assertNumbersEquals(
+    await l2TreasuryGoverner.proposalThreshold(),
+    BigNumber.from(GovernanceConstants.L2_PROPOSAL_TRESHOLD),
+    "Incorrect proposal threshold set for L2 treasury governor"
+  );
+  assertEquals(
+    await l2TreasuryGoverner.token(),
+    l2Token.address,
+    "Incorrect token set for L2 treasury governor"
+  );
+  assertNumbersEquals(
+    await l2TreasuryGoverner["quorumNumerator()"](),
+    BigNumber.from(GovernanceConstants.L2_TREASURY_QUORUM_TRESHOLD),
+    "Incorrect quorum treshold set for L2 treasury governor"
+  );
+  assertNumbersEquals(
+    await l2TreasuryGoverner.lateQuorumVoteExtension(),
+    BigNumber.from(GovernanceConstants.L2_MIN_PERIOD_AFTER_QUORUM),
+    "Incorrect min period after quorum set for L2 treasury governor"
   );
 }
 
@@ -534,8 +574,8 @@ async function assertEquals(actual: string, expected: string, message: string) {
 
 async function assertNumbersEquals(actual: BigNumber, expected: BigNumber, message: string) {
   if (!actual.eq(expected)) {
-    console.error("Actual: ", actual);
-    console.error("Expected: ", expected);
+    console.error("Actual: ", actual.toString());
+    console.error("Expected: ", expected.toString());
     throw new Error(message);
   }
 }
