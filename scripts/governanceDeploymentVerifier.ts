@@ -1,4 +1,4 @@
-import { ethers, Signer } from "ethers";
+import { BigNumber, ethers, Signer } from "ethers";
 import {
   ArbitrumTimelock,
   ArbitrumTimelock__factory,
@@ -76,6 +76,8 @@ export const verifyDeployment = async () => {
     contracts["l2CoreTimelock"]
   );
   await verifyL2UpgradeExecutor(contracts["l2Executor"], contracts["l1Timelock"]);
+
+  await verifyL2Token(contracts["l2Token"], contracts["l2ArbTreasury"], contracts["l1TokenProxy"]);
 };
 
 async function verifyL1ContractOwners(
@@ -317,21 +319,21 @@ async function verifyL2CoreGovernor(
     "Incorrect L2 core governor's name"
   );
 
-  assertEquals(
-    (await l2CoreGovernor.votingDelay()).toString(),
-    GovernanceConstants.L2_VOTING_DELAY.toString(),
+  assertNumbersEquals(
+    await l2CoreGovernor.votingDelay(),
+    BigNumber.from(GovernanceConstants.L2_VOTING_DELAY),
     "Incorrect voting delay set for L2 core governor"
   );
 
-  assertEquals(
-    (await l2CoreGovernor.votingPeriod()).toString(),
-    GovernanceConstants.L2_VOTING_PERIOD.toString(),
+  assertNumbersEquals(
+    await l2CoreGovernor.votingPeriod(),
+    BigNumber.from(GovernanceConstants.L2_VOTING_PERIOD),
     "Incorrect voting period set for L2 core governor"
   );
 
-  assertEquals(
-    (await l2CoreGovernor.proposalThreshold()).toString(),
-    GovernanceConstants.L2_PROPOSAL_TRESHOLD.toString(),
+  assertNumbersEquals(
+    await l2CoreGovernor.proposalThreshold(),
+    BigNumber.from(GovernanceConstants.L2_PROPOSAL_TRESHOLD),
     "Incorrect proposal threshold set for L2 core governor"
   );
 
@@ -347,15 +349,15 @@ async function verifyL2CoreGovernor(
     "Incorrect timelock set for L2 core governor"
   );
 
-  assertEquals(
-    (await l2CoreGovernor["quorumNumerator()"]()).toString(),
-    GovernanceConstants.L2_CORE_QUORUM_TRESHOLD.toString(),
+  assertNumbersEquals(
+    await l2CoreGovernor["quorumNumerator()"](),
+    BigNumber.from(GovernanceConstants.L2_CORE_QUORUM_TRESHOLD),
     "Incorrect quorum treshold set for L2 core governor"
   );
 
-  assertEquals(
-    (await l2CoreGovernor.lateQuorumVoteExtension()).toString(),
-    GovernanceConstants.L2_MIN_PERIOD_AFTER_QUORUM.toString(),
+  assertNumbersEquals(
+    await l2CoreGovernor.lateQuorumVoteExtension(),
+    BigNumber.from(GovernanceConstants.L2_MIN_PERIOD_AFTER_QUORUM),
     "Incorrect min period after quorum set for L2 core governor"
   );
 }
@@ -385,6 +387,37 @@ async function verifyL2UpgradeExecutor(
   assert(
     await l2Executor.hasRole(executorRole, GovernanceConstants.L2_9_OF_12_SECURITY_COUNCIL),
     "L2 9/12 council should have executor role on L2 upgrade executor"
+  );
+}
+
+/**
+ * Verify:
+ * - initialization params are correctly set
+ * - treasury received correct amount of tokens
+ */
+async function verifyL2Token(
+  l2Token: L2ArbitrumToken,
+  arbTreasury: FixedDelegateErc20Wallet,
+  l1Token: L1ArbitrumToken
+) {
+  assertEquals(await l2Token.name(), "Arbitrum", "L2Token name should be Arbitrum");
+  assertEquals(await l2Token.symbol(), "ARB", "L2Token symbol should be ARB");
+  assertNumbersEquals(
+    await l2Token.totalSupply(),
+    ethers.utils.parseEther(GovernanceConstants.L2_TOKEN_INITIAL_SUPPLY.toString()),
+    "L2Token should have initial supply of " +
+      GovernanceConstants.L2_TOKEN_INITIAL_SUPPLY.toString()
+  );
+  assertNumbersEquals(
+    await l2Token.balanceOf(arbTreasury.address),
+    BigNumber.from(GovernanceConstants.L2_NUM_OF_TOKENS_FOR_TREASURY),
+    "ArbTreasury should have initial balance of " +
+      GovernanceConstants.L2_NUM_OF_TOKENS_FOR_TREASURY.toString()
+  );
+  assertEquals(
+    await l2Token.l1Address(),
+    l1Token.address,
+    "L2Token's l1Token reference should be" + l1Token.address
   );
 }
 
@@ -493,6 +526,14 @@ async function getProxyOwner(contractAddress: string, signer: Signer) {
 
 async function assertEquals(actual: string, expected: string, message: string) {
   if (actual != expected) {
+    console.error("Actual: ", actual);
+    console.error("Expected: ", expected);
+    throw new Error(message);
+  }
+}
+
+async function assertNumbersEquals(actual: BigNumber, expected: BigNumber, message: string) {
+  if (!actual.eq(expected)) {
     console.error("Actual: ", actual);
     console.error("Expected: ", expected);
     throw new Error(message);
