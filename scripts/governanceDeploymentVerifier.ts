@@ -242,7 +242,7 @@ async function verifyArbitrumTimelockParams(
 
   //// check assigned/revoked roles are correctly set
   const proposerRole = await l2Timelock.PROPOSER_ROLE();
-  const cancelerRole = await l2Timelock.CANCELLER_ROLE();
+  const cancellerRole = await l2Timelock.CANCELLER_ROLE();
   const executorRole = await l2Timelock.EXECUTOR_ROLE();
   const timelockAdminRole = await l2Timelock.TIMELOCK_ADMIN_ROLE();
 
@@ -251,7 +251,7 @@ async function verifyArbitrumTimelockParams(
     "L2 core governor should have proposer role on L2 timelock"
   );
   assert(
-    await l2Timelock.hasRole(cancelerRole, l2CoreGovernor.address),
+    await l2Timelock.hasRole(cancellerRole, l2CoreGovernor.address),
     "L2 core governor should have canceller role on L2 timelock"
   );
   assert(
@@ -260,6 +260,20 @@ async function verifyArbitrumTimelockParams(
       GovernanceConstants.L2_7_OF_12_SECURITY_COUNCIL.toString()
     ),
     "L2 7/12 council should have proposer role on L2 timelock"
+  );
+  assert(
+    !(await l2Timelock.hasRole(
+      cancellerRole,
+      GovernanceConstants.L2_7_OF_12_SECURITY_COUNCIL.toString()
+    )),
+    "L2 7/12 council should not have canceller role on L2 timelock"
+  );
+  assert(
+    await l2Timelock.hasRole(
+      cancellerRole,
+      GovernanceConstants.L2_9_OF_12_SECURITY_COUNCIL.toString()
+    ),
+    "L2 9/12 council should have canceller role on L2 timelock"
   );
   assert(
     await l2Timelock.hasRole(executorRole, ZERO_ADDRESS),
