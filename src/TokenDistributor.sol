@@ -30,15 +30,15 @@ contract TokenDistributor is Ownable {
     uint256 public immutable claimPeriodEnd;
 
     /// @notice recipient can claim this amount of tokens
-    event CanClaim(address recipient, uint256 amount);
+    event CanClaim(address indexed recipient, uint256 amount);
     /// @notice recipient has claimed this amount of tokens
-    event HasClaimed(address recipient, uint256 amount);
+    event HasClaimed(address indexed recipient, uint256 amount);
     /// @notice leftover tokens after claiming period have been swept
     event Swept(uint256 amount);
     /// @notice new address set to receive unclaimed tokens
-    event SweepReceiverSet(address newSweepReceiver);
+    event SweepReceiverSet(address indexed newSweepReceiver);
     /// @notice Tokens withdrawn
-    event Withdrawal(address recipient, uint256 amount);
+    event Withdrawal(address indexed recipient, uint256 amount);
 
     constructor(
         IERC20VotesUpgradeable _token,
