@@ -88,6 +88,8 @@ export const verifyDeployment = async () => {
     contracts["l2TreasuryGoverner"],
     arbDeployer
   );
+
+  await verifyL2TokenDistributor(contracts["l2TokenDistributor"], contracts["l2Token"]);
 };
 
 async function verifyL1ContractOwners(
@@ -407,19 +409,17 @@ async function verifyL2Token(
   assertNumbersEquals(
     await l2Token.totalSupply(),
     ethers.utils.parseEther(GovernanceConstants.L2_TOKEN_INITIAL_SUPPLY.toString()),
-    "L2Token should have initial supply of " +
-      GovernanceConstants.L2_TOKEN_INITIAL_SUPPLY.toString()
+    "L2Token has incorrect total supply"
   );
   assertNumbersEquals(
     await l2Token.balanceOf(arbTreasury.address),
     BigNumber.from(GovernanceConstants.L2_NUM_OF_TOKENS_FOR_TREASURY),
-    "ArbTreasury should have initial balance of " +
-      GovernanceConstants.L2_NUM_OF_TOKENS_FOR_TREASURY.toString()
+    "Incorrect initial L2Token balance for ArbTreasury"
   );
   assertEquals(
     await l2Token.l1Address(),
     l1Token.address,
-    "L2Token's l1Token reference should be" + l1Token.address
+    "Incorrect L1Token reference for L2Token"
   );
 }
 
@@ -485,6 +485,36 @@ async function verifyL2ArbTreasury(
     await voteToken.delegates(l2ArbTreasury.address),
     await l2TreasuryGoverner.EXCLUDE_ADDRESS(),
     "L2ArbTreasury should delegate to EXCLUDE_ADDRESS"
+  );
+}
+
+/**
+ * Verify:
+ * - initialization params are correctly set
+ */
+async function verifyL2TokenDistributor(
+  l2TokenDistributor: TokenDistributor,
+  l2Token: L2ArbitrumToken
+) {
+  assertEquals(
+    await l2TokenDistributor.token(),
+    l2Token.address,
+    "Incorrect token reference set for TokenDistributor"
+  );
+  assertEquals(
+    await l2TokenDistributor.sweepReceiver(),
+    GovernanceConstants.L2_SWEEP_RECECIVER,
+    "Incorrect sweep receiver set for TokenDistributor"
+  );
+  assertNumbersEquals(
+    await l2TokenDistributor.claimPeriodStart(),
+    BigNumber.from(GovernanceConstants.L2_CLAIM_PERIOD_START),
+    "Incorrect claim period start set for TokenDistributor"
+  );
+  assertNumbersEquals(
+    await l2TokenDistributor.claimPeriodEnd(),
+    BigNumber.from(GovernanceConstants.L2_CLAIM_PERIOD_END),
+    "Incorrect claim period end set for TokenDistributor"
   );
 }
 
