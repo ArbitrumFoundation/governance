@@ -65,7 +65,9 @@ export const verifyDeployment = async () => {
   );
 
   //// verify L1 contracts are correctly initialized
+
   await verifyL1Token(contracts["l1TokenProxy"]);
+  await verifyL1UpgradeExecutor(contracts["l1Executor"], contracts["l1Timelock"]);
 
   //// verify L2 contracts are correctly initialized
 
@@ -259,6 +261,32 @@ async function verifyL1Token(l1Token: L1ArbitrumToken) {
   );
 
   //// TODO add token registration check
+}
+
+/**
+ * Verify:
+ * - roles are correctly assigned
+ */
+async function verifyL1UpgradeExecutor(
+  l1Executor: UpgradeExecutor,
+  l1Timelock: L1ArbitrumTimelock
+) {
+  //// check assigned/revoked roles are correctly set
+  const adminRole = await l1Executor.ADMIN_ROLE();
+  const executorRole = await l1Executor.EXECUTOR_ROLE();
+
+  assert(
+    await l1Executor.hasRole(adminRole, l1Executor.address),
+    "L1UpgradeExecutor should have admin role on itself"
+  );
+  assert(
+    await l1Executor.hasRole(executorRole, GovernanceConstants.L1_9_OF_12_SECURITY_COUNCIL),
+    "L1 9/12 council should have executor role on L1 upgrade executor"
+  );
+  assert(
+    await l1Executor.hasRole(executorRole, l1Timelock.address),
+    "L1Timelock should have executor role on L1 upgrade executor"
+  );
 }
 
 /**
