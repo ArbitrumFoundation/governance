@@ -87,24 +87,28 @@ async function verifyL1ContractOwners(
   assertEquals(
     await l1GovernanceFactory.owner(),
     await ethDeployer.getAddress(),
-    "Wrong l1GovernanceFactory owner"
+    "EthDeployer should be L1GovernanceFactory's owner"
   );
   assertEquals(
     await getProxyOwner(l1TokenProxy.address, ethDeployer),
     l1ProxyAdmin.address,
-    "Wrong l1TokenProxy owner"
+    "L1ProxyAdmin should be L1ArbitrumToken's proxy admin"
   );
   assertEquals(
     await getProxyOwner(l1Executor.address, ethDeployer),
     l1ProxyAdmin.address,
-    "Wrong l1Executor owner"
+    "L1ProxyAdmin should be L1UpgradeExecutor's proxy admin"
   );
   assertEquals(
     await getProxyOwner(l1Timelock.address, ethDeployer),
     l1ProxyAdmin.address,
-    "Wrong l1Timelock owner"
+    "L1ProxyAdmin should be L1ArbitrumTimelock's proxy admin"
   );
-  assertEquals(await l1ProxyAdmin.owner(), l1Executor.address, "Wrong l1ProxyAdmin owner");
+  assertEquals(
+    await l1ProxyAdmin.owner(),
+    l1Executor.address,
+    "L1UpgradeExecutor should be L1ProxyAdmin's owner"
+  );
 }
 
 async function verifyL2ContractOwners(
@@ -122,59 +126,63 @@ async function verifyL2ContractOwners(
   assertEquals(
     await l2GovernanceFactory.owner(),
     await arbDeployer.getAddress(),
-    "Wrong l2GovernanceFactory owner"
+    "ArbDeployer should be L2GovernanceFactory's owner"
   );
   assertEquals(
     await getProxyOwner(l2CoreGovernor.address, arbDeployer),
     l2ProxyAdmin.address,
-    "Wrong l2CoreGoverner owner"
+    "L2ProxyAdmin should be core L2ArbitrumGovernor's proxy admin"
   );
   assertEquals(
     await l2CoreGovernor.owner(),
     l2Executor.address,
-    "L2 upgrade executor should be owner of L2 core governor"
+    "L2UpgradeExecutor should be core L2ArbitrumGovernor's owner"
   );
   assertEquals(
     await getProxyOwner(l2CoreTimelock.address, arbDeployer),
     l2ProxyAdmin.address,
-    "Wrong l2CoreTimelock owner"
+    "L2ProxyAdmin should be L2 core ArbitrumTimelock's proxy admin"
   );
   assertEquals(
     await getProxyOwner(l2Executor.address, arbDeployer),
     l2ProxyAdmin.address,
-    "Wrong l2Executor owner"
+    "L2ProxyAdmin should be L2UpgradeExecutor's proxy admin"
   );
   assertEquals(
     await getProxyOwner(l2Token.address, arbDeployer),
     l2ProxyAdmin.address,
-    "Wrong l2Token owner"
+    "L2ProxyAdmin should be L2ArbitrumToken's proxy admin"
   );
   assertEquals(
     await l2Token.owner(),
     l2Executor.address,
-    "L2 upgrade executor should be owner of L2 token"
+    "L2UpgradeExecutor should be L2ArbitrumToken's owner"
   );
   assertEquals(
     await getProxyOwner(l2TreasuryGoverner.address, arbDeployer),
     l2ProxyAdmin.address,
-    "Wrong l2TreasuryGoverner owner"
+    "L2ProxyAdmin should be treasury L2ArbitrumGovernor's proxy admin"
   );
   assertEquals(
     await l2TreasuryGoverner.owner(),
     l2Executor.address,
-    "L2 upgrade executor should be owner of L2 treasury governer"
+    "L2UpgradeExecutor should be treasury L2ArbitrumGovernor's owner"
   );
   assertEquals(
     await getProxyOwner(l2TreasuryTimelock.address, arbDeployer),
     l2ProxyAdmin.address,
-    "Wrong l2TreasuryTimelock owner"
+    "L2ProxyAdmin should be treasury ArbitrumTimelock's proxy admin"
   );
   assertEquals(
     await l2TokenDistributor.owner(),
     GovernanceConstants.L2_TOKEN_DISTRIBUTOR_OWNER,
-    "Wrong l2TokenDistributor owner"
+    "GovernanceConstants.L2_TOKEN_DISTRIBUTOR_OWNER should be L2 TokenDistributor's owner"
   );
-  assertEquals(await l2ProxyAdmin.owner(), l2Executor.address, "Wrong l2ProxyAdmin owner");
+  assertEquals(
+    await l2ProxyAdmin.owner(),
+    l2Executor.address,
+    "L2UpgradeExecutor should be L2ProxyAdmin's owner"
+  );
 }
 
 async function verifyNovaContractOwners(
@@ -186,17 +194,17 @@ async function verifyNovaContractOwners(
   assertEquals(
     await novaProxyAdmin.owner(),
     novaUpgradeExecutorProxy.address,
-    "Wrong novaProxyAdmin owner"
+    "NovaUpgradeExecutor should be NovaProxyAdmin's owner"
   );
   assertEquals(
     await getProxyOwner(novaUpgradeExecutorProxy.address, novaDeployer),
     novaProxyAdmin.address,
-    "Wrong novaUpgradeExecutorProxy owner"
+    "NovaProxyAdmin should be NovaUpgradeExecutor's proxy admin"
   );
   assertEquals(
     await getProxyOwner(novaTokenProxy.address, novaDeployer),
     novaProxyAdmin.address,
-    "Wrong novaTokenProxy owner"
+    "NovaProxyAdmin should be NovaToken's owner"
   );
 }
 
