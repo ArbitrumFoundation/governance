@@ -39,6 +39,7 @@ export const verifyDeployment = async () => {
     contracts["l1TokenProxy"],
     contracts["l1ProxyAdmin"],
     contracts["l1Executor"],
+    contracts["l1Timelock"],
     ethDeployer
   );
   await verifyL2ContractOwners(
@@ -80,6 +81,7 @@ async function verifyL1ContractOwners(
   l1TokenProxy: L1ArbitrumToken,
   l1ProxyAdmin: ProxyAdmin,
   l1Executor: UpgradeExecutor,
+  l1Timelock: L1ArbitrumTimelock,
   ethDeployer: Signer
 ) {
   assertEquals(
@@ -87,25 +89,21 @@ async function verifyL1ContractOwners(
     await ethDeployer.getAddress(),
     "Wrong l1GovernanceFactory owner"
   );
-
   assertEquals(
     await getProxyOwner(l1TokenProxy.address, ethDeployer),
     l1ProxyAdmin.address,
-    "Wrong l1GovernanceFactory owner"
+    "Wrong l1TokenProxy owner"
   );
-
   assertEquals(
     await getProxyOwner(l1Executor.address, ethDeployer),
     l1ProxyAdmin.address,
     "Wrong l1Executor owner"
   );
-
   assertEquals(
-    await getProxyOwner(l1Executor.address, ethDeployer),
+    await getProxyOwner(l1Timelock.address, ethDeployer),
     l1ProxyAdmin.address,
     "Wrong l1Timelock owner"
   );
-
   assertEquals(await l1ProxyAdmin.owner(), l1Executor.address, "Wrong l1ProxyAdmin owner");
 }
 
@@ -132,6 +130,11 @@ async function verifyL2ContractOwners(
     "Wrong l2CoreGoverner owner"
   );
   assertEquals(
+    await l2CoreGovernor.owner(),
+    l2Executor.address,
+    "L2 upgrade executor should be owner of L2 core governor"
+  );
+  assertEquals(
     await getProxyOwner(l2CoreTimelock.address, arbDeployer),
     l2ProxyAdmin.address,
     "Wrong l2CoreTimelock owner"
@@ -147,9 +150,19 @@ async function verifyL2ContractOwners(
     "Wrong l2Token owner"
   );
   assertEquals(
+    await l2Token.owner(),
+    l2Executor.address,
+    "L2 upgrade executor should be owner of L2 token"
+  );
+  assertEquals(
     await getProxyOwner(l2TreasuryGoverner.address, arbDeployer),
     l2ProxyAdmin.address,
     "Wrong l2TreasuryGoverner owner"
+  );
+  assertEquals(
+    await l2TreasuryGoverner.owner(),
+    l2Executor.address,
+    "L2 upgrade executor should be owner of L2 treasury governer"
   );
   assertEquals(
     await getProxyOwner(l2TreasuryTimelock.address, arbDeployer),
