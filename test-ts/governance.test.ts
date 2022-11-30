@@ -210,14 +210,14 @@ describe("Governor", function () {
         [ARB_SYS_ADDRESS],
         [0],
         [proposalCallData],
-        this.proposalDescription,
+        descriptionHash,
       ]);
 
       const l2ExecuteCallData = arbGovInterface.encodeFunctionData("execute", [
         [ARB_SYS_ADDRESS],
         [0],
         [proposalCallData],
-        this.proposalDescription,
+        descriptionHash,
       ]);
 
       return {
