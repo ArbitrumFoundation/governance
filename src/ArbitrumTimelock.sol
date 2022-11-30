@@ -8,6 +8,10 @@ import "@openzeppelin/contracts-upgradeable/governance/TimelockControllerUpgrade
 ///         other than the ability to initialize it. TimelockControllerUpgradeable has no
 ///         public methods for this
 contract ArbitrumTimelock is TimelockControllerUpgradeable {
+    constructor() {
+        _disableInitializers();
+    }
+
     /// @notice Initialise the timelock
     /// @param minDelay The minimum amount of delay enforced by this timelock
     /// @param proposers The accounts allowed to propose actions

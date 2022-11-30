@@ -62,7 +62,8 @@ contract L2GovernanceFactoryTest is Test {
             ArbitrumTimelock treasuryTimelock,
             FixedDelegateErc20Wallet arbTreasury,
             ProxyAdmin proxyAdmin,
-            UpgradeExecutor executor
+            UpgradeExecutor executor,
+            L2GovernanceFactory l2GovernanceFactory
         )
     {
         L2GovernanceFactory l2GovernanceFactory;
@@ -101,23 +102,12 @@ contract L2GovernanceFactoryTest is Test {
             dtc.treasuryTimelock,
             dtc.arbTreasury,
             dc.proxyAdmin,
-            dc.executor
+            dc.executor,
+            l2GovernanceFactory
         );
     }
 
-    function testDeploySteps()
-        public
-        returns (
-            L2ArbitrumToken token,
-            L2ArbitrumGovernor coreGov,
-            ArbitrumTimelock coreTimelock,
-            L2ArbitrumGovernor treasuryGov,
-            ArbitrumTimelock treasuryTimelock,
-            FixedDelegateErc20Wallet arbTreasury,
-            ProxyAdmin proxyAdmin,
-            UpgradeExecutor executor
-        )
-    {
+    function testDeploySteps() public {
         address owner = address(232_323);
         address _coreTimelockLogic = address(new ArbitrumTimelock());
         address _coreGovernorLogic = address(new L2ArbitrumGovernor());
@@ -180,7 +170,8 @@ contract L2GovernanceFactoryTest is Test {
             ArbitrumTimelock treasuryTimelock,
             FixedDelegateErc20Wallet arbTreasury,
             ProxyAdmin proxyAdmin,
-            UpgradeExecutor executor
+            UpgradeExecutor executor,
+            L2GovernanceFactory l2GovernanceFactory
         ) = deploy();
         assertGt(address(token).code.length, 0, "no token deployed");
         assertGt(address(coreGov).code.length, 0, "no governer deployed");
@@ -201,7 +192,8 @@ contract L2GovernanceFactoryTest is Test {
             ArbitrumTimelock treasuryTimelock,
             FixedDelegateErc20Wallet arbTreasury,
             ProxyAdmin proxyAdmin,
-            UpgradeExecutor upgradeExecutor
+            UpgradeExecutor upgradeExecutor,
+            L2GovernanceFactory l2GovernanceFactory
         ) = deploy();
         vm.expectRevert("Initializable: contract is already initialized");
         token.initialize(l1Token, l2TokenInitialSupply, l1Token);
@@ -237,7 +229,8 @@ contract L2GovernanceFactoryTest is Test {
             ArbitrumTimelock treasuryTimelock,
             FixedDelegateErc20Wallet arbTreasury,
             ProxyAdmin proxyAdmin,
-            UpgradeExecutor upgradeExecutor
+            UpgradeExecutor upgradeExecutor,
+            L2GovernanceFactory l2GovernanceFactory
         ) = deploy();
         assertEq(token.owner(), address(upgradeExecutor), "token.owner()");
         assertEq(token.l1Address(), l1Token, "token.l1Address()");
@@ -297,7 +290,8 @@ contract L2GovernanceFactoryTest is Test {
             ArbitrumTimelock treasuryTimelock,
             FixedDelegateErc20Wallet arbTreasury,
             ProxyAdmin proxyAdmin,
-            UpgradeExecutor executor
+            UpgradeExecutor executor,
+            L2GovernanceFactory l2GovernanceFactory
         ) = deploy();
         assertEq(proxyAdmin.owner(), address(executor), "L2 Executor owns l2 proxyAdmin");
 
@@ -322,7 +316,7 @@ contract L2GovernanceFactoryTest is Test {
         vm.stopPrank();
     }
 
-    function testTimelockRoles() public {
+    function testRoles() public {
         (
             L2ArbitrumToken token,
             L2ArbitrumGovernor coreGov,
@@ -331,7 +325,8 @@ contract L2GovernanceFactoryTest is Test {
             ArbitrumTimelock treasuryTimelock,
             FixedDelegateErc20Wallet arbTreasury,
             ProxyAdmin proxyAdmin,
-            UpgradeExecutor executor
+            UpgradeExecutor executor,
+            L2GovernanceFactory l2GovernanceFactory
         ) = deploy();
         assertTrue(
             coreTimelock.hasRole(coreTimelock.PROPOSER_ROLE(), address(coreGov)),
@@ -361,6 +356,14 @@ contract L2GovernanceFactoryTest is Test {
         assertTrue(
             treasuryTimelock.hasRole(treasuryTimelock.EXECUTOR_ROLE(), address(0)),
             "anyone can execute"
+        );
+
+        assertTrue(
+            executor.hasRole(executor.ADMIN_ROLE(), address(executor)), "exec is admin of itself"
+        );
+        assertFalse(
+            executor.hasRole(executor.ADMIN_ROLE(), address(l2GovernanceFactory)),
+            "l2GovernanceFactory admin role is revoked"
         );
     }
 }

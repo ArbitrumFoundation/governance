@@ -47,6 +47,8 @@ contract UpgradeExecutor is Initializable, AccessControlUpgradeable, ReentrancyG
         onlyRole(EXECUTOR_ROLE)
         nonReentrant
     {
+        uint256 size = upgrade.code.length;
+        require(size > 0, "UpgradeExecutor: upgrade target must be contract");
         (bool success,) = address(upgrade).delegatecall(upgradeCallData);
         require(success, "UpgradeExecutor: inner delegate call failed");
 

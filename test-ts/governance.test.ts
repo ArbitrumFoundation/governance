@@ -184,10 +184,12 @@ describe("Governor", function () {
       const arbGovInterface = L2ArbitrumGovernor__factory.createInterface();
       const proposeTo =
         this.pathConfig.arbOneGovernorConfig.constitutionalGovernorAddr;
-      const proposeData = arbGovInterface.encodeFunctionData(
-        "propose(address[],uint256[],bytes[],string)",
-        [[ARB_SYS_ADDRESS], [0], [proposalCallData], this.proposalDescription]
-      );
+      const proposeData = arbGovInterface.encodeFunctionData("propose", [
+        [ARB_SYS_ADDRESS],
+        [0],
+        [proposalCallData],
+        this.proposalDescription,
+      ]);
 
       const l2OpId = await l1Timelock.callStatic.hashOperationBatch(
         [ARB_SYS_ADDRESS],
@@ -204,15 +206,19 @@ describe("Governor", function () {
         )
       );
 
-      const queueCallData = arbGovInterface.encodeFunctionData(
-        "queue(uint256)",
-        [proposalId]
-      );
+      const queueCallData = arbGovInterface.encodeFunctionData("queue", [
+        [ARB_SYS_ADDRESS],
+        [0],
+        [proposalCallData],
+        this.proposalDescription,
+      ]);
 
-      const l2ExecuteCallData = arbGovInterface.encodeFunctionData(
-        "execute(uint256)",
-        [proposalId]
-      );
+      const l2ExecuteCallData = arbGovInterface.encodeFunctionData("execute", [
+        [ARB_SYS_ADDRESS],
+        [0],
+        [proposalCallData],
+        this.proposalDescription,
+      ]);
 
       return {
         l2Gov: {
@@ -436,8 +442,8 @@ describe("Governor", function () {
     ).wait();
 
     const proposalId = propFormedNonEmpty.l2Gov.proposalId;
-    const proposal = await l2GovernorContract.proposals(proposalId);
-    expect(proposal, "Proposal exists").to.not.be.undefined;
+    const proposalVotes = await l2GovernorContract.proposalVotes(proposalId);
+    expect(proposalVotes, "Proposal exists").to.not.be.undefined;
 
     const l2VotingDelay = await l2GovernorContract.votingDelay();
     await mineBlocksAndWaitForProposalState(
@@ -451,7 +457,7 @@ describe("Governor", function () {
     // vote on the proposal
     expect(
       await (
-        await l2GovernorContract.proposals(proposalId)
+        await l2GovernorContract.proposalVotes(proposalId)
       ).forVotes.toString(),
       "Votes before"
     ).to.eq("0");
@@ -459,7 +465,7 @@ describe("Governor", function () {
       await l2GovernorContract.connect(l2Signer).castVote(proposalId, 1)
     ).wait();
     expect(
-      await (await l2GovernorContract.proposals(proposalId)).forVotes.gt(0),
+      await (await l2GovernorContract.proposalVotes(proposalId)).forVotes.gt(0),
       "Votes after"
     ).to.be.true;
 
