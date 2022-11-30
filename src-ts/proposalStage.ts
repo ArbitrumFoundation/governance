@@ -472,7 +472,7 @@ export class L1TimelockExecutionStage implements ProposalStage {
       this.l1Signer
     );
 
-    // operation was cancelled if it doesnt exist
+    // operation was cancelled if it doesn't exist
     const exists = await timelock.isOperation(operationId);
     if (!exists) return ProposalStageStatus.TERMINATED;
 
@@ -734,7 +734,7 @@ export const createRoundTripGenerator = async function* (
         );
       } else if (novaNetwork.ethBridge.inbox.toLowerCase() === inbox) {
         yield new RetryableExecutionStage(novaSigner, l1TimelockExecuteReceipt);
-      } else throw new Error(`Inbox doesnt match any networks: ${inbox}`);
+      } else throw new Error(`Inbox doesn't match any networks: ${inbox}`);
     }
   } catch (err) {
     const error = err as Error;
@@ -748,8 +748,8 @@ export const createRoundTripGenerator = async function* (
 };
 
 /**
- * Follows a specific proposal, tracking it through it's different stages
- * Executes each stage when it reaches READY, and exits upon observing a TERIMATED stage
+ * Follows a specific proposal, tracking it through its different stages
+ * Executes each stage when it reaches READY, and exits upon observing a TERMINATED stage
  */
 export class ProposalStageManager {
   constructor(
