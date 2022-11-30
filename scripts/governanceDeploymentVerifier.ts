@@ -102,6 +102,10 @@ export const verifyDeployment = async () => {
     arbDeployer
   );
   await verifyL2TokenDistributor(contracts["l2TokenDistributor"], contracts["l2Token"]);
+
+  //// verify Nova contracts are correctly initialized
+
+  await verifyNovaUpgradeExecutor(contracts["novaUpgradeExecutorProxy"], contracts["l1Timelock"]);
 };
 
 async function verifyL1ContractOwners(
@@ -648,6 +652,36 @@ async function verifyL2TokenDistributor(
     await l2TokenDistributor.claimPeriodEnd(),
     BigNumber.from(GovernanceConstants.L2_CLAIM_PERIOD_END),
     "Incorrect claim period end set for TokenDistributor"
+  );
+}
+
+/**
+ * Verify:
+ * - roles are correctly assigned
+ */
+async function verifyNovaUpgradeExecutor(
+  novaUpgradeExecutor: UpgradeExecutor,
+  l1Timelock: L1ArbitrumTimelock
+) {
+  //// check assigned/revoked roles are correctly set
+  const adminRole = await novaUpgradeExecutor.ADMIN_ROLE();
+  const executorRole = await novaUpgradeExecutor.EXECUTOR_ROLE();
+
+  assert(
+    await novaUpgradeExecutor.hasRole(adminRole, novaUpgradeExecutor.address),
+    "NovaUpgradeExecutor should have admin role on itself"
+  );
+  assert(
+    await novaUpgradeExecutor.hasRole(
+      executorRole,
+      GovernanceConstants.NOVA_9_OF_12_SECURITY_COUNCIL
+    ),
+    "Nova 9/12 council should have executor role on Nova upgrade executor"
+  );
+  const l1TimelockAddressAliased = new Address(l1Timelock.address).applyAlias().value;
+  assert(
+    await novaUpgradeExecutor.hasRole(executorRole, l1TimelockAddressAliased),
+    "L1Timelock should have executor role on Nova upgrade executor"
   );
 }
 
