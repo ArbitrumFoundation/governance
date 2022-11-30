@@ -412,12 +412,12 @@ describe("Governor", function () {
       )
     );
     console.log("statebefore", await l2GovernorContract.state(proposalId));
-    const proposal = await l2GovernorContract.proposals(proposalId);
+    const proposal = await l2GovernorContract.proposalVotes(proposalId);
     expect(proposal, "Proposal exists").to.not.be.undefined;
     console.log("b");
     console.log(
       "proposal",
-      await await l2GovernorContract.proposals(proposalId)
+      await await l2GovernorContract.proposalVotes(proposalId)
     );
 
     console.log("statebeforeb", await l2GovernorContract.state(proposalId));
@@ -436,7 +436,7 @@ describe("Governor", function () {
     // vote on the proposal
     expect(
       await (
-        await l2GovernorContract.proposals(proposalId)
+        await l2GovernorContract.proposalVotes(proposalId)
       ).forVotes.toString(),
       "Votes before"
     ).to.eq("0");
@@ -444,7 +444,7 @@ describe("Governor", function () {
       await l2GovernorContract.connect(l2Signer).castVote(proposalId, 1)
     ).wait();
     expect(
-      await (await l2GovernorContract.proposals(proposalId)).forVotes.gt(0),
+      await (await l2GovernorContract.proposalVotes(proposalId)).forVotes.gt(0),
       "Votes after"
     ).to.be.true;
     console.log("d");
@@ -464,7 +464,10 @@ describe("Governor", function () {
 
     // queue the proposal
     await (
-      await l2GovernorContract.connect(l2Signer)["queue(uint256)"](proposalId)
+      await l2GovernorContract.connect(l2Signer).queue([proposalTo],
+        [proposalValue],
+        [proposalCalldata],
+        proposalDescription)
     ).wait();
     console.log("f");
 
@@ -502,7 +505,12 @@ describe("Governor", function () {
       await wait(1000);
     }
     const executionTx = await (
-      await l2GovernorContract.connect(l2Signer)["execute(uint256)"](proposalId)
+      await l2GovernorContract.connect(l2Signer).execute(
+        [proposalTo],
+          [proposalValue],
+          [proposalCalldata],
+          proposalDescription
+      )
     ).wait();
     expect(await proposalSuccess(), "Proposal not executed successfully").to.be
       .true;
