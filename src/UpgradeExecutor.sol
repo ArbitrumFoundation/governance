@@ -13,6 +13,9 @@ contract UpgradeExecutor is Initializable, AccessControlUpgradeable, ReentrancyG
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
     bytes32 public constant EXECUTOR_ROLE = keccak256("EXECUTOR_ROLE");
 
+    /// @notice Emitted when an upgrade execution occurs
+    event UpgradeExecuted(address indexed upgrade, uint256 value, bytes data);
+
     constructor() {
         _disableInitializers();
     }
@@ -48,5 +51,7 @@ contract UpgradeExecutor is Initializable, AccessControlUpgradeable, ReentrancyG
         require(size > 0, "UpgradeExecutor: upgrade target must be contract");
         (bool success,) = address(upgrade).delegatecall(upgradeCallData);
         require(success, "UpgradeExecutor: inner delegate call failed");
+
+        emit UpgradeExecuted(upgrade, msg.value, upgradeCallData);
     }
 }
