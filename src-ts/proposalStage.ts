@@ -51,7 +51,7 @@ export interface ProposalStage {
 }
 
 /**
- * Error with additionally proposal information
+ * Error with additional proposal information
  */
 class ProposalStageError extends Error {
   constructor(
