@@ -106,6 +106,7 @@ export const verifyDeployment = async () => {
   //// verify Nova contracts are correctly initialized
 
   await verifyNovaUpgradeExecutor(contracts["novaUpgradeExecutorProxy"], contracts["l1Timelock"]);
+  await verifyNovaToken(contracts["novaTokenProxy"], contracts["l1TokenProxy"]);
 };
 
 async function verifyL1ContractOwners(
@@ -682,6 +683,38 @@ async function verifyNovaUpgradeExecutor(
   assert(
     await novaUpgradeExecutor.hasRole(executorRole, l1TimelockAddressAliased),
     "L1Timelock should have executor role on Nova upgrade executor"
+  );
+}
+
+/**
+ * Verify:
+ * - initialization params are correctly set
+ */
+async function verifyNovaToken(novaToken: L2CustomGatewayToken, l1Token: L1ArbitrumToken) {
+  assertEquals(
+    await novaToken.name(),
+    GovernanceConstants.NOVA_TOKEN_NAME,
+    "Incorrect token name set for Nova token"
+  );
+  assertEquals(
+    await novaToken.symbol(),
+    GovernanceConstants.NOVA_TOKEN_SYMBOL,
+    "Incorrect token symbol set on Nova token"
+  );
+  assertEquals(
+    (await novaToken.decimals()).toString(),
+    GovernanceConstants.NOVA_TOKEN_DECIMALS.toString(),
+    "Incorrect token decimals set on Nova token"
+  );
+  assertEquals(
+    await novaToken.l2Gateway(),
+    GovernanceConstants.NOVA_TOKEN_GATEWAY,
+    "Incorrect L2 gateway set on Nova token"
+  );
+  assertEquals(
+    await novaToken.l1Address(),
+    l1Token.address,
+    "Incorrect L1 token address set on Nova token"
   );
 }
 

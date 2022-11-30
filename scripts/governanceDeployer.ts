@@ -6,6 +6,7 @@ import {
   ArbitrumTimelock__factory,
   FixedDelegateErc20Wallet,
   FixedDelegateErc20Wallet__factory,
+  L1ArbitrumToken,
   L1ArbitrumToken__factory,
   L1GovernanceFactory__factory,
   L2ArbitrumGovernor,
@@ -107,7 +108,7 @@ export const deployGovernance = async () => {
   );
 
   console.log("Deploy token to Nova");
-  const novaToken = await deployTokenToNova(novaDeployer, novaProxyAdmin);
+  const novaToken = await deployTokenToNova(novaDeployer, novaProxyAdmin, l1Token);
 
   // step 1
   console.log("Init L2 governance");
@@ -259,7 +260,11 @@ async function deployNovaUpgradeExecutor(novaDeployer: Signer) {
   return { novaProxyAdmin, novaUpgradeExecutorProxy };
 }
 
-async function deployTokenToNova(novaDeployer: Signer, proxyAdmin: ProxyAdmin) {
+async function deployTokenToNova(
+  novaDeployer: Signer,
+  proxyAdmin: ProxyAdmin,
+  l1Token: L1ArbitrumToken
+) {
   // deploy token logic
   const novaTokenLogic = await new L2CustomGatewayToken__factory(novaDeployer).deploy();
 
@@ -278,7 +283,7 @@ async function deployTokenToNova(novaDeployer: Signer, proxyAdmin: ProxyAdmin) {
     GovernanceConstants.NOVA_TOKEN_SYMBOL,
     GovernanceConstants.NOVA_TOKEN_DECIMALS,
     GovernanceConstants.NOVA_TOKEN_GATEWAY,
-    GovernanceConstants.L1_NOVA_GATEWAY
+    l1Token.address
   );
 
   // store addresses
