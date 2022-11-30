@@ -12,7 +12,7 @@ import { OutBoxTransactionExecutedEvent } from "@arbitrum/sdk/dist/lib/abi/Outbo
 import { EventArgs } from "@arbitrum/sdk/dist/lib/dataEntities/event";
 import { TransactionReceipt } from "@ethersproject/providers";
 import { BigNumber, constants, ethers, Signer } from "ethers";
-import { defaultAbiCoder, id } from "ethers/lib/utils";
+import { defaultAbiCoder, hexDataLength, id } from "ethers/lib/utils";
 import {
   ArbitrumTimelock__factory,
   L1ArbitrumTimelock__factory,
@@ -521,7 +521,7 @@ export class L1TimelockExecutionStage implements ProposalStage {
       );
       const submissionFee =
         await inbox.callStatic.calculateRetryableSubmissionFee(
-          (innerData.length - 2) / 2,
+          hexDataLength(innerData),
           0
         );
       // add some leeway for the base fee to increase
