@@ -734,7 +734,7 @@ export const createRoundTripGenerator = async function* (
         );
       } else if (novaNetwork.ethBridge.inbox.toLowerCase() === inbox) {
         yield new RetryableExecutionStage(novaSigner, l1TimelockExecuteReceipt);
-      } else throw new Error(`Inbox doesnt match any networks: ${inbox}`);
+      } else throw new Error(`Inbox doesn't match any networks: ${inbox}`);
     }
   } catch (err) {
     const error = err as Error;
