@@ -10,7 +10,10 @@ import {
 import { TypedEvent } from "../typechain-types/common";
 import { wait } from "./utils";
 import { EventArgs } from "@arbitrum/sdk/dist/lib/dataEntities/event";
-import { createRoundTripGenerator } from "./proposalStage";
+import {
+  createRoundTripGenerator,
+  ProposalStageManager,
+} from "./proposalStage";
 import { Signer } from "ethers";
 import { formatBytes32String } from "ethers/lib/utils";
 
@@ -73,6 +76,20 @@ class GovernorProposalMonitor {
           this.l1Signer,
           this.novaSigner
         );
+
+        // these arent really proposal stages, they're more like tx execution awaiters
+        // we have some polling mechanism - it's not an event it's a general status monitor
+        // 
+
+        const propStageManager = new ProposalStageManager(
+          gen,
+          this.pollingIntervalMs
+        );
+
+        const runner = propStageManager.run()
+
+        // CHRIS: TODO: catch errors in that by logging or throwing?
+        // CHRIS: TODO: we should probably reject this current promise somehow
       }
 
       await wait(this.pollingIntervalMs);
