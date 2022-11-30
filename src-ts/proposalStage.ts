@@ -472,7 +472,7 @@ export class L1TimelockExecutionStage implements ProposalStage {
       this.l1Signer
     );
 
-    // operation was cancelled if it doesnt exist
+    // operation was cancelled if it doesn't exist
     const exists = await timelock.isOperation(operationId);
     if (!exists) return ProposalStageStatus.TERMINATED;
 
