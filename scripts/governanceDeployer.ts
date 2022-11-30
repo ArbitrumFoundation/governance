@@ -76,7 +76,7 @@ const DEPLOYED_CONTRACTS_FILE_NAME = "deployedContracts.json";
  */
 export const deployGovernance = async () => {
   console.log("Get deployers and signers");
-  const { ethDeployer, arbDeployer, arbInitialSupplyRecipient, novaDeployer } =
+  const { ethDeployer, arbDeployer, novaDeployer } =
     await getDeployers();
 
   console.log("Deploy L1 logic contracts");
@@ -113,7 +113,7 @@ export const deployGovernance = async () => {
   // step 1
   console.log("Init L2 governance");
   const l2DeployResult = await initL2Governance(
-    arbInitialSupplyRecipient,
+    arbDeployer,
     l2GovernanceFactory,
     l1Token.address
   );
@@ -150,7 +150,7 @@ export const deployGovernance = async () => {
   );
 
   console.log("Post deployment L2 token tasks");
-  await postDeploymentL2TokenTasks(arbInitialSupplyRecipient, l2DeployResult);
+  await postDeploymentL2TokenTasks(arbDeployer, l2DeployResult);
 
   console.log("Write deployed contract addresses to deployedContracts.json");
   writeAddresses();
@@ -294,11 +294,11 @@ async function deployTokenToNova(
 }
 
 async function initL2Governance(
-  arbInitialSupplyRecipient: Signer,
+  arbDeployer: Signer,
   l2GovernanceFactory: L2GovernanceFactory,
   l1TokenAddress: string
 ) {
-  const arbInitialSupplyRecipientAddr = await arbInitialSupplyRecipient.getAddress();
+  const arbInitialSupplyRecipientAddr = await arbDeployer.getAddress();
 
   // deploy
   const l2GovDeployReceipt = await (

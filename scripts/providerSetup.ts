@@ -39,7 +39,6 @@ export const config = {
   novaRpc: process.env["NOVA_RPC"] as string,
   ethDeployerKey: process.env["ETH_DEPLOYER_KEY"] as string,
   arbDeployerKey: process.env["ARB_DEPLOYER_KEY"] as string,
-  arbInitialSupplyRecipientKey: process.env["ARB_INITIAL_SUPPLY_RECIPIENT_KEY"] as string,
   novaDeployerKey: process.env["NOVA_DEPLOYER_KEY"] as string,
 };
 
@@ -57,7 +56,6 @@ export const getSigner = (provider: JsonRpcProvider, key?: string) => {
 export const getDeployers = async (): Promise<{
   ethDeployer: Signer;
   arbDeployer: Signer;
-  arbInitialSupplyRecipient: Signer;
   novaDeployer: Signer;
 }> => {
   if (config.isLocalDeployment === "true") {
@@ -92,7 +90,6 @@ export const getDeployers = async (): Promise<{
     return {
       ethDeployer: l1Deployer,
       arbDeployer: l2Deployer,
-      arbInitialSupplyRecipient: l2Signer,
       novaDeployer: novaDeployer,
     };
   } else {
@@ -117,13 +114,11 @@ export const getDeployers = async (): Promise<{
 
     const ethDeployer = getSigner(ethProvider, config.ethDeployerKey);
     const arbDeployer = getSigner(arbProvider, config.arbDeployerKey);
-    const arbInitialSupplyRecipient = getSigner(arbProvider, config.arbInitialSupplyRecipientKey);
     const novaDeployer = getSigner(novaProvider, config.novaDeployerKey);
 
     return {
       ethDeployer,
       arbDeployer,
-      arbInitialSupplyRecipient,
       novaDeployer,
     };
   }

@@ -3,14 +3,14 @@
 export const L1_TIMELOCK_DELAY = 5;
 // 9/12 security council can perform emergency upgrades (dummy value atm)
 export const L1_9_OF_12_SECURITY_COUNCIL = "0x76CDc6DB8333cBa9E6d710163eb82DD906893fDa";
-// arb one router
-export const L1_ARB_ROUTER = "0x72Ce9c846789fdB6fC1f34aC4AD25Dd9ef7031ef";
-// arb one erc20 gateway
-export const L1_ARB_GATEWAY = "0xa3A7B6F88361F48403514059F1F16C8E78d60EeC";
-// nova router
-export const L1_NOVA_ROUTER = "0xC840838Bc438d73C16c2f8b22D2Ce3669963cD48";
-// nova gateway
-export const L1_NOVA_GATEWAY = "0xB2535b988dcE19f9D71dfB22dB6da744aCac21bf";
+// arb one router (local network value atm)
+export const L1_ARB_ROUTER = "0x90619A5690CEA8514b0CebB8B3c004Cb2Bc15d6e";
+// arb one custom gateway (local network value atm)
+export const L1_ARB_GATEWAY = "0xFb9d427F048676563CFa57651803587c4bC9D699";
+// nova router (local network value atm)
+export const L1_NOVA_ROUTER = "0x90619A5690CEA8514b0CebB8B3c004Cb2Bc15d6e";
+// nova gateway (local network value atm)
+export const L1_NOVA_GATEWAY = "0xFb9d427F048676563CFa57651803587c4bC9D699";
 // Arbitrum inbox on L1 (local network value atm)
 export const L1_ARB_INBOX = "0x8A0Cb192350557bA0702812e17F9913E37683746";
 
