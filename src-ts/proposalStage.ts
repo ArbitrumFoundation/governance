@@ -749,7 +749,7 @@ export const createRoundTripGenerator = async function* (
 
 /**
  * Follows a specific proposal, tracking it through it's different stages
- * Executes each stage when it reaches READY, and exits upon observing a TERIMATED stage
+ * Executes each stage when it reaches READY, and exits upon observing a TERMINATED stage
  */
 export class ProposalStageManager {
   constructor(
