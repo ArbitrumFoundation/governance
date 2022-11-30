@@ -8,7 +8,7 @@ import
 import
     "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorPreventLateQuorumUpgradeable.sol";
 import
-    "@openzeppelin/contracts-upgradeable/governance/compatibility/GovernorCompatibilityBravoUpgradeable.sol";
+    "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorCountingSimpleUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorVotesUpgradeable.sol";
 import
     "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorTimelockControlUpgradeable.sol";
@@ -17,13 +17,13 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 /// @title  L2ArbitrumGovernor
 /// @notice Governance controls for the Arbitrum DAO
-/// @dev    Standard CompBravo compatible governor with some special functionality to avoid counting
+/// @dev    Standard governor with some special functionality to avoid counting
 ///         votes of some excluded tokens. Also allows for an owner to set parameters by calling
 ///         relay.
 contract L2ArbitrumGovernor is
     Initializable,
     GovernorSettingsUpgradeable,
-    GovernorCompatibilityBravoUpgradeable,
+    GovernorCountingSimpleUpgradeable,
     GovernorVotesUpgradeable,
     GovernorTimelockControlUpgradeable,
     GovernorVotesQuorumFractionUpgradeable,
@@ -65,7 +65,7 @@ contract L2ArbitrumGovernor is
     ) external initializer {
         __Governor_init("L2ArbitrumGovernor");
         __GovernorSettings_init(_votingDelay, _votingPeriod, _proposalThreshold);
-        __GovernorCompatibilityBravo_init();
+        __GovernorCountingSimple_init();
         __GovernorVotes_init(_token);
         __GovernorTimelockControl_init(_timelock);
         __GovernorVotesQuorumFraction_init(_quorumNumerator);
@@ -138,6 +138,8 @@ contract L2ArbitrumGovernor is
             / quorumDenominator();
     }
 
+    // Overrides:
+
     // @notice Votes required for proposal.
     function proposalThreshold()
         public
@@ -148,30 +150,13 @@ contract L2ArbitrumGovernor is
         return GovernorSettingsUpgradeable.proposalThreshold();
     }
 
-    // Overrides:
-
     function state(uint256 proposalId)
         public
         view
-        override (GovernorUpgradeable, IGovernorUpgradeable, GovernorTimelockControlUpgradeable)
+        override (GovernorUpgradeable, GovernorTimelockControlUpgradeable)
         returns (ProposalState)
     {
         return GovernorTimelockControlUpgradeable.state(proposalId);
-    }
-
-    function propose(
-        address[] memory targets,
-        uint256[] memory values,
-        bytes[] memory calldatas,
-        string memory description
-    )
-        public
-        override (GovernorUpgradeable, GovernorCompatibilityBravoUpgradeable, IGovernorUpgradeable)
-        returns (uint256)
-    {
-        return GovernorCompatibilityBravoUpgradeable.propose(
-            targets, values, calldatas, description
-        );
     }
 
     function _castVote(
@@ -229,7 +214,7 @@ contract L2ArbitrumGovernor is
     function supportsInterface(bytes4 interfaceId)
         public
         view
-        override (GovernorUpgradeable, IERC165Upgradeable, GovernorTimelockControlUpgradeable)
+        override (GovernorUpgradeable, GovernorTimelockControlUpgradeable)
         returns (bool)
     {
         return GovernorTimelockControlUpgradeable.supportsInterface(interfaceId);

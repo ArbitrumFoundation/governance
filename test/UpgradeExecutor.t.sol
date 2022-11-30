@@ -82,6 +82,15 @@ contract UpgradeExecutorTest is Test {
         assertEq(setter.lastSender(), address(ue), "Sender after");
     }
 
+    function testCantExecuteEOA() external {
+        UpgradeExecutor ue = deployAndInit();
+        bytes memory data;
+
+        vm.prank(executor0);
+        vm.expectRevert("UpgradeExecutor: upgrade target must be contract");
+        ue.execute(address(111), data);
+    }
+
     function roleError(address account, bytes32 role) internal pure returns (string memory) {
         return string(
             abi.encodePacked(
