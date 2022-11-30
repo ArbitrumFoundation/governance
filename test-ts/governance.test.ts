@@ -467,7 +467,7 @@ describe("Governor", function () {
       await l2GovernorContract.connect(l2Signer).queue([proposalTo],
         [proposalValue],
         [proposalCalldata],
-        proposalDescription)
+        id(proposalDescription))
     ).wait();
     console.log("f");
 
@@ -509,7 +509,7 @@ describe("Governor", function () {
         [proposalTo],
           [proposalValue],
           [proposalCalldata],
-          proposalDescription
+          id(proposalDescription)
       )
     ).wait();
     expect(await proposalSuccess(), "Proposal not executed successfully").to.be
