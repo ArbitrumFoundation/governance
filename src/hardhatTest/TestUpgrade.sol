@@ -12,7 +12,7 @@ contract TestUpgrade {
         IERC20 token,
         address to,
         uint256 amount,
-        address payable valuerReceiver,
+        address payable valueReceiver,
         uint256 value
     ) public payable {
         require(token.transfer(to, amount), "UPGRADE2: Failed transfer");
@@ -20,6 +20,6 @@ contract TestUpgrade {
         require(msg.value == value, "Value not supplied");
         require(address(this).balance == value, "Value not in contract");
 
-        valuerReceiver.transfer(value);
+        valueReceiver.transfer(value);
     }
 }
