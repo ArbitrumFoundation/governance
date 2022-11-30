@@ -167,7 +167,14 @@ export class GovernorQueueStage implements ProposalStage {
       this.signer
     );
 
-    await (await gov["queue(uint256)"](this.proposalId)).wait();
+    await (
+      await gov.functions.queue(
+        [this.target],
+        [this.value],
+        [this.callData],
+        id(this.description)
+      )
+    ).wait();
   }
 
   public async getExecuteReceipt(): Promise<TransactionReceipt> {
