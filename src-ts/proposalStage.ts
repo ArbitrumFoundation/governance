@@ -20,8 +20,7 @@ import {
 } from "../typechain-types";
 import { CallScheduledEvent } from "../typechain-types/src/ArbitrumTimelock";
 import { Inbox__factory } from "@arbitrum/sdk/dist/lib/abi/factories/Inbox__factory";
-
-const wait = async (ms: number) => new Promise((res) => setTimeout(res, ms));
+import { wait } from "./utils";
 
 /**
  * An execution stage of a proposal. Each stage can be executed, and results in a transaction receipt.
