@@ -504,7 +504,7 @@ export class L1TimelockExecutionStage implements ProposalStage {
     );
 
     const retryableMagic = await timelock.RETRYABLE_TICKET_MAGIC();
-    let value = BigNumber.from(0);
+    let value = callScheduledArgs.value;
     if (
       callScheduledArgs.target.toLowerCase() === retryableMagic.toLowerCase()
     ) {
@@ -513,6 +513,9 @@ export class L1TimelockExecutionStage implements ProposalStage {
         callScheduledArgs.data
       );
       const inboxAddress = parsedData[0] as string;
+      const innerValue = parsedData[2] as BigNumber;
+      const innerGasLimit = parsedData[3] as BigNumber;
+      const innerMaxFeePerGas = parsedData[4] as BigNumber;
       const innerData = parsedData[5] as string;
 
       const inbox = Inbox__factory.connect(
@@ -524,8 +527,11 @@ export class L1TimelockExecutionStage implements ProposalStage {
           (innerData.length - 2) / 2,
           0
         );
-      // add some leeway for the base fee to increase
-      value = submissionFee.mul(2);
+
+      // enough value to create a retryable ticket = submission fee + l2 value + gas
+      value = innerValue
+        .add(submissionFee.mul(2)) // add some leeway for the base fee to increase
+        .add(innerGasLimit.mul(innerMaxFeePerGas));
     }
 
     await (
