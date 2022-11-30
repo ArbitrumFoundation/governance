@@ -124,6 +124,20 @@ contract L2GovernanceFactory is Ownable {
         address _l2TokenLogic,
         address _upgradeExecutorLogic
     ) {
+        require(_coreTimelockLogic != address(0), "L2GovernanceFactory: null _coreTimelockLogic");
+        require(_coreGovernorLogic != address(0), "L2GovernanceFactory: null _coreGovernorLogic");
+        require(
+            _treasuryTimelockLogic != address(0), "L2GovernanceFactory: null _treasuryTimelockLogic"
+        );
+        require(_treasuryLogic != address(0), "L2GovernanceFactory: null _treasuryLogic");
+        require(
+            _treasuryGovernorLogic != address(0), "L2GovernanceFactory: null _treasuryGovernorLogic"
+        );
+        require(_l2TokenLogic != address(0), "L2GovernanceFactory: null _l2TokenLogic");
+        require(
+            _upgradeExecutorLogic != address(0), "L2GovernanceFactory: null _upgradeExecutorLogic"
+        );
+
         coreTimelockLogic = _coreTimelockLogic;
         coreGovernorLogic = _coreGovernorLogic;
         treasuryTimelockLogic = _treasuryTimelockLogic;
@@ -240,7 +254,7 @@ contract L2GovernanceFactory is Ownable {
         exec.grantRole(exec.EXECUTOR_ROLE(), _aliasedL1Timelock);
 
         exec.grantRole(exec.ADMIN_ROLE(), upExecutor);
-
+        exec.revokeRole(exec.ADMIN_ROLE(), address(this));
         step = Step.Complete;
     }
 

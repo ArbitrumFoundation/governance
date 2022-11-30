@@ -90,7 +90,6 @@ contract TokenDistributor is Ownable {
         uint256 sum = totalClaimable;
         for (uint256 i = 0; i < _recipients.length; i++) {
             // sanity check that the address being set is consistent
-            // if for some reason the owner made an error they can still set the address to zero in order to correct it
             require(claimableTokens[_recipients[i]] == 0, "TokenDistributor: recipient already set");
             claimableTokens[_recipients[i]] = _claimableAmount[i];
             emit CanClaim(_recipients[i], _claimableAmount[i]);
