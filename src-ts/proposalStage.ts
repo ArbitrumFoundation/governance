@@ -255,7 +255,7 @@ export class L2TimelockExecutionStage implements ProposalStage {
 
     const operationId = await this.getHashOperationBatch();
 
-    // operation was cancelled if it doesnt exist
+    // operation was cancelled if it doesn't exist
     const exists = await timelock.isOperation(operationId);
     if (!exists) return ProposalStageStatus.TERMINATED;
 
