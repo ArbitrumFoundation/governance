@@ -4,8 +4,10 @@ import {
   ArbitrumTimelock__factory,
   FixedDelegateErc20Wallet,
   FixedDelegateErc20Wallet__factory,
+  IInbox__factory,
   IVotesUpgradeable__factory,
   L1ArbitrumTimelock,
+  L1ArbitrumTimelock__factory,
   L1ArbitrumToken,
   L1ArbitrumToken__factory,
   L1GovernanceFactory,
@@ -68,6 +70,13 @@ export const verifyDeployment = async () => {
 
   await verifyL1Token(contracts["l1TokenProxy"]);
   await verifyL1UpgradeExecutor(contracts["l1Executor"], contracts["l1Timelock"]);
+  await verifyL1Timelock(
+    contracts["l1Timelock"],
+    contracts["l1Executor"],
+    contracts["l1GovernanceFactory"],
+    contracts["l2CoreTimelock"],
+    ethDeployer
+  );
 
   //// verify L2 contracts are correctly initialized
 
@@ -286,6 +295,70 @@ async function verifyL1UpgradeExecutor(
   assert(
     await l1Executor.hasRole(executorRole, l1Timelock.address),
     "L1Timelock should have executor role on L1 upgrade executor"
+  );
+}
+
+/**
+ * Verify:
+ * - initialization params are correctly set
+ * - roles are correctly assigned
+ */
+async function verifyL1Timelock(
+  l1Timelock: L1ArbitrumTimelock,
+  l1Executor: UpgradeExecutor,
+  l1GovernanceFactory: L1GovernanceFactory,
+  l2Timelock: ArbitrumTimelock,
+  ethDeployer: Signer
+) {
+  //// check initialization params are correctly set
+  assertEquals(
+    (await l1Timelock.getMinDelay()).toString(),
+    GovernanceConstants.L1_TIMELOCK_DELAY.toString(),
+    "L1 timelock has incorrect min delay"
+  );
+  assertEquals(
+    await l1Timelock.governanceChainInbox(),
+    GovernanceConstants.L1_ARB_INBOX,
+    "Incorrect governance chain inbox set on L1 timelock"
+  );
+  assertEquals(
+    await l1Timelock.l2Timelock(),
+    l2Timelock.address,
+    "Incorrect L2 timelock reference set on L1 timelock"
+  );
+
+  //// check assigned/revoked roles are correctly set
+  const proposerRole = await l1Timelock.PROPOSER_ROLE();
+  const cancellerRole = await l1Timelock.CANCELLER_ROLE();
+  const executorRole = await l1Timelock.EXECUTOR_ROLE();
+  const timelockAdminRole = await l1Timelock.TIMELOCK_ADMIN_ROLE();
+
+  assert(
+    await l1Timelock.hasRole(
+      proposerRole,
+      await IInbox__factory.connect(GovernanceConstants.L1_ARB_INBOX, ethDeployer).bridge()
+    ),
+    "Bridge should have proposer role on L1 timelock"
+  );
+  assert(
+    await l1Timelock.hasRole(executorRole, ZERO_ADDRESS),
+    "Executor role should be assigned to zero address on L1 timelock"
+  );
+  assert(
+    await l1Timelock.hasRole(cancellerRole, GovernanceConstants.L1_9_OF_12_SECURITY_COUNCIL),
+    "L1 9/12 council should have canceller role on L1 timelock"
+  );
+  assert(
+    await l1Timelock.hasRole(timelockAdminRole, l1Executor.address),
+    "L1UpgradeExecutor should have timelock admin role on L1 timelock"
+  );
+  assert(
+    !(await l1Timelock.hasRole(timelockAdminRole, l1Timelock.address)),
+    "L1Timelock should not have timelock admin role on itself"
+  );
+  assert(
+    !(await l1Timelock.hasRole(timelockAdminRole, l1GovernanceFactory.address)),
+    "L1GovernanceFactory should not have timelock admin role on L1 timelock"
   );
 }
 
@@ -599,7 +672,7 @@ async function loadContracts(
     contractAddresses["l1Executor"],
     ethDeployer
   );
-  contracts["l1Timelock"] = UpgradeExecutor__factory.connect(
+  contracts["l1Timelock"] = L1ArbitrumTimelock__factory.connect(
     contractAddresses["l1Timelock"],
     ethDeployer
   );
