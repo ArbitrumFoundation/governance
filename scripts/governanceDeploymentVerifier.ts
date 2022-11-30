@@ -34,87 +34,109 @@ import { Address } from "@arbitrum/sdk";
 const DEPLOYED_CONTRACTS_FILE_NAME = "deployedContracts.json";
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
+/**
+ * Main function that verifies governance deployment was successful.
+ */
 export const verifyDeployment = async () => {
   const { ethDeployer, arbDeployer, novaDeployer } = await getDeployers();
-
   const contracts = await loadContracts(ethDeployer, arbDeployer, novaDeployer);
 
-  await verifyL1ContractOwners(
-    contracts["l1GovernanceFactory"],
-    contracts["l1TokenProxy"],
-    contracts["l1ProxyAdmin"],
+  //// L1 contracts
+
+  console.log("Verify L1 contracts are properly deployed");
+  await verifyL1GovernanceFactory(contracts["l1GovernanceFactory"], ethDeployer);
+  await verifyL1Token(contracts["l1TokenProxy"], contracts["l1ProxyAdmin"], ethDeployer);
+  await verifyL1UpgradeExecutor(
     contracts["l1Executor"],
     contracts["l1Timelock"],
+    contracts["l1ProxyAdmin"],
     ethDeployer
   );
-  await verifyL2ContractOwners(
-    contracts["l2GovernanceFactory"],
-    contracts["l2CoreGoverner"],
-    contracts["l2ProxyAdmin"],
-    contracts["l2CoreTimelock"],
-    contracts["l2Executor"],
-    contracts["l2Token"],
-    contracts["l2TreasuryGoverner"],
-    contracts["l2ArbTreasury"],
-    contracts["l2TokenDistributor"],
-    arbDeployer
-  );
-  await verifyNovaContractOwners(
-    contracts["novaProxyAdmin"],
-    contracts["novaUpgradeExecutorProxy"],
-    contracts["novaTokenProxy"],
-    novaDeployer
-  );
-
-  //// verify L1 contracts are correctly initialized
-
-  await verifyL1Token(contracts["l1TokenProxy"]);
-  await verifyL1UpgradeExecutor(contracts["l1Executor"], contracts["l1Timelock"]);
   await verifyL1Timelock(
     contracts["l1Timelock"],
     contracts["l1Executor"],
     contracts["l1GovernanceFactory"],
     contracts["l2CoreTimelock"],
+    contracts["l1ProxyAdmin"],
     ethDeployer
   );
+  await verifyL1ProxyAdmin(contracts["l1ProxyAdmin"], contracts["l1Executor"]);
 
-  //// verify L2 contracts are correctly initialized
+  //// L2 contracts
 
+  console.log("Verify L2 contracts are properly deployed");
   await verifyArbitrumTimelockParams(
     contracts["l2CoreTimelock"],
     contracts["l2CoreGoverner"],
     contracts["l2Executor"],
-    contracts["l2GovernanceFactory"]
+    contracts["l2GovernanceFactory"],
+    contracts["l2ProxyAdmin"],
+    arbDeployer
   );
-  await verifyL2GovernanceFactory(contracts["l2GovernanceFactory"]);
+  await verifyL2GovernanceFactory(contracts["l2GovernanceFactory"], arbDeployer);
   await verifyL2CoreGovernor(
     contracts["l2CoreGoverner"],
     contracts["l2Token"],
-    contracts["l2CoreTimelock"]
+    contracts["l2CoreTimelock"],
+    contracts["l2Executor"],
+    contracts["l2ProxyAdmin"],
+    arbDeployer
   );
-  await verifyL2UpgradeExecutor(contracts["l2Executor"], contracts["l1Timelock"]);
-  await verifyL2Token(contracts["l2Token"], contracts["l2ArbTreasury"], contracts["l1TokenProxy"]);
-  await verifyL2TreasuryGovernor(contracts["l2TreasuryGoverner"], contracts["l2Token"]);
+  await verifyL2UpgradeExecutor(
+    contracts["l2Executor"],
+    contracts["l1Timelock"],
+    contracts["l2ProxyAdmin"],
+    arbDeployer
+  );
+  await verifyL2Token(
+    contracts["l2Token"],
+    contracts["l2ArbTreasury"],
+    contracts["l1TokenProxy"],
+    contracts["l2Executor"],
+    contracts["l2ProxyAdmin"],
+    arbDeployer
+  );
+  await verifyL2TreasuryGovernor(
+    contracts["l2TreasuryGoverner"],
+    contracts["l2Token"],
+    contracts["l2Executor"],
+    contracts["l2ProxyAdmin"],
+    arbDeployer
+  );
   await verifyL2ArbTreasury(
     contracts["l2ArbTreasury"],
     contracts["l2Token"],
     contracts["l2TreasuryGoverner"],
+    contracts["l2ProxyAdmin"],
     arbDeployer
   );
   await verifyL2TokenDistributor(contracts["l2TokenDistributor"], contracts["l2Token"]);
+  await verifyL2ProxyAdmin(contracts["l2ProxyAdmin"], contracts["l2Executor"]);
 
-  //// verify Nova contracts are correctly initialized
+  //// Nova contracts
 
-  await verifyNovaUpgradeExecutor(contracts["novaUpgradeExecutorProxy"], contracts["l1Timelock"]);
-  await verifyNovaToken(contracts["novaTokenProxy"], contracts["l1TokenProxy"]);
+  console.log("Verify Nova contracts are properly deployed");
+  await verifyNovaUpgradeExecutor(
+    contracts["novaUpgradeExecutorProxy"],
+    contracts["l1Timelock"],
+    contracts["novaProxyAdmin"],
+    novaDeployer
+  );
+  await verifyNovaToken(
+    contracts["novaTokenProxy"],
+    contracts["l1TokenProxy"],
+    contracts["novaProxyAdmin"],
+    novaDeployer
+  );
+  await verifyNovaProxyAdmin(contracts["novaProxyAdmin"], contracts["novaUpgradeExecutorProxy"]);
 };
 
-async function verifyL1ContractOwners(
+/**
+ * Verify:
+ * - factory ownership
+ */
+async function verifyL1GovernanceFactory(
   l1GovernanceFactory: L1GovernanceFactory,
-  l1TokenProxy: L1ArbitrumToken,
-  l1ProxyAdmin: ProxyAdmin,
-  l1Executor: UpgradeExecutor,
-  l1Timelock: L1ArbitrumTimelock,
   ethDeployer: Signer
 ) {
   assertEquals(
@@ -122,135 +144,26 @@ async function verifyL1ContractOwners(
     await ethDeployer.getAddress(),
     "EthDeployer should be L1GovernanceFactory's owner"
   );
-  assertEquals(
-    await getProxyOwner(l1TokenProxy.address, ethDeployer),
-    l1ProxyAdmin.address,
-    "L1ProxyAdmin should be L1ArbitrumToken's proxy admin"
-  );
-  assertEquals(
-    await getProxyOwner(l1Executor.address, ethDeployer),
-    l1ProxyAdmin.address,
-    "L1ProxyAdmin should be L1UpgradeExecutor's proxy admin"
-  );
-  assertEquals(
-    await getProxyOwner(l1Timelock.address, ethDeployer),
-    l1ProxyAdmin.address,
-    "L1ProxyAdmin should be L1ArbitrumTimelock's proxy admin"
-  );
-  assertEquals(
-    await l1ProxyAdmin.owner(),
-    l1Executor.address,
-    "L1UpgradeExecutor should be L1ProxyAdmin's owner"
-  );
-}
-
-async function verifyL2ContractOwners(
-  l2GovernanceFactory: L2GovernanceFactory,
-  l2CoreGovernor: L2ArbitrumGovernor,
-  l2ProxyAdmin: ProxyAdmin,
-  l2CoreTimelock: ArbitrumTimelock,
-  l2Executor: UpgradeExecutor,
-  l2Token: L2ArbitrumToken,
-  l2TreasuryGoverner: L2ArbitrumGovernor,
-  l2ArbTreasury: FixedDelegateErc20Wallet,
-  l2TokenDistributor: TokenDistributor,
-  arbDeployer: Signer
-) {
-  assertEquals(
-    await l2GovernanceFactory.owner(),
-    await arbDeployer.getAddress(),
-    "ArbDeployer should be L2GovernanceFactory's owner"
-  );
-  assertEquals(
-    await getProxyOwner(l2CoreGovernor.address, arbDeployer),
-    l2ProxyAdmin.address,
-    "L2ProxyAdmin should be core L2ArbitrumGovernor's proxy admin"
-  );
-  assertEquals(
-    await l2CoreGovernor.owner(),
-    l2Executor.address,
-    "L2UpgradeExecutor should be core L2ArbitrumGovernor's owner"
-  );
-  assertEquals(
-    await getProxyOwner(l2CoreTimelock.address, arbDeployer),
-    l2ProxyAdmin.address,
-    "L2ProxyAdmin should be L2 core ArbitrumTimelock's proxy admin"
-  );
-  assertEquals(
-    await getProxyOwner(l2Executor.address, arbDeployer),
-    l2ProxyAdmin.address,
-    "L2ProxyAdmin should be L2UpgradeExecutor's proxy admin"
-  );
-  assertEquals(
-    await getProxyOwner(l2Token.address, arbDeployer),
-    l2ProxyAdmin.address,
-    "L2ProxyAdmin should be L2ArbitrumToken's proxy admin"
-  );
-  assertEquals(
-    await l2Token.owner(),
-    l2Executor.address,
-    "L2UpgradeExecutor should be L2ArbitrumToken's owner"
-  );
-  assertEquals(
-    await getProxyOwner(l2TreasuryGoverner.address, arbDeployer),
-    l2ProxyAdmin.address,
-    "L2ProxyAdmin should be treasury L2ArbitrumGovernor's proxy admin"
-  );
-  assertEquals(
-    await l2TreasuryGoverner.owner(),
-    l2Executor.address,
-    "L2UpgradeExecutor should be treasury L2ArbitrumGovernor's owner"
-  );
-  assertEquals(
-    await getProxyOwner(l2ArbTreasury.address, arbDeployer),
-    l2ProxyAdmin.address,
-    "L2ProxyAdmin should be arbTreasury's proxy admin"
-  );
-  assertEquals(
-    await l2ArbTreasury.owner(),
-    await l2TreasuryGoverner.timelock(),
-    "L2TreasuryGoverner's timelock should be arbTreasury's owner"
-  );
-  assertEquals(
-    await l2TokenDistributor.owner(),
-    GovernanceConstants.L2_TOKEN_DISTRIBUTOR_OWNER,
-    "GovernanceConstants.L2_TOKEN_DISTRIBUTOR_OWNER should be L2 TokenDistributor's owner"
-  );
-  assertEquals(
-    await l2ProxyAdmin.owner(),
-    l2Executor.address,
-    "L2UpgradeExecutor should be L2ProxyAdmin's owner"
-  );
-}
-
-async function verifyNovaContractOwners(
-  novaProxyAdmin: ProxyAdmin,
-  novaUpgradeExecutorProxy: UpgradeExecutor,
-  novaTokenProxy: L2CustomGatewayToken,
-  novaDeployer: Signer
-) {
-  assertEquals(
-    await novaProxyAdmin.owner(),
-    novaUpgradeExecutorProxy.address,
-    "NovaUpgradeExecutor should be NovaProxyAdmin's owner"
-  );
-  assertEquals(
-    await getProxyOwner(novaUpgradeExecutorProxy.address, novaDeployer),
-    novaProxyAdmin.address,
-    "NovaProxyAdmin should be NovaUpgradeExecutor's proxy admin"
-  );
-  assertEquals(
-    await getProxyOwner(novaTokenProxy.address, novaDeployer),
-    novaProxyAdmin.address,
-    "NovaProxyAdmin should be NovaToken's owner"
-  );
 }
 
 /**
  * Verify:
+ * - proxy admin is correct
  * - initialization params are correctly set
  */
-async function verifyL1Token(l1Token: L1ArbitrumToken) {
+async function verifyL1Token(
+  l1Token: L1ArbitrumToken,
+  l1ProxyAdmin: ProxyAdmin,
+  ethDeployer: Signer
+) {
+  //// check proxy admin
+  assertEquals(
+    await getProxyOwner(l1Token.address, ethDeployer),
+    l1ProxyAdmin.address,
+    "L1ProxyAdmin should be L1ArbitrumToken's proxy admin"
+  );
+
+  //// check initialization params are correctly set
   assertEquals(await l1Token.name(), "Arbitrum", "Incorrect token name set for L1Token");
   assertEquals(await l1Token.symbol(), "ARB", "Incorrect token symbol set on L1Token");
   assertEquals(
@@ -283,8 +196,17 @@ async function verifyL1Token(l1Token: L1ArbitrumToken) {
  */
 async function verifyL1UpgradeExecutor(
   l1Executor: UpgradeExecutor,
-  l1Timelock: L1ArbitrumTimelock
+  l1Timelock: L1ArbitrumTimelock,
+  l1ProxyAdmin: ProxyAdmin,
+  ethDeployer: Signer
 ) {
+  //// check proxy admin
+  assertEquals(
+    await getProxyOwner(l1Executor.address, ethDeployer),
+    l1ProxyAdmin.address,
+    "L1ProxyAdmin should be L1UpgradeExecutor's proxy admin"
+  );
+
   //// check assigned/revoked roles are correctly set
   const adminRole = await l1Executor.ADMIN_ROLE();
   const executorRole = await l1Executor.EXECUTOR_ROLE();
@@ -313,8 +235,16 @@ async function verifyL1Timelock(
   l1Executor: UpgradeExecutor,
   l1GovernanceFactory: L1GovernanceFactory,
   l2Timelock: ArbitrumTimelock,
+  l1ProxyAdmin: ProxyAdmin,
   ethDeployer: Signer
 ) {
+  //// check proxy admin
+  assertEquals(
+    await getProxyOwner(l1Timelock.address, ethDeployer),
+    l1ProxyAdmin.address,
+    "L1ProxyAdmin should be L1ArbitrumTimelock's proxy admin"
+  );
+
   //// check initialization params are correctly set
   assertEquals(
     (await l1Timelock.getMinDelay()).toString(),
@@ -369,13 +299,37 @@ async function verifyL1Timelock(
 
 /**
  * Verify:
+ * - proxy admin ownership
+ */
+async function verifyL1ProxyAdmin(l1ProxyAdmin: ProxyAdmin, l1Executor: UpgradeExecutor) {
+  //// check ownership
+  assertEquals(
+    await l1ProxyAdmin.owner(),
+    l1Executor.address,
+    "L1UpgradeExecutor should be L1ProxyAdmin's owner"
+  );
+}
+
+/**
+ * Verify:
+ * - ownership
  * - factory has completed job
  */
-async function verifyL2GovernanceFactory(l2govFactory: L2GovernanceFactory) {
+async function verifyL2GovernanceFactory(
+  l2GovernanceFactory: L2GovernanceFactory,
+  arbDeployer: Signer
+) {
+  //// check ownership
+  assertEquals(
+    await l2GovernanceFactory.owner(),
+    await arbDeployer.getAddress(),
+    "ArbDeployer should be L2GovernanceFactory's owner"
+  );
+
   // check factory has completed job
   // 2 == Step.Complete
   assertEquals(
-    (await l2govFactory.step()).toString(),
+    (await l2GovernanceFactory.step()).toString(),
     "2",
     "L2 governance factory should be in 'Complete'(2) step"
   );
@@ -383,6 +337,7 @@ async function verifyL2GovernanceFactory(l2govFactory: L2GovernanceFactory) {
 
 /**
  * Verify:
+ * - ownership
  * - initialization params are correctly set
  * - roles are correctly assigned
  */
@@ -390,8 +345,17 @@ async function verifyArbitrumTimelockParams(
   l2Timelock: ArbitrumTimelock,
   l2CoreGovernor: L2ArbitrumGovernor,
   l2Executor: UpgradeExecutor,
-  l2GovernanceFactory: L2GovernanceFactory
+  l2GovernanceFactory: L2GovernanceFactory,
+  l2ProxyAdmin: ProxyAdmin,
+  arbDeployer: Signer
 ) {
+  //// check proxy admin
+  assertEquals(
+    await getProxyOwner(l2Timelock.address, arbDeployer),
+    l2ProxyAdmin.address,
+    "L2ProxyAdmin should be L2 core ArbitrumTimelock's proxy admin"
+  );
+
   //// check initialization params are correctly set
   assertEquals(
     (await l2Timelock.getMinDelay()).toString(),
@@ -454,13 +418,29 @@ async function verifyArbitrumTimelockParams(
 
 /**
  * Verify:
+ * - ownership
  * - initialization params are correctly set
  */
 async function verifyL2CoreGovernor(
   l2CoreGovernor: L2ArbitrumGovernor,
   l2Token: L2ArbitrumToken,
-  l2Timelock: ArbitrumTimelock
+  l2Timelock: ArbitrumTimelock,
+  l2Executor: UpgradeExecutor,
+  l2ProxyAdmin: ProxyAdmin,
+  arbDeployer: Signer
 ) {
+  //// check ownership
+  assertEquals(
+    await getProxyOwner(l2CoreGovernor.address, arbDeployer),
+    l2ProxyAdmin.address,
+    "L2ProxyAdmin should be core L2ArbitrumGovernor's proxy admin"
+  );
+  assertEquals(
+    await l2CoreGovernor.owner(),
+    l2Executor.address,
+    "L2UpgradeExecutor should be core L2ArbitrumGovernor's owner"
+  );
+
   //// check initialization params are correctly set
   assertEquals(
     await l2CoreGovernor.name(),
@@ -506,12 +486,22 @@ async function verifyL2CoreGovernor(
 
 /**
  * Verify:
+ * - ownership
  * - roles are correctly assigned
  */
 async function verifyL2UpgradeExecutor(
   l2Executor: UpgradeExecutor,
-  l1Timelock: L1ArbitrumTimelock
+  l1Timelock: L1ArbitrumTimelock,
+  l2ProxyAdmin: ProxyAdmin,
+  arbDeployer: Signer
 ) {
+  //// check proxy admin
+  assertEquals(
+    await getProxyOwner(l2Executor.address, arbDeployer),
+    l2ProxyAdmin.address,
+    "L2ProxyAdmin should be L2UpgradeExecutor's proxy admin"
+  );
+
   //// check assigned/revoked roles are correctly set
   const adminRole = await l2Executor.ADMIN_ROLE();
   const executorRole = await l2Executor.EXECUTOR_ROLE();
@@ -540,8 +530,24 @@ async function verifyL2UpgradeExecutor(
 async function verifyL2Token(
   l2Token: L2ArbitrumToken,
   arbTreasury: FixedDelegateErc20Wallet,
-  l1Token: L1ArbitrumToken
+  l1Token: L1ArbitrumToken,
+  l2Executor: UpgradeExecutor,
+  l2ProxyAdmin: ProxyAdmin,
+  arbDeployer: Signer
 ) {
+  //// check ownership
+  assertEquals(
+    await getProxyOwner(l2Token.address, arbDeployer),
+    l2ProxyAdmin.address,
+    "L2ProxyAdmin should be L2ArbitrumToken's proxy admin"
+  );
+  assertEquals(
+    await l2Token.owner(),
+    l2Executor.address,
+    "L2UpgradeExecutor should be L2ArbitrumToken's owner"
+  );
+
+  //// check initialization params
   assertEquals(await l2Token.name(), "Arbitrum", "L2Token name should be Arbitrum");
   assertEquals(await l2Token.symbol(), "ARB", "L2Token symbol should be ARB");
   assertNumbersEquals(
@@ -563,12 +569,28 @@ async function verifyL2Token(
 
 /**
  * Verify:
+ * - ownership
  * - initialization params are correctly set
  */
 async function verifyL2TreasuryGovernor(
   l2TreasuryGoverner: L2ArbitrumGovernor,
-  l2Token: L2ArbitrumToken
+  l2Token: L2ArbitrumToken,
+  l2Executor: UpgradeExecutor,
+  l2ProxyAdmin: ProxyAdmin,
+  arbDeployer: Signer
 ) {
+  //// check ownership
+  assertEquals(
+    await getProxyOwner(l2TreasuryGoverner.address, arbDeployer),
+    l2ProxyAdmin.address,
+    "L2ProxyAdmin should be treasury L2ArbitrumGovernor's proxy admin"
+  );
+  assertEquals(
+    await l2TreasuryGoverner.owner(),
+    l2Executor.address,
+    "L2UpgradeExecutor should be treasury L2ArbitrumGovernor's owner"
+  );
+
   //// check initialization params are correctly set
   assertEquals(
     await l2TreasuryGoverner.name(),
@@ -609,14 +631,29 @@ async function verifyL2TreasuryGovernor(
 
 /**
  * Verify:
+ * - ownership
  * - delegate is properly set
  */
 async function verifyL2ArbTreasury(
   l2ArbTreasury: FixedDelegateErc20Wallet,
   l2Token: L2ArbitrumToken,
   l2TreasuryGoverner: L2ArbitrumGovernor,
+  l2ProxyAdmin: ProxyAdmin,
   arbDeployer: Signer
 ) {
+  //// check ownership
+  assertEquals(
+    await getProxyOwner(l2ArbTreasury.address, arbDeployer),
+    l2ProxyAdmin.address,
+    "L2ProxyAdmin should be arbTreasury's proxy admin"
+  );
+  assertEquals(
+    await l2ArbTreasury.owner(),
+    await l2TreasuryGoverner.timelock(),
+    "L2TreasuryGoverner's timelock should be arbTreasury's owner"
+  );
+
+  //// check delegation
   const voteToken = IVotesUpgradeable__factory.connect(l2Token.address, arbDeployer);
 
   assertEquals(
@@ -634,6 +671,14 @@ async function verifyL2TokenDistributor(
   l2TokenDistributor: TokenDistributor,
   l2Token: L2ArbitrumToken
 ) {
+  //// check ownership
+  assertEquals(
+    await l2TokenDistributor.owner(),
+    GovernanceConstants.L2_TOKEN_DISTRIBUTOR_OWNER,
+    "GovernanceConstants.L2_TOKEN_DISTRIBUTOR_OWNER should be L2 TokenDistributor's owner"
+  );
+
+  //// check initialization params
   assertEquals(
     await l2TokenDistributor.token(),
     l2Token.address,
@@ -658,12 +703,34 @@ async function verifyL2TokenDistributor(
 
 /**
  * Verify:
+ * - ownership
+ */
+async function verifyL2ProxyAdmin(l2ProxyAdmin: ProxyAdmin, l2Executor: UpgradeExecutor) {
+  //// check ownership
+  assertEquals(
+    await l2ProxyAdmin.owner(),
+    l2Executor.address,
+    "L2UpgradeExecutor should be L2ProxyAdmin's owner"
+  );
+}
+
+/**
+ * Verify:
  * - roles are correctly assigned
  */
 async function verifyNovaUpgradeExecutor(
   novaUpgradeExecutor: UpgradeExecutor,
-  l1Timelock: L1ArbitrumTimelock
+  l1Timelock: L1ArbitrumTimelock,
+  novaProxyAdmin: ProxyAdmin,
+  novaDeployer: Signer
 ) {
+  //// check proxy admin
+  assertEquals(
+    await getProxyOwner(novaUpgradeExecutor.address, novaDeployer),
+    novaProxyAdmin.address,
+    "NovaProxyAdmin should be NovaUpgradeExecutor's proxy admin"
+  );
+
   //// check assigned/revoked roles are correctly set
   const adminRole = await novaUpgradeExecutor.ADMIN_ROLE();
   const executorRole = await novaUpgradeExecutor.EXECUTOR_ROLE();
@@ -690,7 +757,20 @@ async function verifyNovaUpgradeExecutor(
  * Verify:
  * - initialization params are correctly set
  */
-async function verifyNovaToken(novaToken: L2CustomGatewayToken, l1Token: L1ArbitrumToken) {
+async function verifyNovaToken(
+  novaToken: L2CustomGatewayToken,
+  l1Token: L1ArbitrumToken,
+  novaProxyAdmin: ProxyAdmin,
+  novaDeployer: Signer
+) {
+  //// check proxy admin
+  assertEquals(
+    await getProxyOwner(novaToken.address, novaDeployer),
+    novaProxyAdmin.address,
+    "NovaProxyAdmin should be NovaToken's owner"
+  );
+
+  //// check initialization params
   assertEquals(
     await novaToken.name(),
     GovernanceConstants.NOVA_TOKEN_NAME,
@@ -718,6 +798,29 @@ async function verifyNovaToken(novaToken: L2CustomGatewayToken, l1Token: L1Arbit
   );
 }
 
+/**
+ * Verify:
+ * - proxy admin ownership
+ */
+async function verifyNovaProxyAdmin(
+  novaProxyAdmin: ProxyAdmin,
+  novaUpgradeExecutor: UpgradeExecutor
+) {
+  assertEquals(
+    await novaProxyAdmin.owner(),
+    novaUpgradeExecutor.address,
+    "NovaUpgradeExecutor should be NovaProxyAdmin's owner"
+  );
+}
+
+/**
+ * Load contracts by reading addresses from file `DEPLOYED_CONTRACTS_FILE_NAME` and return loaded contracts in key-value format.
+ *
+ * @param ethDeployer
+ * @param arbDeployer
+ * @param novaDeployer
+ * @returns
+ */
 async function loadContracts(
   ethDeployer: Signer,
   arbDeployer: Signer,
@@ -803,6 +906,12 @@ async function loadContracts(
   return contracts;
 }
 
+/**
+ * Gets the proxy owner by reading storage
+ * @param contractAddress
+ * @param signer
+ * @returns
+ */
 async function getProxyOwner(contractAddress: string, signer: Signer) {
   // gets address in format like 0x000000000000000000000000a898b332e65d0cc9cb538495ff145983806d8453
   const ownerStorageValue = await signer.provider?.getStorageAt(
@@ -821,6 +930,13 @@ async function getProxyOwner(contractAddress: string, signer: Signer) {
   return ethers.utils.getAddress(formatAddress);
 }
 
+/**
+ * Simple assertion function for strings
+ *
+ * @param actual
+ * @param expected
+ * @param message
+ */
 async function assertEquals(actual: string, expected: string, message: string) {
   if (actual != expected) {
     console.error("Actual: ", actual);
@@ -829,6 +945,13 @@ async function assertEquals(actual: string, expected: string, message: string) {
   }
 }
 
+/**
+ * Simple assertion function for BigNumbers
+ *
+ * @param actual
+ * @param expected
+ * @param message
+ */
 async function assertNumbersEquals(actual: BigNumber, expected: BigNumber, message: string) {
   if (!actual.eq(expected)) {
     console.error("Actual: ", actual.toString());
@@ -837,6 +960,11 @@ async function assertNumbersEquals(actual: BigNumber, expected: BigNumber, messa
   }
 }
 
+/**
+ * Simple assertion function
+ * @param condition
+ * @param message
+ */
 async function assert(condition: Boolean, message: string) {
   if (!condition) {
     throw new Error(message);
