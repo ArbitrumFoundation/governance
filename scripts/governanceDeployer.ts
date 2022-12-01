@@ -76,8 +76,7 @@ const DEPLOYED_CONTRACTS_FILE_NAME = "deployedContracts.json";
  */
 export const deployGovernance = async () => {
   console.log("Get deployers and signers");
-  const { ethDeployer, arbDeployer, novaDeployer } =
-    await getDeployers();
+  const { ethDeployer, arbDeployer, novaDeployer } = await getDeployers();
 
   console.log("Deploy L1 logic contracts");
   const l1UpgradeExecutorLogic = await deployL1LogicContracts(ethDeployer);
@@ -112,11 +111,7 @@ export const deployGovernance = async () => {
 
   // step 1
   console.log("Init L2 governance");
-  const l2DeployResult = await initL2Governance(
-    arbDeployer,
-    l2GovernanceFactory,
-    l1Token.address
-  );
+  const l2DeployResult = await initL2Governance(arbDeployer, l2GovernanceFactory, l1Token.address);
 
   // step 2
   console.log("Init L1 governance");
@@ -136,10 +131,6 @@ export const deployGovernance = async () => {
     novaDeployer
   );
 
-  // deploy ARB distributor
-  console.log("Deploy TokenDistributor");
-  await deployTokenDistributor(arbDeployer, l2DeployResult);
-
   console.log("Post deployment L1 token tasks");
   await postDeploymentL1TokenTasks(
     ethDeployer,
@@ -151,6 +142,10 @@ export const deployGovernance = async () => {
 
   console.log("Post deployment L2 token tasks");
   await postDeploymentL2TokenTasks(arbDeployer, l2DeployResult);
+
+  // deploy ARB distributor
+  console.log("Deploy TokenDistributor");
+  await deployAndInitTokenDistributor(arbDeployer, l2DeployResult, arbDeployer);
 
   console.log("Write deployed contract addresses to deployedContracts.json");
   writeAddresses();
@@ -451,19 +446,27 @@ async function postDeploymentL2TokenTasks(
   );
   await l2Token.connect(arbInitialSupplyRecipient).transferOwnership(l2DeployResult.executor);
 
-  // transfer tokens from _l2InitialSupplyRecipient to the treasury
+  // transfer tokens from arbDeployer to the treasury
   await l2Token
     .connect(arbInitialSupplyRecipient)
-    .transfer(l2DeployResult.arbTreasury, GovernanceConstants.L2_NUM_OF_TOKENS_FOR_TREASURY);
+    .transfer(
+      l2DeployResult.arbTreasury,
+      parseEther(GovernanceConstants.L2_NUM_OF_TOKENS_FOR_TREASURY)
+    );
 
-  // tokens should be transfered to TokenDistributor as well, but only after all recipients are correctly set.
+  /// when distributor is deployed remaining tokens are transfered to it
 }
 
-async function deployTokenDistributor(arbDeployer: Signer, l2DeployResult: L2DeployedEventObject) {
+async function deployAndInitTokenDistributor(
+  arbDeployer: Signer,
+  l2DeployResult: L2DeployedEventObject,
+  arbInitialSupplyRecipient: Signer
+) {
+  // deploy TokenDistributor
   const tokenDistributor = await new TokenDistributor__factory(arbDeployer).deploy(
     l2DeployResult.token,
     GovernanceConstants.L2_SWEEP_RECECIVER,
-    GovernanceConstants.L2_TOKEN_DISTRIBUTOR_OWNER,
+    await arbDeployer.getAddress(),
     GovernanceConstants.L2_CLAIM_PERIOD_START,
     GovernanceConstants.L2_CLAIM_PERIOD_END
   );
@@ -471,6 +474,29 @@ async function deployTokenDistributor(arbDeployer: Signer, l2DeployResult: L2Dep
 
   // store address
   deployedContracts["l2TokenDistributor"] = tokenDistributor.address;
+
+  // transfer tokens from arbDeployer to the distributor
+  const l2Token = L2ArbitrumToken__factory.connect(
+    l2DeployResult.token,
+    arbInitialSupplyRecipient.provider!
+  );
+  await l2Token
+    .connect(arbInitialSupplyRecipient)
+    .transfer(
+      tokenDistributor.address,
+      parseEther(GovernanceConstants.L2_NUM_OF_TOKENS_FOR_CLAIMING)
+    );
+
+  // set claim recipients
+  // TODO set actual prod values
+  await tokenDistributor.setRecipients(
+    ["0xD99DD65559341008213A41E17e29777872bab481", "0xFde71E607Fa694284F21F620ac2720291614FaCe"],
+    [parseEther("6000000000"), parseEther("2000000000")],
+    { gasLimit: 3000000 }
+  );
+
+  // transfer ownership to L2 UpgradeExecutor
+  await tokenDistributor.transferOwnership(l2DeployResult.executor);
 }
 
 function writeAddresses() {

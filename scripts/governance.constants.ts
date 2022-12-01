@@ -48,10 +48,10 @@ export const NOVA_TOKEN_GATEWAY = "0xb19DAC9ab07f9ee2F8002446De0bCA04e44Ec3D9";
 export const L2_TOKEN_INITIAL_SUPPLY = "10000000000";
 // 2 billion tokens (dummy value atm)
 export const L2_NUM_OF_TOKENS_FOR_TREASURY = "2000000000";
+// 8 billion tokens (dummy value atm)
+export const L2_NUM_OF_TOKENS_FOR_CLAIMING = "8000000000";
 // receiver of the airdrop leftovers (dummy value atm)
 export const L2_SWEEP_RECECIVER = "0x0B563dfac4940547D04f6B58D719B5AA2e29597d";
-// initial owner responsible for setting the airdrop recipients (dummy value atm)
-export const L2_TOKEN_DISTRIBUTOR_OWNER = "0x59D74CC054A520217D6eC7eAED6C36507347A236";
 // airdrop claim start block number (dummy value atm)
 export const L2_CLAIM_PERIOD_START = 16100000;
 // airdrop claim end block number (dummy value atm)

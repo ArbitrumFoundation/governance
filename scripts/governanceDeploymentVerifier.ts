@@ -29,6 +29,8 @@ import { L2CustomGatewayToken, L2CustomGatewayToken__factory } from "../typechai
 import { getDeployers } from "./providerSetup";
 import * as GovernanceConstants from "./governance.constants";
 import { Address } from "@arbitrum/sdk";
+import { Token } from "typescript";
+import { parseEther } from "ethers/lib/utils";
 
 // JSON file which contains all the deployed contract addresses
 const DEPLOYED_CONTRACTS_FILE_NAME = "deployedContracts.json";
@@ -94,6 +96,7 @@ export const verifyDeployment = async () => {
     contracts["l1TokenProxy"],
     contracts["l2Executor"],
     contracts["l2ProxyAdmin"],
+    contracts["l2TokenDistributor"],
     arbDeployer
   );
   await verifyL2TreasuryGovernor(
@@ -110,7 +113,11 @@ export const verifyDeployment = async () => {
     contracts["l2ProxyAdmin"],
     arbDeployer
   );
-  await verifyL2TokenDistributor(contracts["l2TokenDistributor"], contracts["l2Token"]);
+  await verifyL2TokenDistributor(
+    contracts["l2TokenDistributor"],
+    contracts["l2Token"],
+    contracts["l2Executor"]
+  );
   await verifyL2ProxyAdmin(contracts["l2ProxyAdmin"], contracts["l2Executor"]);
 
   //// Nova contracts
@@ -533,6 +540,7 @@ async function verifyL2Token(
   l1Token: L1ArbitrumToken,
   l2Executor: UpgradeExecutor,
   l2ProxyAdmin: ProxyAdmin,
+  l2TokenDistributor: TokenDistributor,
   arbDeployer: Signer
 ) {
   //// check ownership
@@ -557,7 +565,7 @@ async function verifyL2Token(
   );
   assertNumbersEquals(
     await l2Token.balanceOf(arbTreasury.address),
-    BigNumber.from(GovernanceConstants.L2_NUM_OF_TOKENS_FOR_TREASURY),
+    parseEther(GovernanceConstants.L2_NUM_OF_TOKENS_FOR_TREASURY),
     "Incorrect initial L2Token balance for ArbTreasury"
   );
   assertEquals(
@@ -669,13 +677,26 @@ async function verifyL2ArbTreasury(
  */
 async function verifyL2TokenDistributor(
   l2TokenDistributor: TokenDistributor,
-  l2Token: L2ArbitrumToken
+  l2Token: L2ArbitrumToken,
+  l2Executor: UpgradeExecutor
 ) {
   //// check ownership
   assertEquals(
     await l2TokenDistributor.owner(),
-    GovernanceConstants.L2_TOKEN_DISTRIBUTOR_OWNER,
-    "GovernanceConstants.L2_TOKEN_DISTRIBUTOR_OWNER should be L2 TokenDistributor's owner"
+    l2Executor.address,
+    "L2UpgradeExecutor should be L2 TokenDistributor's owner"
+  );
+
+  //// check token balances
+  assertNumbersEquals(
+    await l2Token.balanceOf(l2TokenDistributor.address),
+    parseEther(GovernanceConstants.L2_NUM_OF_TOKENS_FOR_CLAIMING),
+    "Incorrect initial L2Token balance for TokenDistributor"
+  );
+  assertNumbersEquals(
+    await l2TokenDistributor.totalClaimable(),
+    parseEther(GovernanceConstants.L2_NUM_OF_TOKENS_FOR_CLAIMING),
+    "Incorrect totalClaimable amount for TokenDistributor"
   );
 
   //// check initialization params
