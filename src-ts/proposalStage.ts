@@ -535,9 +535,21 @@ export class L1TimelockExecutionStage implements ProposalStage {
           0
         );
 
-      // enough value to create a retryable ticket = submission fee + l2 value + gas
-      value = innerValue
-        .add(submissionFee.mul(2)) // add some leeway for the base fee to increase
+      const timelockBalance = await this.l1Signer.provider!.getBalance(
+        timelockAddress
+      );
+      if (timelockBalance.lt(innerValue)) {
+        throw new ProposalStageError(
+          `Timelock does not contain enough balance to cover l2 value: ${timelockBalance.toString()} : ${innerValue.toString()}`,
+          this.identifier,
+          this.name
+        );
+      }
+
+      // enough value to create a retryable ticket = submission fee + gas
+      // the l2value needs to already be in the contract
+      value = submissionFee
+        .mul(2) // add some leeway for the base fee to increase
         .add(innerGasLimit.mul(innerMaxFeePerGas));
     }
 

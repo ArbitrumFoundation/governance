@@ -636,7 +636,7 @@ describe("Governor", function () {
     ).to.eq(l1UpgraderBalanceStart);
 
     const transferUpgrade = await new TestUpgrade__factory(l1Deployer).deploy();
-    const transferValue = BigNumber.from(10);
+    const transferValue = parseEther("0.1");
     const transferExecution = transferUpgrade.interface.encodeFunctionData(
       "upgradeWithValue",
       [
@@ -677,6 +677,14 @@ describe("Governor", function () {
       await l2Signer.sendTransaction({
         to: formData.l2Gov.propose.to,
         data: formData.l2Gov.propose.data,
+      })
+    ).wait();
+
+    // put the l2 value in the l1 timelock
+    await (
+      await l1Signer.sendTransaction({
+        to: l1TimelockContract.address,
+        value: transferValue,
       })
     ).wait();
 
@@ -777,7 +785,7 @@ describe("Governor", function () {
 
     // create a proposal for transfering tokens to rand wallet
     const transferUpgrade = await new TestUpgrade__factory(l2Deployer).deploy();
-    const transferValue = BigNumber.from(11);
+    const transferValue = parseEther("0.11");
     const transferExecution = transferUpgrade.interface.encodeFunctionData(
       "upgradeWithValue",
       [
@@ -819,6 +827,14 @@ describe("Governor", function () {
       await l2Signer.sendTransaction({
         to: formData.l2Gov.propose.to,
         data: formData.l2Gov.propose.data,
+      })
+    ).wait();
+
+    // put the l2 value in the l1 timelock
+    await (
+      await l1Signer.sendTransaction({
+        to: l1TimelockContract.address,
+        value: transferValue,
       })
     ).wait();
 

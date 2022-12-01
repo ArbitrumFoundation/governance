@@ -151,10 +151,13 @@ contract L1ArbitrumTimelock is TimelockControllerUpgradeable, L1ArbitrumMessenge
                 // it's important that only this address, or another DAO controlled one is able to
                 // cancel, otherwise anyone could cancel, and therefore block, the upgrade
                 address(this),
-                // the value supplied as a function arg is completely ignored and the msg.value
-                // is used instead. This is to ensure that an executor will always be able to provide
-                // eth to cover the submission costs
-                msg.value,
+                // the value of the outer message is ignored instead we encode the value along with the other
+                // l2 params. We need to ensure value can be injected via msg.value since the retryable submission cost
+                // calculation is dependent on the l1 base fee, so can't be committed to at the time of
+                // proposal creation. The msg.value is only intended to cover the submission and gas costs
+                // but the l2Value needs to be in this contract already. This can be done by sending value
+                // to the receive function of this contract.
+                l2Value + msg.value,
                 l2Value,
                 L2GasParams({
                     _maxSubmissionCost: submissionCost,
