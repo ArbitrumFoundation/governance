@@ -81,19 +81,6 @@ contract L1ArbitrumTokenTest is Test {
 
     address user = address(141);
 
-    INovaArbOneReverseToken.RegistrationParams arbOneParams = INovaArbOneReverseToken
-        .RegistrationParams({
-        l2TokenAddress: address(247),
-        maxSubmissionCostForCustomGateway: 21,
-        maxSubmissionCostForRouter: 22,
-        maxGasForCustomGateway: 23,
-        maxGasForRouter: 24,
-        gasPriceBid: 25,
-        valueForGateway: 26,
-        valueForRouter: 27,
-        creditBackAddress: address(248)
-    });
-
     INovaArbOneReverseToken.RegistrationParams novaParams = INovaArbOneReverseToken
         .RegistrationParams({
         l2TokenAddress: address(347),
@@ -111,7 +98,7 @@ contract L1ArbitrumTokenTest is Test {
         L1ArbitrumToken token =
             L1ArbitrumToken(TestUtil.deployProxy(address(new L1ArbitrumToken())));
 
-        token.initialize(arbOneRouter, arbOneGateway, novaRouter, novaGateway);
+        token.initialize(arbOneGateway, novaRouter, novaGateway);
 
         return token;
     }
@@ -124,7 +111,6 @@ contract L1ArbitrumTokenTest is Test {
         assertEq(token.symbol(), "ARB", "Invalid symbol");
         assertEq(token.totalSupply(), 0, "Total supply");
 
-        assertEq(token.arbOneRouter(), arbOneRouter, "A1 Router");
         assertEq(token.arbOneGateway(), arbOneGateway, "A1 Gateway");
         assertEq(token.novaRouter(), novaRouter, "Nova Router");
         assertEq(token.novaGateway(), novaGateway, "Nova Gateway");
@@ -133,20 +119,12 @@ contract L1ArbitrumTokenTest is Test {
         token.isArbitrumEnabled();
     }
 
-    function testInitZeroRouter() public {
-        L1ArbitrumToken token =
-            L1ArbitrumToken(TestUtil.deployProxy(address(new L1ArbitrumToken())));
-
-        vm.expectRevert("L1ArbitrumToken: zero arb one router");
-        token.initialize(address(0), arbOneGateway, novaRouter, novaGateway);
-    }
-
     function testInitZeroGateway() public {
         L1ArbitrumToken token =
             L1ArbitrumToken(TestUtil.deployProxy(address(new L1ArbitrumToken())));
 
         vm.expectRevert("L1ArbitrumToken: zero arb one gateway");
-        token.initialize(arbOneRouter, address(0), novaRouter, novaGateway);
+        token.initialize(address(0), novaRouter, novaGateway);
     }
 
     function testInitZeroNovaRouter() public {
@@ -154,7 +132,7 @@ contract L1ArbitrumTokenTest is Test {
             L1ArbitrumToken(TestUtil.deployProxy(address(new L1ArbitrumToken())));
 
         vm.expectRevert("L1ArbitrumToken: zero nova router");
-        token.initialize(arbOneRouter, arbOneGateway, address(0), novaGateway);
+        token.initialize(arbOneGateway, address(0), novaGateway);
     }
 
     function testInitZeroNovaGateway() public {
@@ -162,7 +140,7 @@ contract L1ArbitrumTokenTest is Test {
             L1ArbitrumToken(TestUtil.deployProxy(address(new L1ArbitrumToken())));
 
         vm.expectRevert("L1ArbitrumToken: zero nova gateway");
-        token.initialize(arbOneRouter, arbOneGateway, novaRouter, address(0));
+        token.initialize(arbOneGateway, novaRouter, address(0));
     }
 
     function testBridgeMint() public {
@@ -214,32 +192,11 @@ contract L1ArbitrumTokenTest is Test {
         MockRouter n1Router = new MockRouter();
         MockGateway n1Gateway = new MockGateway();
 
-        token.initialize(
-            address(a1Router), address(a1Gateway), address(n1Router), address(n1Gateway)
+        token.initialize(address(a1Gateway), address(n1Router), address(n1Gateway));
+
+        token.registerTokenOnL2{value: novaParams.valueForGateway + novaParams.valueForRouter}(
+            novaParams
         );
-
-        token.registerTokenOnL2{
-            value: arbOneParams.valueForGateway + arbOneParams.valueForRouter
-                + novaParams.valueForGateway + novaParams.valueForRouter
-        }(arbOneParams, novaParams);
-
-        assertEq(a1Gateway.l2Address(), arbOneParams.l2TokenAddress, "A1 credit");
-        assertEq(a1Gateway.maxGas(), arbOneParams.maxGasForCustomGateway, "A1 max gas");
-        assertEq(a1Gateway.gasPriceBid(), arbOneParams.gasPriceBid, "A1 gas price");
-        assertEq(
-            a1Gateway.maxSubmissionCost(),
-            arbOneParams.maxSubmissionCostForCustomGateway,
-            "A1 max submission"
-        );
-        assertEq(a1Gateway.creditBackAddress(), arbOneParams.creditBackAddress, "A1 credit back");
-        assertEq(a1Gateway.value(), arbOneParams.valueForGateway, "A1 value");
-
-        assertEq(a1Router.gateway(), address(a1Gateway), "A1r gateway");
-        assertEq(a1Router.maxGas(), arbOneParams.maxGasForRouter, "A1r value");
-        assertEq(a1Router.gasPriceBid(), arbOneParams.gasPriceBid, "A1r value");
-        assertEq(a1Router.maxSubmissionCost(), arbOneParams.maxSubmissionCostForRouter, "A1r value");
-        assertEq(a1Router.creditBackAddress(), arbOneParams.creditBackAddress, "A1r value");
-        assertEq(a1Router.value(), arbOneParams.valueForRouter, "A1r value");
 
         assertEq(n1Gateway.l2Address(), novaParams.l2TokenAddress, "N1 credit");
         assertEq(n1Gateway.maxGas(), novaParams.maxGasForCustomGateway, "N1 max gas");
@@ -269,14 +226,11 @@ contract L1ArbitrumTokenTest is Test {
         MockRouter n1Router = new MockRouter();
         MockGateway n1Gateway = new MockGateway();
 
-        token.initialize(
-            address(a1Router), address(a1Gateway), address(n1Router), address(n1Gateway)
-        );
+        token.initialize(address(a1Gateway), address(n1Router), address(n1Gateway));
 
         vm.expectRevert();
-        token.registerTokenOnL2{
-            value: arbOneParams.valueForGateway + arbOneParams.valueForRouter
-                + novaParams.valueForGateway + novaParams.valueForRouter - 1
-        }(arbOneParams, novaParams);
+        token.registerTokenOnL2{value: novaParams.valueForGateway + novaParams.valueForRouter - 1}(
+            novaParams
+        );
     }
 }

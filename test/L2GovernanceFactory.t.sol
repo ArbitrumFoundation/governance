@@ -345,7 +345,8 @@ contract L2GovernanceFactoryTest is Test {
             coreTimelock.hasRole(coreTimelock.EXECUTOR_ROLE(), address(0)), "anyone can execute"
         );
         assertTrue(
-            coreTimelock.hasRole(coreTimelock.CANCELLER_ROLE(), l2EmergencyCouncil), "9/12 council can cancel"
+            coreTimelock.hasRole(coreTimelock.CANCELLER_ROLE(), l2EmergencyCouncil),
+            "9/12 council can cancel"
         );
 
         assertTrue(
