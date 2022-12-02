@@ -46,10 +46,10 @@ export const NOVA_TOKEN_GATEWAY = "0xb19DAC9ab07f9ee2F8002446De0bCA04e44Ec3D9";
 //// L2 Arbitrum token
 // 10 billion tokens (we use parseEther in script to add decimals)
 export const L2_TOKEN_INITIAL_SUPPLY = "10000000000";
-// 2 billion tokens (dummy value atm)
-export const L2_NUM_OF_TOKENS_FOR_TREASURY = "2000000000";
 // 8 billion tokens (dummy value atm)
-export const L2_NUM_OF_TOKENS_FOR_CLAIMING = "8000000000";
+export const L2_NUM_OF_TOKENS_FOR_TREASURY = "8000000000";
+// ~2 billion tokens (based on sum of claimable tokens in JSON file)
+export const L2_NUM_OF_TOKENS_FOR_CLAIMING = "1979800500";
 // receiver of the airdrop leftovers (dummy value atm)
 export const L2_SWEEP_RECECIVER = "0x0B563dfac4940547D04f6B58D719B5AA2e29597d";
 // airdrop claim start block number (dummy value atm)

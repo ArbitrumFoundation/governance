@@ -1,5 +1,5 @@
 import { Address } from "@arbitrum/sdk";
-import { ethers, Signer } from "ethers";
+import { BigNumber, ethers, Signer } from "ethers";
 import { parseEther } from "ethers/lib/utils";
 import {
   ArbitrumTimelock,
@@ -16,6 +16,7 @@ import {
   L2GovernanceFactory__factory,
   ProxyAdmin,
   ProxyAdmin__factory,
+  TokenDistributor,
   TokenDistributor__factory,
   TransparentUpgradeableProxy,
   TransparentUpgradeableProxy__factory,
@@ -37,6 +38,7 @@ import { getDeployers } from "./providerSetup";
 // store address for every deployed contract
 let deployedContracts: { [key: string]: string } = {};
 const DEPLOYED_CONTRACTS_FILE_NAME = "deployedContracts.json";
+const TOKEN_RECIPIENTS_FILE_NAME = "files/recipients.json";
 
 /**
  * Performs each step of the Arbitrum governance deployment process.
@@ -431,7 +433,7 @@ async function postDeploymentL1TokenTasks(
       valueForRouter: 100,
       creditBackAddress: ethDeployerAddress,
     },
-    { value: ethers.utils.parseEther("1"), gasLimit: 3000000 }
+    { value: 100000, gasLimit: 3000000 }
   );
 }
 
@@ -480,23 +482,157 @@ async function deployAndInitTokenDistributor(
     l2DeployResult.token,
     arbInitialSupplyRecipient.provider!
   );
-  await l2Token
-    .connect(arbInitialSupplyRecipient)
-    .transfer(
-      tokenDistributor.address,
-      parseEther(GovernanceConstants.L2_NUM_OF_TOKENS_FOR_CLAIMING)
-    );
+  await (
+    await l2Token
+      .connect(arbInitialSupplyRecipient)
+      .transfer(
+        tokenDistributor.address,
+        parseEther(GovernanceConstants.L2_NUM_OF_TOKENS_FOR_CLAIMING)
+      )
+  ).wait();
 
   // set claim recipients
-  // TODO set actual prod values
-  await tokenDistributor.setRecipients(
-    ["0xD99DD65559341008213A41E17e29777872bab481", "0xFde71E607Fa694284F21F620ac2720291614FaCe"],
-    [parseEther("6000000000"), parseEther("2000000000")],
-    { gasLimit: 3000000 }
-  );
+  await setClaimRecipients(tokenDistributor, arbDeployer);
 
   // transfer ownership to L2 UpgradeExecutor
-  await tokenDistributor.transferOwnership(l2DeployResult.executor);
+  await (await tokenDistributor.transferOwnership(l2DeployResult.executor)).wait();
+}
+
+/**
+ * Sets airdrop recipients in batches. Batch is posted every 1sec, but if gas price gets
+ * above 0.12 gwei we wait until it falls below 0.11 gwei.
+ *
+ * @param tokenDistributor
+ * @param arbDeployer
+ */
+async function setClaimRecipients(tokenDistributor: TokenDistributor, arbDeployer: Signer) {
+  const tokenRecipientsByPoints = require("../" + TOKEN_RECIPIENTS_FILE_NAME);
+  const { tokenRecipients, tokenAmounts } = mapPointsToAmounts(tokenRecipientsByPoints);
+
+  // set recipients in batches
+  const BATCH_SIZE = 100;
+  const numOfBatches = Math.floor(tokenRecipients.length / BATCH_SIZE);
+
+  // 0.12 gwei
+  const GAS_PRICE_UNACCEPTABLE_LIMIT = BigNumber.from(120000000);
+  // 0.11 gwei
+  const GAS_PRICE_ACCEPTABLE_LIMIT = BigNumber.from(110000000);
+
+  for (let i = 0; i <= numOfBatches; i++) {
+    console.log("---- Batch ", i, "/", numOfBatches);
+
+    let gasPriceBestGuess = await arbDeployer.provider!.getGasPrice();
+
+    // if gas price is >0.12 gwei wait until if falls bellow 0.11 gwei
+    if (gasPriceBestGuess.gt(GAS_PRICE_UNACCEPTABLE_LIMIT)) {
+      while (true) {
+        console.log(
+          "Gas price too high: ",
+          ethers.utils.formatUnits(gasPriceBestGuess, "gwei"),
+          " gwei"
+        );
+        console.log("Sleeping 1min");
+        // sleep 1 min, then check if gas price has fallen down enough
+        await new Promise((resolve) => setTimeout(resolve, 60000));
+
+        // check if fell below 0.11 gwei
+        gasPriceBestGuess = await arbDeployer.provider!.getGasPrice();
+        if (gasPriceBestGuess.lte(GAS_PRICE_ACCEPTABLE_LIMIT)) {
+          break;
+        }
+      }
+    }
+
+    // generally sleep 1 second to keep TX fees from going up
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    let recipientsBatch: string[] = [];
+    let amountsBatch: BigNumber[] = [];
+
+    // slice batches
+    if (i < numOfBatches) {
+      recipientsBatch = tokenRecipients.slice(i * BATCH_SIZE, (i + 1) * BATCH_SIZE);
+      amountsBatch = tokenAmounts.slice(i * BATCH_SIZE, (i + 1) * BATCH_SIZE);
+    } else {
+      if (tokenRecipients.length == numOfBatches * BATCH_SIZE) {
+        // nothing left
+        break;
+      }
+      // last remaining batch
+      recipientsBatch = tokenRecipients.slice(i * BATCH_SIZE);
+      amountsBatch = tokenAmounts.slice(i * BATCH_SIZE);
+    }
+
+    // set recipients
+    const txReceipt = await (
+      await tokenDistributor.setRecipients(recipientsBatch, amountsBatch, { gasLimit: 30000000 })
+    ).wait();
+
+    // print gas usage stats
+    console.log("Gas used: ", txReceipt.gasUsed.toString());
+    console.log(
+      "Gas price in gwei: ",
+      ethers.utils.formatUnits(txReceipt.effectiveGasPrice, "gwei")
+    );
+    console.log(
+      "Gas cost in ETH: ",
+      ethers.utils.formatUnits(txReceipt.gasUsed.mul(txReceipt.effectiveGasPrice), "ether")
+    );
+  }
+}
+
+/**
+ * Map points to claimable token amount per account
+ * @param tokenRecipientsByPoints
+ */
+function mapPointsToAmounts(tokenRecipientsByPoints: any) {
+  let tokenRecipients: string[] = [];
+  let tokenAmounts: BigNumber[] = [];
+
+  for (const key in tokenRecipientsByPoints) {
+    tokenRecipients.push(key);
+
+    const points = tokenRecipientsByPoints[key].points;
+    switch (points) {
+      case 3: {
+        tokenAmounts.push(parseEther("3000"));
+        break;
+      }
+      case 4: {
+        tokenAmounts.push(parseEther("4500"));
+        break;
+      }
+      case 5: {
+        tokenAmounts.push(parseEther("6000"));
+        break;
+      }
+      case 6: {
+        tokenAmounts.push(parseEther("9000"));
+        break;
+      }
+      case 7: {
+        tokenAmounts.push(parseEther("10500"));
+        break;
+      }
+      case 8:
+      case 9:
+      case 10:
+      case 11:
+      case 12:
+      case 13:
+      case 14:
+      case 15: {
+        tokenAmounts.push(parseEther("12000"));
+        break;
+      }
+
+      default: {
+        throw new Error("Incorrect number of points for account " + key + ": " + points);
+      }
+    }
+  }
+
+  return { tokenRecipients, tokenAmounts };
 }
 
 function writeAddresses() {
