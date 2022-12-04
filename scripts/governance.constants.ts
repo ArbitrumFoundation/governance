@@ -12,7 +12,7 @@ export const L1_NOVA_ROUTER = "0x90619A5690CEA8514b0CebB8B3c004Cb2Bc15d6e";
 // nova gateway (local network value atm)
 export const L1_NOVA_GATEWAY = "0xFb9d427F048676563CFa57651803587c4bC9D699";
 // Arbitrum inbox on L1 (local network value atm)
-export const L1_ARB_INBOX = "0x8A0Cb192350557bA0702812e17F9913E37683746";
+export const L1_ARB_INBOX = "0x0409127Aa3E66fC4A0E204f7B1D7ABb047640484";
 
 //// L2
 // minimum delay for an operation to become valid (dummy value atm)

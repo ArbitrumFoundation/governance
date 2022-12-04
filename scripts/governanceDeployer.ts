@@ -1,4 +1,8 @@
-import { Address } from "@arbitrum/sdk";
+import { Address, L1ToL2MessageStatus, L1TransactionReceipt } from "@arbitrum/sdk";
+import { Inbox__factory } from "@arbitrum/sdk/dist/lib/abi/factories/Inbox__factory";
+import { L1CustomGateway__factory } from "@arbitrum/sdk/dist/lib/abi/factories/L1CustomGateway__factory";
+import { L2CustomGateway__factory } from "@arbitrum/sdk/dist/lib/abi/factories/L2CustomGateway__factory";
+import { L2GatewayRouter__factory } from "@arbitrum/sdk/dist/lib/abi/factories/L2GatewayRouter__factory";
 import { BigNumber, ethers, Signer } from "ethers";
 import { parseEther } from "ethers/lib/utils";
 import {
@@ -138,8 +142,8 @@ export const deployGovernance = async () => {
     ethDeployer,
     l1TokenProxy,
     l1DeployResult.proxyAdmin,
-    l2DeployResult.token,
-    novaToken.address
+    novaToken.address,
+    novaDeployer
   );
 
   console.log("Post deployment L2 token tasks");
@@ -392,49 +396,97 @@ async function postDeploymentL1TokenTasks(
   ethDeployer: Signer,
   l1TokenProxy: TransparentUpgradeableProxy,
   l1ProxyAdminAddress: string,
-  l2TokenAddress: string,
-  novaTokenAddress: string
+  novaTokenAddress: string,
+  novaDeployer: Signer
 ) {
   // set L1 proxy admin as L1 token's admin
   await (await l1TokenProxy.changeAdmin(l1ProxyAdminAddress)).wait();
 
   // init L1 token
   const l1Token = L1ArbitrumToken__factory.connect(l1TokenProxy.address, ethDeployer);
-  await l1Token.initialize(
-    GovernanceConstants.L1_ARB_ROUTER,
-    GovernanceConstants.L1_ARB_GATEWAY,
-    GovernanceConstants.L1_NOVA_ROUTER,
-    GovernanceConstants.L1_NOVA_GATEWAY
-  );
+  await (
+    await l1Token.initialize(
+      GovernanceConstants.L1_ARB_GATEWAY,
+      GovernanceConstants.L1_NOVA_ROUTER,
+      GovernanceConstants.L1_NOVA_GATEWAY
+    )
+  ).wait();
 
-  // register token on L2
-  /// TODO - properly calculate gas parameters and value to send
-  const ethDeployerAddress = await ethDeployer.getAddress();
-  await l1Token.registerTokenOnL2(
-    {
-      l2TokenAddress: l2TokenAddress,
-      maxSubmissionCostForCustomGateway: 100,
-      maxSubmissionCostForRouter: 100,
-      maxGasForCustomGateway: 100,
-      maxGasForRouter: 100,
-      gasPriceBid: 100,
-      valueForGateway: 100,
-      valueForRouter: 100,
-      creditBackAddress: ethDeployerAddress,
-    },
+  //// register token on L2
+
+  // 1 million gas limit
+  const maxGas = BigNumber.from(1000000);
+  const novaGasPrice = (await novaDeployer.provider!.getGasPrice()).mul(2);
+
+  const novaGateway = L1CustomGateway__factory.connect(await l1Token.novaGateway(), ethDeployer);
+  const novaInbox = Inbox__factory.connect(await novaGateway.inbox(), ethDeployer);
+
+  // calcs for novaGateway
+  const novaGatewayRegistrationData = L2CustomGateway__factory.createInterface().encodeFunctionData(
+    "registerTokenFromL1",
+    [[l1Token.address], [novaTokenAddress]]
+  );
+  const novaGatewaySubmissionFee = (
+    await novaInbox.callStatic.calculateRetryableSubmissionFee(
+      ethers.utils.hexDataLength(novaGatewayRegistrationData),
+      0
+    )
+  ).mul(2);
+  const valueForNovaGateway = novaGatewaySubmissionFee.add(maxGas.mul(novaGasPrice));
+
+  // calcs for novaRouter
+  const novaRouterRegistrationData = L2GatewayRouter__factory.createInterface().encodeFunctionData(
+    "setGateway",
+    [[l1Token.address], [novaGateway.address]]
+  );
+  const novaRouterSubmissionFee = (
+    await novaInbox.callStatic.calculateRetryableSubmissionFee(
+      ethers.utils.hexDataLength(novaRouterRegistrationData),
+      0
+    )
+  ).mul(2);
+  const valueForNovaRouter = novaRouterSubmissionFee.add(maxGas.mul(novaGasPrice));
+
+  // do the registration
+  const extra = 1000;
+  const l1RegistrationTx = await l1Token.registerTokenOnL2(
     {
       l2TokenAddress: novaTokenAddress,
-      maxSubmissionCostForCustomGateway: 100,
-      maxSubmissionCostForRouter: 100,
-      maxGasForCustomGateway: 100,
-      maxGasForRouter: 100,
-      gasPriceBid: 100,
-      valueForGateway: 100,
-      valueForRouter: 100,
-      creditBackAddress: ethDeployerAddress,
+      maxSubmissionCostForCustomGateway: novaGatewaySubmissionFee,
+      maxSubmissionCostForRouter: novaRouterSubmissionFee,
+      maxGasForCustomGateway: maxGas,
+      maxGasForRouter: maxGas,
+      gasPriceBid: novaGasPrice,
+      valueForGateway: valueForNovaGateway,
+      valueForRouter: valueForNovaRouter,
+      creditBackAddress: await ethDeployer.getAddress(),
     },
-    { value: 100000, gasLimit: 3000000 }
+    {
+      value: valueForNovaGateway.add(valueForNovaRouter).add(extra),
+      gasLimit: 3000000,
+    }
   );
+
+  //// wait for L2 TXs
+
+  const l1RegistrationTxReceipt = await L1TransactionReceipt.monkeyPatchWait(
+    l1RegistrationTx
+  ).wait();
+  const l1ToL2Msgs = await l1RegistrationTxReceipt.getL1ToL2Messages(novaDeployer.provider!);
+
+  // status should be REDEEMED
+  const setTokenTx = await l1ToL2Msgs[0].waitForStatus();
+  const setGatewaysTX = await l1ToL2Msgs[1].waitForStatus();
+  if (setTokenTx.status != L1ToL2MessageStatus.REDEEMED) {
+    throw new Error(
+      "Register token L1 to L2 message not redeemed. Status: " + setTokenTx.status.toString()
+    );
+  }
+  if (setGatewaysTX.status != L1ToL2MessageStatus.REDEEMED) {
+    throw new Error(
+      "Set gateway L1 to L2 message not redeemed. Status: " + setGatewaysTX.status.toString()
+    );
+  }
 }
 
 async function postDeploymentL2TokenTasks(

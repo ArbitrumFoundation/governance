@@ -31,6 +31,8 @@ import * as GovernanceConstants from "./governance.constants";
 import { Address } from "@arbitrum/sdk";
 import { Token } from "typescript";
 import { parseEther } from "ethers/lib/utils";
+import { L1CustomGateway__factory } from "@arbitrum/sdk/dist/lib/abi/factories/L1CustomGateway__factory";
+import { L1GatewayRouter__factory } from "@arbitrum/sdk/dist/lib/abi/factories/L1GatewayRouter__factory";
 
 // JSON file which contains all the deployed contract addresses
 const DEPLOYED_CONTRACTS_FILE_NAME = "deployedContracts.json";
@@ -47,7 +49,12 @@ export const verifyDeployment = async () => {
 
   console.log("Verify L1 contracts are properly deployed");
   await verifyL1GovernanceFactory(contracts["l1GovernanceFactory"], ethDeployer);
-  await verifyL1Token(contracts["l1TokenProxy"], contracts["l1ProxyAdmin"], ethDeployer);
+  await verifyL1Token(
+    contracts["l1TokenProxy"],
+    contracts["l1ProxyAdmin"],
+    contracts["novaTokenProxy"],
+    ethDeployer
+  );
   await verifyL1UpgradeExecutor(
     contracts["l1Executor"],
     contracts["l1Timelock"],
@@ -96,7 +103,6 @@ export const verifyDeployment = async () => {
     contracts["l1TokenProxy"],
     contracts["l2Executor"],
     contracts["l2ProxyAdmin"],
-    contracts["l2TokenDistributor"],
     arbDeployer
   );
   await verifyL2TreasuryGovernor(
@@ -161,6 +167,7 @@ async function verifyL1GovernanceFactory(
 async function verifyL1Token(
   l1Token: L1ArbitrumToken,
   l1ProxyAdmin: ProxyAdmin,
+  novaToken: L2CustomGatewayToken,
   ethDeployer: Signer
 ) {
   //// check proxy admin
@@ -179,11 +186,6 @@ async function verifyL1Token(
     "Incorrect arb gateway set on L1Token"
   );
   assertEquals(
-    await l1Token.arbOneRouter(),
-    GovernanceConstants.L1_ARB_ROUTER,
-    "Incorrect arb router set on L1Token"
-  );
-  assertEquals(
     await l1Token.novaGateway(),
     GovernanceConstants.L1_NOVA_GATEWAY,
     "Incorrect Nova gateway set on L1Token"
@@ -194,7 +196,19 @@ async function verifyL1Token(
     "Incorrect Nova router set on L1Token"
   );
 
-  //// TODO add token registration check
+  //// check token registration was successful
+  const novaGateway = L1CustomGateway__factory.connect(await l1Token.novaGateway(), ethDeployer);
+  const novaRouter = L1GatewayRouter__factory.connect(await l1Token.novaRouter(), ethDeployer);
+  assertEquals(
+    await novaGateway.l1ToL2Token(l1Token.address),
+    novaToken.address,
+    "Incorrect L1Token to NovaToken mapping on Nova gateway"
+  );
+  assertEquals(
+    await novaRouter.l1TokenToGateway(l1Token.address),
+    novaGateway.address,
+    "Incorrect L1Token to Nova gateway mapping on Nova router"
+  );
 }
 
 /**
@@ -540,7 +554,6 @@ async function verifyL2Token(
   l1Token: L1ArbitrumToken,
   l2Executor: UpgradeExecutor,
   l2ProxyAdmin: ProxyAdmin,
-  l2TokenDistributor: TokenDistributor,
   arbDeployer: Signer
 ) {
   //// check ownership
