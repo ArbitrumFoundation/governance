@@ -152,9 +152,6 @@ export const deployGovernance = async () => {
   // deploy ARB distributor
   console.log("Deploy TokenDistributor");
   await deployAndInitTokenDistributor(arbDeployer, l2DeployResult, arbDeployer);
-
-  console.log("Write deployed contract addresses to deployedContracts.json");
-  writeAddresses();
 };
 
 async function deployL1LogicContracts(ethDeployer: Signer) {
@@ -698,7 +695,13 @@ function writeAddresses() {
 
 async function main() {
   console.log("Start governance deployment process...");
-  await deployGovernance();
+  try {
+    await deployGovernance();
+  } finally {
+    // write addresses of deployed contracts even when exception is thrown
+    console.log("Write deployed contract addresses to deployedContracts.json");
+    writeAddresses();
+  }
   console.log("Deployment finished!");
 }
 
