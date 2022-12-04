@@ -552,7 +552,7 @@ async function deployAndInitTokenDistributor(
 
 /**
  * Sets airdrop recipients in batches. Batch is posted every 1sec, but if gas price gets
- * above 0.12 gwei we wait until it falls below 0.11 gwei.
+ * above 0.12 gwei we wait until it falls back to base gas price of 0.1 gwei.
  *
  * @param tokenDistributor
  * @param arbDeployer
@@ -567,15 +567,15 @@ async function setClaimRecipients(tokenDistributor: TokenDistributor, arbDeploye
 
   // 0.12 gwei
   const GAS_PRICE_UNACCEPTABLE_LIMIT = BigNumber.from(120000000);
-  // 0.11 gwei
-  const GAS_PRICE_ACCEPTABLE_LIMIT = BigNumber.from(110000000);
+  // 0.1 gwei
+  const BASE_GAS_PRICE = BigNumber.from(100000000);
 
   for (let i = 0; i <= numOfBatches; i++) {
     console.log("---- Batch ", i, "/", numOfBatches);
 
     let gasPriceBestGuess = await arbDeployer.provider!.getGasPrice();
 
-    // if gas price is >0.12 gwei wait until if falls bellow 0.11 gwei
+    // if gas price is >0.12 gwei wait until if falls to 0.1 gwei
     if (gasPriceBestGuess.gt(GAS_PRICE_UNACCEPTABLE_LIMIT)) {
       while (true) {
         console.log(
@@ -583,13 +583,13 @@ async function setClaimRecipients(tokenDistributor: TokenDistributor, arbDeploye
           ethers.utils.formatUnits(gasPriceBestGuess, "gwei"),
           " gwei"
         );
-        console.log("Sleeping 1min");
-        // sleep 1 min, then check if gas price has fallen down enough
-        await new Promise((resolve) => setTimeout(resolve, 60000));
+        console.log("Sleeping 30 sec");
+        // sleep 30 sec, then check if gas price has fallen down
+        await new Promise((resolve) => setTimeout(resolve, 30000));
 
-        // check if fell below 0.11 gwei
+        // check if fell back to 0.1 gwei
         gasPriceBestGuess = await arbDeployer.provider!.getGasPrice();
-        if (gasPriceBestGuess.lte(GAS_PRICE_ACCEPTABLE_LIMIT)) {
+        if (gasPriceBestGuess.eq(BASE_GAS_PRICE)) {
           break;
         }
       }
