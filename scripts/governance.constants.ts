@@ -56,3 +56,7 @@ export const L2_SWEEP_RECECIVER = "0x0B563dfac4940547D04f6B58D719B5AA2e29597d";
 export const L2_CLAIM_PERIOD_START = 16100000;
 // airdrop claim end block number (dummy value atm)
 export const L2_CLAIM_PERIOD_END = 16200000;
+// num of airdrop recipient batches that were successfully set, by default 0. If deployer script fails
+// while setting recipient batches, this value can be updated so in the next run deployer scripts continues
+// setting recipients from the right batch (where it failed the last time)
+export const L2_NUM_OF_RECIPIENT_BATCHES_ALREADY_SET = 0;

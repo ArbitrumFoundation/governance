@@ -570,7 +570,11 @@ async function setClaimRecipients(tokenDistributor: TokenDistributor, arbDeploye
   // 0.1 gwei
   const BASE_GAS_PRICE = BigNumber.from(100000000);
 
-  for (let i = 0; i <= numOfBatches; i++) {
+  for (
+    let i = GovernanceConstants.L2_NUM_OF_RECIPIENT_BATCHES_ALREADY_SET;
+    i <= numOfBatches;
+    i++
+  ) {
     console.log("---- Batch ", i, "/", numOfBatches);
 
     let gasPriceBestGuess = await arbDeployer.provider!.getGasPrice();
