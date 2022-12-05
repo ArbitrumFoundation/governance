@@ -549,7 +549,7 @@ async function deployAndInitTokenDistributor(
 
 /**
  * Sets airdrop recipients in batches. Batch is posted every 1sec, but if gas price gets
- * above 0.12 gwei we wait until it falls back to base gas price of 0.1 gwei.
+ * above base price we wait until it falls back to base gas price of 0.1 gwei.
  *
  * @param tokenDistributor
  * @param arbDeployer
@@ -562,8 +562,6 @@ async function setClaimRecipients(tokenDistributor: TokenDistributor, arbDeploye
   const BATCH_SIZE = 100;
   const numOfBatches = Math.floor(tokenRecipients.length / BATCH_SIZE);
 
-  // 0.12 gwei
-  const GAS_PRICE_UNACCEPTABLE_LIMIT = BigNumber.from(120000000);
   // 0.1 gwei
   const BASE_GAS_PRICE = BigNumber.from(100000000);
 
@@ -576,8 +574,8 @@ async function setClaimRecipients(tokenDistributor: TokenDistributor, arbDeploye
 
     let gasPriceBestGuess = await arbDeployer.provider!.getGasPrice();
 
-    // if gas price is >0.12 gwei wait until if falls to 0.1 gwei
-    if (gasPriceBestGuess.gt(GAS_PRICE_UNACCEPTABLE_LIMIT)) {
+    // if gas price raises above base price wait until if falls back
+    if (gasPriceBestGuess.gt(BASE_GAS_PRICE)) {
       while (true) {
         console.log(
           "Gas price too high: ",
