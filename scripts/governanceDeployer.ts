@@ -108,11 +108,11 @@ export const deployGovernance = async () => {
     upgradeExecutor
   );
 
+  console.log("Deploy and init L1 Arbitrum token");
+  const { l1Token } = await deployAndInitL1Token(l1GovernanceFactory, ethDeployer);
+
   console.log("Deploy reverse gateways");
   await deployReverseGateways(l1GovernanceFactory, l2GovernanceFactory, ethDeployer, arbDeployer);
-
-  console.log("Deploy and init L1 Arbitrum token");
-  const { l1Token, l1TokenProxy } = await deployAndInitL1Token(ethDeployer);
 
   console.log("Deploy UpgradeExecutor to Nova");
   const { novaProxyAdmin, novaUpgradeExecutorProxy } = await deployNovaUpgradeExecutor(
@@ -145,13 +145,7 @@ export const deployGovernance = async () => {
   );
 
   console.log("Post deployment L1 token tasks");
-  await postDeploymentL1TokenTasks(
-    ethDeployer,
-    l1TokenProxy,
-    l1DeployResult.proxyAdmin,
-    novaToken.address,
-    novaDeployer
-  );
+  await postDeploymentL1TokenTasks(ethDeployer, l1Token, novaToken.address, novaDeployer);
 
   console.log("Post deployment L2 token tasks");
   await postDeploymentL2TokenTasks(arbDeployer, l2DeployResult);
@@ -220,6 +214,37 @@ async function deployL2GovernanceFactory(
   deployedContracts["l2GovernanceFactory"] = l2GovernanceFactory.address;
 
   return l2GovernanceFactory;
+}
+
+async function deployAndInitL1Token(l1GovernanceFactory: L1GovernanceFactory, ethDeployer: Signer) {
+  // deploy logic
+  const l1TokenLogic = await new L1ArbitrumToken__factory(ethDeployer).deploy();
+
+  // deploy proxy
+  const l1ProxyAdmin = await l1GovernanceFactory.proxyAdminAddress();
+  const l1TokenProxy = await new TransparentUpgradeableProxy__factory(ethDeployer).deploy(
+    l1TokenLogic.address,
+    l1ProxyAdmin,
+    "0x",
+    { gasLimit: 3000000 }
+  );
+  await l1TokenProxy.deployed();
+
+  // store addresses
+  deployedContracts["l1TokenLogic"] = l1TokenLogic.address;
+  deployedContracts["l1TokenProxy"] = l1TokenProxy.address;
+
+  // init L1 token
+  const l1Token = L1ArbitrumToken__factory.connect(l1TokenProxy.address, ethDeployer);
+  await (
+    await l1Token.initialize(
+      GovernanceConstants.L1_ARB_GATEWAY,
+      GovernanceConstants.L1_NOVA_ROUTER,
+      GovernanceConstants.L1_NOVA_GATEWAY
+    )
+  ).wait();
+
+  return { l1Token };
 }
 
 async function deployReverseGateways(
@@ -296,28 +321,6 @@ async function deployReverseGateways(
       GovernanceConstants.L2_GATEWAY_ROUTER
     )
   ).wait();
-}
-
-async function deployAndInitL1Token(ethDeployer: Signer) {
-  // deploy logic
-  const l1TokenLogic = await new L1ArbitrumToken__factory(ethDeployer).deploy();
-
-  // deploy proxy
-  const l1TokenProxy = await new TransparentUpgradeableProxy__factory(ethDeployer).deploy(
-    l1TokenLogic.address,
-    await ethDeployer.getAddress(),
-    "0x",
-    { gasLimit: 3000000 }
-  );
-  await l1TokenProxy.deployed();
-
-  const l1Token = L1ArbitrumToken__factory.connect(l1TokenProxy.address, ethDeployer);
-
-  // store addresses
-  deployedContracts["l1TokenLogic"] = l1TokenLogic.address;
-  deployedContracts["l1TokenProxy"] = l1TokenProxy.address;
-
-  return { l1Token, l1TokenProxy };
 }
 
 async function deployNovaUpgradeExecutor(novaDeployer: Signer) {
@@ -475,25 +478,11 @@ async function setExecutorRoles(
 
 async function postDeploymentL1TokenTasks(
   ethDeployer: Signer,
-  l1TokenProxy: TransparentUpgradeableProxy,
-  l1ProxyAdminAddress: string,
+  l1Token: L1ArbitrumToken,
   novaTokenAddress: string,
   novaDeployer: Signer
 ) {
-  // set L1 proxy admin as L1 token's admin
-  await (await l1TokenProxy.changeAdmin(l1ProxyAdminAddress)).wait();
-
-  // init L1 token
-  const l1Token = L1ArbitrumToken__factory.connect(l1TokenProxy.address, ethDeployer);
-  await (
-    await l1Token.initialize(
-      GovernanceConstants.L1_ARB_GATEWAY,
-      GovernanceConstants.L1_NOVA_ROUTER,
-      GovernanceConstants.L1_NOVA_GATEWAY
-    )
-  ).wait();
-
-  //// register token on L2
+  //// register token on Nova
 
   // 1 million gas limit
   const maxGas = BigNumber.from(1000000);
