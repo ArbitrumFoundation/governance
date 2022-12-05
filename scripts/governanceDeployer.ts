@@ -28,6 +28,7 @@ import {
   UpgradeExecutor__factory,
 } from "../typechain-types";
 import {
+  L1ForceOnlyReverseCustomGateway,
   L1ForceOnlyReverseCustomGateway__factory,
   L2CustomGatewayToken__factory,
   L2ReverseCustomGateway__factory,
@@ -112,7 +113,12 @@ export const deployGovernance = async () => {
   const { l1Token } = await deployAndInitL1Token(l1GovernanceFactory, ethDeployer);
 
   console.log("Deploy reverse gateways");
-  await deployReverseGateways(l1GovernanceFactory, l2GovernanceFactory, ethDeployer, arbDeployer);
+  const l1ReverseGateway = await deployReverseGateways(
+    l1GovernanceFactory,
+    l2GovernanceFactory,
+    ethDeployer,
+    arbDeployer
+  );
 
   console.log("Deploy UpgradeExecutor to Nova");
   const { novaProxyAdmin, novaUpgradeExecutorProxy } = await deployNovaUpgradeExecutor(
@@ -145,7 +151,15 @@ export const deployGovernance = async () => {
   );
 
   console.log("Post deployment L1 token tasks");
-  await postDeploymentL1TokenTasks(ethDeployer, l1Token, novaToken.address, novaDeployer);
+  await postDeploymentL1TokenTasks(
+    l1Token,
+    l2DeployResult.token,
+    novaToken.address,
+    l1ReverseGateway,
+    ethDeployer,
+    arbDeployer,
+    novaDeployer
+  );
 
   console.log("Post deployment L2 token tasks");
   await postDeploymentL2TokenTasks(arbDeployer, l2DeployResult);
@@ -252,7 +266,7 @@ async function deployReverseGateways(
   l2GovernanceFactory: L2GovernanceFactory,
   ethDeployer: Signer,
   arbDeployer: Signer
-) {
+): Promise<L1ForceOnlyReverseCustomGateway> {
   //// deploy reverse gateway on L1
 
   // deploy logic
@@ -298,7 +312,7 @@ async function deployReverseGateways(
 
   // init L1 reverse gateway
   const l1ReverseCustomGateway = L1ForceOnlyReverseCustomGateway__factory.connect(
-    l2ReverseCustomGatewayProxy.address,
+    l1ReverseCustomGatewayProxy.address,
     ethDeployer
   );
   await (
@@ -306,7 +320,7 @@ async function deployReverseGateways(
       l2ReverseCustomGatewayProxy.address,
       GovernanceConstants.L1_ARB_ROUTER,
       GovernanceConstants.L1_ARB_INBOX,
-      l1ProxyAdmin
+      await ethDeployer.getAddress()
     )
   ).wait();
 
@@ -321,6 +335,8 @@ async function deployReverseGateways(
       GovernanceConstants.L2_GATEWAY_ROUTER
     )
   ).wait();
+
+  return l1ReverseCustomGateway;
 }
 
 async function deployNovaUpgradeExecutor(novaDeployer: Signer) {
@@ -477,11 +493,57 @@ async function setExecutorRoles(
 }
 
 async function postDeploymentL1TokenTasks(
-  ethDeployer: Signer,
   l1Token: L1ArbitrumToken,
+  arbTokenAddress: string,
   novaTokenAddress: string,
+  l1ReverseCustomGateway: L1ForceOnlyReverseCustomGateway,
+  ethDeployer: Signer,
+  arbDeployer: Signer,
   novaDeployer: Signer
 ) {
+  //// register token on ArbOne
+
+  // 1 million gas limit
+  const arbMaxGas = BigNumber.from(1000000);
+  const arbGasPrice = (await arbDeployer.provider!.getGasPrice()).mul(2);
+
+  const arbInbox = Inbox__factory.connect(await l1ReverseCustomGateway.inbox(), ethDeployer);
+  const arbGatewayRegistrationData = L2CustomGateway__factory.createInterface().encodeFunctionData(
+    "registerTokenFromL1",
+    [[l1Token.address], [arbTokenAddress]]
+  );
+
+  const arbGatewaySubmissionFee = (
+    await arbInbox.callStatic.calculateRetryableSubmissionFee(
+      ethers.utils.hexDataLength(arbGatewayRegistrationData),
+      0
+    )
+  ).mul(2);
+  const valueForArbGateway = arbGatewaySubmissionFee.add(arbMaxGas.mul(arbGasPrice));
+
+  const l1ArbRegistrationTx = await l1ReverseCustomGateway.forceRegisterTokenToL2(
+    [l1Token.address],
+    [arbTokenAddress],
+    arbMaxGas,
+    arbGasPrice,
+    arbGatewaySubmissionFee,
+    { gasLimit: 3000000, value: valueForArbGateway.add(1000) }
+  );
+
+  //// wait for ArbOne TXs
+  const l1ArbRegistrationTxReceipt = await L1TransactionReceipt.monkeyPatchWait(
+    l1ArbRegistrationTx
+  ).wait();
+  const l1ToArbMsgs = await l1ArbRegistrationTxReceipt.getL1ToL2Messages(arbDeployer.provider!);
+
+  // status should be REDEEMED
+  const arbSetTokenTx = await l1ToArbMsgs[0].waitForStatus();
+  if (arbSetTokenTx.status != L1ToL2MessageStatus.REDEEMED) {
+    throw new Error(
+      "Register token L1 to L2 message not redeemed. Status: " + arbSetTokenTx.status.toString()
+    );
+  }
+
   //// register token on Nova
 
   // 1 million gas limit
@@ -519,7 +581,7 @@ async function postDeploymentL1TokenTasks(
 
   // do the registration
   const extra = 1000;
-  const l1RegistrationTx = await l1Token.registerTokenOnL2(
+  const l1NovaRegistrationTx = await l1Token.registerTokenOnL2(
     {
       l2TokenAddress: novaTokenAddress,
       maxSubmissionCostForCustomGateway: novaGatewaySubmissionFee,
@@ -539,22 +601,22 @@ async function postDeploymentL1TokenTasks(
 
   //// wait for L2 TXs
 
-  const l1RegistrationTxReceipt = await L1TransactionReceipt.monkeyPatchWait(
-    l1RegistrationTx
+  const l1NovaRegistrationTxReceipt = await L1TransactionReceipt.monkeyPatchWait(
+    l1NovaRegistrationTx
   ).wait();
-  const l1ToL2Msgs = await l1RegistrationTxReceipt.getL1ToL2Messages(novaDeployer.provider!);
+  const l1ToNovaMsgs = await l1NovaRegistrationTxReceipt.getL1ToL2Messages(novaDeployer.provider!);
 
   // status should be REDEEMED
-  const setTokenTx = await l1ToL2Msgs[0].waitForStatus();
-  const setGatewaysTX = await l1ToL2Msgs[1].waitForStatus();
-  if (setTokenTx.status != L1ToL2MessageStatus.REDEEMED) {
+  const novaSetTokenTx = await l1ToNovaMsgs[0].waitForStatus();
+  const novaSetGatewaysTX = await l1ToNovaMsgs[1].waitForStatus();
+  if (novaSetTokenTx.status != L1ToL2MessageStatus.REDEEMED) {
     throw new Error(
-      "Register token L1 to L2 message not redeemed. Status: " + setTokenTx.status.toString()
+      "Register token L1 to L2 message not redeemed. Status: " + novaSetTokenTx.status.toString()
     );
   }
-  if (setGatewaysTX.status != L1ToL2MessageStatus.REDEEMED) {
+  if (novaSetGatewaysTX.status != L1ToL2MessageStatus.REDEEMED) {
     throw new Error(
-      "Set gateway L1 to L2 message not redeemed. Status: " + setGatewaysTX.status.toString()
+      "Set gateway L1 to L2 message not redeemed. Status: " + novaSetGatewaysTX.status.toString()
     );
   }
 }
