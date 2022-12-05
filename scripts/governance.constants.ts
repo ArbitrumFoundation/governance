@@ -49,13 +49,15 @@ export const L2_TOKEN_INITIAL_SUPPLY = "10000000000";
 // 8 billion tokens (dummy value atm)
 export const L2_NUM_OF_TOKENS_FOR_TREASURY = "8000000000";
 // ~2 billion tokens (based on sum of claimable tokens in JSON file)
-export const L2_NUM_OF_TOKENS_FOR_CLAIMING = "1979800500";
+export const L2_NUM_OF_TOKENS_FOR_CLAIMING = "48000";
 // receiver of the airdrop leftovers (dummy value atm)
 export const L2_SWEEP_RECECIVER = "0x0B563dfac4940547D04f6B58D719B5AA2e29597d";
 // airdrop claim start block number (dummy value atm)
 export const L2_CLAIM_PERIOD_START = 16100000;
 // airdrop claim end block number (dummy value atm)
 export const L2_CLAIM_PERIOD_END = 16200000;
+// total number of airdrop recipients (dummy value atm)
+export const L2_NUM_OF_RECIPIENTS = 4;
 // num of airdrop recipient batches that were successfully set, by default 0. If deployer script fails
 // while setting recipient batches, this value can be updated so in the next run deployer scripts continues
 // setting recipients from the right batch (where it failed the last time)

@@ -36,6 +36,7 @@ import {
   DeployedEventObject as L2DeployedEventObject,
   L2GovernanceFactory,
 } from "../typechain-types/src/L2GovernanceFactory";
+import { CanClaimEvent } from "../typechain-types/src/TokenDistributor";
 import * as GovernanceConstants from "./governance.constants";
 import { getDeployers } from "./providerSetup";
 
@@ -543,6 +544,16 @@ async function deployAndInitTokenDistributor(
   // set claim recipients
   await setClaimRecipients(tokenDistributor, arbDeployer);
 
+  // check num of recipients and claimable amount before transferring ownership
+  const numOfRecipientsSet = await getNumberOfRecipientsSet(tokenDistributor);
+  if (numOfRecipientsSet != GovernanceConstants.L2_NUM_OF_RECIPIENTS) {
+    throw new Error("Incorrect number of recipients set: " + numOfRecipientsSet);
+  }
+  const totalClaimable = await tokenDistributor.totalClaimable();
+  if (!totalClaimable.eq(parseEther(GovernanceConstants.L2_NUM_OF_TOKENS_FOR_CLAIMING))) {
+    throw new Error("Incorrect totalClaimable amount of tokenDistributor: " + totalClaimable);
+  }
+
   // transfer ownership to L2 UpgradeExecutor
   await (await tokenDistributor.transferOwnership(l2DeployResult.executor)).wait();
 }
@@ -630,6 +641,17 @@ async function setClaimRecipients(tokenDistributor: TokenDistributor, arbDeploye
       ethers.utils.formatUnits(txReceipt.gasUsed.mul(txReceipt.effectiveGasPrice), "ether")
     );
   }
+}
+
+/**
+ * Get number of recipients set by checking the number of 'CanClaim' events emitted
+ * @param tokenDistributor
+ * @returns
+ */
+async function getNumberOfRecipientsSet(tokenDistributor: TokenDistributor): Promise<number> {
+  const canClaimFilter = tokenDistributor.filters.CanClaim();
+  const canClaimEvents = await tokenDistributor.queryFilter(canClaimFilter);
+  return canClaimEvents.length;
 }
 
 /**
