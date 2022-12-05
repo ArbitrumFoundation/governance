@@ -62,3 +62,5 @@ export const L2_NUM_OF_RECIPIENTS = 4;
 // while setting recipient batches, this value can be updated so in the next run deployer scripts continues
 // setting recipients from the right batch (where it failed the last time)
 export const L2_NUM_OF_RECIPIENT_BATCHES_ALREADY_SET = 0;
+// router on ARB L2 (local network value atm)
+export const L2_GATEWAY_ROUTER = "0x76998688606cBDBaaeC22f45AF549e7519Fa642D";

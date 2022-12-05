@@ -27,7 +27,11 @@ import {
   UpgradeExecutor,
   UpgradeExecutor__factory,
 } from "../typechain-types";
-import { L2CustomGatewayToken__factory } from "../typechain-types-imported/index";
+import {
+  L1ForceOnlyReverseCustomGateway__factory,
+  L2CustomGatewayToken__factory,
+  L2ReverseCustomGateway__factory,
+} from "../typechain-types-imported/index";
 import {
   DeployedEventObject as L1DeployedEventObject,
   L1GovernanceFactory,
@@ -36,7 +40,6 @@ import {
   DeployedEventObject as L2DeployedEventObject,
   L2GovernanceFactory,
 } from "../typechain-types/src/L2GovernanceFactory";
-import { CanClaimEvent } from "../typechain-types/src/TokenDistributor";
 import * as GovernanceConstants from "./governance.constants";
 import { getDeployers } from "./providerSetup";
 
@@ -95,9 +98,6 @@ export const deployGovernance = async () => {
   console.log("Deploy L1 governance factory");
   const l1GovernanceFactory = await deployL1GovernanceFactory(ethDeployer);
 
-  console.log("Deploy and init L1 Arbitrum token");
-  const { l1Token, l1TokenProxy } = await deployAndInitL1Token(ethDeployer);
-
   console.log("Deploy L2 governance factory");
   const l2GovernanceFactory = await deployL2GovernanceFactory(
     arbDeployer,
@@ -107,6 +107,12 @@ export const deployGovernance = async () => {
     l2TokenLogic,
     upgradeExecutor
   );
+
+  console.log("Deploy reverse gateways");
+  await deployReverseGateways(l1GovernanceFactory, l2GovernanceFactory, ethDeployer, arbDeployer);
+
+  console.log("Deploy and init L1 Arbitrum token");
+  const { l1Token, l1TokenProxy } = await deployAndInitL1Token(ethDeployer);
 
   console.log("Deploy UpgradeExecutor to Nova");
   const { novaProxyAdmin, novaUpgradeExecutorProxy } = await deployNovaUpgradeExecutor(
@@ -191,28 +197,6 @@ async function deployL1GovernanceFactory(ethDeployer: Signer) {
   return l1GovernanceFactory;
 }
 
-async function deployAndInitL1Token(ethDeployer: Signer) {
-  // deploy logic
-  const l1TokenLogic = await new L1ArbitrumToken__factory(ethDeployer).deploy();
-
-  // deploy proxy
-  const l1TokenProxy = await new TransparentUpgradeableProxy__factory(ethDeployer).deploy(
-    l1TokenLogic.address,
-    ethDeployer.getAddress(),
-    "0x",
-    { gasLimit: 3000000 }
-  );
-  await l1TokenProxy.deployed();
-
-  const l1Token = L1ArbitrumToken__factory.connect(l1TokenProxy.address, ethDeployer);
-
-  // store addresses
-  deployedContracts["l1TokenLogic"] = l1TokenLogic.address;
-  deployedContracts["l1TokenProxy"] = l1TokenProxy.address;
-
-  return { l1Token, l1TokenProxy };
-}
-
 async function deployL2GovernanceFactory(
   arbDeployer: Signer,
   timelockLogic: ArbitrumTimelock,
@@ -230,11 +214,110 @@ async function deployL2GovernanceFactory(
     l2TokenLogic.address,
     upgradeExecutor.address
   );
+  await l2GovernanceFactory.deployed();
 
   // store address
   deployedContracts["l2GovernanceFactory"] = l2GovernanceFactory.address;
 
   return l2GovernanceFactory;
+}
+
+async function deployReverseGateways(
+  l1GovernanceFactory: L1GovernanceFactory,
+  l2GovernanceFactory: L2GovernanceFactory,
+  ethDeployer: Signer,
+  arbDeployer: Signer
+) {
+  //// deploy reverse gateway on L1
+
+  // deploy logic
+  const l1ReverseCustomGatewayLogic = await new L1ForceOnlyReverseCustomGateway__factory(
+    ethDeployer
+  ).deploy();
+
+  // deploy proxy
+  const l1ProxyAdmin = await l1GovernanceFactory.proxyAdminAddress();
+  const l1ReverseCustomGatewayProxy = await new TransparentUpgradeableProxy__factory(
+    ethDeployer
+  ).deploy(l1ReverseCustomGatewayLogic.address, l1ProxyAdmin, "0x", {
+    gasLimit: 3000000,
+  });
+  await l1ReverseCustomGatewayProxy.deployed();
+
+  // store addresses
+  deployedContracts["l1ReverseCustomGatewayLogic"] = l1ReverseCustomGatewayLogic.address;
+  deployedContracts["l1ReverseCustomGatewayProxy"] = l1ReverseCustomGatewayProxy.address;
+
+  //// deploy reverse gateway on L2
+
+  // deploy logic
+  const l2ReverseCustomGatewayLogic = await new L2ReverseCustomGateway__factory(
+    arbDeployer
+  ).deploy();
+  await l2ReverseCustomGatewayLogic.deployed();
+
+  // deploy proxy
+  const l2ProxyAdmin = await l2GovernanceFactory.proxyAdminLogic();
+  const l2ReverseCustomGatewayProxy = await new TransparentUpgradeableProxy__factory(
+    arbDeployer
+  ).deploy(l2ReverseCustomGatewayLogic.address, l2ProxyAdmin, "0x", {
+    gasLimit: 3000000,
+  });
+  await l2ReverseCustomGatewayProxy.deployed();
+
+  //store addresses
+  deployedContracts["l2ReverseCustomGatewayLogic"] = l2ReverseCustomGatewayLogic.address;
+  deployedContracts["l2ReverseCustomGatewayProxy"] = l2ReverseCustomGatewayProxy.address;
+
+  //// init gateways
+
+  // init L1 reverse gateway
+  const l1ReverseCustomGateway = L1ForceOnlyReverseCustomGateway__factory.connect(
+    l2ReverseCustomGatewayProxy.address,
+    ethDeployer
+  );
+  await (
+    await l1ReverseCustomGateway.initialize(
+      l2ReverseCustomGatewayProxy.address,
+      GovernanceConstants.L1_ARB_ROUTER,
+      GovernanceConstants.L1_ARB_INBOX,
+      l1ProxyAdmin
+    )
+  ).wait();
+
+  // init L2 reverse gateway
+  const l2ReverseCustomGateway = L2ReverseCustomGateway__factory.connect(
+    l2ReverseCustomGatewayProxy.address,
+    arbDeployer
+  );
+  await (
+    await l2ReverseCustomGateway.initialize(
+      l1ReverseCustomGateway.address,
+      GovernanceConstants.L2_GATEWAY_ROUTER
+    )
+  ).wait();
+}
+
+async function deployAndInitL1Token(ethDeployer: Signer) {
+  // deploy logic
+  const l1TokenLogic = await new L1ArbitrumToken__factory(ethDeployer).deploy();
+
+  // deploy proxy
+  const l1TokenProxy = await new TransparentUpgradeableProxy__factory(ethDeployer).deploy(
+    l1TokenLogic.address,
+    await ethDeployer.getAddress(),
+    "0x",
+    { gasLimit: 3000000 }
+  );
+  await l1TokenProxy.deployed();
+
+  const l1Token = L1ArbitrumToken__factory.connect(l1TokenProxy.address, ethDeployer);
+
+  // store addresses
+  deployedContracts["l1TokenLogic"] = l1TokenLogic.address;
+  deployedContracts["l1TokenProxy"] = l1TokenProxy.address;
+
+  return { l1Token, l1TokenProxy };
 }
 
 async function deployNovaUpgradeExecutor(novaDeployer: Signer) {
