@@ -559,7 +559,7 @@ async function deployAndInitTokenDistributor(
 }
 
 /**
- * Sets airdrop recipients in batches. Batch is posted every 1sec, but if gas price gets
+ * Sets airdrop recipients in batches. Batch is posted every 2sec, but if gas price gets
  * above base price we wait until it falls back to base gas price of 0.1 gwei.
  *
  * @param tokenDistributor
@@ -605,8 +605,8 @@ async function setClaimRecipients(tokenDistributor: TokenDistributor, arbDeploye
       }
     }
 
-    // generally sleep 1 second to keep TX fees from going up
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    // generally sleep 2 seconds to keep TX fees from going up, and to avoid filling all the blockspace
+    await new Promise((resolve) => setTimeout(resolve, 2000));
 
     let recipientsBatch: string[] = [];
     let amountsBatch: BigNumber[] = [];
