@@ -30,6 +30,7 @@ import {
   L1ForceOnlyReverseCustomGateway__factory,
   L2CustomGatewayToken,
   L2CustomGatewayToken__factory,
+  L2ReverseCustomGateway,
   L2ReverseCustomGateway__factory,
 } from "../typechain-types-imported";
 import { getDeployers } from "./providerSetup";
@@ -78,6 +79,13 @@ export const verifyDeployment = async () => {
     ethDeployer
   );
   await verifyL1ProxyAdmin(contracts["l1ProxyAdmin"], contracts["l1Executor"]);
+
+  await verifyL1ReverseGateway(
+    contracts["l1ReverseCustomGatewayProxy"],
+    contracts["l2ReverseCustomGatewayProxy"],
+    contracts["l1ProxyAdmin"],
+    ethDeployer
+  );
 
   //// L2 contracts
 
@@ -355,6 +363,49 @@ async function verifyL1ProxyAdmin(l1ProxyAdmin: ProxyAdmin, l1Executor: UpgradeE
     await l1ProxyAdmin.owner(),
     l1Executor.address,
     "L1UpgradeExecutor should be L1ProxyAdmin's owner"
+  );
+}
+
+/**
+ * Verify:
+ * - proxy admin is correct
+ * - initialization params are correctly set
+ */
+async function verifyL1ReverseGateway(
+  l1ReverseGateway: L1ForceOnlyReverseCustomGateway,
+  l2ReverseGateway: L2ReverseCustomGateway,
+  l1ProxyAdmin: ProxyAdmin,
+  ethDeployer: Signer
+) {
+  //// check proxy admin
+  assertEquals(
+    await getProxyOwner(l1ReverseGateway.address, ethDeployer),
+    l1ProxyAdmin.address,
+    "L1ProxyAdmin should be l1ReverseGateway's proxy admin"
+  );
+
+  // check owner
+  assertEquals(
+    await l1ReverseGateway.owner(),
+    await ethDeployer.getAddress(),
+    "EthDeployer should be l1ReverseGateway's owner"
+  );
+
+  /// check initialization params
+  assertEquals(
+    await l1ReverseGateway.counterpartGateway(),
+    l2ReverseGateway.address,
+    "Incorrect counterpart gateway set for l1ReverseGateway"
+  );
+  assertEquals(
+    await l1ReverseGateway.inbox(),
+    GovernanceConstants.L1_ARB_INBOX,
+    "Incorrect inbox set for l1ReverseGateway"
+  );
+  assertEquals(
+    await l1ReverseGateway.router(),
+    GovernanceConstants.L1_ARB_ROUTER,
+    "Incorrect router set for l1ReverseGateway"
   );
 }
 
