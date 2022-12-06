@@ -25,7 +25,13 @@ import {
   UpgradeExecutor,
   UpgradeExecutor__factory,
 } from "../typechain-types";
-import { L2CustomGatewayToken, L2CustomGatewayToken__factory } from "../typechain-types-imported";
+import {
+  L1ForceOnlyReverseCustomGateway,
+  L1ForceOnlyReverseCustomGateway__factory,
+  L2CustomGatewayToken,
+  L2CustomGatewayToken__factory,
+  L2ReverseCustomGateway__factory,
+} from "../typechain-types-imported";
 import { getDeployers } from "./providerSetup";
 import * as GovernanceConstants from "./governance.constants";
 import { Address } from "@arbitrum/sdk";
@@ -52,6 +58,8 @@ export const verifyDeployment = async () => {
   await verifyL1Token(
     contracts["l1TokenProxy"],
     contracts["l1ProxyAdmin"],
+    contracts["l1ReverseCustomGatewayProxy"],
+    contracts["l2Token"],
     contracts["novaTokenProxy"],
     ethDeployer
   );
@@ -167,6 +175,8 @@ async function verifyL1GovernanceFactory(
 async function verifyL1Token(
   l1Token: L1ArbitrumToken,
   l1ProxyAdmin: ProxyAdmin,
+  l1ReverseCustomGateway: L1ForceOnlyReverseCustomGateway,
+  l2Token: L2ArbitrumToken,
   novaToken: L2CustomGatewayToken,
   ethDeployer: Signer
 ) {
@@ -182,7 +192,7 @@ async function verifyL1Token(
   assertEquals(await l1Token.symbol(), "ARB", "Incorrect token symbol set on L1Token");
   assertEquals(
     await l1Token.arbOneGateway(),
-    GovernanceConstants.L1_ARB_GATEWAY,
+    l1ReverseCustomGateway.address,
     "Incorrect arb gateway set on L1Token"
   );
   assertEquals(
@@ -196,7 +206,24 @@ async function verifyL1Token(
     "Incorrect Nova router set on L1Token"
   );
 
-  //// check token registration was successful
+  //// check token registration was successful for ArbOne
+  const arbGateway = L1ForceOnlyReverseCustomGateway__factory.connect(
+    await l1Token.arbOneGateway(),
+    ethDeployer
+  );
+  const arbRouter = L1GatewayRouter__factory.connect(await arbGateway.router(), ethDeployer);
+  assertEquals(
+    await arbGateway.l1ToL2Token(l1Token.address),
+    l2Token.address,
+    "Incorrect L1Token to L2Token mapping on Arb (reverse) gateway"
+  );
+  assertEquals(
+    await arbRouter.l1TokenToGateway(l1Token.address),
+    arbGateway.address,
+    "Incorrect L1Token to Arb gateway mapping on Arb router"
+  );
+
+  //// check token registration was successful for Nova
   const novaGateway = L1CustomGateway__factory.connect(await l1Token.novaGateway(), ethDeployer);
   const novaRouter = L1GatewayRouter__factory.connect(await l1Token.novaRouter(), ethDeployer);
   assertEquals(
@@ -884,6 +911,14 @@ async function loadContracts(
     contractAddresses["l1ProxyAdmin"],
     ethDeployer
   );
+  contracts["l1ProxyAdmin"] = ProxyAdmin__factory.connect(
+    contractAddresses["l1ProxyAdmin"],
+    ethDeployer
+  );
+  contracts["l1ReverseCustomGatewayProxy"] = L1ForceOnlyReverseCustomGateway__factory.connect(
+    contractAddresses["l1ReverseCustomGatewayProxy"],
+    ethDeployer
+  );
 
   // load L2 contracts
   contracts["l2Token"] = L2ArbitrumToken__factory.connect(
@@ -920,6 +955,10 @@ async function loadContracts(
   );
   contracts["l2TokenDistributor"] = TokenDistributor__factory.connect(
     contractAddresses["l2TokenDistributor"],
+    arbDeployer
+  );
+  contracts["l2ReverseCustomGatewayProxy"] = L2ReverseCustomGateway__factory.connect(
+    contractAddresses["l2ReverseCustomGatewayProxy"],
     arbDeployer
   );
 

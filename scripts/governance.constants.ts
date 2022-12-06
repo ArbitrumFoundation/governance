@@ -5,8 +5,6 @@ export const L1_TIMELOCK_DELAY = 5;
 export const L1_9_OF_12_SECURITY_COUNCIL = "0x76CDc6DB8333cBa9E6d710163eb82DD906893fDa";
 // arb one router (local network value atm)
 export const L1_ARB_ROUTER = "0x90619A5690CEA8514b0CebB8B3c004Cb2Bc15d6e";
-// arb one custom gateway (local network value atm)
-export const L1_ARB_GATEWAY = "0xFb9d427F048676563CFa57651803587c4bC9D699";
 // Arbitrum inbox on L1 (local network value atm)
 export const L1_ARB_INBOX = "0x26C7039eB2130956d92cce6f5e8F2F15c904748B";
 // nova router (local network value atm (local network value atm from localNetworkNova.json))
