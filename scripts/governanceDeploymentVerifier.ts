@@ -141,6 +141,12 @@ export const verifyDeployment = async () => {
     contracts["l2Executor"]
   );
   await verifyL2ProxyAdmin(contracts["l2ProxyAdmin"], contracts["l2Executor"]);
+  await verifyL2ReverseGateway(
+    contracts["l2ReverseCustomGatewayProxy"],
+    contracts["l1ReverseCustomGatewayProxy"],
+    contracts["l2ProxyAdmin"],
+    arbDeployer
+  );
 
   //// Nova contracts
 
@@ -823,6 +829,37 @@ async function verifyL2ProxyAdmin(l2ProxyAdmin: ProxyAdmin, l2Executor: UpgradeE
     await l2ProxyAdmin.owner(),
     l2Executor.address,
     "L2UpgradeExecutor should be L2ProxyAdmin's owner"
+  );
+}
+
+/**
+ * Verify:
+ * - proxy admin is correct
+ * - initialization params are correctly set
+ */
+async function verifyL2ReverseGateway(
+  l2ReverseGateway: L2ReverseCustomGateway,
+  l1ReverseGateway: L1ForceOnlyReverseCustomGateway,
+  l2ProxyAdmin: ProxyAdmin,
+  arbDeployer: Signer
+) {
+  //// check proxy admin
+  assertEquals(
+    await getProxyOwner(l2ReverseGateway.address, arbDeployer),
+    l2ProxyAdmin.address,
+    "L2ProxyAdmin should be l2ReverseGateway's proxy admin"
+  );
+
+  /// check initialization params
+  assertEquals(
+    await l2ReverseGateway.counterpartGateway(),
+    l1ReverseGateway.address,
+    "Incorrect counterpart gateway set for l2ReverseGateway"
+  );
+  assertEquals(
+    await l2ReverseGateway.router(),
+    GovernanceConstants.L2_GATEWAY_ROUTER,
+    "Incorrect router set for 21ReverseGateway"
   );
 }
 

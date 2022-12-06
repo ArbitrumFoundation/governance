@@ -310,9 +310,6 @@ async function deployReverseGateways(
     )
   ).wait();
 
-  // xxxx
-  l1ReverseCustomGateway.setOwner(l1UpgradeExecutor.address);
-
   return l1ReverseCustomGateway;
 }
 
@@ -695,17 +692,6 @@ async function postDeploymentL2TokenTasks(
     );
 
   /// when distributor is deployed remaining tokens are transfered to it
-}
-
-async function setReverseGatewayOwners(
-  l1ReverseCustomGateway: L1ForceOnlyReverseCustomGateway,
-  l1UpgradeExecutor: UpgradeExecutor,
-  l2ReverseCustomGateway: L2ReverseCustomGateway,
-  l2UpgradeExecutor: UpgradeExecutor
-) {
-  await (await l1ReverseCustomGateway.setOwner(l1UpgradeExecutor.address)).wait();
-  await (await l2ReverseCustomGateway.setOwner(l2UpgradeExecutor.address)).wait();
-
 }
 
 async function deployAndInitTokenDistributor(
