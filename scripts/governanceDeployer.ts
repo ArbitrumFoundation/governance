@@ -1,6 +1,7 @@
 import { Address, L1ToL2MessageStatus, L1TransactionReceipt } from "@arbitrum/sdk";
 import { Inbox__factory } from "@arbitrum/sdk/dist/lib/abi/factories/Inbox__factory";
 import { L1CustomGateway__factory } from "@arbitrum/sdk/dist/lib/abi/factories/L1CustomGateway__factory";
+import { L1GatewayRouter__factory } from "@arbitrum/sdk/dist/lib/abi/factories/L1GatewayRouter__factory";
 import { L2CustomGateway__factory } from "@arbitrum/sdk/dist/lib/abi/factories/L2CustomGateway__factory";
 import { L2GatewayRouter__factory } from "@arbitrum/sdk/dist/lib/abi/factories/L2GatewayRouter__factory";
 import { BigNumber, ethers, Signer } from "ethers";
@@ -299,9 +300,7 @@ async function deployReverseGateways(
   const l2ProxyAdmin = await l2GovernanceFactory.proxyAdminLogic();
   const l2ReverseCustomGatewayProxy = await new TransparentUpgradeableProxy__factory(
     arbDeployer
-  ).deploy(l2ReverseCustomGatewayLogic.address, l2ProxyAdmin, "0x", {
-    gasLimit: 3000000,
-  });
+  ).deploy(l2ReverseCustomGatewayLogic.address, l2ProxyAdmin, "0x", {});
   await l2ReverseCustomGatewayProxy.deployed();
 
   //store addresses
@@ -501,7 +500,7 @@ async function postDeploymentL1TokenTasks(
   arbDeployer: Signer,
   novaDeployer: Signer
 ) {
-  //// register token on ArbOne
+  //// register token on ArbOne Gateway
 
   // 1 million gas limit
   const arbMaxGas = BigNumber.from(1000000);
@@ -521,26 +520,69 @@ async function postDeploymentL1TokenTasks(
   ).mul(2);
   const valueForArbGateway = arbGatewaySubmissionFee.add(arbMaxGas.mul(arbGasPrice));
 
+  const extraValue = 1000;
   const l1ArbRegistrationTx = await l1ReverseCustomGateway.forceRegisterTokenToL2(
     [l1Token.address],
     [arbTokenAddress],
     arbMaxGas,
     arbGasPrice,
     arbGatewaySubmissionFee,
-    { gasLimit: 3000000, value: valueForArbGateway.add(1000) }
+    { gasLimit: 3000000, value: valueForArbGateway.add(extraValue) }
   );
 
-  //// wait for ArbOne TXs
+  //// wait for ArbOne gateway TXs
   const l1ArbRegistrationTxReceipt = await L1TransactionReceipt.monkeyPatchWait(
     l1ArbRegistrationTx
   ).wait();
-  const l1ToArbMsgs = await l1ArbRegistrationTxReceipt.getL1ToL2Messages(arbDeployer.provider!);
+  let l1ToArbMsgs = await l1ArbRegistrationTxReceipt.getL1ToL2Messages(arbDeployer.provider!);
 
   // status should be REDEEMED
   const arbSetTokenTx = await l1ToArbMsgs[0].waitForStatus();
   if (arbSetTokenTx.status != L1ToL2MessageStatus.REDEEMED) {
     throw new Error(
       "Register token L1 to L2 message not redeemed. Status: " + arbSetTokenTx.status.toString()
+    );
+  }
+
+  //// register reverse gateway on ArbOne Router
+
+  const l1GatewayRouter = L1GatewayRouter__factory.connect(
+    await l1ReverseCustomGateway.router(),
+    ethDeployer
+  );
+
+  const arbRouterRegistrationData = L2GatewayRouter__factory.createInterface().encodeFunctionData(
+    "setGateway",
+    [[l1Token.address], [l1ReverseCustomGateway.address]]
+  );
+
+  const arbRouterSubmissionFee = (
+    await arbInbox.callStatic.calculateRetryableSubmissionFee(
+      ethers.utils.hexDataLength(arbRouterRegistrationData),
+      0
+    )
+  ).mul(2);
+  const valueForArbRouter = arbRouterSubmissionFee.add(arbMaxGas.mul(arbGasPrice));
+
+  const l1ArbRouterTx = await l1GatewayRouter.setGateways(
+    [l1Token.address],
+    [l1ReverseCustomGateway.address],
+    arbMaxGas,
+    arbGasPrice,
+    arbRouterSubmissionFee,
+    { value: valueForArbRouter.add(extraValue) }
+  );
+
+  //// wait for ArbOne router TXs
+
+  const l1ArbRouterTxReceipt = await L1TransactionReceipt.monkeyPatchWait(l1ArbRouterTx).wait();
+  l1ToArbMsgs = await l1ArbRouterTxReceipt.getL1ToL2Messages(arbDeployer.provider!);
+
+  // status should be REDEEMED
+  const arbSetGwTx = await l1ToArbMsgs[0].waitForStatus();
+  if (arbSetGwTx.status != L1ToL2MessageStatus.REDEEMED) {
+    throw new Error(
+      "Register gateway L1 to L2 message not redeemed. Status: " + arbSetGwTx.status.toString()
     );
   }
 
@@ -580,7 +622,6 @@ async function postDeploymentL1TokenTasks(
   const valueForNovaRouter = novaRouterSubmissionFee.add(maxGas.mul(novaGasPrice));
 
   // do the registration
-  const extra = 1000;
   const l1NovaRegistrationTx = await l1Token.registerTokenOnL2(
     {
       l2TokenAddress: novaTokenAddress,
@@ -594,7 +635,7 @@ async function postDeploymentL1TokenTasks(
       creditBackAddress: await ethDeployer.getAddress(),
     },
     {
-      value: valueForNovaGateway.add(valueForNovaRouter).add(extra),
+      value: valueForNovaGateway.add(valueForNovaRouter).add(extraValue),
       gasLimit: 3000000,
     }
   );

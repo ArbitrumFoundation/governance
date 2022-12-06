@@ -8,11 +8,11 @@ export const L1_ARB_ROUTER = "0x90619A5690CEA8514b0CebB8B3c004Cb2Bc15d6e";
 // arb one custom gateway (local network value atm)
 export const L1_ARB_GATEWAY = "0xFb9d427F048676563CFa57651803587c4bC9D699";
 // Arbitrum inbox on L1 (local network value atm)
-export const L1_ARB_INBOX = "0x0409127Aa3E66fC4A0E204f7B1D7ABb047640484";
+export const L1_ARB_INBOX = "0x26C7039eB2130956d92cce6f5e8F2F15c904748B";
 // nova router (local network value atm (local network value atm from localNetworkNova.json))
-export const L1_NOVA_ROUTER = "0x7b4976f0F0614d9e1E808A33958aa9CEBA5646B9";
+export const L1_NOVA_ROUTER = "0xe25777eEBD8A03cE0A2fE4B790AC7C9A9D66dacD";
 // nova custom gateway (local network value atm from localNetworkNova.json)
-export const L1_NOVA_GATEWAY = "0x2e343C93ea73cdB0f495402d350b97C2A1F80529";
+export const L1_NOVA_GATEWAY = "0xE5b30660cC2c1204dE8d44ed61c6f60B92356F29";
 
 //// L2
 // minimum delay for an operation to become valid (dummy value atm)
@@ -41,7 +41,7 @@ export const NOVA_TOKEN_NAME = "Arbitrum";
 export const NOVA_TOKEN_SYMBOL = "ARB";
 export const NOVA_TOKEN_DECIMALS = 18;
 // token gateway on Nova (dummy value at (local network value atm from localNetworkNova.json)m)
-export const NOVA_TOKEN_GATEWAY = "0x206a8a5BfA589552A2e5569a6D0c2ab284d75494";
+export const NOVA_TOKEN_GATEWAY = "0x28B3a95f8e6508dc2C0097Ac543C8B2eFff21bF9";
 
 //// L2 Arbitrum token
 // 10 billion tokens (we use parseEther in script to add decimals)
