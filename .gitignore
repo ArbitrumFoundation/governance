@@ -7,5 +7,6 @@ artifacts/
 typechain-types
 cache_hardhat/
 localNetwork.json
+localNetworkNova.json
 .env
 deployedContracts.json
