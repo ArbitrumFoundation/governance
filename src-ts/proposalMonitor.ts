@@ -1,47 +1,60 @@
 import { Provider } from "@ethersproject/providers";
-import {
-  L2ArbitrumGovernor,
-  L2ArbitrumGovernor__factory,
-} from "../typechain-types";
-import {
-  ProposalCreatedEvent,
-  ProposalCreatedEventObject,
-} from "../typechain-types/src/L2ArbitrumGovernor";
-import { TypedEvent } from "../typechain-types/common";
+import { L2ArbitrumGovernor__factory } from "../typechain-types";
+import { ProposalCreatedEventObject } from "../typechain-types/src/L2ArbitrumGovernor";
 import { wait } from "./utils";
-import { EventArgs } from "@arbitrum/sdk/dist/lib/dataEntities/event";
 import {
-  createRoundTripGenerator,
-  ProposalStageManager,
+  ProposalStagePipelineFactory,
+  ProposalStageTracker,
 } from "./proposalStage";
-import { Signer } from "ethers";
 import { formatBytes32String } from "ethers/lib/utils";
+import { EventEmitter } from "events";
 
-export declare type EventArgs2<T> = T extends TypedEvent<infer _, infer TObj>
-  ? TObj
-  : never;
+export enum GPMEventName {
+  TRACKER_STARED = "TRACKER_STARTED",
+  TRACKER_ENDED = "TRACKER_ENDED",
+  TRACKER_ERRORED = "TRACKER_ERRORED",
+}
+export interface GPMEvent {
+  governorAddress: string;
+  proposalId: string;
+}
+export interface GPMErroredEvent extends GPMEvent {
+  error: Error;
+}
+export type GPMAllEvent = GPMEvent | GPMErroredEvent;
 
-class GovernorProposalMonitor {
+/**
+ * Monitors a governor contract for created proposals. Starts a new proposal pipeline when
+ * a proposal is created.
+ */
+export class GovernorProposalMonitor extends EventEmitter {
   constructor(
     public readonly governorAddress: string,
     public readonly governorProvider: Provider,
     public readonly pollingIntervalMs: number,
     public readonly blockLag: number,
+    public readonly startBlockNumber: number,
+    public readonly pipelineFactory: ProposalStagePipelineFactory
+  ) {
+    super();
+  }
 
-    // CHRIS: TOD: cant we get rid of these?
-    public readonly arbOneSigner: Signer,
-    public readonly l1Signer: Signer,
-    public readonly novaSigner: Signer
-  ) {}
+  public emit(eventName: GPMEventName.TRACKER_STARED, args: GPMEvent);
+  public emit(eventName: GPMEventName.TRACKER_ENDED, args: GPMEvent);
+  public emit(eventName: GPMEventName.TRACKER_ERRORED, args: GPMErroredEvent);
+  public override emit(eventName: GPMEventName, args: GPMAllEvent) {
+    return super.emit(eventName, args);
+  }
 
   public async start() {
-    let blockThen =
-      (await this.governorProvider.getBlockNumber()) - this.blockLag;
+    let blockThen = this.startBlockNumber;
     await wait(this.pollingIntervalMs);
 
     while (true) {
-      const blockNow =
-        (await this.governorProvider.getBlockNumber()) - this.blockLag;
+      const blockNow = Math.max(
+        (await this.governorProvider.getBlockNumber()) - this.blockLag,
+        blockThen
+      );
 
       const governor = L2ArbitrumGovernor__factory.connect(
         this.governorAddress,
@@ -64,37 +77,47 @@ class GovernorProposalMonitor {
             .args as unknown as ProposalCreatedEventObject
       );
       for (const log of logs) {
-        const gen = createRoundTripGenerator(
+        const gen = this.pipelineFactory.createPipeline(
+          this.governorAddress,
           formatBytes32String(log.proposalId.toHexString()),
           log.targets[0],
           log.values[0],
           log.calldatas[0],
-          log.description,
-          this.governorAddress,
-
-          this.arbOneSigner,
-          this.l1Signer,
-          this.novaSigner
+          log.description
         );
 
-        // these arent really proposal stages, they're more like tx execution awaiters
-        // we have some polling mechanism - it's not an event it's a general status monitor
-        // 
-
-        const propStageManager = new ProposalStageManager(
+        const propStageTracker = new ProposalStageTracker(
           gen,
           this.pollingIntervalMs
         );
 
-        const runner = propStageManager.run()
+        this.emit(GPMEventName.TRACKER_STARED, {
+          governorAddress: this.governorAddress,
+          proposalId: log.proposalId.toHexString(),
+        });
 
-        // CHRIS: TODO: catch errors in that by logging or throwing?
-        // CHRIS: TODO: we should probably reject this current promise somehow
+        propStageTracker
+          .run()
+          .then(() => {
+            this.emit(GPMEventName.TRACKER_ENDED, {
+              governorAddress: this.governorAddress,
+              proposalId: log.proposalId.toHexString(),
+            });
+          })
+          .catch((e) => {
+            // an error in the runner shouldn't halt the whole monitor,
+            // as doing so would halt other successful runners. Emit the info
+            // to be handled elsewhere
+            this.emit(GPMEventName.TRACKER_ERRORED, {
+              governorAddress: this.governorAddress,
+              proposalId: log.proposalId.toHexString(),
+              error: e,
+            });
+          });
       }
 
       await wait(this.pollingIntervalMs);
+      blockThen = blockNow;
     }
   }
-
-  public stop() {}
 }
