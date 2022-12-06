@@ -21,7 +21,6 @@ import {
   L2GovernanceFactory__factory,
   ProxyAdmin,
   ProxyAdmin__factory,
-  TokenDistributor,
   TokenDistributor__factory,
   TransparentUpgradeableProxy,
   TransparentUpgradeableProxy__factory,
@@ -32,7 +31,6 @@ import {
   L1ForceOnlyReverseCustomGateway,
   L1ForceOnlyReverseCustomGateway__factory,
   L2CustomGatewayToken__factory,
-  L2ReverseCustomGateway,
   L2ReverseCustomGateway__factory,
 } from "../typechain-types-imported/index";
 import {
@@ -55,36 +53,57 @@ const DEPLOYED_CONTRACTS_FILE_NAME = "deployedContracts.json";
  * Performs each step of the Arbitrum governance deployment process.
  *
  * /// @notice Governance Deployment Steps:
- * /// 1. Deploy the following pre-requiste logic contracts:
- * ///     L1:
+ * /// 1. Deploy the following pre-requiste logic contracts on L1:
  * ///         - UpgradeExecutor logic
- * ///     L2:
+ * /// 2. Deploy the following pre-requiste logic contracts on L2:
  * ///         - ArbitrumTimelock logic
  * ///         - L2ArbitrumGovernor logic
  * ///         - FixedDelegateErc20 logic
  * ///         - L2ArbitrumToken logic
  * ///         - UpgradeExecutor logic
- * /// 2. Then deploy the following (in any order):
- * ///     L1:
+ * /// 3. Deploy L1 factory:
  * ///         - L1GoveranceFactory
- * ///         - L1Token
- * ///         - Gnosis Safe Multisig 9 of 12 Security Council
- * ///     L2:
- * ///         - L2GovernanceFactory
- * ///         - Gnosis Safe Multisig 9 of 12 Security Council
- * ///         - Gnosis Safe Multisig 7 of 12 Security Council
+ * /// 4. Deploy L2 factory:
+ * ///         - L2GoveranceFactory
+ * /// 5. Deploy and init reverse gateways (to be used for Arb token):
+ * ///         - L1ForceOnlyReverseCustomGateway (logic + proxy)
+ * ///         - L2ReverseCustomGateway (logic + proxy)
+ * ///         - init L1 reverse gateway
+ * ///         - init L2 reverse gateway
+ * /// 6. Deploy and init L1 token:
+ * ///         - L1ArbitrumToken (logic + proxy)
+ * ///         - init L1 token
+ * /// 7. Deploy Nova proxy admin and upgrade executor
+ * ///         - ProxyAdmin (to Nova)
+ * ///         - UpgradeExecutor (logic + proxy, to Nova)
+ * /// 8. Deploy and init token on Nova
+ * ///         - L2CustomGatewayToken (logic + proxy, to Nova)
+ * ///         - init token
+ * /// 9. Init L2 governance
+ * ///         - call L2GovernanceFactory.deployStep1
+ * ///         - fetch and store addresses of deployed contracts
+ * /// 10. Init L1 governance
+ * ///         - call L1GovernanceFactory.deployStep2
+ * ///         - fetch and store addresses of deployed contracts
+ * /// 11. Set executor roles
+ * ///         - call l2GovernanceFactory.deployStep3
+ * ///         - call novaUpgradeExecutor.initialize
+ * ///         - transfer novaProxyAdmin ownership to upgrade executor
+ * /// 12. Post deployment L1 tasks - token registration
+ * ///         - register L1 token to ArbOne token mapping on reverse gateways
+ * ///         - register L1 token to reverse gateway mapping on Arb routers
+ * ///         - register L1 token to Nova token mapping on custom gateways
+ * ///         - register L1 token to custom gateway token mapping on Nova routers
+ * /// 13. Post deployment L2 tasks - transfer tokens
+ * ///         - transfer part of tokens from arbDeployer (initial supply receiver) to treasury
+ * /// 14. Deploy and init TokenDistributor
+ * ///         - deploy TokenDistributor
+ * ///         - transfer claimable tokens from arbDeployer to distributor
+ * ///         - set claim recipients (done in batches over ~2h period)
+ * ///         - if number of set recipients and total claimable amount match expected values, transfer ownership to executor
  * ///
- * ///     L1GoveranceFactory and L2GovernanceFactory deployers will be their respective owners, and will carry out the following steps.
- * /// 3. Call L2GovernanceFactory.deployStep1
- * ///     - Dependencies: L1-Token address, 7 of 12 multisig (as _upgradeProposer)
- * ///
- * /// 4. Call L1GoveranceFactory.deployStep2
- * ///     - Dependencies: L1 security council address, L2 Timelock address (deployed in previous step)
- * ///
- * /// 5. Call L2GovernanceFactory.deployStep3
- * ///     - Dependencies: (Aliased) L1-timelock address (deployed in previous step), L2 security council address (as _l2UpgradeExecutors)
- * /// 6. From the _l2InitialSupplyRecipient transfer ownership of the L2ArbitrumToken to the UpgradeExecutor
- * ///    Then transfer tokens from _l2InitialSupplyRecipient to the treasury and other token distributor
+ * /// And at the end of script execution write addresses of deployed contracts to local JSON file.
+ *
  * @returns
  */
 export const deployGovernance = async () => {
@@ -387,13 +406,15 @@ async function deployTokenToNova(
 
   // init
   const novaToken = L2CustomGatewayToken__factory.connect(novaTokenProxy.address, novaDeployer);
-  await novaToken.initialize(
-    GovernanceConstants.NOVA_TOKEN_NAME,
-    GovernanceConstants.NOVA_TOKEN_SYMBOL,
-    GovernanceConstants.NOVA_TOKEN_DECIMALS,
-    GovernanceConstants.NOVA_TOKEN_GATEWAY,
-    l1Token.address
-  );
+  await (
+    await novaToken.initialize(
+      GovernanceConstants.NOVA_TOKEN_NAME,
+      GovernanceConstants.NOVA_TOKEN_SYMBOL,
+      GovernanceConstants.NOVA_TOKEN_DECIMALS,
+      GovernanceConstants.NOVA_TOKEN_GATEWAY,
+      l1Token.address
+    )
+  ).wait();
 
   // store addresses
   deployedContracts["novaTokenLogic"] = novaTokenLogic.address;
