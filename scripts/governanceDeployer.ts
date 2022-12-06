@@ -267,14 +267,13 @@ async function deployReverseGateways(
   const l1ReverseCustomGatewayLogic = await new L1ForceOnlyReverseCustomGateway__factory(
     ethDeployer
   ).deploy();
+  await l1ReverseCustomGatewayLogic.deployed();
 
   // deploy proxy
   const l1ProxyAdmin = await l1GovernanceFactory.proxyAdminAddress();
   const l1ReverseCustomGatewayProxy = await new TransparentUpgradeableProxy__factory(
     ethDeployer
-  ).deploy(l1ReverseCustomGatewayLogic.address, l1ProxyAdmin, "0x", {
-    gasLimit: 3000000,
-  });
+  ).deploy(l1ReverseCustomGatewayLogic.address, l1ProxyAdmin, "0x");
   await l1ReverseCustomGatewayProxy.deployed();
 
   // store addresses
@@ -338,14 +337,14 @@ async function deployAndInitL1Token(
 ) {
   // deploy logic
   const l1TokenLogic = await new L1ArbitrumToken__factory(ethDeployer).deploy();
+  await l1TokenLogic.deployed();
 
   // deploy proxy
   const l1ProxyAdmin = await l1GovernanceFactory.proxyAdminAddress();
   const l1TokenProxy = await new TransparentUpgradeableProxy__factory(ethDeployer).deploy(
     l1TokenLogic.address,
     l1ProxyAdmin,
-    "0x",
-    { gasLimit: 3000000 }
+    "0x"
   );
   await l1TokenProxy.deployed();
 
@@ -557,7 +556,7 @@ async function postDeploymentL1TokenTasks(
     arbMaxGas,
     arbGasPrice,
     arbGatewaySubmissionFee,
-    { gasLimit: 3000000, value: valueForArbGateway.add(extraValue) }
+    { value: valueForArbGateway.add(extraValue) }
   );
 
   //// wait for ArbOne gateway TXs
@@ -666,7 +665,6 @@ async function postDeploymentL1TokenTasks(
     },
     {
       value: valueForNovaGateway.add(valueForNovaRouter).add(extraValue),
-      gasLimit: 3000000,
     }
   );
 
