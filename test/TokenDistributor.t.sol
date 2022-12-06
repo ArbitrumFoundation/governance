@@ -22,6 +22,7 @@ contract TokenDistributorTest is Test {
     uint256 claimPeriodEnd = claimPeriodStart + 20;
     address tdOwner = address(100_000_004);
     uint256 currentBlockTimestamp = 100;
+    address delegateTo = address(198);
 
     function deployToken() public returns (L2ArbitrumToken) {
         vm.roll(currentBlockNumber);
@@ -40,7 +41,8 @@ contract TokenDistributorTest is Test {
             sweepReceiver,
             tdOwner,
             claimPeriodStart,
-            claimPeriodEnd
+            claimPeriodEnd,
+            delegateTo
         );
 
         return (td, token);
@@ -67,6 +69,7 @@ contract TokenDistributorTest is Test {
         assertEq(td.claimPeriodStart(), claimPeriodStart, "Invalid claim start");
         assertEq(td.claimPeriodEnd(), claimPeriodEnd, "Invalid claim end");
         assertEq(td.claimableTokens(sweepReceiver), 0, "Invalid claimable amount");
+        assertEq(token.delegates(address(td)), delegateTo, "Invalid delegate to");
     }
 
     function testZeroToken() public {
@@ -76,7 +79,8 @@ contract TokenDistributorTest is Test {
             sweepReceiver,
             tdOwner,
             claimPeriodStart,
-            claimPeriodEnd
+            claimPeriodEnd,
+            delegateTo
         );
     }
 
@@ -88,7 +92,8 @@ contract TokenDistributorTest is Test {
             payable(address(0)),
             tdOwner,
             claimPeriodStart,
-            claimPeriodEnd
+            claimPeriodEnd,
+            delegateTo
         );
     }
 
@@ -100,7 +105,8 @@ contract TokenDistributorTest is Test {
             sweepReceiver,
             address(0),
             claimPeriodStart,
-            claimPeriodEnd
+            claimPeriodEnd,
+            delegateTo
         );
     }
 
@@ -113,7 +119,8 @@ contract TokenDistributorTest is Test {
             sweepReceiver,
             tdOwner,
             claimPeriodStart,
-            claimPeriodEnd
+            claimPeriodEnd,
+            delegateTo
         );
     }
 
@@ -125,7 +132,21 @@ contract TokenDistributorTest is Test {
             sweepReceiver,
             tdOwner,
             claimPeriodEnd,
-            claimPeriodStart
+            claimPeriodStart,
+            delegateTo
+        );
+    }
+
+    function testZeroDelegateTo() public {
+        L2ArbitrumToken token = deployToken();
+        vm.expectRevert("TokenDistributor: zero delegate to");
+        new TokenDistributor(
+            IERC20VotesUpgradeable(address(token)),
+            sweepReceiver,
+            tdOwner,
+            claimPeriodStart,
+            claimPeriodEnd,
+            address(0)
         );
     }
 

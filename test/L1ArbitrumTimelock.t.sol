@@ -208,9 +208,11 @@ contract L1ArbitrumTimelockTest is Test {
         // set up the sender
         address payable sender = payable(address(678));
         uint256 extra = 150;
-        uint256 execVal =
-            submissionFee + rData.l2Value + (rData.maxFeePerGas * rData.gasLimit) + extra;
+        uint256 execVal = submissionFee + (rData.maxFeePerGas * rData.gasLimit) + extra;
         sender.transfer(execVal);
+
+        // l2value has to come from the timelock itself
+        payable(address(l1Timelock)).transfer(rData.l2Value);
 
         vm.prank(sender);
         l1Timelock.execute{value: execVal}(magic, val, data, 0, salt);
@@ -250,13 +252,17 @@ contract L1ArbitrumTimelockTest is Test {
         // set up the sender
         address payable sender = payable(address(678));
         uint256 extra = 150;
-        uint256 execVal =
-            submissionFee + rData.l2Value + (rData.maxFeePerGas * rData.gasLimit) + extra;
+        uint256 execVal = submissionFee + (rData.maxFeePerGas * rData.gasLimit) + extra;
         sender.transfer(execVal);
+
+        // l2value has to come from the timelock itself
+        payable(address(l1Timelock)).transfer(rData.l2Value);
 
         vm.expectRevert(
             abi.encodeWithSelector(
-                InboxMock.InsufficientValue.selector, execVal - extra, execVal - extra - 1
+                InboxMock.InsufficientValue.selector,
+                execVal + rData.l2Value - extra,
+                execVal + rData.l2Value - extra - 1
             )
         );
         vm.prank(sender);
