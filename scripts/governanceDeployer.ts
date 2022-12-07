@@ -718,12 +718,17 @@ async function deployAndInitTokenDistributor(
   arbInitialSupplyRecipient: Signer
 ) {
   // deploy TokenDistributor
+  const delegationExcludeAddress = await L2ArbitrumGovernor__factory.connect(
+    l2DeployResult.coreGoverner,
+    arbDeployer
+  ).EXCLUDE_ADDRESS();
   const tokenDistributor = await new TokenDistributor__factory(arbDeployer).deploy(
     l2DeployResult.token,
     GovernanceConstants.L2_SWEEP_RECECIVER,
     await arbDeployer.getAddress(),
     GovernanceConstants.L2_CLAIM_PERIOD_START,
-    GovernanceConstants.L2_CLAIM_PERIOD_END
+    GovernanceConstants.L2_CLAIM_PERIOD_END,
+    delegationExcludeAddress
   );
   await tokenDistributor.deployed();
 

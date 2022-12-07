@@ -7,7 +7,7 @@ export const L1_9_OF_12_SECURITY_COUNCIL = "0x76CDc6DB8333cBa9E6d710163eb82DD906
 export const L1_ARB_ROUTER = "0x90619A5690CEA8514b0CebB8B3c004Cb2Bc15d6e";
 // Arbitrum inbox on L1 (local network value atm)
 export const L1_ARB_INBOX = "0x26C7039eB2130956d92cce6f5e8F2F15c904748B";
-// nova router (local network value atm (local network value atm from localNetworkNova.json))
+// nova router (local network value atm from localNetworkNova.json)
 export const L1_NOVA_ROUTER = "0xe25777eEBD8A03cE0A2fE4B790AC7C9A9D66dacD";
 // nova custom gateway (local network value atm from localNetworkNova.json)
 export const L1_NOVA_GATEWAY = "0xE5b30660cC2c1204dE8d44ed61c6f60B92356F29";
@@ -38,7 +38,7 @@ export const NOVA_9_OF_12_SECURITY_COUNCIL = "0xB3594078bFab918F022f8cD90721a543
 export const NOVA_TOKEN_NAME = "Arbitrum";
 export const NOVA_TOKEN_SYMBOL = "ARB";
 export const NOVA_TOKEN_DECIMALS = 18;
-// token gateway on Nova (dummy value at (local network value atm from localNetworkNova.json)m)
+// token gateway on Nova (local network value atm from localNetworkNova.json)
 export const NOVA_TOKEN_GATEWAY = "0x28B3a95f8e6508dc2C0097Ac543C8B2eFff21bF9";
 
 //// L2 Arbitrum token

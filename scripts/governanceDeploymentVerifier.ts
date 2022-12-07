@@ -138,7 +138,9 @@ export const verifyDeployment = async () => {
   await verifyL2TokenDistributor(
     contracts["l2TokenDistributor"],
     contracts["l2Token"],
-    contracts["l2Executor"]
+    contracts["l2Executor"],
+    contracts["l2CoreGoverner"],
+    arbDeployer
   );
   await verifyL2ProxyAdmin(contracts["l2ProxyAdmin"], contracts["l2Executor"]);
   await verifyL2ReverseGateway(
@@ -775,7 +777,9 @@ async function verifyL2ArbTreasury(
 async function verifyL2TokenDistributor(
   l2TokenDistributor: TokenDistributor,
   l2Token: L2ArbitrumToken,
-  l2Executor: UpgradeExecutor
+  l2Executor: UpgradeExecutor,
+  l2CoreGovernor: L2ArbitrumGovernor,
+  arbDeployer: Signer
 ) {
   //// check ownership
   assertEquals(
@@ -816,6 +820,14 @@ async function verifyL2TokenDistributor(
     await l2TokenDistributor.claimPeriodEnd(),
     BigNumber.from(GovernanceConstants.L2_CLAIM_PERIOD_END),
     "Incorrect claim period end set for TokenDistributor"
+  );
+
+  //// check delegation
+  const voteToken = IVotesUpgradeable__factory.connect(l2Token.address, arbDeployer);
+  assertEquals(
+    await voteToken.delegates(l2TokenDistributor.address),
+    await l2CoreGovernor.EXCLUDE_ADDRESS(),
+    "L2TokenDistributor should delegate to EXCLUDE_ADDRESS"
   );
 }
 
