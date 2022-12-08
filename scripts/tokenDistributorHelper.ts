@@ -74,7 +74,7 @@ export async function setClaimRecipients(tokenDistributor: TokenDistributor, arb
 
     // set recipients
     const txReceipt = await (
-      await tokenDistributor.setRecipients(recipientsBatch, amountsBatch, { gasLimit: 30000000 })
+      await tokenDistributor.setRecipients(recipientsBatch, amountsBatch)
     ).wait();
 
     // print gas usage stats
