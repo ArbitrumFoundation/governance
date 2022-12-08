@@ -16,7 +16,7 @@
 /* eslint-env node */
 "use strict";
 
-import { JsonRpcProvider } from "@ethersproject/providers";
+import { JsonRpcProvider, Provider } from "@ethersproject/providers";
 import { Wallet } from "@ethersproject/wallet";
 import dotenv from "dotenv";
 import { Signer } from "ethers";
@@ -122,4 +122,58 @@ export const getDeployers = async (): Promise<{
       novaDeployer,
     };
   }
+};
+
+/**
+ * Fetch providers for mainnet, ArbitrumOne and Nova.
+ * RPCs endpoints are loaded from env vars:
+ *  - ETH_URL, ARB_URL, NOVA_URL for test deployment in local env (DEPLOY_TO_LOCAL_ENVIRONMENT = 'true')
+ *  - MAINNET_RPC, ARB_ONE_RPC, NOVA_RPC for production deployment (DEPLOY_TO_LOCAL_ENVIRONMENT = 'false')
+ *
+ * @returns
+ */
+export const getProviders = async (): Promise<{
+  ethProvider: Provider;
+  arbProvider: Provider;
+  novaProvider: Provider;
+}> => {
+  let ethProvider: Provider, arbProvider: Provider, novaProvider: Provider;
+
+  if (config.isLocalDeployment === "true") {
+    ethProvider = new JsonRpcProvider(process.env["ETH_URL"] as string);
+    arbProvider = new JsonRpcProvider(process.env["ARB_URL"] as string);
+    novaProvider = new JsonRpcProvider(process.env["NOVA_URL"] as string);
+  } else {
+    // deploying to production
+    ethProvider = new JsonRpcProvider(config.ethRpc);
+    arbProvider = new JsonRpcProvider(config.arbRpc);
+    novaProvider = new JsonRpcProvider(config.novaRpc);
+  }
+
+  return {
+    ethProvider,
+    arbProvider,
+    novaProvider,
+  };
+};
+
+/**
+ * Get addresses for every deployer account.
+ * @returns
+ */
+export const getDeployerAddresses = async (): Promise<{
+  ethDeployerAddress: string;
+  arbDeployerAddress: string;
+  novaDeployerAddress: string;
+}> => {
+  const { ethDeployer, arbDeployer, novaDeployer } = await getDeployers();
+  const ethDeployerAddress = await ethDeployer.getAddress();
+  const arbDeployerAddress = await arbDeployer.getAddress();
+  const novaDeployerAddress = await novaDeployer.getAddress();
+
+  return {
+    ethDeployerAddress,
+    arbDeployerAddress,
+    novaDeployerAddress,
+  };
 };
