@@ -52,7 +52,7 @@ export const verifyDeployment = async () => {
   const { ethProvider, arbProvider, novaProvider } = await getProviders();
   const { ethDeployerAddress, arbDeployerAddress } = await getDeployerAddresses();
 
-  const contracts = await loadContracts(ethProvider, arbProvider, novaProvider);
+  const contracts = loadContracts(ethProvider, arbProvider, novaProvider);
 
   //// L1 contracts
 
@@ -1066,6 +1066,30 @@ async function verifyNovaProxyAdmin(
   );
 }
 
+// type Face = {
+//   l1GovernanceFactory: L1GovernanceFactory,
+//   l1TokenProxy: L1ArbitrumToken,
+//   l1Executor: UpgradeExecutor,
+//   l1Timelock: L1ArbitrumTimelock,
+//   l1ProxyAdmin: ProxyAdmin
+//   l1ReverseCustomGatewayProxy: L1ForceOnlyReverseCustomGateway,
+
+//   l2Token: L1ArbitrumToken,s
+//   l2Executor: UpgradeExecutor
+//   l2GovernanceFactory: L2GovernanceFactory,
+//   l2CoreGoverner: L2ArbitrumGovernor,
+//   l2CoreTimelock: ArbitrumTimelock,
+//   l2ProxyAdmin: ProxyAdmin,
+//   l2TreasuryGoverner: L2ArbitrumGovernor,
+//   l2ArbTreasury: FixedDelegateErc20Wallet,
+//   l2TokenDistributor: TokenDistributor,
+//   l2ReverseCustomGatewayProxy: L2ReverseCustomGateway
+
+//   novaProxyAdmin: ProxyAdmin,
+//   novaUpgradeExecutorProxy: UpgradeExecutor,
+//   novaTokenProxy: L2CustomGatewayToken
+// }
+
 /**
  * Load contracts by reading addresses from file `DEPLOYED_CONTRACTS_FILE_NAME` and return loaded contracts in key-value format.
  *
@@ -1074,101 +1098,67 @@ async function verifyNovaProxyAdmin(
  * @param novaProvider
  * @returns
  */
-async function loadContracts(
-  ethProvider: Provider,
-  arbProvider: Provider,
-  novaProvider: Provider
-): Promise<{ [key: string]: any }> {
+function loadContracts(ethProvider: Provider, arbProvider: Provider, novaProvider: Provider) {
   const contractAddresses = require("../" + DEPLOYED_CONTRACTS_FILE_NAME);
-  let contracts: { [key: string]: any } = {};
+  return {
+    // load L1 contracts
+    l1GovernanceFactory: L1GovernanceFactory__factory.connect(
+      contractAddresses["l1GovernanceFactory"],
+      ethProvider
+    ),
+    l1TokenProxy: L1ArbitrumToken__factory.connect(contractAddresses["l1TokenProxy"], ethProvider),
+    l1Executor: UpgradeExecutor__factory.connect(contractAddresses["l1Executor"], ethProvider),
+    l1Timelock: L1ArbitrumTimelock__factory.connect(contractAddresses["l1Timelock"], ethProvider),
+    l1ProxyAdmin: ProxyAdmin__factory.connect(contractAddresses["l1ProxyAdmin"], ethProvider),
+    l1ReverseCustomGatewayProxy: L1ForceOnlyReverseCustomGateway__factory.connect(
+      contractAddresses["l1ReverseCustomGatewayProxy"],
+      ethProvider
+    ),
 
-  // load L1 contracts
-  contracts["l1GovernanceFactory"] = L1GovernanceFactory__factory.connect(
-    contractAddresses["l1GovernanceFactory"],
-    ethProvider
-  );
-  contracts["l1TokenProxy"] = L1ArbitrumToken__factory.connect(
-    contractAddresses["l1TokenProxy"],
-    ethProvider
-  );
-  contracts["l1Executor"] = UpgradeExecutor__factory.connect(
-    contractAddresses["l1Executor"],
-    ethProvider
-  );
-  contracts["l1Timelock"] = L1ArbitrumTimelock__factory.connect(
-    contractAddresses["l1Timelock"],
-    ethProvider
-  );
-  contracts["l1ProxyAdmin"] = ProxyAdmin__factory.connect(
-    contractAddresses["l1ProxyAdmin"],
-    ethProvider
-  );
-  contracts["l1ProxyAdmin"] = ProxyAdmin__factory.connect(
-    contractAddresses["l1ProxyAdmin"],
-    ethProvider
-  );
-  contracts["l1ReverseCustomGatewayProxy"] = L1ForceOnlyReverseCustomGateway__factory.connect(
-    contractAddresses["l1ReverseCustomGatewayProxy"],
-    ethProvider
-  );
+    // load L2 contracts
+    l2Token: L2ArbitrumToken__factory.connect(contractAddresses["l2Token"], arbProvider),
+    l2Executor: UpgradeExecutor__factory.connect(contractAddresses["l2Executor"], arbProvider),
+    l2GovernanceFactory: L2GovernanceFactory__factory.connect(
+      contractAddresses["l2GovernanceFactory"],
+      arbProvider
+    ),
+    l2CoreGoverner: L2ArbitrumGovernor__factory.connect(
+      contractAddresses["l2CoreGoverner"],
+      arbProvider
+    ),
+    l2CoreTimelock: ArbitrumTimelock__factory.connect(
+      contractAddresses["l2CoreTimelock"],
+      arbProvider
+    ),
+    l2ProxyAdmin: ProxyAdmin__factory.connect(contractAddresses["l2ProxyAdmin"], arbProvider),
+    l2TreasuryGoverner: L2ArbitrumGovernor__factory.connect(
+      contractAddresses["l2TreasuryGoverner"],
+      arbProvider
+    ),
+    l2ArbTreasury: FixedDelegateErc20Wallet__factory.connect(
+      contractAddresses["l2ArbTreasury"],
+      arbProvider
+    ),
+    l2TokenDistributor: TokenDistributor__factory.connect(
+      contractAddresses["l2TokenDistributor"],
+      arbProvider
+    ),
+    l2ReverseCustomGatewayProxy: L2ReverseCustomGateway__factory.connect(
+      contractAddresses["l2ReverseCustomGatewayProxy"],
+      arbProvider
+    ),
 
-  // load L2 contracts
-  contracts["l2Token"] = L2ArbitrumToken__factory.connect(
-    contractAddresses["l2Token"],
-    arbProvider
-  );
-  contracts["l2Executor"] = UpgradeExecutor__factory.connect(
-    contractAddresses["l2Executor"],
-    arbProvider
-  );
-  contracts["l2GovernanceFactory"] = L2GovernanceFactory__factory.connect(
-    contractAddresses["l2GovernanceFactory"],
-    arbProvider
-  );
-  contracts["l2CoreGoverner"] = L2ArbitrumGovernor__factory.connect(
-    contractAddresses["l2CoreGoverner"],
-    arbProvider
-  );
-  contracts["l2CoreTimelock"] = ArbitrumTimelock__factory.connect(
-    contractAddresses["l2CoreTimelock"],
-    arbProvider
-  );
-  contracts["l2ProxyAdmin"] = ProxyAdmin__factory.connect(
-    contractAddresses["l2ProxyAdmin"],
-    arbProvider
-  );
-  contracts["l2TreasuryGoverner"] = L2ArbitrumGovernor__factory.connect(
-    contractAddresses["l2TreasuryGoverner"],
-    arbProvider
-  );
-  contracts["l2ArbTreasury"] = FixedDelegateErc20Wallet__factory.connect(
-    contractAddresses["l2ArbTreasury"],
-    arbProvider
-  );
-  contracts["l2TokenDistributor"] = TokenDistributor__factory.connect(
-    contractAddresses["l2TokenDistributor"],
-    arbProvider
-  );
-  contracts["l2ReverseCustomGatewayProxy"] = L2ReverseCustomGateway__factory.connect(
-    contractAddresses["l2ReverseCustomGatewayProxy"],
-    arbProvider
-  );
-
-  // load Nova contracts
-  contracts["novaProxyAdmin"] = ProxyAdmin__factory.connect(
-    contractAddresses["novaProxyAdmin"],
-    novaProvider
-  );
-  contracts["novaUpgradeExecutorProxy"] = UpgradeExecutor__factory.connect(
-    contractAddresses["novaUpgradeExecutorProxy"],
-    novaProvider
-  );
-  contracts["novaTokenProxy"] = L2CustomGatewayToken__factory.connect(
-    contractAddresses["novaTokenProxy"],
-    novaProvider
-  );
-
-  return contracts;
+    // load Nova contracts
+    novaProxyAdmin: ProxyAdmin__factory.connect(contractAddresses["novaProxyAdmin"], novaProvider),
+    novaUpgradeExecutorProxy: UpgradeExecutor__factory.connect(
+      contractAddresses["novaUpgradeExecutorProxy"],
+      novaProvider
+    ),
+    novaTokenProxy: L2CustomGatewayToken__factory.connect(
+      contractAddresses["novaTokenProxy"],
+      novaProvider
+    ),
+  };
 }
 
 /**
