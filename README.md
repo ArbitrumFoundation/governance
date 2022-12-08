@@ -1,6 +1,7 @@
 # Arbitrum Governance
-This project contains smart contracts for Arbitrum token and governance. 
-
+This project contains smart contracts for Arbitrum token and governance. Please see the following for a more detailed explanation:
+* [Overview](./docs/overview.md)
+* [Proposal lifecycle](./docs/proposal_lifecycle_example.md)
 
 ## Run Foundry unit tests
 
