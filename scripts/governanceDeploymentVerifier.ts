@@ -50,8 +50,7 @@ const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
  */
 export const verifyDeployment = async () => {
   const { ethProvider, arbProvider, novaProvider } = await getProviders();
-  const { ethDeployerAddress, arbDeployerAddress } =
-    await getDeployerAddresses();
+  const { ethDeployerAddress, arbDeployerAddress } = await getDeployerAddresses();
 
   const contracts = await loadContracts(ethProvider, arbProvider, novaProvider);
 
@@ -94,7 +93,7 @@ export const verifyDeployment = async () => {
   //// L2 contracts
 
   console.log("Verify L2 contracts are properly deployed");
-  await verifyArbitrumTimelockParams(
+  await verifyArbitrumTimelock(
     contracts["l2CoreTimelock"],
     contracts["l2CoreGoverner"],
     contracts["l2Executor"],
@@ -129,6 +128,19 @@ export const verifyDeployment = async () => {
     contracts["l2TreasuryGoverner"],
     contracts["l2Token"],
     contracts["l2Executor"],
+    contracts["l2ProxyAdmin"],
+    arbProvider
+  );
+
+  const l2TreasuryTimelock = ArbitrumTimelock__factory.connect(
+    await contracts["l2TreasuryGoverner"].timelock(),
+    arbProvider
+  );
+  await verifyL2TreasuryTimelock(
+    l2TreasuryTimelock,
+    contracts["l2TreasuryGoverner"],
+    contracts["l2Executor"],
+    contracts["l2GovernanceFactory"],
     contracts["l2ProxyAdmin"],
     arbProvider
   );
@@ -453,7 +465,7 @@ async function verifyL2GovernanceFactory(
  * - initialization params are correctly set
  * - roles are correctly assigned
  */
-async function verifyArbitrumTimelockParams(
+async function verifyArbitrumTimelock(
   l2Timelock: ArbitrumTimelock,
   l2CoreGovernor: L2ArbitrumGovernor,
   l2Executor: UpgradeExecutor,
@@ -738,6 +750,65 @@ async function verifyL2TreasuryGovernor(
     await l2TreasuryGoverner.lateQuorumVoteExtension(),
     BigNumber.from(GovernanceConstants.L2_MIN_PERIOD_AFTER_QUORUM),
     "Incorrect min period after quorum set for L2 treasury governor"
+  );
+}
+
+/**
+ * Verify:
+ * - ownership
+ * - initialization params are correctly set
+ */
+async function verifyL2TreasuryTimelock(
+  l2TreasuryTimelock: ArbitrumTimelock,
+  l2TreasuryGoverner: L2ArbitrumGovernor,
+  l2UpgradeExecutor: UpgradeExecutor,
+  l2GovernanceFactory: L2GovernanceFactory,
+  l2ProxyAdmin: ProxyAdmin,
+  arbProvider: Provider
+) {
+  //// check proxy admin
+  assertEquals(
+    await getProxyOwner(l2TreasuryTimelock.address, arbProvider),
+    l2ProxyAdmin.address,
+    "L2ProxyAdmin should be L2 treasury timelock's proxy admin"
+  );
+
+  //// check initialization params are correctly set
+  assertNumbersEquals(
+    await l2TreasuryTimelock.getMinDelay(),
+    BigNumber.from(0),
+    "Incorrect min delay set for L2 treasury governor"
+  );
+
+  //// check assigned/revoked roles are correctly set
+  const proposerRole = await l2TreasuryTimelock.PROPOSER_ROLE();
+  const cancellerRole = await l2TreasuryTimelock.CANCELLER_ROLE();
+  const executorRole = await l2TreasuryTimelock.EXECUTOR_ROLE();
+  const timelockAdminRole = await l2TreasuryTimelock.TIMELOCK_ADMIN_ROLE();
+
+  assert(
+    await l2TreasuryTimelock.hasRole(proposerRole, l2TreasuryGoverner.address),
+    "L2 treasury governor should have proposer role on L2 treasury timelock"
+  );
+  assert(
+    await l2TreasuryTimelock.hasRole(cancellerRole, l2TreasuryGoverner.address),
+    "L2 treasury governor should have canceller role on L2 treasury timelock"
+  );
+  assert(
+    await l2TreasuryTimelock.hasRole(executorRole, ZERO_ADDRESS),
+    "Executor role should be assigned to zero address on L2 treasury timelock"
+  );
+  assert(
+    await l2TreasuryTimelock.hasRole(timelockAdminRole, l2UpgradeExecutor.address),
+    "L2 upgrade executor should have timelock admin role on L2 treasury timelock"
+  );
+  assert(
+    !(await l2TreasuryTimelock.hasRole(timelockAdminRole, l2TreasuryTimelock.address)),
+    "L2 treasury timelock should not have timelock admin role on itself"
+  );
+  assert(
+    !(await l2TreasuryTimelock.hasRole(timelockAdminRole, l2GovernanceFactory.address)),
+    "L2 governance factory should not have timelock admin role on L2 treasury timelock"
   );
 }
 
