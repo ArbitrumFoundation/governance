@@ -21,7 +21,7 @@ contract L1ArbitrumTimelock is TimelockControllerUpgradeable, L1ArbitrumMessenge
     ///      the data
     ///      address below is: address(bytes20(bytes("retryable ticket magic")));
     ///      we hardcode the bytes rather than the string as it's slightly cheaper
-    address public constant RETRYABLE_TICKET_MAGIC = 0x726574727961626c65207469636b657420616464;
+    address public constant RETRYABLE_TICKET_MAGIC = 0x726574727961626C65207469636b6574206D6167;
     /// @notice The inbox for the L2 where governance is based
     address public governanceChainInbox;
     /// @notice The timelock of the governance contract on L2
