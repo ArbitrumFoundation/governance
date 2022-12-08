@@ -122,6 +122,7 @@ export const verifyDeployment = async () => {
     contracts["l1TokenProxy"],
     contracts["l2Executor"],
     contracts["l2ProxyAdmin"],
+    contracts["l2TokenDistributor"],
     arbProvider
   );
   await verifyL2TreasuryGovernor(
@@ -657,6 +658,7 @@ async function verifyL2Token(
   l1Token: L1ArbitrumToken,
   l2Executor: UpgradeExecutor,
   l2ProxyAdmin: ProxyAdmin,
+  l2TokenDistributor: TokenDistributor,
   arbProvider: Provider
 ) {
   //// check ownership
@@ -679,15 +681,29 @@ async function verifyL2Token(
     ethers.utils.parseEther(GovernanceConstants.L2_TOKEN_INITIAL_SUPPLY.toString()),
     "L2Token has incorrect total supply"
   );
-  assertNumbersEquals(
-    await l2Token.balanceOf(arbTreasury.address),
-    parseEther(GovernanceConstants.L2_NUM_OF_TOKENS_FOR_TREASURY),
-    "Incorrect initial L2Token balance for ArbTreasury"
-  );
   assertEquals(
     await l2Token.l1Address(),
     l1Token.address,
     "Incorrect L1Token reference for L2Token"
+  );
+
+  // check balances
+  const arbTreasuryBalance = await l2Token.balanceOf(arbTreasury.address);
+  const tokenDistributorBalance = await l2Token.balanceOf(l2TokenDistributor.address);
+  assertNumbersEquals(
+    arbTreasuryBalance,
+    parseEther(GovernanceConstants.L2_NUM_OF_TOKENS_FOR_TREASURY),
+    "Incorrect initial L2Token balance for ArbTreasury"
+  );
+  assertNumbersEquals(
+    tokenDistributorBalance,
+    parseEther(GovernanceConstants.L2_NUM_OF_TOKENS_FOR_CLAIMING),
+    "Incorrect initial L2Token balance for TokenDistributor"
+  );
+  assertNumbersEquals(
+    arbTreasuryBalance.add(tokenDistributorBalance),
+    await l2Token.totalSupply(),
+    "ArbTreasury and TokenDistributor should own all the tokens "
   );
 }
 
