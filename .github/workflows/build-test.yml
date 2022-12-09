@@ -62,6 +62,9 @@ jobs:
       - uses: actions/checkout@v3
         with:
           submodules: recursive
+
+      - name: Check if .only exists in integration test
+        run: fgrep .only -R test-ts/ && exit 1 || exit 0
       
       - name: Checkout nitro
         uses: actions/checkout@v3
