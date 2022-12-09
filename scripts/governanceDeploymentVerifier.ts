@@ -54,12 +54,7 @@ export const verifyDeployment = async () => {
 
   const l1Contracts = loadL1Contracts(ethProvider);
   const arbContracts = loadArbContracts(arbProvider);
-
-  let novaContracts: any | undefined;
-  if (isDeployingToNova()) {
-    novaContracts = loadNovaContracts(novaProvider);
-  }
-  //// L1 contracts
+  const novaContracts = isDeployingToNova() ? loadNovaContracts(novaProvider) : undefined;
 
   console.log("Verify L1 contracts are properly deployed");
   await verifyL1GovernanceFactory(l1Contracts["l1GovernanceFactory"], ethDeployerAddress);
@@ -175,21 +170,21 @@ export const verifyDeployment = async () => {
   if (isDeployingToNova()) {
     console.log("Verify Nova contracts are properly deployed");
     await verifyNovaUpgradeExecutor(
-      novaContracts["novaUpgradeExecutorProxy"],
+      novaContracts!["novaUpgradeExecutorProxy"],
       l1Contracts["l1Timelock"],
-      novaContracts["novaProxyAdmin"],
+      novaContracts!["novaProxyAdmin"],
       novaProvider
     );
     await verifyNovaToken(
-      novaContracts["novaTokenProxy"],
+      novaContracts!["novaTokenProxy"],
       l1Contracts["l1TokenProxy"],
-      novaContracts["novaProxyAdmin"],
+      novaContracts!["novaProxyAdmin"],
       novaProvider,
       ethProvider
     );
     await verifyNovaProxyAdmin(
-      novaContracts["novaProxyAdmin"],
-      novaContracts["novaUpgradeExecutorProxy"]
+      novaContracts!["novaProxyAdmin"],
+      novaContracts!["novaUpgradeExecutorProxy"]
     );
   }
 };
