@@ -177,3 +177,13 @@ export const getDeployerAddresses = async (): Promise<{
     novaDeployerAddress,
   };
 };
+
+/**
+ * Governance will be deployed to Nova only if env var 'DEPLOY_GOVERNANCE_TO_NOVA' is set to 'true'.
+ *
+ * @returns
+ */
+export function isDeployingToNova(): boolean {
+  const deployToNova = process.env["DEPLOY_GOVERNANCE_TO_NOVA"] as string;
+  return deployToNova === "true";
+}
