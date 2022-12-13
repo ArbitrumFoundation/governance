@@ -510,7 +510,7 @@ export class L1TimelockExecutionStage implements ProposalStage {
     );
 
     const retryableMagic = await timelock.RETRYABLE_TICKET_MAGIC();
-    let value = BigNumber.from(0);
+    let value = callScheduledArgs.value;
     if (
       callScheduledArgs.target.toLowerCase() === retryableMagic.toLowerCase()
     ) {
@@ -519,6 +519,9 @@ export class L1TimelockExecutionStage implements ProposalStage {
         callScheduledArgs.data
       );
       const inboxAddress = parsedData[0] as string;
+      const innerValue = parsedData[2] as BigNumber;
+      const innerGasLimit = parsedData[3] as BigNumber;
+      const innerMaxFeePerGas = parsedData[4] as BigNumber;
       const innerData = parsedData[5] as string;
 
       const inbox = Inbox__factory.connect(
@@ -530,8 +533,23 @@ export class L1TimelockExecutionStage implements ProposalStage {
           hexDataLength(innerData),
           0
         );
-      // add some leeway for the base fee to increase
-      value = submissionFee.mul(2);
+
+      const timelockBalance = await this.l1Signer.provider!.getBalance(
+        timelockAddress
+      );
+      if (timelockBalance.lt(innerValue)) {
+        throw new ProposalStageError(
+          `Timelock does not contain enough balance to cover l2 value: ${timelockBalance.toString()} : ${innerValue.toString()}`,
+          this.identifier,
+          this.name
+        );
+      }
+
+      // enough value to create a retryable ticket = submission fee + gas
+      // the l2value needs to already be in the contract
+      value = submissionFee
+        .mul(2) // add some leeway for the base fee to increase
+        .add(innerGasLimit.mul(innerMaxFeePerGas));
     }
 
     await (

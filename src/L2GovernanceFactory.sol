@@ -20,7 +20,7 @@ struct DeployCoreParams {
     uint256 _treasuryQuorumThreshold;
     uint256 _proposalThreshold;
     uint64 _minPeriodAfterQuorum;
-    address _upgradeProposer; // in addition to core gov
+    address _l2NonEmergencySecurityCouncil; // 7/12 security council
     address _l2InitialSupplyRecipient;
     address _l2EmergencySecurityCouncil; // 9/12 security council
 }
@@ -58,15 +58,19 @@ struct DeployedTreasuryContracts {
 ///     L1:
 ///         - UpgradeExecutor logic
 ///     L2:
-///         - ArbitrumTimelock logic
-///         - L2ArbitrumGovernor logic
-///         - FixedDelegateErc20 logic
-///         - L2ArbitrumToken logic
-///         - UpgradeExecutor logic
+        //  - ArbitrumTimelock logic (for core gov)
+        //  - L2ArbitrumGovernor logic (for core gov)
+        //  - ArbitrumTimelock logic (for treasury)
+        //  - FixedDelegateErc20Wallet logic 
+        //  - L2ArbitrumGovernor logic (for treasury)
+        //  - L2ArbitrumToken logic
+        //  - UpgradeExecutor logic
+
+     
 /// 2. Then deploy the following (in any order):
 ///     L1:
 ///         - L1GoveranceFactory
-///         - L1Token
+///         - L1Token logic 
 ///         - Gnosis Safe Multisig 9 of 12 Security Council
 ///     L2:
 ///         - L2GovernanceFactory
@@ -75,13 +79,13 @@ struct DeployedTreasuryContracts {
 ///
 ///     L1GoveranceFactory and L2GovernanceFactory deployers will be their respective owners, and will carry out the following steps.
 /// 3. Call L2GovernanceFactory.deployStep1
-///     - Dependencies: L1-Token address, 7 of 12 multisig (as _upgradeProposer)
+///     - Dependencies: L1-Token address, 7 of 12 multisig (as _l2NonEmergencySecurityCouncil)
 ///
 /// 4. Call L1GoveranceFactory.deployStep2
 ///     - Dependencies: L1 security council address, L2 Timelock address (deployed in previous step)
 ///
 /// 5. Call L2GovernanceFactory.deployStep3
-///     - Dependencies: (Aliased) L1-timelock address (deployed in previous step), L2 security council address (as _l2UpgradeExecutors)
+///     - Dependencies: (Aliased) L1-timelock address (deployed in previous step)
 /// 6. From the _l2InitialSupplyRecipient transfer ownership of the L2ArbitrumToken to the UpgradeExecutor
 ///    Then transfer tokens from _l2InitialSupplyRecipient to the treasury and other token distributor
 contract L2GovernanceFactory is Ownable {
@@ -201,9 +205,9 @@ contract L2GovernanceFactory is Ownable {
         dc.coreTimelock.grantRole(cancellerRole, params._l2EmergencySecurityCouncil);
 
         // allow the 7/12 security council to schedule actions
-        // we don't give _upgradeProposer the canceller role since it shouldn't
+        // we don't give _l2NonEmergencySecurityCouncil the canceller role since it shouldn't
         // have the affordance to cancel proposals proposed by others
-        dc.coreTimelock.grantRole(dc.coreTimelock.PROPOSER_ROLE(), address(params._upgradeProposer));
+        dc.coreTimelock.grantRole(dc.coreTimelock.PROPOSER_ROLE(), address(params._l2NonEmergencySecurityCouncil));
         // anyone is allowed to execute on the timelock
         dc.coreTimelock.grantRole(dc.coreTimelock.EXECUTOR_ROLE(), address(0));
 

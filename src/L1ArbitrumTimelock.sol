@@ -21,7 +21,7 @@ contract L1ArbitrumTimelock is TimelockControllerUpgradeable, L1ArbitrumMessenge
     ///      the data
     ///      address below is: address(bytes20(bytes("retryable ticket magic")));
     ///      we hardcode the bytes rather than the string as it's slightly cheaper
-    address public constant RETRYABLE_TICKET_MAGIC = 0x726574727961626c65207469636b657420616464;
+    address public constant RETRYABLE_TICKET_MAGIC = 0x726574727961626C65207469636b6574206D6167;
     /// @notice The inbox for the L2 where governance is based
     address public governanceChainInbox;
     /// @notice The timelock of the governance contract on L2
@@ -151,10 +151,13 @@ contract L1ArbitrumTimelock is TimelockControllerUpgradeable, L1ArbitrumMessenge
                 // it's important that only this address, or another DAO controlled one is able to
                 // cancel, otherwise anyone could cancel, and therefore block, the upgrade
                 address(this),
-                // the value supplied as a function arg is completely ignored and the msg.value
-                // is used instead. This is to ensure that an executor will always be able to provide
-                // eth to cover the submission costs
-                msg.value,
+                // the value of the outer message is ignored instead we encode the value along with the other
+                // l2 params. We need to ensure value can be injected via msg.value since the retryable submission cost
+                // calculation is dependent on the l1 base fee, so can't be committed to at the time of
+                // proposal creation. The msg.value is only intended to cover the submission and gas costs
+                // but the l2Value needs to be in this contract already. This can be done by sending value
+                // to the receive function of this contract.
+                l2Value + msg.value,
                 l2Value,
                 L2GasParams({
                     _maxSubmissionCost: submissionCost,

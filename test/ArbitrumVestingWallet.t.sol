@@ -29,6 +29,8 @@ contract ArbitrumVestingWalletTest is Test {
     address payable sweepTo = payable(address(123_457_891));
     address delegatee = address(138);
     address someRando = address(123);
+    address tdDelegate = address(127);
+
 
     function deployDeps() public returns (L2ArbitrumToken, L2ArbitrumGovernor, TokenDistributor) {
         address token = TestUtil.deployProxy(address(new L2ArbitrumToken()));
@@ -38,7 +40,8 @@ contract ArbitrumVestingWalletTest is Test {
             sweepTo,
             owner,
             claimPeriodStart,
-            claimPeriodEnd
+            claimPeriodEnd,
+            tdDelegate
         );
         vm.prank(owner);
         L2ArbitrumToken(token).transfer(address(td), beneficiaryClaim * 2);

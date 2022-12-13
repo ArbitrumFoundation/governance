@@ -45,14 +45,17 @@ contract TokenDistributor is Ownable {
         address payable _sweepReceiver,
         address _owner,
         uint256 _claimPeriodStart,
-        uint256 _claimPeriodEnd
+        uint256 _claimPeriodEnd,
+        address delegateTo
     ) Ownable() {
         require(address(_token) != address(0), "TokenDistributor: zero token address");
         require(_sweepReceiver != address(0), "TokenDistributor: zero sweep address");
         require(_owner != address(0), "TokenDistributor: zero owner address");
         require(_claimPeriodStart > block.number, "TokenDistributor: start should be in the future");
         require(_claimPeriodEnd > _claimPeriodStart, "TokenDistributor: start should be before end");
+        require(delegateTo != address(0), "TokenDistributor: zero delegate to");
 
+        _token.delegate(delegateTo);
         token = _token;
         _setSweepReciever(_sweepReceiver);
         claimPeriodStart = _claimPeriodStart;

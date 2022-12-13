@@ -18,10 +18,7 @@ interface INovaArbOneReverseToken is ArbitrumEnabledToken {
         address creditBackAddress;
     }
 
-    function registerTokenOnL2(
-        RegistrationParams memory arbOneParams,
-        RegistrationParams memory novaParams
-    ) external payable;
+    function registerTokenOnL2(RegistrationParams memory novaParams) external payable;
 
     function transferFrom(address sender, address recipient, uint256 amount)
         external
@@ -69,7 +66,6 @@ contract L1ArbitrumToken is
 
     bool private shouldRegisterGateway;
 
-    address public arbOneRouter;
     address public arbOneGateway;
     address public novaRouter;
     address public novaGateway;
@@ -78,13 +74,10 @@ contract L1ArbitrumToken is
         _disableInitializers();
     }
 
-    function initialize(
-        address _arbOneRouter,
-        address _arbOneGateway,
-        address _novaRouter,
-        address _novaGateway
-    ) public initializer {
-        require(_arbOneRouter != address(0), "L1ArbitrumToken: zero arb one router");
+    function initialize(address _arbOneGateway, address _novaRouter, address _novaGateway)
+        public
+        initializer
+    {
         require(_arbOneGateway != address(0), "L1ArbitrumToken: zero arb one gateway");
         require(_novaRouter != address(0), "L1ArbitrumToken: zero nova router");
         require(_novaGateway != address(0), "L1ArbitrumToken: zero nova gateway");
@@ -93,7 +86,6 @@ contract L1ArbitrumToken is
         __ERC20Permit_init(NAME);
 
         arbOneGateway = _arbOneGateway;
-        arbOneRouter = _arbOneRouter;
         novaGateway = _novaGateway;
         novaRouter = _novaRouter;
     }
@@ -129,31 +121,12 @@ contract L1ArbitrumToken is
 
     /// @notice Register the token on both Arb One and Nova
     /// @dev    Called once by anyone immediately after the contract is deployed
-    function registerTokenOnL2(
-        RegistrationParams memory arbOneParams,
-        RegistrationParams memory novaParams
-    ) public payable {
+    function registerTokenOnL2(RegistrationParams memory novaParams) public payable {
         // we temporarily set `shouldRegisterGateway` to true for the callback in registerTokenToL2 to succeed
         // this is so that we can be sure that this contract does currently mean to be
         // doing a registration
         bool prev = shouldRegisterGateway;
         shouldRegisterGateway = true;
-
-        IL1CustomGateway(arbOneGateway).registerTokenToL2{value: arbOneParams.valueForGateway}(
-            arbOneParams.l2TokenAddress,
-            arbOneParams.maxGasForCustomGateway,
-            arbOneParams.gasPriceBid,
-            arbOneParams.maxSubmissionCostForCustomGateway,
-            arbOneParams.creditBackAddress
-        );
-
-        IGatewayRouter(arbOneRouter).setGateway{value: arbOneParams.valueForRouter}(
-            arbOneGateway,
-            arbOneParams.maxGasForRouter,
-            arbOneParams.gasPriceBid,
-            arbOneParams.maxSubmissionCostForRouter,
-            arbOneParams.creditBackAddress
-        );
 
         IL1CustomGateway(novaGateway).registerTokenToL2{value: novaParams.valueForGateway}(
             novaParams.l2TokenAddress,

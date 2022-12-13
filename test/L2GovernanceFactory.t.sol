@@ -33,7 +33,7 @@ contract L2GovernanceFactoryTest is Test {
     address[] addressArrayStub = [address(777), address(888)];
 
     address someRando = address(390);
-    address upgradeProposer = address(1234);
+    address l2NonEmergencySecurityCouncil = address(1234);
 
     address l2InitialSupplyRecipient = address(456);
 
@@ -47,7 +47,7 @@ contract L2GovernanceFactoryTest is Test {
         _treasuryQuorumThreshold: treasuryQuorumThreshold,
         _proposalThreshold: proposalThreshold,
         _minPeriodAfterQuorum: minPeriodAfterQuorum,
-        _upgradeProposer: upgradeProposer,
+        _l2NonEmergencySecurityCouncil: l2NonEmergencySecurityCouncil,
         _l2InitialSupplyRecipient: l2InitialSupplyRecipient,
         _l2EmergencySecurityCouncil: l2EmergencyCouncil
     });
@@ -333,8 +333,8 @@ contract L2GovernanceFactoryTest is Test {
             "core gov can propose"
         );
         assertTrue(
-            coreTimelock.hasRole(coreTimelock.PROPOSER_ROLE(), address(upgradeProposer)),
-            "upgradeProposer can propose"
+            coreTimelock.hasRole(coreTimelock.PROPOSER_ROLE(), address(l2NonEmergencySecurityCouncil)),
+            "l2NonEmergencySecurityCouncil can propose"
         );
         assertTrue(
             coreTimelock.hasRole(coreTimelock.CANCELLER_ROLE(), address(coreGov)),
@@ -345,7 +345,8 @@ contract L2GovernanceFactoryTest is Test {
             coreTimelock.hasRole(coreTimelock.EXECUTOR_ROLE(), address(0)), "anyone can execute"
         );
         assertTrue(
-            coreTimelock.hasRole(coreTimelock.CANCELLER_ROLE(), l2EmergencyCouncil), "9/12 council can cancel"
+            coreTimelock.hasRole(coreTimelock.CANCELLER_ROLE(), l2EmergencyCouncil),
+            "9/12 council can cancel"
         );
 
         assertTrue(
