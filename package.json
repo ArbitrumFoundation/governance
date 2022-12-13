@@ -8,6 +8,7 @@
   "scripts": {
     "gen:network": "ts-node ./scripts/genNetwork.ts",
     "gen:nova:network": "ts-node ./scripts/genNetworkNova.ts",
+    "gen:recipients": "ts-node ./scripts/genRecipients.ts",
     "deploy:governance": "ts-node ./scripts/governanceDeployer.ts",
     "verify:governance": "ts-node ./scripts/governanceDeploymentVerifier.ts",
     "test:integration": "hardhat test",
