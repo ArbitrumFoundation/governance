@@ -8,6 +8,7 @@ import {
 } from "./proposalStage";
 import { formatBytes32String } from "ethers/lib/utils";
 import { EventEmitter } from "events";
+import { BigNumber } from "ethers";
 
 export enum GPMEventName {
   TRACKER_STARED = "TRACKER_STARTED",
@@ -79,9 +80,9 @@ export class GovernorProposalMonitor extends EventEmitter {
       for (const log of logs) {
         const gen = this.pipelineFactory.createPipeline(
           this.governorAddress,
-          formatBytes32String(log.proposalId.toHexString()),
+          log.proposalId.toHexString(),
           log.targets[0],
-          log.values[0],
+          log[3][0], // ethers is parsing an array with a single 0 big number as undefined, so we lookup by index
           log.calldatas[0],
           log.description
         );

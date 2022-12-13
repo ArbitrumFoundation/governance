@@ -201,14 +201,14 @@ describe("Governor", function () {
         [ARB_SYS_ADDRESS],
         [0],
         [proposalCallData],
-        this.proposalDescription,
+        descriptionHash,
       ]);
 
       const l2ExecuteCallData = arbGovInterface.encodeFunctionData("execute", [
         [ARB_SYS_ADDRESS],
         [0],
         [proposalCallData],
-        this.proposalDescription,
+        descriptionHash,
       ]);
 
       return {
@@ -577,12 +577,8 @@ describe("Governor", function () {
     await fundL1(l1Signer, parseEther("1"));
     await fundL2(l2Signer, parseEther("1"));
 
-    const {
-      l2TimelockContract,
-      l1TimelockContract,
-      l2GovernorContract,
-      l1UpgradeExecutor,
-    } = await deployGovernance(l1Deployer, l2Deployer, l2Signer);
+    const { l1TimelockContract, l2GovernorContract, l1UpgradeExecutor } =
+      await deployGovernance(l1Deployer, l2Deployer, l2Signer);
     // give some tokens to the governor contract
     const l1UpgraderBalanceStart = 11;
     const l1TimelockBalanceEnd = 6;
@@ -658,6 +654,27 @@ describe("Governor", function () {
     );
     const formData = await proposal.formItUp();
 
+    const pipelineFactory = new RoundTripProposalPipelineFactory(
+      l2Signer,
+      l1Signer,
+      l2Signer
+    );
+
+    const proposalMonitor = new GovernorProposalMonitor(
+      l2GovernorContract.address,
+      l2Signer.provider!,
+      1000,
+      5,
+      await l2Signer.provider!.getBlockNumber(),
+      pipelineFactory
+    );
+    proposalMonitor.start().catch((e) => console.error(e));
+    proposalMonitor.on(GPMEventName.TRACKER_ERRORED, (e) => console.error(e));
+
+    const trackerEnd = new Promise<void>((resolve) =>
+      proposalMonitor.once(GPMEventName.TRACKER_ENDED, resolve)
+    );
+
     // send the proposal
     await (
       await l2Signer.sendTransaction({
@@ -681,26 +698,6 @@ describe("Governor", function () {
         .connect(l2Signer)
         .castVote(formData.l2Gov.proposalId, 1)
     ).wait();
-
-    const pipelineFactory = new RoundTripProposalPipelineFactory(
-      l2Signer,
-      l1Signer,
-      l2Signer
-    );
-
-    const proposalMonitor = new GovernorProposalMonitor(
-      l2GovernorContract.address,
-      l2Signer.provider!,
-      1000,
-      5,
-      await l2Signer.provider!.getBlockNumber(),
-      pipelineFactory
-    );
-    proposalMonitor.start();
-
-    const trackerEnd = new Promise<void>((resolve) =>
-      proposalMonitor.once(GPMEventName.TRACKER_ENDED, resolve)
-    );
 
     const mineBlocksUntilComplete = async (completion: Promise<void>) => {
       return new Promise<void>(async (resolve, reject) => {
@@ -741,7 +738,6 @@ describe("Governor", function () {
 
     const {
       l2TokenContract,
-      l2TimelockContract,
       l1TimelockContract,
       l2GovernorContract,
       l2UpgradeExecutor,
@@ -794,6 +790,27 @@ describe("Governor", function () {
     );
     const formData = await proposal.formItUp();
 
+    const pipelineFactory = new RoundTripProposalPipelineFactory(
+      l2Signer,
+      l1Signer,
+      l2Signer
+    );
+
+    const proposalMonitor = new GovernorProposalMonitor(
+      l2GovernorContract.address,
+      l2Signer.provider!,
+      1000,
+      5,
+      await l2Signer.provider!.getBlockNumber(),
+      pipelineFactory
+    );
+    proposalMonitor.start().catch((e) => console.error(e));
+    proposalMonitor.on(GPMEventName.TRACKER_ERRORED, (e) => console.error(e));
+
+    const trackerEnd = new Promise<void>((resolve) =>
+      proposalMonitor.once(GPMEventName.TRACKER_ENDED, resolve)
+    );
+
     // send the proposal
     await (
       await l2Signer.sendTransaction({
@@ -823,26 +840,6 @@ describe("Governor", function () {
       await l2TokenContract.balanceOf(randWallet.address)
     ).toNumber();
     expect(bal, "Wallet balance before").to.eq(0);
-
-    const pipelineFactory = new RoundTripProposalPipelineFactory(
-      l2Signer,
-      l1Signer,
-      l2Signer
-    );
-
-    const proposalMonitor = new GovernorProposalMonitor(
-      l2GovernorContract.address,
-      l2Signer.provider!,
-      1000,
-      5,
-      await l2Signer.provider!.getBlockNumber(),
-      pipelineFactory
-    );
-    proposalMonitor.start();
-
-    const trackerEnd = new Promise<void>((resolve) =>
-      proposalMonitor.once(GPMEventName.TRACKER_ENDED, resolve)
-    );
 
     const mineBlocksUntilComplete = async (completion: Promise<void>) => {
       return new Promise<void>(async (resolve, reject) => {

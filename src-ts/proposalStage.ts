@@ -825,7 +825,7 @@ export class ProposalStageTracker {
               const doneStatus = await stage.status();
               if (doneStatus !== ProposalStageStatus.EXECUTED) {
                 throw new ProposalStageError(
-                  "Stage executed but not EXECUTED.",
+                  "Stage executed but did not result in status 'EXECUTED'.",
                   stage.identifier,
                   stage.name
                 );
