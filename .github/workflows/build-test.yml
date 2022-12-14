@@ -56,7 +56,7 @@ jobs:
         run: make gas-check
 
   test-only-doesnt-exist:
-    name: There are is no .only in the tests
+    name: No .only
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
