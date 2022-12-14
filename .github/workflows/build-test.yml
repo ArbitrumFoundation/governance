@@ -93,6 +93,9 @@ jobs:
       - name: Copy .env
         run: |
           cp ./.env-sample ./.env
+      
+      - name: Compile contracts
+        run: npx hardhat compile
 
       - name: Generate network file
         run: make gen-network

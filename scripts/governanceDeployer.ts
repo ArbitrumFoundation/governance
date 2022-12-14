@@ -450,7 +450,7 @@ async function initL2Governance(
     await l2GovernanceFactory.deployStep1({
       _l2MinTimelockDelay: GovernanceConstants.L2_TIMELOCK_DELAY,
       _l2TokenInitialSupply: parseEther(GovernanceConstants.L2_TOKEN_INITIAL_SUPPLY),
-      _upgradeProposer: GovernanceConstants.L2_7_OF_12_SECURITY_COUNCIL,
+      _l2NonEmergencySecurityCouncil: GovernanceConstants.L2_7_OF_12_SECURITY_COUNCIL,
       _coreQuorumThreshold: GovernanceConstants.L2_CORE_QUORUM_TRESHOLD,
       _l1Token: l1TokenAddress,
       _treasuryQuorumThreshold: GovernanceConstants.L2_TREASURY_QUORUM_TRESHOLD,
