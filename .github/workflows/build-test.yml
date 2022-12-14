@@ -73,14 +73,7 @@ jobs:
       - uses: actions/checkout@v3
         with:
           submodules: recursive
-
-      - name: Checkout nitro
-        uses: actions/checkout@v3
-        with:
-          repository: OffchainLabs/nitro
-          submodules: 'recursive'
-          path: 'nitro'
-          ref: 'v2.0.0'
+      - uses: OffchainLabs/actions/run-nitro-test-node@main
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
@@ -97,19 +90,9 @@ jobs:
       - name: Install packages
         run: yarn
 
-      - name: Start background nitro test-node.bash
-        run: |
-          cd nitro
-          ./test-node.bash --init --no-blockscout &
-
       - name: Copy .env
         run: |
           cp ./.env-sample ./.env
-
-      - name: Wait for nitro startup
-        run: |
-          cd scripts
-          ./waitForNitro.sh
 
       - name: Generate network file
         run: make gen-network
@@ -128,14 +111,7 @@ jobs:
       - uses: actions/checkout@v3
         with:
           submodules: recursive
-      
-      - name: Checkout nitro
-        uses: actions/checkout@v3
-        with:
-          repository: OffchainLabs/nitro
-          submodules: 'recursive'
-          path: 'nitro'
-          ref: 'v2.0.0'
+      - uses: OffchainLabs/actions/run-nitro-test-node@main
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
@@ -152,19 +128,9 @@ jobs:
       - name: Install packages
         run: yarn
 
-      - name: Start background nitro test-node.bash
-        run: |
-          cd nitro
-          ./test-node.bash --init --no-blockscout &
-
       - name: Copy .env
         run: |
           cp ./.env-sample ./.env
-
-      - name: Wait for nitro startup
-        run: |
-          cd scripts
-          ./waitForNitro.sh
 
       - name: Generate network file
         run: make gen-network
