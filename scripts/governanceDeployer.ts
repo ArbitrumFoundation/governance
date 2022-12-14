@@ -4,7 +4,8 @@ import { L1CustomGateway__factory } from "@arbitrum/sdk/dist/lib/abi/factories/L
 import { L1GatewayRouter__factory } from "@arbitrum/sdk/dist/lib/abi/factories/L1GatewayRouter__factory";
 import { L2CustomGateway__factory } from "@arbitrum/sdk/dist/lib/abi/factories/L2CustomGateway__factory";
 import { L2GatewayRouter__factory } from "@arbitrum/sdk/dist/lib/abi/factories/L2GatewayRouter__factory";
-import { BigNumber, ethers, Signer } from "ethers";
+import { JsonRpcProvider } from "@ethersproject/providers";
+import { BigNumber, ethers, Signer, Wallet } from "ethers";
 import { parseEther } from "ethers/lib/utils";
 import {
   ArbitrumTimelock,
@@ -21,6 +22,7 @@ import {
   L2GovernanceFactory__factory,
   ProxyAdmin,
   ProxyAdmin__factory,
+  TokenDistributor,
   TokenDistributor__factory,
   TransparentUpgradeableProxy,
   TransparentUpgradeableProxy__factory,
@@ -44,7 +46,11 @@ import {
 } from "../typechain-types/src/L2GovernanceFactory";
 import * as GovernanceConstants from "./governance.constants";
 import { getDeployers, isDeployingToNova } from "./providerSetup";
-import { getNumberOfRecipientsSet, setClaimRecipients } from "./tokenDistributorHelper";
+import {
+  getNumberOfRecipientsSet,
+  printRecipientsInfo,
+  setClaimRecipients,
+} from "./tokenDistributorHelper";
 
 // store address for every deployed contract
 let deployedContracts: { [key: string]: string } = {};
@@ -207,7 +213,14 @@ export const deployGovernance = async () => {
 
   // deploy ARB distributor
   console.log("Deploy TokenDistributor");
-  await deployAndInitTokenDistributor(arbDeployer, l2DeployResult, arbDeployer);
+  const tokenDistributor = await deployTokenDistributor(arbDeployer, l2DeployResult, arbDeployer);
+
+  // write addresses before the last step which takes hours
+  console.log("Write deployed contract addresses to deployedContracts.json");
+  writeAddresses();
+
+  console.log("Set TokenDistributor recipients");
+  await initTokenDistributor(tokenDistributor, arbDeployer, l2DeployResult.executor);
 };
 
 async function deployL1LogicContracts(ethDeployer: Signer) {
@@ -741,11 +754,11 @@ async function postDeploymentL2TokenTasks(
   /// when distributor is deployed remaining tokens are transfered to it
 }
 
-async function deployAndInitTokenDistributor(
+async function deployTokenDistributor(
   arbDeployer: Signer,
   l2DeployResult: L2DeployedEventObject,
   arbInitialSupplyRecipient: Signer
-) {
+): Promise<TokenDistributor> {
   // deploy TokenDistributor
   const delegationExcludeAddress = await L2ArbitrumGovernor__factory.connect(
     l2DeployResult.coreGoverner,
@@ -778,21 +791,29 @@ async function deployAndInitTokenDistributor(
       )
   ).wait();
 
+  return tokenDistributor;
+}
+
+async function initTokenDistributor(
+  tokenDistributor: TokenDistributor,
+  arbDeployer: Signer,
+  l2ExecutorAddress: string
+) {
   // set claim recipients
-  await setClaimRecipients(tokenDistributor, arbDeployer);
+  // await setClaimRecipients(tokenDistributor, arbDeployer);
 
   // check num of recipients and claimable amount before transferring ownership
-  const numOfRecipientsSet = await getNumberOfRecipientsSet(tokenDistributor);
-  if (numOfRecipientsSet != GovernanceConstants.L2_NUM_OF_RECIPIENTS) {
-    throw new Error("Incorrect number of recipients set: " + numOfRecipientsSet);
-  }
+  // const numOfRecipientsSet = await getNumberOfRecipientsSet(tokenDistributor);
+  // if (numOfRecipientsSet != GovernanceConstants.L2_NUM_OF_RECIPIENTS) {
+  //   throw new Error("Incorrect number of recipients set: " + numOfRecipientsSet);
+  // }
   const totalClaimable = await tokenDistributor.totalClaimable();
   if (!totalClaimable.eq(parseEther(GovernanceConstants.L2_NUM_OF_TOKENS_FOR_CLAIMING))) {
     throw new Error("Incorrect totalClaimable amount of tokenDistributor: " + totalClaimable);
   }
 
   // transfer ownership to L2 UpgradeExecutor
-  await (await tokenDistributor.transferOwnership(l2DeployResult.executor)).wait();
+  await (await tokenDistributor.transferOwnership(l2ExecutorAddress)).wait();
 }
 
 /**
