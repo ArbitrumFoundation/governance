@@ -15,6 +15,12 @@ contract L1GovernanceFactory is Ownable {
 
     bool private done = false;
 
+    address public proxyAdminAddress;
+
+    constructor() {
+        proxyAdminAddress = address(new ProxyAdmin());
+    }
+
     function deployStep2(
         address upgradeExecutorLogic,
         uint256 _minTimelockDelay,
@@ -28,7 +34,7 @@ contract L1GovernanceFactory is Ownable {
     {
         require(!done, "L1GovernanceFactory: already executed");
         done = true;
-        proxyAdmin = new ProxyAdmin();
+        proxyAdmin = ProxyAdmin(proxyAdminAddress);
 
         timelock = deployTimelock(proxyAdmin);
         // proposers for this timelock are set in the initialise function
