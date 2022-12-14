@@ -21,8 +21,7 @@ import { Wallet } from "@ethersproject/wallet";
 import dotenv from "dotenv";
 import { Signer } from "ethers";
 import { ArbSdkError } from "@arbitrum/sdk/dist/lib/dataEntities/errors";
-import { fundL2, testSetup } from "../test-ts/testSetup";
-import { parseEther } from "ethers/lib/utils";
+import { testSetup } from "../test-ts/testSetup";
 
 dotenv.config();
 
@@ -60,7 +59,7 @@ export const getDeployers = async (): Promise<{
 }> => {
   if (config.isLocalDeployment === "true") {
     // setup local test environment
-    const { l2Deployer, l2Signer, l1Deployer } = await testSetup();
+    const { l2Deployer, l1Deployer } = await testSetup();
 
     // additionally, get nova deployer
     const novaProvider = new JsonRpcProvider(process.env["NOVA_URL"] as string);
@@ -86,7 +85,6 @@ export const getDeployers = async (): Promise<{
       }
     }
 
-    await fundL2(l2Signer, parseEther("1"));
     return {
       ethDeployer: l1Deployer,
       arbDeployer: l2Deployer,
@@ -161,21 +159,25 @@ export const getProviders = async (): Promise<{
  * Get addresses for every deployer account.
  * @returns
  */
-export const getDeployerAddresses = async (): Promise<{
+export const getDeployerAddresses = (): {
   ethDeployerAddress: string;
   arbDeployerAddress: string;
-  novaDeployerAddress: string;
-}> => {
-  const { ethDeployer, arbDeployer, novaDeployer } = await getDeployers();
-  const ethDeployerAddress = await ethDeployer.getAddress();
-  const arbDeployerAddress = await arbDeployer.getAddress();
-  const novaDeployerAddress = await novaDeployer.getAddress();
-
-  return {
-    ethDeployerAddress,
-    arbDeployerAddress,
-    novaDeployerAddress,
-  };
+} => {
+  if (config.isLocalDeployment === "true") {
+    const ethDeployerAddress = new Wallet(process.env["ETH_KEY"] as string).address;
+    const arbDeployerAddress = new Wallet(process.env["ARB_KEY"] as string).address;
+    return {
+      ethDeployerAddress,
+      arbDeployerAddress,
+    };
+  } else {
+    const ethDeployerAddress = new Wallet(config.ethDeployerKey).address;
+    const arbDeployerAddress = new Wallet(config.arbDeployerKey).address;
+    return {
+      ethDeployerAddress,
+      arbDeployerAddress,
+    };
+  }
 };
 
 /**

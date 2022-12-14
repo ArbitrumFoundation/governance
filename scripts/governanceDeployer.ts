@@ -800,13 +800,13 @@ async function initTokenDistributor(
   l2ExecutorAddress: string
 ) {
   // set claim recipients
-  // await setClaimRecipients(tokenDistributor, arbDeployer);
+  await setClaimRecipients(tokenDistributor, arbDeployer);
 
   // check num of recipients and claimable amount before transferring ownership
-  // const numOfRecipientsSet = await getNumberOfRecipientsSet(tokenDistributor);
-  // if (numOfRecipientsSet != GovernanceConstants.L2_NUM_OF_RECIPIENTS) {
-  //   throw new Error("Incorrect number of recipients set: " + numOfRecipientsSet);
-  // }
+  const numOfRecipientsSet = await getNumberOfRecipientsSet(tokenDistributor);
+  if (numOfRecipientsSet != GovernanceConstants.L2_NUM_OF_RECIPIENTS) {
+    throw new Error("Incorrect number of recipients set: " + numOfRecipientsSet);
+  }
   const totalClaimable = await tokenDistributor.totalClaimable();
   if (!totalClaimable.eq(parseEther(GovernanceConstants.L2_NUM_OF_TOKENS_FOR_CLAIMING))) {
     throw new Error("Incorrect totalClaimable amount of tokenDistributor: " + totalClaimable);

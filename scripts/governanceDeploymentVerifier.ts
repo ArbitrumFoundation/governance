@@ -50,7 +50,7 @@ const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
  */
 export const verifyDeployment = async () => {
   const { ethProvider, arbProvider, novaProvider } = await getProviders();
-  const { ethDeployerAddress, arbDeployerAddress } = await getDeployerAddresses();
+  const { ethDeployerAddress, arbDeployerAddress } = getDeployerAddresses();
 
   const l1Contracts = loadL1Contracts(ethProvider);
   const arbContracts = loadArbContracts(arbProvider);
