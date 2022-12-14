@@ -1,5 +1,5 @@
 import { BigNumber, ethers, Signer } from "ethers";
-import { parseEther } from "ethers/lib/utils";
+import { formatEther, parseEther } from "ethers/lib/utils";
 import { TokenDistributor } from "../typechain-types";
 import * as GovernanceConstants from "./governance.constants";
 
@@ -116,6 +116,8 @@ function mapPointsToAmounts(tokenRecipientsByPoints: any) {
 
     const points = tokenRecipientsByPoints[key].points;
     switch (points) {
+      case 1:
+      case 2:
       case 3: {
         tokenAmounts.push(parseEther("3000"));
         break;
@@ -155,4 +157,17 @@ function mapPointsToAmounts(tokenRecipientsByPoints: any) {
   }
 
   return { tokenRecipients, tokenAmounts };
+}
+
+export function printRecipientsInfo() {
+  const tokenRecipientsByPoints = require("../" + TOKEN_RECIPIENTS_FILE_NAME);
+  const { tokenRecipients, tokenAmounts } = mapPointsToAmounts(tokenRecipientsByPoints);
+
+  let totalClaimable = BigNumber.from(0);
+  tokenAmounts.forEach((element) => {
+    totalClaimable = totalClaimable.add(element);
+  });
+
+  console.log("Number of token recipients:", tokenRecipients.length);
+  console.log("Number of token to claim:", formatEther(totalClaimable));
 }
