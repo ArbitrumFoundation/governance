@@ -46,11 +46,7 @@ import {
 } from "../typechain-types/src/L2GovernanceFactory";
 import * as GovernanceConstants from "./governance.constants";
 import { getDeployers, isDeployingToNova } from "./providerSetup";
-import {
-  getNumberOfRecipientsSet,
-  printRecipientsInfo,
-  setClaimRecipients,
-} from "./tokenDistributorHelper";
+import { setClaimRecipients } from "./tokenDistributorHelper";
 
 // store address for every deployed contract
 let deployedContracts: { [key: string]: string } = {};
@@ -799,11 +795,21 @@ async function initTokenDistributor(
   arbDeployer: Signer,
   l2ExecutorAddress: string
 ) {
+  // we store start block when recipient batches are being set
+  const startBlockKey = "distributorSetRecipientsStartBlock";
+  if (!(startBlockKey in deployedContracts)) {
+    deployedContracts[startBlockKey] = (await arbDeployer.provider!.getBlockNumber()).toString();
+  }
+
   // set claim recipients
-  await setClaimRecipients(tokenDistributor, arbDeployer);
+  const numOfRecipientsSet = await setClaimRecipients(tokenDistributor, arbDeployer);
+
+  // we store end block when all recipients batches are set
+  deployedContracts["distributorSetRecipientsEndBlock"] = (
+    await arbDeployer.provider!.getBlockNumber()
+  ).toString();
 
   // check num of recipients and claimable amount before transferring ownership
-  const numOfRecipientsSet = await getNumberOfRecipientsSet(tokenDistributor);
   if (numOfRecipientsSet != GovernanceConstants.L2_NUM_OF_RECIPIENTS) {
     throw new Error("Incorrect number of recipients set: " + numOfRecipientsSet);
   }

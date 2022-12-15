@@ -40,6 +40,7 @@ import { parseEther } from "ethers/lib/utils";
 import { L1CustomGateway__factory } from "@arbitrum/sdk/dist/lib/abi/factories/L1CustomGateway__factory";
 import { L1GatewayRouter__factory } from "@arbitrum/sdk/dist/lib/abi/factories/L1GatewayRouter__factory";
 import { Provider } from "@ethersproject/providers";
+import { getNumberOfRecipientsSetInBlockRange, printRecipientsInfo } from "./tokenDistributorHelper";
 
 // JSON file which contains all the deployed contract addresses
 const DEPLOYED_CONTRACTS_FILE_NAME = "deployedContracts.json";
@@ -910,6 +911,19 @@ async function verifyL2TokenDistributor(
     await voteToken.delegates(l2TokenDistributor.address),
     await l2CoreGovernor.EXCLUDE_ADDRESS(),
     "L2TokenDistributor should delegate to EXCLUDE_ADDRESS"
+  );
+
+  //// check all 'CanClaim' events were emitted
+  const deploymentInfo = require("../" + DEPLOYED_CONTRACTS_FILE_NAME);
+  const totalEvents = await getNumberOfRecipientsSetInBlockRange(
+    l2TokenDistributor,
+    Number(deploymentInfo["distributorSetRecipientsStartBlock"]),
+    Number(deploymentInfo["distributorSetRecipientsEndBlock"])
+  );
+  assertNumbersEquals(
+    BigNumber.from(totalEvents),
+    BigNumber.from(GovernanceConstants.L2_NUM_OF_RECIPIENTS),
+    "Incorrect number of recipients set in TokenDistributor"
   );
 }
 

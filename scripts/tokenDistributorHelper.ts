@@ -1,7 +1,8 @@
 import { BigNumber, ethers, Signer } from "ethers";
-import { formatEther, parseEther } from "ethers/lib/utils";
+import { formatEther, formatUnits, parseEther } from "ethers/lib/utils";
 import { TokenDistributor } from "../typechain-types";
 import * as GovernanceConstants from "./governance.constants";
+import { getProviders } from "./providerSetup";
 
 const TOKEN_RECIPIENTS_FILE_NAME = "files/recipients.json";
 
@@ -12,7 +13,7 @@ const TOKEN_RECIPIENTS_FILE_NAME = "files/recipients.json";
  * @param tokenDistributor
  * @param arbDeployer
  */
-export async function setClaimRecipients(tokenDistributor: TokenDistributor, arbDeployer: Signer) {
+export async function setClaimRecipients(tokenDistributor: TokenDistributor, arbDeployer: Signer): Promise<number> {
   const tokenRecipientsByPoints = require("../" + TOKEN_RECIPIENTS_FILE_NAME);
   const { tokenRecipients, tokenAmounts } = mapPointsToAmounts(tokenRecipientsByPoints);
 
@@ -22,12 +23,9 @@ export async function setClaimRecipients(tokenDistributor: TokenDistributor, arb
 
   // 0.1 gwei
   const BASE_GAS_PRICE = BigNumber.from(100000000);
-
-  for (
-    let i = GovernanceConstants.L2_NUM_OF_RECIPIENT_BATCHES_ALREADY_SET;
-    i <= numOfBatches;
-    i++
-  ) {
+  const firstBatch = GovernanceConstants.L2_NUM_OF_RECIPIENT_BATCHES_ALREADY_SET;
+  let canClaimEventsEmitted = 0;
+  for (let i = firstBatch; i <= numOfBatches; i++) {
     console.log("---- Batch ", i, "/", numOfBatches);
 
     let gasPriceBestGuess = await arbDeployer.provider!.getGasPrice();
@@ -35,11 +33,7 @@ export async function setClaimRecipients(tokenDistributor: TokenDistributor, arb
     // if gas price raises above base price wait until if falls back
     if (gasPriceBestGuess.gt(BASE_GAS_PRICE)) {
       while (true) {
-        console.log(
-          "Gas price too high: ",
-          ethers.utils.formatUnits(gasPriceBestGuess, "gwei"),
-          " gwei"
-        );
+        console.log("Gas price too high: ", formatUnits(gasPriceBestGuess, "gwei"), " gwei");
         console.log("Sleeping 30 sec");
         // sleep 30 sec, then check if gas price has fallen down
         await new Promise((resolve) => setTimeout(resolve, 30000));
@@ -77,6 +71,9 @@ export async function setClaimRecipients(tokenDistributor: TokenDistributor, arb
       await tokenDistributor.setRecipients(recipientsBatch, amountsBatch)
     ).wait();
 
+    // update event tracker
+    canClaimEventsEmitted += txReceipt.logs.length;
+
     // print gas usage stats
     console.log("Gas used: ", txReceipt.gasUsed.toString());
     console.log(
@@ -88,19 +85,53 @@ export async function setClaimRecipients(tokenDistributor: TokenDistributor, arb
       ethers.utils.formatUnits(txReceipt.gasUsed.mul(txReceipt.effectiveGasPrice), "ether")
     );
   }
+
+  return canClaimEventsEmitted;
 }
 
 /**
- * Get number of recipients set by checking the number of 'CanClaim' events emitted
+ * Get number of recipients set by checking the number of 'CanClaim' events emitted.
+ * Check in ranges of 100 blocks.
+ *
  * @param tokenDistributor
+ * @param startBlock
+ * @param endBlock
  * @returns
  */
-export async function getNumberOfRecipientsSet(
-  tokenDistributor: TokenDistributor
+export async function getNumberOfRecipientsSetInBlockRange(
+  tokenDistributor: TokenDistributor,
+  startBlock: number,
+  endBlock: number
 ): Promise<number> {
+  let totalEvents = 0;
   const canClaimFilter = tokenDistributor.filters.CanClaim();
-  const canClaimEvents = await tokenDistributor.queryFilter(canClaimFilter);
-  return canClaimEvents.length;
+
+  let currentBlock = startBlock;
+  // in 100 blocks there can be 100 recipient batches => 10k events at most
+  const blocksToSearch = 100;
+  while (true) {
+    // query 100 blocks
+    const canClaimEvents = await tokenDistributor.queryFilter(
+      canClaimFilter,
+      currentBlock,
+      currentBlock + blocksToSearch
+    );
+
+    // keep track of number of events found
+    totalEvents += canClaimEvents.length;
+
+    // next 100 blocks
+    currentBlock = currentBlock + blocksToSearch + 1;
+    if (currentBlock > endBlock) {
+      break;
+    }
+  }
+
+  // just in case check if there was any CanClaim event since latest queried block
+  const remainingEvents = await tokenDistributor.queryFilter(canClaimFilter, currentBlock);
+  totalEvents += remainingEvents.length;
+
+  return totalEvents;
 }
 
 /**
