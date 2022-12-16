@@ -46,17 +46,20 @@ dotenv.config();
 // JSON file which contains all the deployed contract addresses
 const DEPLOYED_CONTRACTS_FILE_NAME = "deployedContracts.json";
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
-const deployerConfigFileLocation = process.env["DEPLOYER_FILE"] as string
 
 /**
  * Main function that verifies governance deployment was successful.
  */
 export const verifyDeployment = async () => {
-  const { ethProvider, arbProvider, novaProvider, deployerConfig } = await getProviders();
+  const {
+    ethProvider,
+    arbProvider,
+    novaProvider,
+    deployerConfig,
+    arbNetwork: arbOneNetwork,
+    novaNetwork,
+  } = await getProviders();
   const { ethDeployerAddress, arbDeployerAddress } = await getDeployerAddresses();
-
-  const arbOneNetwork = await getL2Network(arbProvider);
-  const novaNetwork = await getL2Network(novaProvider);
 
   const l1Contracts = loadL1Contracts(ethProvider);
   const arbContracts = loadArbContracts(arbProvider);
@@ -274,7 +277,7 @@ async function verifyL1UpgradeExecutor(
   l1ProxyAdmin: ProxyAdmin,
   ethProvider: Provider,
   config: {
-    L1_9_OF_12_SECURITY_COUNCIL: string
+    L1_9_OF_12_SECURITY_COUNCIL: string;
   }
 ) {
   //// check proxy admin
@@ -316,8 +319,8 @@ async function verifyL1Timelock(
   ethProvider: Provider,
   arbOneNetwork: L2Network,
   config: {
-    L1_TIMELOCK_DELAY: number,
-    L1_9_OF_12_SECURITY_COUNCIL: string
+    L1_TIMELOCK_DELAY: number;
+    L1_9_OF_12_SECURITY_COUNCIL: string;
   }
 ) {
   //// check proxy admin
@@ -476,9 +479,9 @@ async function verifyArbitrumTimelock(
   l2ProxyAdmin: ProxyAdmin,
   arbProvider: Provider,
   config: {
-    L2_TIMELOCK_DELAY: number,
-    L2_7_OF_12_SECURITY_COUNCIL: string,
-    L2_9_OF_12_SECURITY_COUNCIL: string
+    L2_TIMELOCK_DELAY: number;
+    L2_7_OF_12_SECURITY_COUNCIL: string;
+    L2_9_OF_12_SECURITY_COUNCIL: string;
   }
 ) {
   //// check proxy admin
@@ -510,24 +513,15 @@ async function verifyArbitrumTimelock(
     "L2 core governor should have canceller role on L2 timelock"
   );
   assert(
-    await l2Timelock.hasRole(
-      proposerRole,
-      config.L2_7_OF_12_SECURITY_COUNCIL.toString()
-    ),
+    await l2Timelock.hasRole(proposerRole, config.L2_7_OF_12_SECURITY_COUNCIL.toString()),
     "L2 7/12 council should have proposer role on L2 timelock"
   );
   assert(
-    !(await l2Timelock.hasRole(
-      cancellerRole,
-      config.L2_7_OF_12_SECURITY_COUNCIL.toString()
-    )),
+    !(await l2Timelock.hasRole(cancellerRole, config.L2_7_OF_12_SECURITY_COUNCIL.toString())),
     "L2 7/12 council should not have canceller role on L2 timelock"
   );
   assert(
-    await l2Timelock.hasRole(
-      cancellerRole,
-      config.L2_9_OF_12_SECURITY_COUNCIL.toString()
-    ),
+    await l2Timelock.hasRole(cancellerRole, config.L2_9_OF_12_SECURITY_COUNCIL.toString()),
     "L2 9/12 council should have canceller role on L2 timelock"
   );
   assert(
@@ -561,11 +555,11 @@ async function verifyL2CoreGovernor(
   l2ProxyAdmin: ProxyAdmin,
   arbProvider: Provider,
   config: {
-    L2_VOTING_DELAY: number,
-    L2_VOTING_PERIOD: number,
-    L2_PROPOSAL_TRESHOLD: number,
-    L2_CORE_QUORUM_TRESHOLD: number,
-    L2_MIN_PERIOD_AFTER_QUORUM: number
+    L2_VOTING_DELAY: number;
+    L2_VOTING_PERIOD: number;
+    L2_PROPOSAL_TRESHOLD: number;
+    L2_CORE_QUORUM_TRESHOLD: number;
+    L2_MIN_PERIOD_AFTER_QUORUM: number;
   }
 ) {
   //// check ownership
@@ -634,7 +628,7 @@ async function verifyL2UpgradeExecutor(
   l2ProxyAdmin: ProxyAdmin,
   arbProvider: Provider,
   config: {
-    L2_9_OF_12_SECURITY_COUNCIL: string
+    L2_9_OF_12_SECURITY_COUNCIL: string;
   }
 ) {
   //// check proxy admin
@@ -680,9 +674,9 @@ async function verifyL2Token(
   arbProvider: Provider,
   ethProvider: Provider,
   config: {
-    L2_TOKEN_INITIAL_SUPPLY: string,
-    L2_NUM_OF_TOKENS_FOR_TREASURY: string,
-    L2_NUM_OF_TOKENS_FOR_CLAIMING: string
+    L2_TOKEN_INITIAL_SUPPLY: string;
+    L2_NUM_OF_TOKENS_FOR_TREASURY: string;
+    L2_NUM_OF_TOKENS_FOR_CLAIMING: string;
   }
 ) {
   //// check ownership
@@ -760,11 +754,11 @@ async function verifyL2TreasuryGovernor(
   l2ProxyAdmin: ProxyAdmin,
   arbProvider: Provider,
   config: {
-    L2_VOTING_DELAY: number,
-    L2_VOTING_PERIOD: number,
-    L2_PROPOSAL_TRESHOLD: number,
-    L2_TREASURY_QUORUM_TRESHOLD: number,
-    L2_MIN_PERIOD_AFTER_QUORUM: number
+    L2_VOTING_DELAY: number;
+    L2_VOTING_PERIOD: number;
+    L2_PROPOSAL_TRESHOLD: number;
+    L2_TREASURY_QUORUM_TRESHOLD: number;
+    L2_MIN_PERIOD_AFTER_QUORUM: number;
   }
 ) {
   //// check ownership
@@ -921,10 +915,10 @@ async function verifyL2TokenDistributor(
   l2CoreGovernor: L2ArbitrumGovernor,
   arbProvider: Provider,
   config: {
-    L2_NUM_OF_TOKENS_FOR_CLAIMING: string,
-    L2_SWEEP_RECECIVER: string,
-    L2_CLAIM_PERIOD_START: number,
-    L2_CLAIM_PERIOD_END: number
+    L2_NUM_OF_TOKENS_FOR_CLAIMING: string;
+    L2_SWEEP_RECECIVER: string;
+    L2_CLAIM_PERIOD_START: number;
+    L2_CLAIM_PERIOD_END: number;
   }
 ) {
   //// check ownership
@@ -1032,7 +1026,7 @@ async function verifyNovaUpgradeExecutor(
   novaProxyAdmin: ProxyAdmin,
   novaProvider: Provider,
   config: {
-    NOVA_9_OF_12_SECURITY_COUNCIL: string
+    NOVA_9_OF_12_SECURITY_COUNCIL: string;
   }
 ) {
   //// check proxy admin
@@ -1051,10 +1045,7 @@ async function verifyNovaUpgradeExecutor(
     "NovaUpgradeExecutor should have admin role on itself"
   );
   assert(
-    await novaUpgradeExecutor.hasRole(
-      executorRole,
-      config.NOVA_9_OF_12_SECURITY_COUNCIL
-    ),
+    await novaUpgradeExecutor.hasRole(executorRole, config.NOVA_9_OF_12_SECURITY_COUNCIL),
     "Nova 9/12 council should have executor role on Nova upgrade executor"
   );
   const l1TimelockAddressAliased = new Address(l1Timelock.address).applyAlias().value;
@@ -1076,10 +1067,9 @@ async function verifyNovaToken(
   ethProvider: Provider,
   novaNetwork: L2Network,
   config: {
-    NOVA_TOKEN_NAME: string,
-    NOVA_TOKEN_SYMBOL: string,
-    NOVA_TOKEN_DECIMALS: number,
-
+    NOVA_TOKEN_NAME: string;
+    NOVA_TOKEN_SYMBOL: string;
+    NOVA_TOKEN_DECIMALS: number;
   }
 ) {
   //// check proxy admin
@@ -1308,5 +1298,4 @@ async function main() {
   await verifyDeployment();
 }
 
-main()
-  .then(() => console.log("Done."))
+main().then(() => console.log("Done."));

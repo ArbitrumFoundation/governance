@@ -181,15 +181,19 @@ export const getProviders = async (): Promise<{
   ethProvider: Provider;
   arbProvider: Provider;
   novaProvider: Provider;
-  deployerConfig: DeployerConfig
+  deployerConfig: DeployerConfig;
+  arbNetwork: L2Network,
+  novaNetwork: L2Network
 }> => {
-  const { arbDeployer, deployerConfig, ethDeployer, novaDeployer} = await getDeployersAndConfig();
+  const { arbDeployer, deployerConfig, ethDeployer, novaDeployer, arbNetwork, novaNetwork} = await getDeployersAndConfig();
 
   return {
     ethProvider: ethDeployer.provider!,
     arbProvider: arbDeployer.provider!,
     novaProvider: novaDeployer.provider!,
-    deployerConfig
+    deployerConfig,
+    arbNetwork,
+    novaNetwork
   };
 };
 
