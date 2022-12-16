@@ -7,6 +7,14 @@ import { ArbGasInfo__factory } from "@arbitrum/sdk/dist/lib/abi/factories/ArbGas
 import { ArbGasInfo } from "@arbitrum/sdk/dist/lib/abi/ArbGasInfo";
 
 const TOKEN_RECIPIENTS_FILE_NAME = "files/recipients.json";
+const validClaimAmounts: BigNumber[] = [
+  parseEther("3000"),
+  parseEther("4500"),
+  parseEther("6000"),
+  parseEther("9000"),
+  parseEther("10500"),
+  parseEther("12000"),
+];
 
 /**
  * Sets airdrop recipients in batches. Batch is posted every 2sec, but if gas price gets
@@ -59,6 +67,10 @@ export async function setClaimRecipients(
       // last remaining batch
       recipientsBatch = tokenRecipients.slice(i * batchSize);
       amountsBatch = tokenAmounts.slice(i * batchSize);
+    }
+
+    if (!isAmountsBatchValid(amountsBatch)) {
+      throw new Error("Unsupported claim amount!");
     }
 
     // set recipients
@@ -243,4 +255,22 @@ export function printRecipientsInfo() {
 
   console.log("Number of token recipients:", tokenRecipients.length);
   console.log("Number of token to claim:", formatEther(totalClaimable));
+}
+
+/**
+ * Check if amount is among the supported ones
+ * @param amount
+ * @returns
+ */
+export function isClaimAmountValid(amount: BigNumber) {
+  return validClaimAmounts.some((elem) => elem.toString() == amount.toString());
+}
+
+/**
+ * Check if every amount is the supported one
+ * @param amounts
+ * @returns
+ */
+export function isAmountsBatchValid(amounts: BigNumber[]) {
+  return amounts.every((elem) => isClaimAmountValid(elem));
 }

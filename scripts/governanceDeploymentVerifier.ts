@@ -40,7 +40,7 @@ import { parseEther } from "ethers/lib/utils";
 import { L1CustomGateway__factory } from "@arbitrum/sdk/dist/lib/abi/factories/L1CustomGateway__factory";
 import { L1GatewayRouter__factory } from "@arbitrum/sdk/dist/lib/abi/factories/L1GatewayRouter__factory";
 import { Provider } from "@ethersproject/providers";
-import { getNumberOfRecipientsSetInBlockRange, printRecipientsInfo } from "./tokenDistributorHelper";
+import { getNumberOfRecipientsSetInBlockRange } from "./tokenDistributorHelper";
 
 // JSON file which contains all the deployed contract addresses
 const DEPLOYED_CONTRACTS_FILE_NAME = "deployedContracts.json";
