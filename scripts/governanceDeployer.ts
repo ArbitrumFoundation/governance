@@ -883,6 +883,4 @@ async function main() {
   console.log("Deployment finished!");
 }
 
-main()
-  .then(() => console.log("Done."))
-  .catch(console.error);
+main().then(() => console.log("Done."));
