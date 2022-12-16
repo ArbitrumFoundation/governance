@@ -1,8 +1,10 @@
+import { ARB_GAS_INFO } from "@arbitrum/sdk/dist/lib/dataEntities/constants";
 import { BigNumber, ethers, Signer } from "ethers";
 import { formatEther, formatUnits, parseEther } from "ethers/lib/utils";
 import { TokenDistributor } from "../typechain-types";
 import * as GovernanceConstants from "./governance.constants";
-import { getProviders } from "./providerSetup";
+import { ArbGasInfo__factory } from "@arbitrum/sdk/dist/lib/abi/factories/ArbGasInfo__factory";
+import { ArbGasInfo } from "@arbitrum/sdk/dist/lib/abi/ArbGasInfo";
 
 const TOKEN_RECIPIENTS_FILE_NAME = "files/recipients.json";
 
@@ -13,38 +15,31 @@ const TOKEN_RECIPIENTS_FILE_NAME = "files/recipients.json";
  * @param tokenDistributor
  * @param arbDeployer
  */
-export async function setClaimRecipients(tokenDistributor: TokenDistributor, arbDeployer: Signer): Promise<number> {
+export async function setClaimRecipients(
+  tokenDistributor: TokenDistributor,
+  arbDeployer: Signer
+): Promise<number> {
   const tokenRecipientsByPoints = require("../" + TOKEN_RECIPIENTS_FILE_NAME);
   const { tokenRecipients, tokenAmounts } = mapPointsToAmounts(tokenRecipientsByPoints);
 
   // set recipients in batches
-  const BATCH_SIZE = 100;
-  const numOfBatches = Math.floor(tokenRecipients.length / BATCH_SIZE);
+  const batchSize = GovernanceConstants.RECIPIENTS_BATCH_SIZE;
+  const numOfBatches = Math.floor(tokenRecipients.length / batchSize);
 
   // 0.1 gwei
-  const BASE_GAS_PRICE = BigNumber.from(100000000);
+  const l2GasPriceLimit = BigNumber.from(GovernanceConstants.BASE_L2_GAS_PRICE_LIMIT);
+  // 15 gwei
+  const l1GasPriceLimit = BigNumber.from(GovernanceConstants.BASE_L1_GAS_PRICE_LIMIT);
+  const arbGasInfo = ArbGasInfo__factory.connect(ARB_GAS_INFO, arbDeployer);
+
   const firstBatch = GovernanceConstants.L2_NUM_OF_RECIPIENT_BATCHES_ALREADY_SET;
   let canClaimEventsEmitted = 0;
   for (let i = firstBatch; i <= numOfBatches; i++) {
     console.log("---- Batch ", i, "/", numOfBatches);
 
-    let gasPriceBestGuess = await arbDeployer.provider!.getGasPrice();
-
-    // if gas price raises above base price wait until if falls back
-    if (gasPriceBestGuess.gt(BASE_GAS_PRICE)) {
-      while (true) {
-        console.log("Gas price too high: ", formatUnits(gasPriceBestGuess, "gwei"), " gwei");
-        console.log("Sleeping 30 sec");
-        // sleep 30 sec, then check if gas price has fallen down
-        await new Promise((resolve) => setTimeout(resolve, 30000));
-
-        // check if fell back to 0.1 gwei
-        gasPriceBestGuess = await arbDeployer.provider!.getGasPrice();
-        if (gasPriceBestGuess.eq(BASE_GAS_PRICE)) {
-          break;
-        }
-      }
-    }
+    // if L1 or L2 are congested, wait until it clears out
+    await waitForAcceptableL2GasPrice(arbDeployer, l2GasPriceLimit);
+    await waitForAcceptableL1GasPrice(arbGasInfo, l1GasPriceLimit);
 
     // generally sleep 2 seconds to keep TX fees from going up, and to avoid filling all the blockspace
     await new Promise((resolve) => setTimeout(resolve, 2000));
@@ -54,16 +49,16 @@ export async function setClaimRecipients(tokenDistributor: TokenDistributor, arb
 
     // slice batches
     if (i < numOfBatches) {
-      recipientsBatch = tokenRecipients.slice(i * BATCH_SIZE, (i + 1) * BATCH_SIZE);
-      amountsBatch = tokenAmounts.slice(i * BATCH_SIZE, (i + 1) * BATCH_SIZE);
+      recipientsBatch = tokenRecipients.slice(i * batchSize, (i + 1) * batchSize);
+      amountsBatch = tokenAmounts.slice(i * batchSize, (i + 1) * batchSize);
     } else {
-      if (tokenRecipients.length == numOfBatches * BATCH_SIZE) {
+      if (tokenRecipients.length == numOfBatches * batchSize) {
         // nothing left
         break;
       }
       // last remaining batch
-      recipientsBatch = tokenRecipients.slice(i * BATCH_SIZE);
-      amountsBatch = tokenAmounts.slice(i * BATCH_SIZE);
+      recipientsBatch = tokenRecipients.slice(i * batchSize);
+      amountsBatch = tokenAmounts.slice(i * batchSize);
     }
 
     // set recipients
@@ -75,18 +70,65 @@ export async function setClaimRecipients(tokenDistributor: TokenDistributor, arb
     canClaimEventsEmitted += txReceipt.logs.length;
 
     // print gas usage stats
-    console.log("Gas used: ", txReceipt.gasUsed.toString());
-    console.log(
-      "Gas price in gwei: ",
-      ethers.utils.formatUnits(txReceipt.effectiveGasPrice, "gwei")
-    );
-    console.log(
-      "Gas cost in ETH: ",
-      ethers.utils.formatUnits(txReceipt.gasUsed.mul(txReceipt.effectiveGasPrice), "ether")
-    );
+    printGasUsageStats(txReceipt);
   }
 
   return canClaimEventsEmitted;
+}
+
+/**
+ * Print amount of gas used, gas price and TX cost
+ */
+function printGasUsageStats(txReceipt: ethers.ContractReceipt) {
+  console.log("Gas used: ", txReceipt.gasUsed.toString());
+  console.log("Gas price in gwei: ", ethers.utils.formatUnits(txReceipt.effectiveGasPrice, "gwei"));
+  console.log(
+    "TX cost in ETH: ",
+    ethers.utils.formatUnits(txReceipt.gasUsed.mul(txReceipt.effectiveGasPrice), "ether")
+  );
+}
+
+/**
+ * Wait until L1 base fee is below 15 gwei
+ */
+async function waitForAcceptableL1GasPrice(arbGasInfo: ArbGasInfo, l1GasPriceLimit: BigNumber) {
+  let l1GasPrice = await arbGasInfo.getL1BaseFeeEstimate();
+  if (l1GasPrice.gt(l1GasPriceLimit)) {
+    while (true) {
+      console.log("L1 Gas price too high: ", formatUnits(l1GasPrice, "gwei"), " gwei");
+      console.log("Sleeping 30 sec");
+      // sleep 30 sec, then check if gas price has fallen down
+      await new Promise((resolve) => setTimeout(resolve, 30000));
+
+      // check if fell back below 15 gwei
+      l1GasPrice = await arbGasInfo.getL1BaseFeeEstimate();
+      if (l1GasPrice.lte(l1GasPriceLimit)) {
+        break;
+      }
+    }
+  }
+}
+
+/**
+ * Wait until L2 base fee is at 0.1 gwei
+ */
+async function waitForAcceptableL2GasPrice(arbDeployer: Signer, l2GasPriceLimit: BigNumber) {
+  let gasPriceBestGuess = await arbDeployer.provider!.getGasPrice();
+  // if gas price raises above base price wait until if falls back
+  if (gasPriceBestGuess.gt(l2GasPriceLimit)) {
+    while (true) {
+      console.log("L2 gas price too high: ", formatUnits(gasPriceBestGuess, "gwei"), " gwei");
+      console.log("Sleeping 30 sec");
+      // sleep 30 sec, then check if gas price has fallen down
+      await new Promise((resolve) => setTimeout(resolve, 30000));
+
+      // check if fell back to 0.1 gwei
+      gasPriceBestGuess = await arbDeployer.provider!.getGasPrice();
+      if (gasPriceBestGuess.eq(l2GasPriceLimit)) {
+        break;
+      }
+    }
+  }
 }
 
 /**
