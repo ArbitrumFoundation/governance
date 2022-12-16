@@ -100,11 +100,14 @@ jobs:
       - name: Generate network file
         run: make gen-network
 
+      - name: Generate nova network file
+        run: yarn gen:nova:network
+
       - name: Deploy governance
         run: yarn deploy:governance
 
       - name: Verify deployment
-        run: yarn deploy:governance
+        run: yarn verify:governance
 
   
   test-integration:
