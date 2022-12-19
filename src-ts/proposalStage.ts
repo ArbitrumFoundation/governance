@@ -20,8 +20,7 @@ import {
 } from "../typechain-types";
 import { CallScheduledEvent } from "../typechain-types/src/ArbitrumTimelock";
 import { Inbox__factory } from "@arbitrum/sdk/dist/lib/abi/factories/Inbox__factory";
-
-const wait = async (ms: number) => new Promise((res) => setTimeout(res, ms));
+import { wait } from "./utils";
 
 /**
  * An execution stage of a proposal. Each stage can be executed, and results in a transaction receipt.
@@ -679,111 +678,145 @@ export class RetryableExecutionStage implements ProposalStage {
   }
 }
 
-export type ProposalStageGenerator = AsyncGenerator<
+/**
+ * A proposal stage pipeline. Describes the different stages a proposal must go through,
+ * and links them together in an ordered pipeline.
+ */
+export type ProposalStagePipeline = AsyncGenerator<
   ProposalStage,
   void,
   unknown
 >;
-export const createRoundTripGenerator = async function* (
-  proposalId: string,
-  target: string,
-  value: BigNumber,
-  callData: string,
-  description: string,
-  governorAddress: string,
-  arbOneSigner: Signer,
-  l1Signer: Signer,
-  novaSigner: Signer
-): ProposalStageGenerator {
-  try {
-    const govQueue = new GovernorQueueStage(
-      proposalId,
-      target,
-      value,
-      callData,
-      description,
-      governorAddress,
-      arbOneSigner
-    );
-    yield govQueue;
 
-    const timelock = await L2ArbitrumGovernor__factory.connect(
-      governorAddress,
-      arbOneSigner
-    ).callStatic.timelock();
-    const l2TimelockExecute = new L2TimelockExecutionStage(
-      target,
-      value,
-      callData,
-      description,
-      timelock,
-      arbOneSigner
-    );
-    yield l2TimelockExecute;
+export interface ProposalStagePipelineFactory {
+  createPipeline(
+    governorAddress: string,
+    proposalId: string,
+    target: string,
+    value: BigNumber,
+    callData: string,
+    description: string
+  ): ProposalStagePipeline;
+}
 
-    const l2TimelockExecuteReceipt =
-      await l2TimelockExecute.getExecuteReceipt();
-    const l1OutboxExecute = new L1OutboxStage(
-      l2TimelockExecuteReceipt,
-      l1Signer,
-      arbOneSigner.provider!
-    );
-    yield l1OutboxExecute;
+/**
+ * The round trip pipelines starts on ArbOne, moves through a timelock there,
+ * withdraws to L1 and moves through a timelock there. From there it is either
+ * executed directly on L1, or send in a retryable ticket to either Arb One or Nova
+ * to be executed.
+ **/
+export class RoundTripProposalPipelineFactory
+  implements ProposalStagePipelineFactory
+{
+  constructor(
+    readonly arbOneSigner: Signer,
+    readonly l1Signer: Signer,
+    readonly novaSigner: Signer
+  ) {}
 
-    const outboxExecuteReceipt = await l1OutboxExecute.getExecuteReceipt();
-    const l1TimelockExecute = new L1TimelockExecutionStage(
-      outboxExecuteReceipt,
-      description,
-      l1Signer
-    );
-    yield l1TimelockExecute;
+  public async *createPipeline(
+    governorAddress: string,
+    proposalId: string,
+    target: string,
+    value: BigNumber,
+    callData: string,
+    description: string
+  ): ProposalStagePipeline {
+    try {
+      const govQueue = new GovernorQueueStage(
+        proposalId,
+        target,
+        value,
+        callData,
+        description,
+        governorAddress,
+        this.arbOneSigner
+      );
+      yield govQueue;
 
-    const l1TimelockExecuteReceipt =
-      await l1TimelockExecute.getExecuteReceipt();
-    const l1txReceipt = new L1TransactionReceipt(l1TimelockExecuteReceipt);
+      const timelock = await L2ArbitrumGovernor__factory.connect(
+        governorAddress,
+        this.arbOneSigner
+      ).callStatic.timelock();
+      const l2TimelockExecute = new L2TimelockExecutionStage(
+        target,
+        value,
+        callData,
+        description,
+        timelock,
+        this.arbOneSigner
+      );
+      yield l2TimelockExecute;
 
-    const l1ToL2Events = await l1txReceipt.getMessageEvents();
-    if (l1ToL2Events.length > 0) {
-      if (l1ToL2Events.length > 1) {
-        throw new Error(`More than 1 l1 to l2 events: ${l1ToL2Events.length}`);
+      const l2TimelockExecuteReceipt =
+        await l2TimelockExecute.getExecuteReceipt();
+      const l1OutboxExecute = new L1OutboxStage(
+        l2TimelockExecuteReceipt,
+        this.l1Signer,
+        this.arbOneSigner.provider!
+      );
+      yield l1OutboxExecute;
+
+      const outboxExecuteReceipt = await l1OutboxExecute.getExecuteReceipt();
+      const l1TimelockExecute = new L1TimelockExecutionStage(
+        outboxExecuteReceipt,
+        description,
+        this.l1Signer
+      );
+      yield l1TimelockExecute;
+
+      const l1TimelockExecuteReceipt =
+        await l1TimelockExecute.getExecuteReceipt();
+      const l1txReceipt = new L1TransactionReceipt(l1TimelockExecuteReceipt);
+
+      const l1ToL2Events = await l1txReceipt.getMessageEvents();
+      if (l1ToL2Events.length > 0) {
+        if (l1ToL2Events.length > 1) {
+          throw new Error(
+            `More than 1 l1 to l2 events: ${l1ToL2Events.length}`
+          );
+        }
+        const inbox = l1ToL2Events[0].bridgeMessageEvent.inbox.toLowerCase();
+        // find the relevant inbox
+        const arbOneNetwork = await getL2Network(this.arbOneSigner);
+        const novaNetwork = await getL2Network(this.novaSigner);
+
+        if (arbOneNetwork.ethBridge.inbox.toLowerCase() === inbox) {
+          yield new RetryableExecutionStage(
+            this.arbOneSigner,
+            l1TimelockExecuteReceipt
+          );
+        } else if (novaNetwork.ethBridge.inbox.toLowerCase() === inbox) {
+          yield new RetryableExecutionStage(
+            this.novaSigner,
+            l1TimelockExecuteReceipt
+          );
+        } else throw new Error(`Inbox doesn't match any networks: ${inbox}`);
       }
-      const inbox = l1ToL2Events[0].bridgeMessageEvent.inbox.toLowerCase();
-      // find the relevant inbox
-      const arbOneNetwork = await getL2Network(arbOneSigner);
-      const novaNetwork = await getL2Network(novaSigner);
-
-      if (arbOneNetwork.ethBridge.inbox.toLowerCase() === inbox) {
-        yield new RetryableExecutionStage(
-          arbOneSigner,
-          l1TimelockExecuteReceipt
-        );
-      } else if (novaNetwork.ethBridge.inbox.toLowerCase() === inbox) {
-        yield new RetryableExecutionStage(novaSigner, l1TimelockExecuteReceipt);
-      } else throw new Error(`Inbox doesn't match any networks: ${inbox}`);
+    } catch (err) {
+      const error = err as Error;
+      throw new ProposalStageError(
+        "Unexpected error in stage generation",
+        `${proposalId}:${target}:${value.toString()}:${callData}:${description}:${governorAddress}`,
+        "Generator",
+        error
+      );
     }
-  } catch (err) {
-    const error = err as Error;
-    throw new ProposalStageError(
-      "Unexpected error in stage generation",
-      `${proposalId}:${target}:${value.toString()}:${callData}:${description}:${governorAddress}`,
-      "Generator",
-      error
-    );
   }
-};
+}
 
 /**
  * Follows a specific proposal, tracking it through its different stages
  * Executes each stage when it reaches READY, and exits upon observing a TERMINATED stage
  */
-export class ProposalStageManager {
+export class ProposalStageTracker {
   constructor(
-    private readonly stageGenerator: ProposalStageGenerator,
+    private readonly pipeline: ProposalStagePipeline,
     public readonly pollingIntervalMs: number
   ) {}
 
   public async run() {
-    for await (const stage of this.stageGenerator) {
+    for await (const stage of this.pipeline) {
       let polling = true;
       let consecutiveErrors = 0;
 
@@ -810,7 +843,7 @@ export class ProposalStageManager {
               const doneStatus = await stage.status();
               if (doneStatus !== ProposalStageStatus.EXECUTED) {
                 throw new ProposalStageError(
-                  "Stage executed but not EXECUTED.",
+                  "Stage executed but did not result in status 'EXECUTED'.",
                   stage.identifier,
                   stage.name
                 );

@@ -2,17 +2,17 @@
 
 ## Overview
 
-The following describes the steps involved in a "typical" governance execution; i.e., a governance action on L2 that goes through the permissionless governance process (with no actions performed by the security council.)
+The following describes the steps involved in a _typical_ governance execution; i.e., a governance action on L2 that goes through the permissionless governance process (with no actions performed by the security council.)
 
-The execution is initially proposed on layer 2 and takes a "round trip"; i.e., a message is passed down to layer 1 and then another back up to layer 2 where it is ultimately executed. This round-trip exists to enforce the required delay period between a proposal passing and its execution. For rationale, see the Governance Constitution.
+The execution is initially proposed on layer 2 and takes a _round trip_; i.e., a message is passed down to layer 1 and then another back up to layer 2 where it is ultimately executed. This round-trip exists to enforce the required delay period between a proposal passing and its execution. For rationale, see the Governance Constitution.
 
 ## Pre-Governance Steps
 
 We start with some L2 operation executable only by the Arbitrum DAO governance process. To restrict an operation's affordance to the governance, it should require that it can only be performed by the `UpgradeExecutor` contract. I.e.,
 
-We assume this operation in question is call setVersion on the example contract:
+We assume this operation in question is calling `setVersion` on the example contract:
 
-```sol
+```solidity
 contract UpgradeMe {
     string version = "1";
     address upgradeExecutor = address(123); // address of UpgradeExecutor
@@ -24,9 +24,9 @@ contract UpgradeMe {
 }
 ```
 
-We deploy a one-time use contract which will (eventually) execute the operation. Note that this contract will be executed via a delegateCall, and thus should not access any local state:
+We deploy a one-time use contract which will (eventually) execute the operation. Note that this contract will be executed via a `delegatecall`, and thus should not access any local state:
 
-```sol
+```solidity
 contract OneOffUpgradeContract {
     function executeUpgrade() external {
         address upgradeMe = address(456);
@@ -36,7 +36,8 @@ contract OneOffUpgradeContract {
 ```
 
 ## Forming a proposal
-To form a proposal we need to work backwards from the delegatecall to the upgrade contract made in the executor. Using the example above we'll work through forming a proposal data, as if it were being executed by the UpgradeExecutor on Arbitrum One.
+
+To form a proposal we need to work backwards from the `delegatecall` to the upgrade contract made in the executor. Using the example above we'll work through forming a proposal data, as if it were being executed by the `UpgradeExecutor` on Arbitrum One.
 
 ```solidity
 interface IUpgradeExecutor {
@@ -72,10 +73,10 @@ interface IL2ArbitrumGovernor {
 
 contract ProposalCreatorTest {
     function createProposal(
-        address l1TimelockAddr, 
-        string memory proposalDescription, 
-        address oneOffUpgradeAddr, 
-        address arbOneInboxAddr, 
+        address l1TimelockAddr,
+        string memory proposalDescription,
+        address oneOffUpgradeAddr,
+        address arbOneInboxAddr,
         address upgradeExecutorAddr
     ) public {
         address retryableTicketMagic = IL1Timelock(l1TimelockAddr).RETRYABLE_TICKET_MAGIC();
@@ -83,7 +84,7 @@ contract ProposalCreatorTest {
 
         // the data to call the upgrade executor with
         // it tells the upgrade executor how to call the upgrade contract, and what call data to provide to it
-        bytes memory upgradeExecutorCallData = abi.encodeWithSelector(IUpgradeExecutor.execute.selector, 
+        bytes memory upgradeExecutorCallData = abi.encodeWithSelector(IUpgradeExecutor.execute.selector,
             oneOffUpgradeAddr,
             abi.encodeWithSelector(OneOffUpgradeContract.executeUpgrade.selector)
         );
@@ -91,7 +92,7 @@ contract ProposalCreatorTest {
         // the data provided to call the l1 timelock with
         // specifies how to create a retryable ticket, which will then be used to call the upgrade executor with the
         // data created from the step above
-        bytes memory l1TimelockData = abi.encodeWithSelector(IL1Timelock.schedule.selector, 
+        bytes memory l1TimelockData = abi.encodeWithSelector(IL1Timelock.schedule.selector,
             retryableTicketMagic, // tells the l1 timelock that we want to make a retryable, instead of an l1 upgrade
             0, // ignored for l2 upgrades
             abi.encode( // these are the retryable data params
@@ -101,7 +102,7 @@ contract ProposalCreatorTest {
                 0, // max gas - will be filled in when the retryable is actually executed
                 0, // max fee per gas - will be filled in when the retryable is actually executed
                 upgradeExecutorCallData // call data created in the previous step
-            ), 
+            ),
             bytes32(0), // no predecessor
             keccak256(abi.encodePacked(proposalDescription)), // prop description
             minDelay // delay for this proposal
@@ -118,25 +119,32 @@ contract ProposalCreatorTest {
 ```
 
 ## Governance Action Steps
+
 After the proposal has been created it goes through a number of stages, each of which requires a user to trigger a transaction:
 
-### **1. ArbOne:`L2ArbitrumGovernor.propose`**:
+### **1. ArbOne: `L2ArbitrumGovernor.propose`**
+
 Provided with the data created above. The proposal is voted on by governance; only if it passes do we continue.
 
-### **2. ArbOne:`L2ArbitrumGovernor.queue`**
-After the proposal has passed anyone can send a transaction that calls the queue method. This will internally call the `schedule` function on the L2 timelock.
+### **2. ArbOne: `L2ArbitrumGovernor.queue`**
 
-### **3. ArbOne:`ArbitrumTimelock.execute`**
-After the timelock delay has passed, anyone can call execute on the timelock. Doing so calls the proposal target with the proposal data. Which in our case will be the ArbSys, with proposal data as shown in "Forming a proposal" section above. Doing so will create an L2->L1 message, which will then need to be executed on L1.
+After the proposal has passed, anyone can send a transaction that calls the `queue` method. This will internally call the `schedule` function on the L2 timelock.
 
-### **4. L1:`Outbox.executeTransaction`**
-After waiting for the challenge period to elapse, anyone can execute the L2->L1 message in the L1 Outbox. Doing so will call the address with the to address and data provided to ArbSys. In our example above this would be the L1 Timelock, with the L1 timelock data which calls `L1ArbitrumTimelock.schedule`.
+### **3. ArbOne: `ArbitrumTimelock.execute`**
 
-### **5. L1:`L1ArbitrumTimelock.execute`**    
+After the timelock delay has passed, anyone can call `execute` on the timelock. Doing so calls the proposal target with the proposal data., which in our case will be the ArbSys, with proposal data as shown in the [Forming a proposal](#forming-a-proposal) section above. Doing so will create an L2->L1 message, which will then need to be executed on L1.
+
+### **4. L1: `Outbox.executeTransaction`**
+
+After waiting for the challenge period to elapse, anyone can execute the L2->L1 message in the L1 Outbox. Doing so will call the address with the `to` address and data provided to ArbSys. In our example above, this would be the L1 Timelock, with the L1 timelock data which calls `L1ArbitrumTimelock.schedule`.
+
+### **5. L1: `L1ArbitrumTimelock.execute`**
+
 After the L2 timelock delay has elapsed, anyone can call the `execute` function to continue. Doing so decodes the retryable data params encoded in the calldata, and calls the inbox to create a retryable ticket whose target is the upgrade executor.
 
-### **6. ArbOne:`UpgradeExecutor.execute`**
-Once the retryable ticket has been created, anyone can redeem it which will call the execute function on the upgrade executor. As we've seen above, the upgrade executor will take the data provided and use it to delegatecall an upgrade contract to execute the upgrade. In our example this would be the `OneOffUpgradeContract.executeUpgrade` function.
+### **6. ArbOne: `UpgradeExecutor.execute`**
+
+Once the retryable ticket has been created, anyone can redeem it, which will call the `execute` function on the upgrade executor. As we've seen above, the upgrade executor will take the data provided and use it to `delegatecall` an upgrade contract to execute the upgrade. In our example, this would be the `OneOffUpgradeContract.executeUpgrade` function.
 
 ## Alternative Paths
 
@@ -159,5 +167,3 @@ The security council with a 9 of 12 multisig threshold can directly call the L1 
 ### Security Council: Non-time-sensitive Critical Upgrade
 
 The security council with a 7 of 12 multisig threshold can call `ArbitrumTimelock.schedule` on the Arbitrum One timelock, without requiring a governance vote.
-
-
