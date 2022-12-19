@@ -720,8 +720,8 @@ async function verifyL2Token(
   // check balances
   const arbTreasuryBalance = await l2Token.balanceOf(arbTreasury.address);
   const tokenDistributorBalance = await l2Token.balanceOf(l2TokenDistributor.address);
-  const vestingRecipients = loadVestedRecipients("../" + VESTED_RECIPIENTS_FILE_NAME);
-  const vestingTotal = Object.values(vestingRecipients).reduce((a, b) => a.add(b));
+  const vestingRecipients = loadVestedRecipients(path.join(__dirname, "..", VESTED_RECIPIENTS_FILE_NAME))
+  const vestingTotal = Object.values(vestingRecipients).reduce((a, b) => a.add(b))
   assertNumbersEquals(
     arbTreasuryBalance,
     parseEther(config.L2_NUM_OF_TOKENS_FOR_TREASURY),
