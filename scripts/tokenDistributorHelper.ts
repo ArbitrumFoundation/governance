@@ -6,7 +6,7 @@ import * as GovernanceConstants from "./governance.constants";
 import { ArbGasInfo__factory } from "@arbitrum/sdk/dist/lib/abi/factories/ArbGasInfo__factory";
 import { ArbGasInfo } from "@arbitrum/sdk/dist/lib/abi/ArbGasInfo";
 
-const TOKEN_RECIPIENTS_FILE_NAME = "files/recipients.json";
+export const TOKEN_RECIPIENTS_FILE_NAME = "files/recipients.json";
 const validClaimAmounts: BigNumber[] = [
   parseEther("3000"),
   parseEther("4500"),
@@ -144,20 +144,19 @@ async function waitForAcceptableL2GasPrice(arbDeployer: Signer, l2GasPriceLimit:
 }
 
 /**
- * Get number of recipients set by checking the number of 'CanClaim' events emitted.
- * Check in ranges of 100 blocks.
+ * Scan the blocks between start and end block and collect all emitted 'CanClaim' events.
  *
  * @param tokenDistributor
  * @param startBlock
  * @param endBlock
  * @returns
  */
-export async function getNumberOfRecipientsSetInBlockRange(
+export async function getRecipientsDataFromContractEvents(
   tokenDistributor: TokenDistributor,
   startBlock: number,
   endBlock: number
-): Promise<number> {
-  let totalEvents = 0;
+): Promise<{ [key: string]: BigNumber }> {
+  let recipientData: { [key: string]: BigNumber } = {};
   const canClaimFilter = tokenDistributor.filters.CanClaim();
 
   let currentBlock = startBlock;
@@ -171,8 +170,8 @@ export async function getNumberOfRecipientsSetInBlockRange(
       currentBlock + blocksToSearch
     );
 
-    // keep track of number of events found
-    totalEvents += canClaimEvents.length;
+    // collect recipient-amount pairs
+    canClaimEvents.map((event) => (recipientData[event.args[0]] = event.args[1]));
 
     // next 100 blocks
     currentBlock = currentBlock + blocksToSearch + 1;
@@ -181,18 +180,32 @@ export async function getNumberOfRecipientsSetInBlockRange(
     }
   }
 
-  // just in case check if there was any CanClaim event since latest queried block
-  const remainingEvents = await tokenDistributor.queryFilter(canClaimFilter, currentBlock);
-  totalEvents += remainingEvents.length;
+  // collect any remaining recipient-amount pairs
+  const remainingEvents = await tokenDistributor.queryFilter(canClaimFilter, startBlock, endBlock);
+  remainingEvents.map((event) => [(recipientData[event.args[0]] = event.args[1])]);
 
-  return totalEvents;
+  return recipientData;
+}
+
+/**
+ * Parse JSON file and return recipient-amount map.
+ * @returns
+ */
+export function getRecipientsDataFromFile(): { [key: string]: BigNumber } {
+  let recipientData: { [key: string]: BigNumber } = {};
+
+  const tokenRecipientsByPoints = require("../" + TOKEN_RECIPIENTS_FILE_NAME);
+  const { tokenRecipients, tokenAmounts } = mapPointsToAmounts(tokenRecipientsByPoints);
+  tokenRecipients.map((recipient, i) => (recipientData[recipient] = tokenAmounts[i]));
+
+  return recipientData;
 }
 
 /**
  * Map points to claimable token amount per account
  * @param tokenRecipientsByPoints
  */
-function mapPointsToAmounts(tokenRecipientsByPoints: any) {
+export function mapPointsToAmounts(tokenRecipientsByPoints: any) {
   let tokenRecipients: string[] = [];
   let tokenAmounts: BigNumber[] = [];
 

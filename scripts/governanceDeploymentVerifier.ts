@@ -40,7 +40,10 @@ import { parseEther } from "ethers/lib/utils";
 import { L1CustomGateway__factory } from "@arbitrum/sdk/dist/lib/abi/factories/L1CustomGateway__factory";
 import { L1GatewayRouter__factory } from "@arbitrum/sdk/dist/lib/abi/factories/L1GatewayRouter__factory";
 import { Provider } from "@ethersproject/providers";
-import { getNumberOfRecipientsSetInBlockRange } from "./tokenDistributorHelper";
+import {
+  getRecipientsDataFromContractEvents,
+  getRecipientsDataFromFile,
+} from "./tokenDistributorHelper";
 
 // JSON file which contains all the deployed contract addresses
 const DEPLOYED_CONTRACTS_FILE_NAME = "deployedContracts.json";
@@ -913,13 +916,23 @@ async function verifyL2TokenDistributor(
     "L2TokenDistributor should delegate to EXCLUDE_ADDRESS"
   );
 
-  //// check all 'CanClaim' events were emitted
+  //// verify that emmited 'CanClaim' events match recipient-amount pairs from file
   const deploymentInfo = require("../" + DEPLOYED_CONTRACTS_FILE_NAME);
-  const totalEvents = await getNumberOfRecipientsSetInBlockRange(
+  const recipientDataFromContract = await getRecipientsDataFromContractEvents(
     l2TokenDistributor,
     Number(deploymentInfo["distributorSetRecipientsStartBlock"]),
     Number(deploymentInfo["distributorSetRecipientsEndBlock"])
   );
+  const recipientDataFromFile = getRecipientsDataFromFile();
+
+  // check by comparing JSON representations. key order is supposed to be same in both cases
+  assertEquals(
+    JSON.stringify(recipientDataFromFile),
+    JSON.stringify(recipientDataFromContract),
+    "Emitted event data does not match recipient-amount pairs from file!"
+  );
+
+  const totalEvents = Object.keys(recipientDataFromContract).length;
   assertNumbersEquals(
     BigNumber.from(totalEvents),
     BigNumber.from(GovernanceConstants.L2_NUM_OF_RECIPIENTS),
