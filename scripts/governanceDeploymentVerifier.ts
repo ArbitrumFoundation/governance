@@ -40,10 +40,11 @@ import { Address, L2Network } from "@arbitrum/sdk";
 import { parseEther } from "ethers/lib/utils";
 import { L1CustomGateway__factory } from "@arbitrum/sdk/dist/lib/abi/factories/L1CustomGateway__factory";
 import { L1GatewayRouter__factory } from "@arbitrum/sdk/dist/lib/abi/factories/L1GatewayRouter__factory";
-import { JsonRpcProvider, Provider } from "@ethersproject/providers";
+import { Provider } from "@ethersproject/providers";
 import dotenv from "dotenv";
 import { VestedRecipients, loadVestedRecipients } from "./vestedWalletsDeployer";
 import { WalletCreatedEvent } from "../typechain-types/src/ArbitrumVestingWalletFactory.sol/ArbitrumVestingWalletsFactory";
+import path from "path";
 
 dotenv.config();
 
@@ -192,7 +193,7 @@ export const verifyDeployment = async () => {
     arbOneNetwork
   );
   await verifyVestedWallets(
-    await loadVestedRecipients(VESTED_RECIPIENTS_FILE_NAME),
+    await loadVestedRecipients(path.join(__dirname, "..", VESTED_RECIPIENTS_FILE_NAME)),
     arbContracts["vestedWalletFactory"],
     arbContracts["l2Token"],
     arbProvider
