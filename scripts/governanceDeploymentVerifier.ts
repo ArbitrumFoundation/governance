@@ -1260,7 +1260,7 @@ async function getProxyOwner(contractAddress: string, provider: Provider) {
  * @param message
  */
 async function assertEquals(actual: string, expected: string, message: string) {
-  if (actual != expected) {
+  if (actual.toLowerCase() != expected.toLowerCase()) {
     console.error("Actual: ", actual);
     console.error("Expected: ", expected);
     throw new Error(message);
