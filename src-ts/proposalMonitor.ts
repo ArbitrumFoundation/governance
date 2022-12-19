@@ -6,12 +6,10 @@ import {
   ProposalStagePipelineFactory,
   ProposalStageTracker,
 } from "./proposalStage";
-import { formatBytes32String } from "ethers/lib/utils";
 import { EventEmitter } from "events";
-import { BigNumber } from "ethers";
 
 export enum GPMEventName {
-  TRACKER_STARED = "TRACKER_STARTED",
+  TRACKER_STARTED = "TRACKER_STARTED",
   TRACKER_ENDED = "TRACKER_ENDED",
   TRACKER_ERRORED = "TRACKER_ERRORED",
 }
@@ -40,7 +38,7 @@ export class GovernorProposalMonitor extends EventEmitter {
     super();
   }
 
-  public emit(eventName: GPMEventName.TRACKER_STARED, args: GPMEvent);
+  public emit(eventName: GPMEventName.TRACKER_STARTED, args: GPMEvent);
   public emit(eventName: GPMEventName.TRACKER_ENDED, args: GPMEvent);
   public emit(eventName: GPMEventName.TRACKER_ERRORED, args: GPMErroredEvent);
   public override emit(eventName: GPMEventName, args: GPMAllEvent) {
@@ -92,7 +90,7 @@ export class GovernorProposalMonitor extends EventEmitter {
           this.pollingIntervalMs
         );
 
-        this.emit(GPMEventName.TRACKER_STARED, {
+        this.emit(GPMEventName.TRACKER_STARTED, {
           governorAddress: this.governorAddress,
           proposalId: log.proposalId.toHexString(),
         });
