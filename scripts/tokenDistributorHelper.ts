@@ -256,7 +256,10 @@ export function printRecipientsInfo() {
  * @returns
  */
 export function isClaimAmountValid(amount: BigNumber) {
-  return validClaimAmounts.some((elem) => elem.toString() == amount.toString());
+  return (
+    amount.lt(ethers.constants.MaxUint256) &&
+    validClaimAmounts.some((elem) => elem.toString() == amount.toString())
+  );
 }
 
 /**
