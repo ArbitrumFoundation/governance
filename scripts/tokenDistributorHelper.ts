@@ -4,7 +4,6 @@ import { formatEther, formatUnits, parseEther } from "ethers/lib/utils";
 import { TokenDistributor } from "../typechain-types";
 import * as GovernanceConstants from "./governance.constants";
 import { ArbGasInfo__factory } from "@arbitrum/sdk/dist/lib/abi/factories/ArbGasInfo__factory";
-import { ArbGasInfo } from "@arbitrum/sdk/dist/lib/abi/ArbGasInfo";
 
 export const TOKEN_RECIPIENTS_FILE_NAME = "files/recipients.json";
 const validClaimAmounts: BigNumber[] = [
@@ -46,8 +45,8 @@ export async function setClaimRecipients(
     console.log("---- Batch ", i, "/", numOfBatches);
 
     // if L1 or L2 are congested, wait until it clears out
-    await waitForAcceptableL2GasPrice(arbDeployer, l2GasPriceLimit);
-    await waitForAcceptableL1GasPrice(arbGasInfo, l1GasPriceLimit);
+    await waitForAcceptableGasPrice(l2GasPriceLimit, () => arbDeployer.provider!.getGasPrice());
+    await waitForAcceptableGasPrice(l1GasPriceLimit, () => arbGasInfo.getL1BaseFeeEstimate());
 
     // generally sleep 2 seconds to keep TX fees from going up, and to avoid filling all the blockspace
     await new Promise((resolve) => setTimeout(resolve, 2000));
@@ -101,42 +100,23 @@ function printGasUsageStats(txReceipt: ethers.ContractReceipt) {
 }
 
 /**
- * Wait until L1 base fee is below 15 gwei
+ * Wait until gas price is at acceptable levels.
  */
-async function waitForAcceptableL1GasPrice(arbGasInfo: ArbGasInfo, l1GasPriceLimit: BigNumber) {
-  let l1GasPrice = await arbGasInfo.getL1BaseFeeEstimate();
-  if (l1GasPrice.gt(l1GasPriceLimit)) {
+async function waitForAcceptableGasPrice(
+  gasPriceLimit: BigNumber,
+  gasPriceFetcher: () => Promise<BigNumber>
+) {
+  let gasPrice = await gasPriceFetcher();
+  if (gasPrice.gt(gasPriceLimit)) {
     while (true) {
-      console.log("L1 Gas price too high: ", formatUnits(l1GasPrice, "gwei"), " gwei");
+      console.log("Gas price too high:", formatUnits(gasPrice, "gwei"), " gwei");
       console.log("Sleeping 30 sec");
       // sleep 30 sec, then check if gas price has fallen down
       await new Promise((resolve) => setTimeout(resolve, 30000));
 
-      // check if fell back below 15 gwei
-      l1GasPrice = await arbGasInfo.getL1BaseFeeEstimate();
-      if (l1GasPrice.lte(l1GasPriceLimit)) {
-        break;
-      }
-    }
-  }
-}
-
-/**
- * Wait until L2 base fee is at 0.1 gwei
- */
-async function waitForAcceptableL2GasPrice(arbDeployer: Signer, l2GasPriceLimit: BigNumber) {
-  let gasPriceBestGuess = await arbDeployer.provider!.getGasPrice();
-  // if gas price raises above base price wait until if falls back
-  if (gasPriceBestGuess.gt(l2GasPriceLimit)) {
-    while (true) {
-      console.log("L2 gas price too high: ", formatUnits(gasPriceBestGuess, "gwei"), " gwei");
-      console.log("Sleeping 30 sec");
-      // sleep 30 sec, then check if gas price has fallen down
-      await new Promise((resolve) => setTimeout(resolve, 30000));
-
-      // check if fell back to 0.1 gwei
-      gasPriceBestGuess = await arbDeployer.provider!.getGasPrice();
-      if (gasPriceBestGuess.eq(l2GasPriceLimit)) {
+      // check if fell back below the limit
+      gasPrice = await gasPriceFetcher();
+      if (gasPrice.lte(gasPriceLimit)) {
         break;
       }
     }
