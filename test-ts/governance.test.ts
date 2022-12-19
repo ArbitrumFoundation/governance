@@ -35,9 +35,14 @@ import { ArbSys__factory } from "@arbitrum/sdk/dist/lib/abi/factories/ArbSys__fa
 import { Inbox__factory } from "@arbitrum/sdk/dist/lib/abi/factories/Inbox__factory";
 import { JsonRpcProvider } from "@ethersproject/providers";
 import {
-  createRoundTripGenerator,
-  ProposalStageManager,
+  ProposalStagePipelineFactory,
+  ProposalStageTracker,
+  RoundTripProposalPipelineFactory,
 } from "../src-ts/proposalStage";
+import {
+  GovernorProposalMonitor,
+  GPMEventName,
+} from "../src-ts/proposalMonitor";
 
 const wait = async (ms: number) => new Promise((res) => setTimeout(res, ms));
 
@@ -672,6 +677,27 @@ describe("Governor", function () {
     );
     const formData = await proposal.formItUp();
 
+    const pipelineFactory = new RoundTripProposalPipelineFactory(
+      l2Signer,
+      l1Signer,
+      l2Signer
+    );
+
+    const proposalMonitor = new GovernorProposalMonitor(
+      l2GovernorContract.address,
+      l2Signer.provider!,
+      1000,
+      5,
+      await l2Signer.provider!.getBlockNumber(),
+      pipelineFactory
+    );
+    proposalMonitor.start().catch((e) => console.error(e));
+    proposalMonitor.on(GPMEventName.TRACKER_ERRORED, (e) => console.error(e));
+
+    const trackerEnd = new Promise<void>((resolve) =>
+      proposalMonitor.once(GPMEventName.TRACKER_ENDED, resolve)
+    );
+
     // send the proposal
     await (
       await l2Signer.sendTransaction({
@@ -704,19 +730,6 @@ describe("Governor", function () {
         .castVote(formData.l2Gov.proposalId, 1)
     ).wait();
 
-    const arbOneGenerator = createRoundTripGenerator(
-      formData.l2Gov.proposalId,
-      formData.l2Gov.proposal.target,
-      BigNumber.from(formData.l2Gov.proposal.value),
-      formData.l2Gov.proposal.callData,
-      formData.l2Gov.proposal.description,
-      l2GovernorContract.address,
-      l2Signer,
-      l1Signer,
-      l2Signer
-    );
-    const stateManager = new ProposalStageManager(arbOneGenerator, 1000);
-
     const mineBlocksUntilComplete = async (completion: Promise<void>) => {
       return new Promise<void>(async (resolve, reject) => {
         let mining = true;
@@ -743,7 +756,7 @@ describe("Governor", function () {
     const ethBal = await randWallet.connect(l1Deployer.provider!).getBalance();
     expect(ethBal.toNumber(), "Eth bal before").to.eq(0);
 
-    await mineBlocksUntilComplete(stateManager.run());
+    await mineBlocksUntilComplete(trackerEnd);
 
     const balAfter = (await testErc20.balanceOf(randWallet.address)).toNumber();
     expect(balAfter, "L1 balance after").to.eq(randWalletEnd);
@@ -822,6 +835,27 @@ describe("Governor", function () {
     );
     const formData = await proposal.formItUp();
 
+    const pipelineFactory = new RoundTripProposalPipelineFactory(
+      l2Signer,
+      l1Signer,
+      l2Signer
+    );
+
+    const proposalMonitor = new GovernorProposalMonitor(
+      l2GovernorContract.address,
+      l2Signer.provider!,
+      1000,
+      5,
+      await l2Signer.provider!.getBlockNumber(),
+      pipelineFactory
+    );
+    proposalMonitor.start().catch((e) => console.error(e));
+    proposalMonitor.on(GPMEventName.TRACKER_ERRORED, (e) => console.error(e));
+
+    const trackerEnd = new Promise<void>((resolve) =>
+      proposalMonitor.once(GPMEventName.TRACKER_ENDED, resolve)
+    );
+
     // send the proposal
     await (
       await l2Signer.sendTransaction({
@@ -860,20 +894,6 @@ describe("Governor", function () {
     ).toNumber();
     expect(bal, "Wallet balance before").to.eq(0);
 
-    const arbOneGenerator = createRoundTripGenerator(
-      formData.l2Gov.proposalId,
-      formData.l2Gov.proposal.target,
-      BigNumber.from(formData.l2Gov.proposal.value),
-      formData.l2Gov.proposal.callData,
-      formData.l2Gov.proposal.description,
-      l2GovernorContract.address,
-      l2Signer,
-      l1Signer,
-      l2Signer
-    );
-
-    const stateManager = new ProposalStageManager(arbOneGenerator, 1000);
-
     const mineBlocksUntilComplete = async (completion: Promise<void>) => {
       return new Promise<void>(async (resolve, reject) => {
         let mining = true;
@@ -902,7 +922,7 @@ describe("Governor", function () {
     const ethBal = await randWallet.connect(l2Deployer.provider!).getBalance();
     expect(ethBal.toNumber(), "L2 Eth bal before").to.eq(0);
 
-    await mineBlocksUntilComplete(stateManager.run());
+    await mineBlocksUntilComplete(trackerEnd);
 
     const balanceAfter = await (
       await l2TokenContract.balanceOf(randWallet.address)
@@ -999,6 +1019,27 @@ describe("Governor", function () {
     );
     const formData = await proposal.formItUp();
 
+    const pipelineFactory = new RoundTripProposalPipelineFactory(
+      l2Signer,
+      l1Signer,
+      l2Signer
+    );
+
+    const proposalMonitor = new GovernorProposalMonitor(
+      l2GovernorContract.address,
+      l2Signer.provider!,
+      1000,
+      5,
+      await l2Signer.provider!.getBlockNumber(),
+      pipelineFactory
+    );
+    proposalMonitor.start().catch((e) => console.error(e));
+    proposalMonitor.on(GPMEventName.TRACKER_ERRORED, (e) => console.error(e));
+
+    const trackerEnd = new Promise<void>((resolve) =>
+      proposalMonitor.once(GPMEventName.TRACKER_ENDED, resolve)
+    );
+
     // send the proposal
     await (
       await l2Signer.sendTransaction({
@@ -1022,19 +1063,6 @@ describe("Governor", function () {
         .connect(l2Signer)
         .castVote(formData.l2Gov.proposalId, 1)
     ).wait();
-
-    const arbOneGenerator = createRoundTripGenerator(
-      formData.l2Gov.proposalId,
-      formData.l2Gov.proposal.target,
-      BigNumber.from(formData.l2Gov.proposal.value),
-      formData.l2Gov.proposal.callData,
-      formData.l2Gov.proposal.description,
-      l2GovernorContract.address,
-      l2Signer,
-      l1Signer,
-      l2Signer
-    );
-    const stateManager = new ProposalStageManager(arbOneGenerator, 1000);
 
     const mineBlocksUntilComplete = async (completion: Promise<void>) => {
       return new Promise<void>(async (resolve, reject) => {
@@ -1060,7 +1088,7 @@ describe("Governor", function () {
     const bal = (await testErc20.balanceOf(randWallet.address)).toNumber();
     expect(bal).to.eq(0);
 
-    await mineBlocksUntilComplete(stateManager.run());
+    await mineBlocksUntilComplete(trackerEnd);
 
     const balAfter = (await testErc20.balanceOf(randWallet.address)).toNumber();
     expect(balAfter, "L1 balance after").to.eq(randWalletEnd);
@@ -1128,6 +1156,27 @@ describe("Governor", function () {
     );
     const formData = await proposal.formItUp();
 
+    const pipelineFactory = new RoundTripProposalPipelineFactory(
+      l2Signer,
+      l1Signer,
+      l2Signer
+    );
+
+    const proposalMonitor = new GovernorProposalMonitor(
+      l2GovernorContract.address,
+      l2Signer.provider!,
+      1000,
+      5,
+      await l2Signer.provider!.getBlockNumber(),
+      pipelineFactory
+    );
+    proposalMonitor.start().catch((e) => console.error(e));
+    proposalMonitor.on(GPMEventName.TRACKER_ERRORED, (e) => console.error(e));
+
+    const trackerEnd = new Promise<void>((resolve) =>
+      proposalMonitor.once(GPMEventName.TRACKER_ENDED, resolve)
+    );
+
     // send the proposal
     await (
       await l2Signer.sendTransaction({
@@ -1158,20 +1207,6 @@ describe("Governor", function () {
     ).toNumber();
     expect(bal, "Wallet balance before").to.eq(0);
 
-    const arbOneGenerator = createRoundTripGenerator(
-      formData.l2Gov.proposalId,
-      formData.l2Gov.proposal.target,
-      BigNumber.from(formData.l2Gov.proposal.value),
-      formData.l2Gov.proposal.callData,
-      formData.l2Gov.proposal.description,
-      l2GovernorContract.address,
-      l2Signer,
-      l1Signer,
-      l2Signer
-    );
-
-    const stateManager = new ProposalStageManager(arbOneGenerator, 1000);
-
     const mineBlocksUntilComplete = async (completion: Promise<void>) => {
       return new Promise<void>(async (resolve, reject) => {
         let mining = true;
@@ -1198,7 +1233,7 @@ describe("Governor", function () {
     ).toNumber();
     expect(balanceBefore, "rand balance before").to.eq(0);
 
-    await mineBlocksUntilComplete(stateManager.run());
+    await mineBlocksUntilComplete(trackerEnd);
 
     const balanceAfter = await (
       await l2TokenContract.balanceOf(randWallet.address)
