@@ -2,6 +2,8 @@ import { BigNumber, ethers } from "ethers";
 import {
   ArbitrumTimelock,
   ArbitrumTimelock__factory,
+  ArbitrumVestingWalletsFactory,
+  ArbitrumVestingWalletsFactory__factory,
   FixedDelegateErc20Wallet,
   FixedDelegateErc20Wallet__factory,
   IInbox__factory,
@@ -34,13 +36,14 @@ import {
   L2ReverseCustomGateway__factory,
 } from "../typechain-types-imported";
 import { getDeployerAddresses, getProviders, isDeployingToNova } from "./providerSetup";
-import { Address, getL2Network, L2Network } from "@arbitrum/sdk";
+import { Address, L2Network } from "@arbitrum/sdk";
 import { parseEther } from "ethers/lib/utils";
 import { L1CustomGateway__factory } from "@arbitrum/sdk/dist/lib/abi/factories/L1CustomGateway__factory";
 import { L1GatewayRouter__factory } from "@arbitrum/sdk/dist/lib/abi/factories/L1GatewayRouter__factory";
-import { Provider } from "@ethersproject/providers";
+import { JsonRpcProvider, Provider } from "@ethersproject/providers";
 import dotenv from "dotenv";
-import { VestedWalletDeployer } from "./vestedWalletsDeployer";
+import { VestedRecipients, loadVestedRecipients } from "./vestedWalletsDeployer";
+import { WalletCreatedEvent } from "../typechain-types/src/ArbitrumVestingWalletFactory.sol/ArbitrumVestingWalletsFactory";
 
 dotenv.config();
 
@@ -187,6 +190,12 @@ export const verifyDeployment = async () => {
     arbContracts["l2ProxyAdmin"],
     arbProvider,
     arbOneNetwork
+  );
+  await verifyVestedWallets(
+    await loadVestedRecipients(VESTED_RECIPIENTS_FILE_NAME),
+    arbContracts["vestedWalletFactory"],
+    arbContracts["l2Token"],
+    arbProvider
   );
 
   //// Nova contracts
@@ -710,8 +719,8 @@ async function verifyL2Token(
   // check balances
   const arbTreasuryBalance = await l2Token.balanceOf(arbTreasury.address);
   const tokenDistributorBalance = await l2Token.balanceOf(l2TokenDistributor.address);
-  const vestingRecipients = VestedWalletDeployer.loadRecipients("../" + VESTED_RECIPIENTS_FILE_NAME)
-  const vestingTotal = Object.values(vestingRecipients).reduce((a, b) => a.add(b))
+  const vestingRecipients = loadVestedRecipients("../" + VESTED_RECIPIENTS_FILE_NAME);
+  const vestingTotal = Object.values(vestingRecipients).reduce((a, b) => a.add(b));
   assertNumbersEquals(
     arbTreasuryBalance,
     parseEther(config.L2_NUM_OF_TOKENS_FOR_TREASURY),
@@ -1141,6 +1150,56 @@ async function verifyNovaProxyAdmin(
 }
 
 /**
+ * Verify:
+ * - All vested recipients have a vested wallet
+ * - Each vested wallet has the recipient balance of tokens
+ */
+async function verifyVestedWallets(
+  vestedRecipients: VestedRecipients,
+  vestedWalletFactory: ArbitrumVestingWalletsFactory,
+  l2Token: L2ArbitrumToken,
+  arbProvider: Provider
+) {
+  // find all the events emitted by this address
+  // check that every recipient has received the correct amount
+
+  const deployTx = vestedWalletFactory.deployTransaction;
+
+  const filter = vestedWalletFactory.filters["WalletCreated(address,address)"]();
+
+  const walletLogs = (
+    await arbProvider.getLogs({
+      ...filter,
+      fromBlock: deployTx.blockNumber,
+      toBlock: "latest",
+    })
+  ).map((l) => {
+    return vestedWalletFactory.interface.parseLog(l).args as WalletCreatedEvent["args"];
+  });
+
+  assertEquals(
+    walletLogs.length.toString(),
+    Object.keys(vestedRecipients).toString(),
+    "Wallets created number not equal vested recipients number"
+  );
+
+  for (const vr of Object.keys(vestedRecipients)) {
+    const logs = walletLogs.filter((l) => l.beneficiary.toLowerCase() === vr.toLowerCase());
+
+    assertNumbersEquals(BigNumber.from(logs.length), BigNumber.from(1), "Too many logs");
+
+    const log = logs[0];
+    const tokenBalance = await l2Token.balanceOf(log.vestingWalletAddress);
+
+    assertNumbersEquals(
+      vestedRecipients[vr],
+      tokenBalance,
+      "Recipient amount not equal token balance"
+    );
+  }
+}
+
+/**
  * Load L1 contracts by reading addresses from file `DEPLOYED_CONTRACTS_FILE_NAME` and return loaded contracts in key-value format.
  *
  * @param ethProvider
@@ -1204,6 +1263,10 @@ function loadArbContracts(arbProvider: Provider) {
     ),
     l2ReverseCustomGatewayProxy: L2ReverseCustomGateway__factory.connect(
       contractAddresses["l2ReverseCustomGatewayProxy"],
+      arbProvider
+    ),
+    vestedWalletFactory: ArbitrumVestingWalletsFactory__factory.connect(
+      contractAddresses["vestedWalletFactory"],
       arbProvider
     ),
   };

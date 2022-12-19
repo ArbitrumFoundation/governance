@@ -1,9 +1,4 @@
-import {
-  Address,
-  L1ToL2MessageStatus,
-  L1TransactionReceipt,
-  L2Network,
-} from "@arbitrum/sdk";
+import { Address, L1ToL2MessageStatus, L1TransactionReceipt, L2Network } from "@arbitrum/sdk";
 import { Inbox__factory } from "@arbitrum/sdk/dist/lib/abi/factories/Inbox__factory";
 import { L1CustomGateway__factory } from "@arbitrum/sdk/dist/lib/abi/factories/L1CustomGateway__factory";
 import { L1GatewayRouter__factory } from "@arbitrum/sdk/dist/lib/abi/factories/L1GatewayRouter__factory";
@@ -49,7 +44,11 @@ import {
 } from "../typechain-types/src/L2GovernanceFactory";
 import { getDeployersAndConfig as getDeployersAndConfig, isDeployingToNova } from "./providerSetup";
 import { getNumberOfRecipientsSet, setClaimRecipients } from "./tokenDistributorHelper";
-import { VestedWalletDeployer } from "./vestedWalletsDeployer";
+import {
+  VestedWalletDeployer,
+  deployVestedWallets,
+  loadVestedRecipients,
+} from "./vestedWalletsDeployer";
 
 // store address for every deployed contract
 let deployedContracts: { [key: string]: string } = {};
@@ -229,7 +228,12 @@ export const deployGovernance = async () => {
   await postDeploymentL2TokenTasks(arbDeployer, l2DeployResult, deployerConfig);
 
   console.log("Distribute to vested wallets");
-  await deployAndTransferVestedWallets(arbDeployer, arbDeployer, l2DeployResult.token, deployerConfig);
+  await deployAndTransferVestedWallets(
+    arbDeployer,
+    arbDeployer,
+    l2DeployResult.token,
+    deployerConfig
+  );
 
   // deploy ARB distributor
   console.log("Deploy TokenDistributor");
@@ -817,11 +821,11 @@ async function deployAndTransferVestedWallets(
   }
 ) {
   const tokenRecipientsByPoints = require("../" + VESTED_RECIPIENTS_FILE_NAME);
-  const recipients = VestedWalletDeployer.loadRecipients(tokenRecipientsByPoints);
+  const recipients = loadVestedRecipients(tokenRecipientsByPoints);
 
   const oneYearInSeconds = 365 * 24 * 60 * 60;
 
-  const wall = new VestedWalletDeployer(
+  const vestedWalletFactory = await deployVestedWallets(
     arbDeployer,
     arbInitialSupplyRecipient,
     l2TokenAddress,
@@ -832,7 +836,7 @@ async function deployAndTransferVestedWallets(
     oneYearInSeconds * 3
   );
 
-  await wall.deploy();
+  deployedContracts["vestedWalletFactory"] = vestedWalletFactory.address
 }
 
 async function deployAndInitTokenDistributor(
