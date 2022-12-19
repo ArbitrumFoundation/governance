@@ -816,7 +816,7 @@ async function deployAndTransferVestedWallets(
     L2_CLAIM_PERIOD_START: number;
   }
 ) {
-  const tokenRecipientsByPoints = require("../" + VESTED_RECIPIENTS_FILE_NAME);
+  const tokenRecipientsByPoints = "../" + VESTED_RECIPIENTS_FILE_NAME;
   const recipients = VestedWalletDeployer.loadRecipients(tokenRecipientsByPoints);
 
   const oneYearInSeconds = 365 * 24 * 60 * 60;
