@@ -56,7 +56,7 @@ jobs:
         run: make gas-check
 
   test-only-doesnt-exist:
-    name: There are is no .only in the tests
+    name: No .only
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -93,15 +93,21 @@ jobs:
       - name: Copy .env
         run: |
           cp ./.env-sample ./.env
+      
+      - name: Compile contracts
+        run: npx hardhat compile
 
       - name: Generate network file
         run: make gen-network
+
+      - name: Generate nova network file
+        run: yarn gen:nova:network
 
       - name: Deploy governance
         run: yarn deploy:governance
 
       - name: Verify deployment
-        run: yarn deploy:governance
+        run: yarn verify:governance
 
   
   test-integration:

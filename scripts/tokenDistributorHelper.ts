@@ -1,7 +1,6 @@
 import { BigNumber, ethers, Signer } from "ethers";
 import { parseEther } from "ethers/lib/utils";
 import { TokenDistributor } from "../typechain-types";
-import * as GovernanceConstants from "./governance.constants";
 
 const TOKEN_RECIPIENTS_FILE_NAME = "files/recipients.json";
 
@@ -12,7 +11,7 @@ const TOKEN_RECIPIENTS_FILE_NAME = "files/recipients.json";
  * @param tokenDistributor
  * @param arbDeployer
  */
-export async function setClaimRecipients(tokenDistributor: TokenDistributor, arbDeployer: Signer) {
+export async function setClaimRecipients(tokenDistributor: TokenDistributor, arbDeployer: Signer, config: { L2_NUM_OF_RECIPIENT_BATCHES_ALREADY_SET: number}) {
   const tokenRecipientsByPoints = require("../" + TOKEN_RECIPIENTS_FILE_NAME);
   const { tokenRecipients, tokenAmounts } = mapPointsToAmounts(tokenRecipientsByPoints);
 
@@ -24,7 +23,7 @@ export async function setClaimRecipients(tokenDistributor: TokenDistributor, arb
   const BASE_GAS_PRICE = BigNumber.from(100000000);
 
   for (
-    let i = GovernanceConstants.L2_NUM_OF_RECIPIENT_BATCHES_ALREADY_SET;
+    let i = config.L2_NUM_OF_RECIPIENT_BATCHES_ALREADY_SET;
     i <= numOfBatches;
     i++
   ) {
