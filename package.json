@@ -40,6 +40,8 @@
     "@arbitrum/nitro-contracts": "1.0.0-beta.8",
     "@arbitrum/token-bridge-contracts": "1.0.0-beta.0",
     "@openzeppelin/contracts": "4.7.3",
-    "@openzeppelin/contracts-upgradeable": "4.7.3"
+    "@openzeppelin/contracts-upgradeable": "4.7.3",
+    "@types/yargs": "^17.0.17",
+    "yargs": "^17.6.2"
   }
 }

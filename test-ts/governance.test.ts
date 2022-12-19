@@ -34,15 +34,12 @@ import { ArbitrumProvider } from "@arbitrum/sdk/dist/lib/utils/arbProvider";
 import { ArbSys__factory } from "@arbitrum/sdk/dist/lib/abi/factories/ArbSys__factory";
 import { Inbox__factory } from "@arbitrum/sdk/dist/lib/abi/factories/Inbox__factory";
 import { JsonRpcProvider } from "@ethersproject/providers";
-import {
-  ProposalStagePipelineFactory,
-  ProposalStageTracker,
-  RoundTripProposalPipelineFactory,
-} from "../src-ts/proposalStage";
+import { RoundTripProposalPipelineFactory } from "../src-ts/proposalStage";
 import {
   GovernorProposalMonitor,
   GPMEventName,
 } from "../src-ts/proposalMonitor";
+import { RoundTripProposalCreator } from "../src-ts/proposalCreator";
 
 const wait = async (ms: number) => new Promise((res) => setTimeout(res, ms));
 
@@ -228,12 +225,6 @@ describe("Governor", function () {
       return {
         l2Gov: {
           proposalId: proposalId,
-          proposal: {
-            target: ARB_SYS_ADDRESS,
-            value: 0,
-            callData: proposalCallData,
-            description: this.proposalDescription,
-          },
           operationId: l2OpId,
           propose: {
             to: proposeTo,
@@ -654,28 +645,22 @@ describe("Governor", function () {
     );
 
     const proposalString = "Prop2.2: Test transfer tokens and value on L1";
-    const proposal = new Proposal(
+    const propCreator = new RoundTripProposalCreator(
+      {
+        provider: l1Deployer.provider! as JsonRpcProvider,
+        timelockAddr: l1TimelockContract.address,
+      },
+      {
+        provider: l1Deployer.provider! as JsonRpcProvider,
+        upgradeExecutorAddr: l1UpgradeExecutor.address,
+      }
+    );
+    const proposal = await propCreator.create(
       transferUpgrade.address,
       transferValue,
       transferExecution,
-      proposalString,
-      {
-        arbOneGovernorConfig: {
-          constitutionalGovernorAddr: l2GovernorContract.address,
-          provider: l2Deployer.provider! as JsonRpcProvider,
-        },
-        l1Config: {
-          provider: l1Deployer.provider! as JsonRpcProvider,
-          timelockAddr: l1TimelockContract.address,
-        },
-        upgradeConfig: {
-          chainId: await l1Signer.getChainId(),
-          provider: l2Deployer.provider! as JsonRpcProvider,
-          upgradeExecutorAddr: l1UpgradeExecutor.address,
-        },
-      }
+      proposalString
     );
-    const formData = await proposal.formItUp();
 
     const pipelineFactory = new RoundTripProposalPipelineFactory(
       l2Signer,
@@ -701,8 +686,8 @@ describe("Governor", function () {
     // send the proposal
     await (
       await l2Signer.sendTransaction({
-        to: formData.l2Gov.propose.to,
-        data: formData.l2Gov.propose.data,
+        to: l2GovernorContract.address,
+        data: proposal.encode(),
       })
     ).wait();
 
@@ -720,14 +705,12 @@ describe("Governor", function () {
       l1Deployer,
       l2Deployer,
       l2GovernorContract,
-      formData.l2Gov.proposalId,
+      proposal.id(),
       l2VotingDelay.toNumber(),
       1
     );
     await (
-      await l2GovernorContract
-        .connect(l2Signer)
-        .castVote(formData.l2Gov.proposalId, 1)
+      await l2GovernorContract.connect(l2Signer).castVote(proposal.id(), 1)
     ).wait();
 
     const mineBlocksUntilComplete = async (completion: Promise<void>) => {
@@ -779,6 +762,7 @@ describe("Governor", function () {
       l2GovernorContract,
       l2UpgradeExecutor,
     } = await deployGovernance(l1Deployer, l2Deployer, l2Signer);
+
     // give some tokens to the governor contract
     const l2UpgraderBalanceStart = 13;
     const l2UpgraderBalanceEnd = 3;
@@ -811,29 +795,22 @@ describe("Governor", function () {
     );
 
     const proposalString = "Prop6: Test transfer tokens on round trip";
-    const l2Network = await getL2Network(l2Deployer);
-    const proposal = new Proposal(
+    const propCreator = new RoundTripProposalCreator(
+      {
+        provider: l1Deployer.provider! as JsonRpcProvider,
+        timelockAddr: l1TimelockContract.address,
+      },
+      {
+        provider: l2Deployer.provider! as JsonRpcProvider,
+        upgradeExecutorAddr: l2UpgradeExecutor.address,
+      }
+    );
+    const proposal = await propCreator.create(
       transferUpgrade.address,
       transferValue,
       transferExecution,
-      proposalString,
-      {
-        arbOneGovernorConfig: {
-          constitutionalGovernorAddr: l2GovernorContract.address,
-          provider: l2Deployer.provider! as JsonRpcProvider,
-        },
-        l1Config: {
-          provider: l1Deployer.provider! as JsonRpcProvider,
-          timelockAddr: l1TimelockContract.address,
-        },
-        upgradeConfig: {
-          chainId: l2Network.chainID,
-          provider: l2Deployer.provider! as JsonRpcProvider,
-          upgradeExecutorAddr: l2UpgradeExecutor.address,
-        },
-      }
+      proposalString
     );
-    const formData = await proposal.formItUp();
 
     const pipelineFactory = new RoundTripProposalPipelineFactory(
       l2Signer,
@@ -859,8 +836,8 @@ describe("Governor", function () {
     // send the proposal
     await (
       await l2Signer.sendTransaction({
-        to: formData.l2Gov.propose.to,
-        data: formData.l2Gov.propose.data,
+        to: l2GovernorContract.address,
+        data: proposal.encode(),
       })
     ).wait();
 
@@ -878,14 +855,12 @@ describe("Governor", function () {
       l1Deployer,
       l2Deployer,
       l2GovernorContract,
-      formData.l2Gov.proposalId,
+      proposal.id(),
       l2VotingDelay.toNumber(),
       1
     );
     await (
-      await l2GovernorContract
-        .connect(l2Signer)
-        .castVote(formData.l2Gov.proposalId, 1)
+      await l2GovernorContract.connect(l2Signer).castVote(proposal.id(), 1)
     ).wait();
 
     // check the balance is 0 to start
@@ -996,28 +971,22 @@ describe("Governor", function () {
     );
 
     const proposalString = "Prop2.1: Test transfer tokens on L1";
-    const proposal = new Proposal(
+    const propCreator = new RoundTripProposalCreator(
+      {
+        provider: l1Deployer.provider! as JsonRpcProvider,
+        timelockAddr: l1TimelockContract.address,
+      },
+      {
+        provider: l1Deployer.provider! as JsonRpcProvider,
+        upgradeExecutorAddr: l1UpgradeExecutor.address,
+      }
+    );
+    const proposal = await propCreator.create(
       transferUpgrade.address,
       BigNumber.from(0),
       transferExecution,
-      proposalString,
-      {
-        arbOneGovernorConfig: {
-          constitutionalGovernorAddr: l2GovernorContract.address,
-          provider: l2Deployer.provider! as JsonRpcProvider,
-        },
-        l1Config: {
-          provider: l1Deployer.provider! as JsonRpcProvider,
-          timelockAddr: l1TimelockContract.address,
-        },
-        upgradeConfig: {
-          chainId: await l1Signer.getChainId(),
-          provider: l2Deployer.provider! as JsonRpcProvider,
-          upgradeExecutorAddr: l1UpgradeExecutor.address,
-        },
-      }
+      proposalString
     );
-    const formData = await proposal.formItUp();
 
     const pipelineFactory = new RoundTripProposalPipelineFactory(
       l2Signer,
@@ -1043,8 +1012,8 @@ describe("Governor", function () {
     // send the proposal
     await (
       await l2Signer.sendTransaction({
-        to: formData.l2Gov.propose.to,
-        data: formData.l2Gov.propose.data,
+        to: l2GovernorContract.address,
+        data: proposal.encode(),
       })
     ).wait();
 
@@ -1054,14 +1023,12 @@ describe("Governor", function () {
       l1Deployer,
       l2Deployer,
       l2GovernorContract,
-      formData.l2Gov.proposalId,
+      proposal.id(),
       l2VotingDelay.toNumber(),
       1
     );
     await (
-      await l2GovernorContract
-        .connect(l2Signer)
-        .castVote(formData.l2Gov.proposalId, 1)
+      await l2GovernorContract.connect(l2Signer).castVote(proposal.id(), 1)
     ).wait();
 
     const mineBlocksUntilComplete = async (completion: Promise<void>) => {
@@ -1132,29 +1099,22 @@ describe("Governor", function () {
     );
 
     const proposalString = "Prop6: Test transfer tokens on round trip";
-    const l2Network = await getL2Network(l2Deployer);
-    const proposal = new Proposal(
+    const propCreator = new RoundTripProposalCreator(
+      {
+        provider: l1Deployer.provider! as JsonRpcProvider,
+        timelockAddr: l1TimelockContract.address,
+      },
+      {
+        provider: l2Deployer.provider! as JsonRpcProvider,
+        upgradeExecutorAddr: l2UpgradeExecutor.address,
+      }
+    );
+    const proposal = await propCreator.create(
       transferUpgrade.address,
       BigNumber.from(0),
       transferExecution,
-      proposalString,
-      {
-        arbOneGovernorConfig: {
-          constitutionalGovernorAddr: l2GovernorContract.address,
-          provider: l2Deployer.provider! as JsonRpcProvider,
-        },
-        l1Config: {
-          provider: l1Deployer.provider! as JsonRpcProvider,
-          timelockAddr: l1TimelockContract.address,
-        },
-        upgradeConfig: {
-          chainId: l2Network.chainID,
-          provider: l2Deployer.provider! as JsonRpcProvider,
-          upgradeExecutorAddr: l2UpgradeExecutor.address,
-        },
-      }
+      proposalString
     );
-    const formData = await proposal.formItUp();
 
     const pipelineFactory = new RoundTripProposalPipelineFactory(
       l2Signer,
@@ -1180,8 +1140,8 @@ describe("Governor", function () {
     // send the proposal
     await (
       await l2Signer.sendTransaction({
-        to: formData.l2Gov.propose.to,
-        data: formData.l2Gov.propose.data,
+        to: l2GovernorContract.address,
+        data: proposal.encode(),
       })
     ).wait();
 
@@ -1191,14 +1151,12 @@ describe("Governor", function () {
       l1Deployer,
       l2Deployer,
       l2GovernorContract,
-      formData.l2Gov.proposalId,
+      proposal.id(),
       l2VotingDelay.toNumber(),
       1
     );
     await (
-      await l2GovernorContract
-        .connect(l2Signer)
-        .castVote(formData.l2Gov.proposalId, 1)
+      await l2GovernorContract.connect(l2Signer).castVote(proposal.id(), 1)
     ).wait();
 
     // check the balance is 0 to start
