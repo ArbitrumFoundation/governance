@@ -50,6 +50,7 @@ import {
 import { getDeployersAndConfig as getDeployersAndConfig, isDeployingToNova } from "./providerSetup";
 import { getNumberOfRecipientsSet, setClaimRecipients } from "./tokenDistributorHelper";
 import { VestedWalletDeployer } from "./vestedWalletsDeployer";
+import fs from "fs"
 
 // store address for every deployed contract
 let deployedContracts: { [key: string]: string } = {};
@@ -816,7 +817,10 @@ async function deployAndTransferVestedWallets(
     L2_CLAIM_PERIOD_START: number;
   }
 ) {
-  const tokenRecipientsByPoints = "../" + VESTED_RECIPIENTS_FILE_NAME;
+  console.log("directory", __dirname)
+  console.log(fs.readdirSync(__dirname))
+  
+  const tokenRecipientsByPoints = __dirname + VESTED_RECIPIENTS_FILE_NAME;
   const recipients = VestedWalletDeployer.loadRecipients(tokenRecipientsByPoints);
 
   const oneYearInSeconds = 365 * 24 * 60 * 60;
