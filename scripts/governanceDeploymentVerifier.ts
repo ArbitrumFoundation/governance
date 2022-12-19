@@ -698,7 +698,7 @@ async function verifyL2Token(
   assertEquals(await l2Token.symbol(), "ARB", "L2Token symbol should be ARB");
   assertNumbersEquals(
     await l2Token.totalSupply(),
-    ethers.utils.parseEther(config.L2_TOKEN_INITIAL_SUPPLY.toString()),
+    ethers.utils.parseEther(config.L2_TOKEN_INITIAL_SUPPLY),
     "L2Token has incorrect total supply"
   );
   assertEquals(

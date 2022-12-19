@@ -74,7 +74,6 @@ export const getDeployersAndConfig = async (): Promise<{
         networkFilename: "localNetwork.json",
       });
 
-    
     const { l2Provider: novaProvider, l2Network: novaNetwork } = await getProvidersAndSetupNetworks({
       l1Url: config.ethRpc,
       l2Url: config.novaRpc,

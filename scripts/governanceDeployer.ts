@@ -818,10 +818,6 @@ async function deployAndTransferVestedWallets(
     L2_CLAIM_PERIOD_START: number;
   }
 ) {
-  console.log("directory", __dirname);
-  console.log("directory_root", path.join(__dirname, ".."));
-  console.log(fs.readdirSync(path.join(__dirname, "..")));
-
   const tokenRecipientsByPoints = path.join(__dirname, "..", VESTED_RECIPIENTS_FILE_NAME);
   const recipients = VestedWalletDeployer.loadRecipients(tokenRecipientsByPoints);
 
