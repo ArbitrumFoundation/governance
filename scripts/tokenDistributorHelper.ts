@@ -142,7 +142,7 @@ export async function getRecipientsDataFromContractEvents(
   let currentBlock = startBlock;
   // in 100 blocks there can be 100 recipient batches => 10k events at most
   const blocksToSearch = 100;
-  while (true) {
+  while (currentBlock <= endBlock) {
     // query 100 blocks
     const canClaimEvents = await tokenDistributor.queryFilter(
       canClaimFilter,
@@ -155,14 +155,7 @@ export async function getRecipientsDataFromContractEvents(
 
     // next 100 blocks
     currentBlock = currentBlock + blocksToSearch + 1;
-    if (currentBlock > endBlock) {
-      break;
-    }
   }
-
-  // collect any remaining recipient-amount pairs
-  const remainingEvents = await tokenDistributor.queryFilter(canClaimFilter, startBlock, endBlock);
-  remainingEvents.map((event) => [(recipientData[event.args[0]] = event.args[1])]);
 
   return recipientData;
 }
