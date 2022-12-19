@@ -77,7 +77,3 @@ export const deployVestedWallets = async (
 
   return vestedWalletFactory;
 };
-
-export class VestedWalletDeployer {
-  public constructor() {}
-}
