@@ -1,6 +1,5 @@
 import {
   Address,
-  getL2Network,
   L1ToL2MessageStatus,
   L1TransactionReceipt,
   L2Network,
