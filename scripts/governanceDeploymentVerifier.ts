@@ -41,6 +41,7 @@ import { L1GatewayRouter__factory } from "@arbitrum/sdk/dist/lib/abi/factories/L
 import { Provider } from "@ethersproject/providers";
 import dotenv from "dotenv";
 import { VestedWalletDeployer } from "./vestedWalletsDeployer";
+import path from "path";
 
 dotenv.config();
 
@@ -710,7 +711,7 @@ async function verifyL2Token(
   // check balances
   const arbTreasuryBalance = await l2Token.balanceOf(arbTreasury.address);
   const tokenDistributorBalance = await l2Token.balanceOf(l2TokenDistributor.address);
-  const vestingRecipients = VestedWalletDeployer.loadRecipients("../" + VESTED_RECIPIENTS_FILE_NAME)
+  const vestingRecipients = VestedWalletDeployer.loadRecipients(path.join(__dirname, "..", VESTED_RECIPIENTS_FILE_NAME))
   const vestingTotal = Object.values(vestingRecipients).reduce((a, b) => a.add(b))
   assertNumbersEquals(
     arbTreasuryBalance,
