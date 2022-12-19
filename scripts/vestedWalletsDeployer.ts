@@ -46,7 +46,7 @@ export const deployVestedWallets = async (
   const recipientAddresses = Object.keys(recipients);
   const batchSize = 5;
 
-  for (let index = 0; index < recipientAddresses.length; index + batchSize) {
+  for (let index = 0; index < recipientAddresses.length; index = index + batchSize) {
     const recipientBatch = recipientAddresses.slice(index, batchSize);
 
     const walletCreationReceipt = await (

@@ -45,6 +45,7 @@ import {
 import { getDeployersAndConfig as getDeployersAndConfig, isDeployingToNova } from "./providerSetup";
 import { getNumberOfRecipientsSet, setClaimRecipients } from "./tokenDistributorHelper";
 import { deployVestedWallets, loadVestedRecipients } from "./vestedWalletsDeployer";
+import path from "path";
 
 // store address for every deployed contract
 let deployedContracts: { [key: string]: string } = {};
@@ -816,9 +817,9 @@ async function deployAndTransferVestedWallets(
     L2_CLAIM_PERIOD_START: number;
   }
 ) {
-  const tokenRecipientsByPoints = "../" + VESTED_RECIPIENTS_FILE_NAME;
+  const tokenRecipientsByPoints = path.join(__dirname, "..", VESTED_RECIPIENTS_FILE_NAME);
   const recipients = loadVestedRecipients(tokenRecipientsByPoints);
-
+  
   const oneYearInSeconds = 365 * 24 * 60 * 60;
 
   const vestedWalletFactory = await deployVestedWallets(
