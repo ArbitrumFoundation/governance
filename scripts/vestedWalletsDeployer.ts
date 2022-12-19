@@ -1,12 +1,11 @@
-import { JsonRpcProvider } from "@ethersproject/providers";
 import { BigNumber, Signer } from "ethers";
 import {
   ArbitrumVestingWalletsFactory__factory,
-  ArbitrumVestingWallet__factory,
   L2ArbitrumToken__factory,
 } from "../typechain-types";
 import { WalletCreatedEvent } from "../typechain-types/src/ArbitrumVestingWalletFactory.sol/ArbitrumVestingWalletsFactory";
 import fs from "fs";
+import { parseEther } from "ethers/lib/utils";
 
 type VestedRecipients = { readonly [key: string]: BigNumber };
 
@@ -17,36 +16,38 @@ export class VestedWalletDeployer {
     private readonly tokenAddress: string,
     private readonly recipients: VestedRecipients,
     private readonly startTimeSeconds: number,
-    private readonly durationSeconds: number,
-    private readonly vestedWalletFactoryAddress: string
+    private readonly durationSeconds: number
   ) {}
 
   public static loadRecipients(fileLocation: string): VestedRecipients {
     const fileContents = fs.readFileSync(fileLocation).toString();
-
     const jsonFile = JSON.parse(fileContents);
-
     const addresses = Object.keys(jsonFile);
-
     const vestedRecipients: { [key: string]: BigNumber } = {};
+    
     for (const addr of addresses) {
-      vestedRecipients[addr.toLowerCase()] = BigNumber.from(jsonFile[addr]);
+      // the token has 18 decimals, like ether, so we can use parseEther
+      vestedRecipients[addr.toLowerCase()] = parseEther(jsonFile[addr]);
+
+      if (vestedRecipients[addr.toLowerCase()].lt(parseEther("1"))) {
+        throw new Error(
+          `Unexpected token count less than 1: ${vestedRecipients[addr.toLowerCase()].toString()}`
+        );
+      }
     }
+
     return vestedRecipients;
   }
 
   public async deploy() {
-    const token = L2ArbitrumToken__factory.connect(
-      this.tokenAddress,
-      this.tokenHolder
-    );
-    const vestedWalletFactory = ArbitrumVestingWalletsFactory__factory.connect(
-      this.vestedWalletFactoryAddress,
-      this.deployer
-    );
+    const token = L2ArbitrumToken__factory.connect(this.tokenAddress, this.tokenHolder);
+
+    const vestedWalletFactoryFac = new ArbitrumVestingWalletsFactory__factory(this.deployer);
+    const vestedWalletFactory = await vestedWalletFactoryFac.deploy();
+    await vestedWalletFactory.deployed();
 
     const recipientAddresses = Object.keys(this.recipients);
-    const batchSize = 10;
+    const batchSize = 5;
 
     for (let index = 0; index < recipientAddresses.length; index + batchSize) {
       const recipientBatch = recipientAddresses.slice(index, batchSize);
