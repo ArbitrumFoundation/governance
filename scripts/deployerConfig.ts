@@ -116,6 +116,10 @@ export interface DeployerConfig {
    * Acceptable upper limit for L1 gas price
    */
   BASE_L1_GAS_PRICE_LIMIT: number;
+  /**
+   * Block range for eth_getLogs calls
+   */
+  GET_LOGS_BLOCK_RANGE: number;
 }
 
 export const loadDeployerConfig = async (fileLocation: string) => {

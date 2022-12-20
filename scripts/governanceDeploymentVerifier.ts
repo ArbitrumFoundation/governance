@@ -924,6 +924,7 @@ async function verifyL2TokenDistributor(
     L2_CLAIM_PERIOD_START: number;
     L2_CLAIM_PERIOD_END: number;
     L2_NUM_OF_RECIPIENTS: number;
+    GET_LOGS_BLOCK_RANGE: number;
   }
 ) {
   //// check ownership
@@ -980,7 +981,8 @@ async function verifyL2TokenDistributor(
   const recipientDataFromContract = await getRecipientsDataFromContractEvents(
     l2TokenDistributor,
     Number(deploymentInfo["distributorSetRecipientsStartBlock"]),
-    Number(deploymentInfo["distributorSetRecipientsEndBlock"])
+    Number(deploymentInfo["distributorSetRecipientsEndBlock"]),
+    config
   );
   const recipientDataFromFile = getRecipientsDataFromFile();
   assertNumbersEquals(

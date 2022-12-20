@@ -50,8 +50,10 @@ export async function setClaimRecipients(
     console.log("---- Batch ", i, "/", numOfBatches);
 
     // if L1 or L2 are congested, wait until it clears out
-    await waitForAcceptableGasPrice(l2GasPriceLimit, () => arbDeployer.provider!.getGasPrice());
-    await waitForAcceptableGasPrice(l1GasPriceLimit, () => arbGasInfo.getL1BaseFeeEstimate());
+    await waitForAcceptableGasPrice(l2GasPriceLimit, false, () =>
+      arbDeployer.provider!.getGasPrice()
+    );
+    await waitForAcceptableGasPrice(l1GasPriceLimit, true, () => arbGasInfo.getL1BaseFeeEstimate());
 
     // generally sleep 2 seconds to keep TX fees from going up, and to avoid filling all the blockspace
     await new Promise((resolve) => setTimeout(resolve, 2000));
@@ -109,12 +111,14 @@ function printGasUsageStats(txReceipt: ethers.ContractReceipt) {
  */
 async function waitForAcceptableGasPrice(
   gasPriceLimit: BigNumber,
+  isL1Gas: Boolean,
   gasPriceFetcher: () => Promise<BigNumber>
 ) {
   let gasPrice = await gasPriceFetcher();
   if (gasPrice.gt(gasPriceLimit)) {
     while (true) {
-      console.log("Gas price too high:", formatUnits(gasPrice, "gwei"), " gwei");
+      const isL1 = isL1Gas ? "L1" : "L2";
+      console.log(isL1, "gas price too high:", formatUnits(gasPrice, "gwei"), " gwei");
       console.log("Sleeping 30 sec");
       // sleep 30 sec, then check if gas price has fallen down
       await new Promise((resolve) => setTimeout(resolve, 30000));
@@ -139,14 +143,17 @@ async function waitForAcceptableGasPrice(
 export async function getRecipientsDataFromContractEvents(
   tokenDistributor: TokenDistributor,
   startBlock: number,
-  endBlock: number
+  endBlock: number,
+  config: {
+    GET_LOGS_BLOCK_RANGE: number;
+  }
 ): Promise<{ [key: string]: BigNumber }> {
   let recipientData: { [key: string]: BigNumber } = {};
   const canClaimFilter = tokenDistributor.filters.CanClaim();
 
   let currentBlock = startBlock;
   // in 100 blocks there can be 100 recipient batches => 10k events at most
-  const blocksToSearch = 100;
+  const blocksToSearch = config.GET_LOGS_BLOCK_RANGE;
   while (currentBlock <= endBlock) {
     // query 100 blocks
     const canClaimEvents = await tokenDistributor.queryFilter(
