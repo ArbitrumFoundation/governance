@@ -11,6 +11,7 @@
     "gen:recipients": "ts-node ./scripts/genRecipients.ts",
     "deploy:governance": "ts-node ./scripts/governanceDeployer.ts",
     "verify:governance": "ts-node ./scripts/governanceDeploymentVerifier.ts",
+    "verify:protocol:ownership": "ts-node ./scripts/protocolOwnershipVerifier.ts",
     "test:integration": "hardhat test",
     "format:sol": "forge fmt"
   },
