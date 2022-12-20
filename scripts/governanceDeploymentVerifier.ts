@@ -924,13 +924,18 @@ async function verifyL2TokenDistributor(
     Number(deploymentInfo["distributorSetRecipientsEndBlock"])
   );
   const recipientDataFromFile = getRecipientsDataFromFile();
-
-  // check by comparing JSON representations. key order is supposed to be same in both cases
-  assertEquals(
-    JSON.stringify(recipientDataFromFile),
-    JSON.stringify(recipientDataFromContract),
-    "Emitted event data does not match recipient-amount pairs from file!"
+  assertNumbersEquals(
+    BigNumber.from(Object.keys(recipientDataFromContract).length),
+    BigNumber.from(Object.keys(recipientDataFromFile).length),
+    "Different number of events emitted compared to number of eligible accounts"
   );
+  for (const account in recipientDataFromContract) {
+    assertNumbersEquals(
+      recipientDataFromContract[account],
+      recipientDataFromFile[account],
+      "Emitted event data does not match recipient-amount pairs from file"
+    );
+  }
 
   const totalEvents = Object.keys(recipientDataFromContract).length;
   assertNumbersEquals(
