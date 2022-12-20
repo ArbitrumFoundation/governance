@@ -1179,7 +1179,7 @@ async function verifyVestedWallets(
 
   assertEquals(
     walletLogs.length.toString(),
-    Object.keys(vestedRecipients).toString(),
+    Object.keys(vestedRecipients).length.toString(),
     "Wallets created number not equal vested recipients number"
   );
 
