@@ -65,7 +65,7 @@ export const getDeployersAndConfig = async (): Promise<{
   arbNetwork: L2Network;
   novaNetwork: L2Network;
 }> => {
-  if (config.isLocalDeployment === "true") {
+  if (config.isLocalDeployment !== "false") {
     // setup local test environment
     const {
       l2Provider,
