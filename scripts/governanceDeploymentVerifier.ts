@@ -1163,15 +1163,12 @@ async function verifyVestedWallets(
 ) {
   // find all the events emitted by this address
   // check that every recipient has received the correct amount
-
-  const deployTx = vestedWalletFactory.deployTransaction;
-
   const filter = vestedWalletFactory.filters["WalletCreated(address,address)"]();
 
   const walletLogs = (
     await arbProvider.getLogs({
       ...filter,
-      fromBlock: deployTx.blockNumber,
+      fromBlock: 0,
       toBlock: "latest",
     })
   ).map((l) => {
