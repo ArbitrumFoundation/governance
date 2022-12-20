@@ -9,4 +9,5 @@ cache_hardhat/
 localNetwork.json
 localNetworkNova.json
 .env
+.envrc
 deployedContracts.json

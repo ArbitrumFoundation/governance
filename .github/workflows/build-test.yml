@@ -55,8 +55,8 @@ jobs:
       - name: Check gas snapshot
         run: make gas-check
 
-  test-integration:
-    name: Test integration
+  test-only-doesnt-exist:
+    name: No .only
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -65,14 +65,15 @@ jobs:
 
       - name: Check if .only exists in integration test
         run: fgrep .only -R test-ts/ && exit 1 || exit 0
-      
-      - name: Checkout nitro
-        uses: actions/checkout@v3
+  
+  test-deploy:
+    name: Test deployment
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
         with:
-          repository: OffchainLabs/nitro
-          submodules: 'recursive'
-          path: 'nitro'
-          ref: 'v2.0.0'
+          submodules: recursive
+      - uses: OffchainLabs/actions/run-nitro-test-node@main
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
@@ -89,19 +90,53 @@ jobs:
       - name: Install packages
         run: yarn
 
-      - name: Start background nitro test-node.bash
+      - name: Copy .env
         run: |
-          cd nitro
-          ./test-node.bash --init --no-blockscout &
+          cp ./.env-sample ./.env
+      
+      - name: Compile contracts
+        run: npx hardhat compile
+
+      - name: Generate network file
+        run: make gen-network
+
+      - name: Generate nova network file
+        run: yarn gen:nova:network
+
+      - name: Deploy governance
+        run: yarn deploy:governance
+
+      - name: Verify deployment
+        run: yarn verify:governance
+
+  
+  test-integration:
+    name: Test integration
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: recursive
+      - uses: OffchainLabs/actions/run-nitro-test-node@main
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      - name: Setup node/yarn
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
+          cache: 'yarn'
+          cache-dependency-path: '**/yarn.lock'
+      
+      - name: Install packages
+        run: yarn
 
       - name: Copy .env
         run: |
           cp ./.env-sample ./.env
-
-      - name: Wait for nitro startup
-        run: |
-          cd scripts
-          ./waitForNitro.sh
 
       - name: Generate network file
         run: make gen-network

@@ -34,12 +34,14 @@ import {
   L2ReverseCustomGateway__factory,
 } from "../typechain-types-imported";
 import { getDeployerAddresses, getProviders, isDeployingToNova } from "./providerSetup";
-import * as GovernanceConstants from "./governance.constants";
-import { Address } from "@arbitrum/sdk";
+import { Address, getL2Network, L2Network } from "@arbitrum/sdk";
 import { parseEther } from "ethers/lib/utils";
 import { L1CustomGateway__factory } from "@arbitrum/sdk/dist/lib/abi/factories/L1CustomGateway__factory";
 import { L1GatewayRouter__factory } from "@arbitrum/sdk/dist/lib/abi/factories/L1GatewayRouter__factory";
 import { Provider } from "@ethersproject/providers";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 // JSON file which contains all the deployed contract addresses
 const DEPLOYED_CONTRACTS_FILE_NAME = "deployedContracts.json";
@@ -49,7 +51,14 @@ const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
  * Main function that verifies governance deployment was successful.
  */
 export const verifyDeployment = async () => {
-  const { ethProvider, arbProvider, novaProvider } = await getProviders();
+  const {
+    ethProvider,
+    arbProvider,
+    novaProvider,
+    deployerConfig,
+    arbNetwork: arbOneNetwork,
+    novaNetwork,
+  } = await getProviders();
   const { ethDeployerAddress, arbDeployerAddress } = await getDeployerAddresses();
 
   const l1Contracts = loadL1Contracts(ethProvider);
@@ -62,13 +71,15 @@ export const verifyDeployment = async () => {
     l1Contracts["l1TokenProxy"],
     l1Contracts["l1ProxyAdmin"],
     l1Contracts["l1ReverseCustomGatewayProxy"],
-    ethProvider
+    ethProvider,
+    novaNetwork
   );
   await verifyL1UpgradeExecutor(
     l1Contracts["l1Executor"],
     l1Contracts["l1Timelock"],
     l1Contracts["l1ProxyAdmin"],
-    ethProvider
+    ethProvider,
+    deployerConfig
   );
   await verifyL1Timelock(
     l1Contracts["l1Timelock"],
@@ -76,7 +87,9 @@ export const verifyDeployment = async () => {
     l1Contracts["l1GovernanceFactory"],
     arbContracts["l2CoreTimelock"],
     l1Contracts["l1ProxyAdmin"],
-    ethProvider
+    ethProvider,
+    arbOneNetwork,
+    deployerConfig
   );
   await verifyL1ProxyAdmin(l1Contracts["l1ProxyAdmin"], l1Contracts["l1Executor"]);
 
@@ -85,7 +98,8 @@ export const verifyDeployment = async () => {
     arbContracts["l2ReverseCustomGatewayProxy"],
     l1Contracts["l1ProxyAdmin"],
     ethProvider,
-    ethDeployerAddress
+    ethDeployerAddress,
+    arbOneNetwork
   );
 
   //// L2 contracts
@@ -97,7 +111,8 @@ export const verifyDeployment = async () => {
     arbContracts["l2Executor"],
     arbContracts["l2GovernanceFactory"],
     arbContracts["l2ProxyAdmin"],
-    arbProvider
+    arbProvider,
+    deployerConfig
   );
   await verifyL2GovernanceFactory(arbContracts["l2GovernanceFactory"], arbDeployerAddress);
   await verifyL2CoreGovernor(
@@ -106,13 +121,15 @@ export const verifyDeployment = async () => {
     arbContracts["l2CoreTimelock"],
     arbContracts["l2Executor"],
     arbContracts["l2ProxyAdmin"],
-    arbProvider
+    arbProvider,
+    deployerConfig
   );
   await verifyL2UpgradeExecutor(
     arbContracts["l2Executor"],
     l1Contracts["l1Timelock"],
     arbContracts["l2ProxyAdmin"],
-    arbProvider
+    arbProvider,
+    deployerConfig
   );
   await verifyL2Token(
     arbContracts["l2Token"],
@@ -122,14 +139,16 @@ export const verifyDeployment = async () => {
     arbContracts["l2ProxyAdmin"],
     arbContracts["l2TokenDistributor"],
     arbProvider,
-    ethProvider
+    ethProvider,
+    deployerConfig
   );
   await verifyL2TreasuryGovernor(
     arbContracts["l2TreasuryGoverner"],
     arbContracts["l2Token"],
     arbContracts["l2Executor"],
     arbContracts["l2ProxyAdmin"],
-    arbProvider
+    arbProvider,
+    deployerConfig
   );
 
   const l2TreasuryTimelock = ArbitrumTimelock__factory.connect(
@@ -156,14 +175,16 @@ export const verifyDeployment = async () => {
     arbContracts["l2Token"],
     arbContracts["l2Executor"],
     arbContracts["l2CoreGoverner"],
-    arbProvider
+    arbProvider,
+    deployerConfig
   );
   await verifyL2ProxyAdmin(arbContracts["l2ProxyAdmin"], arbContracts["l2Executor"]);
   await verifyL2ReverseGateway(
     arbContracts["l2ReverseCustomGatewayProxy"],
     l1Contracts["l1ReverseCustomGatewayProxy"],
     arbContracts["l2ProxyAdmin"],
-    arbProvider
+    arbProvider,
+    arbOneNetwork
   );
 
   //// Nova contracts
@@ -173,14 +194,17 @@ export const verifyDeployment = async () => {
       novaContracts!["novaUpgradeExecutorProxy"],
       l1Contracts["l1Timelock"],
       novaContracts!["novaProxyAdmin"],
-      novaProvider
+      novaProvider,
+      deployerConfig
     );
     await verifyNovaToken(
       novaContracts!["novaTokenProxy"],
       l1Contracts["l1TokenProxy"],
       novaContracts!["novaProxyAdmin"],
       novaProvider,
-      ethProvider
+      ethProvider,
+      novaNetwork,
+      deployerConfig
     );
     await verifyNovaProxyAdmin(
       novaContracts!["novaProxyAdmin"],
@@ -213,7 +237,8 @@ async function verifyL1Token(
   l1Token: L1ArbitrumToken,
   l1ProxyAdmin: ProxyAdmin,
   l1ReverseCustomGateway: L1ForceOnlyReverseCustomGateway,
-  ethProvider: Provider
+  ethProvider: Provider,
+  novaNetwork: L2Network
 ) {
   //// check proxy admin
   assertEquals(
@@ -232,12 +257,12 @@ async function verifyL1Token(
   );
   assertEquals(
     await l1Token.novaGateway(),
-    GovernanceConstants.L1_NOVA_GATEWAY,
+    novaNetwork.tokenBridge.l1CustomGateway,
     "Incorrect Nova gateway set on L1Token"
   );
   assertEquals(
     await l1Token.novaRouter(),
-    GovernanceConstants.L1_NOVA_ROUTER,
+    novaNetwork.tokenBridge.l1GatewayRouter,
     "Incorrect Nova router set on L1Token"
   );
 }
@@ -250,7 +275,10 @@ async function verifyL1UpgradeExecutor(
   l1Executor: UpgradeExecutor,
   l1Timelock: L1ArbitrumTimelock,
   l1ProxyAdmin: ProxyAdmin,
-  ethProvider: Provider
+  ethProvider: Provider,
+  config: {
+    L1_9_OF_12_SECURITY_COUNCIL: string;
+  }
 ) {
   //// check proxy admin
   assertEquals(
@@ -268,7 +296,7 @@ async function verifyL1UpgradeExecutor(
     "L1UpgradeExecutor should have admin role on itself"
   );
   assert(
-    await l1Executor.hasRole(executorRole, GovernanceConstants.L1_9_OF_12_SECURITY_COUNCIL),
+    await l1Executor.hasRole(executorRole, config.L1_9_OF_12_SECURITY_COUNCIL),
     "L1 9/12 council should have executor role on L1 upgrade executor"
   );
   assert(
@@ -288,7 +316,12 @@ async function verifyL1Timelock(
   l1GovernanceFactory: L1GovernanceFactory,
   l2Timelock: ArbitrumTimelock,
   l1ProxyAdmin: ProxyAdmin,
-  ethProvider: Provider
+  ethProvider: Provider,
+  arbOneNetwork: L2Network,
+  config: {
+    L1_TIMELOCK_DELAY: number;
+    L1_9_OF_12_SECURITY_COUNCIL: string;
+  }
 ) {
   //// check proxy admin
   assertEquals(
@@ -300,12 +333,12 @@ async function verifyL1Timelock(
   //// check initialization params are correctly set
   assertEquals(
     (await l1Timelock.getMinDelay()).toString(),
-    GovernanceConstants.L1_TIMELOCK_DELAY.toString(),
+    config.L1_TIMELOCK_DELAY.toString(),
     "L1 timelock has incorrect min delay"
   );
   assertEquals(
     await l1Timelock.governanceChainInbox(),
-    GovernanceConstants.L1_ARB_INBOX,
+    arbOneNetwork.ethBridge.inbox,
     "Incorrect governance chain inbox set on L1 timelock"
   );
   assertEquals(
@@ -323,7 +356,7 @@ async function verifyL1Timelock(
   assert(
     await l1Timelock.hasRole(
       proposerRole,
-      await IInbox__factory.connect(GovernanceConstants.L1_ARB_INBOX, ethProvider).bridge()
+      await IInbox__factory.connect(arbOneNetwork.ethBridge.inbox, ethProvider).bridge()
     ),
     "Bridge should have proposer role on L1 timelock"
   );
@@ -332,7 +365,7 @@ async function verifyL1Timelock(
     "Executor role should be assigned to zero address on L1 timelock"
   );
   assert(
-    await l1Timelock.hasRole(cancellerRole, GovernanceConstants.L1_9_OF_12_SECURITY_COUNCIL),
+    await l1Timelock.hasRole(cancellerRole, config.L1_9_OF_12_SECURITY_COUNCIL),
     "L1 9/12 council should have canceller role on L1 timelock"
   );
   assert(
@@ -372,7 +405,8 @@ async function verifyL1ReverseGateway(
   l2ReverseGateway: L2ReverseCustomGateway,
   l1ProxyAdmin: ProxyAdmin,
   ethProvider: Provider,
-  ethDeployerAddress: string
+  ethDeployerAddress: string,
+  arbOneNetwork: L2Network
 ) {
   //// check proxy admin
   assertEquals(
@@ -396,12 +430,12 @@ async function verifyL1ReverseGateway(
   );
   assertEquals(
     await l1ReverseGateway.inbox(),
-    GovernanceConstants.L1_ARB_INBOX,
+    arbOneNetwork.ethBridge.inbox,
     "Incorrect inbox set for l1ReverseGateway"
   );
   assertEquals(
     await l1ReverseGateway.router(),
-    GovernanceConstants.L1_ARB_ROUTER,
+    arbOneNetwork.tokenBridge.l1GatewayRouter,
     "Incorrect router set for l1ReverseGateway"
   );
 }
@@ -443,7 +477,12 @@ async function verifyArbitrumTimelock(
   l2Executor: UpgradeExecutor,
   l2GovernanceFactory: L2GovernanceFactory,
   l2ProxyAdmin: ProxyAdmin,
-  arbProvider: Provider
+  arbProvider: Provider,
+  config: {
+    L2_TIMELOCK_DELAY: number;
+    L2_7_OF_12_SECURITY_COUNCIL: string;
+    L2_9_OF_12_SECURITY_COUNCIL: string;
+  }
 ) {
   //// check proxy admin
   assertEquals(
@@ -455,7 +494,7 @@ async function verifyArbitrumTimelock(
   //// check initialization params are correctly set
   assertEquals(
     (await l2Timelock.getMinDelay()).toString(),
-    GovernanceConstants.L2_TIMELOCK_DELAY.toString(),
+    config.L2_TIMELOCK_DELAY.toString(),
     "L2 timelock has wrong min delay"
   );
 
@@ -474,24 +513,15 @@ async function verifyArbitrumTimelock(
     "L2 core governor should have canceller role on L2 timelock"
   );
   assert(
-    await l2Timelock.hasRole(
-      proposerRole,
-      GovernanceConstants.L2_7_OF_12_SECURITY_COUNCIL.toString()
-    ),
+    await l2Timelock.hasRole(proposerRole, config.L2_7_OF_12_SECURITY_COUNCIL.toString()),
     "L2 7/12 council should have proposer role on L2 timelock"
   );
   assert(
-    !(await l2Timelock.hasRole(
-      cancellerRole,
-      GovernanceConstants.L2_7_OF_12_SECURITY_COUNCIL.toString()
-    )),
+    !(await l2Timelock.hasRole(cancellerRole, config.L2_7_OF_12_SECURITY_COUNCIL.toString())),
     "L2 7/12 council should not have canceller role on L2 timelock"
   );
   assert(
-    await l2Timelock.hasRole(
-      cancellerRole,
-      GovernanceConstants.L2_9_OF_12_SECURITY_COUNCIL.toString()
-    ),
+    await l2Timelock.hasRole(cancellerRole, config.L2_9_OF_12_SECURITY_COUNCIL.toString()),
     "L2 9/12 council should have canceller role on L2 timelock"
   );
   assert(
@@ -523,7 +553,14 @@ async function verifyL2CoreGovernor(
   l2Timelock: ArbitrumTimelock,
   l2Executor: UpgradeExecutor,
   l2ProxyAdmin: ProxyAdmin,
-  arbProvider: Provider
+  arbProvider: Provider,
+  config: {
+    L2_VOTING_DELAY: number;
+    L2_VOTING_PERIOD: number;
+    L2_PROPOSAL_TRESHOLD: number;
+    L2_CORE_QUORUM_TRESHOLD: number;
+    L2_MIN_PERIOD_AFTER_QUORUM: number;
+  }
 ) {
   //// check ownership
   assertEquals(
@@ -545,17 +582,17 @@ async function verifyL2CoreGovernor(
   );
   assertNumbersEquals(
     await l2CoreGovernor.votingDelay(),
-    BigNumber.from(GovernanceConstants.L2_VOTING_DELAY),
+    BigNumber.from(config.L2_VOTING_DELAY),
     "Incorrect voting delay set for L2 core governor"
   );
   assertNumbersEquals(
     await l2CoreGovernor.votingPeriod(),
-    BigNumber.from(GovernanceConstants.L2_VOTING_PERIOD),
+    BigNumber.from(config.L2_VOTING_PERIOD),
     "Incorrect voting period set for L2 core governor"
   );
   assertNumbersEquals(
     await l2CoreGovernor.proposalThreshold(),
-    BigNumber.from(GovernanceConstants.L2_PROPOSAL_TRESHOLD),
+    BigNumber.from(config.L2_PROPOSAL_TRESHOLD),
     "Incorrect proposal threshold set for L2 core governor"
   );
   assertEquals(
@@ -570,12 +607,12 @@ async function verifyL2CoreGovernor(
   );
   assertNumbersEquals(
     await l2CoreGovernor["quorumNumerator()"](),
-    BigNumber.from(GovernanceConstants.L2_CORE_QUORUM_TRESHOLD),
+    BigNumber.from(config.L2_CORE_QUORUM_TRESHOLD),
     "Incorrect quorum treshold set for L2 core governor"
   );
   assertNumbersEquals(
     await l2CoreGovernor.lateQuorumVoteExtension(),
-    BigNumber.from(GovernanceConstants.L2_MIN_PERIOD_AFTER_QUORUM),
+    BigNumber.from(config.L2_MIN_PERIOD_AFTER_QUORUM),
     "Incorrect min period after quorum set for L2 core governor"
   );
 }
@@ -589,7 +626,10 @@ async function verifyL2UpgradeExecutor(
   l2Executor: UpgradeExecutor,
   l1Timelock: L1ArbitrumTimelock,
   l2ProxyAdmin: ProxyAdmin,
-  arbProvider: Provider
+  arbProvider: Provider,
+  config: {
+    L2_9_OF_12_SECURITY_COUNCIL: string;
+  }
 ) {
   //// check proxy admin
   assertEquals(
@@ -613,7 +653,7 @@ async function verifyL2UpgradeExecutor(
     "L1 timelock (aliased) should have executor role on L2 upgrade executor"
   );
   assert(
-    await l2Executor.hasRole(executorRole, GovernanceConstants.L2_9_OF_12_SECURITY_COUNCIL),
+    await l2Executor.hasRole(executorRole, config.L2_9_OF_12_SECURITY_COUNCIL),
     "L2 9/12 council should have executor role on L2 upgrade executor"
   );
 }
@@ -632,7 +672,12 @@ async function verifyL2Token(
   l2ProxyAdmin: ProxyAdmin,
   l2TokenDistributor: TokenDistributor,
   arbProvider: Provider,
-  ethProvider: Provider
+  ethProvider: Provider,
+  config: {
+    L2_TOKEN_INITIAL_SUPPLY: string;
+    L2_NUM_OF_TOKENS_FOR_TREASURY: string;
+    L2_NUM_OF_TOKENS_FOR_CLAIMING: string;
+  }
 ) {
   //// check ownership
   assertEquals(
@@ -651,7 +696,7 @@ async function verifyL2Token(
   assertEquals(await l2Token.symbol(), "ARB", "L2Token symbol should be ARB");
   assertNumbersEquals(
     await l2Token.totalSupply(),
-    ethers.utils.parseEther(GovernanceConstants.L2_TOKEN_INITIAL_SUPPLY.toString()),
+    ethers.utils.parseEther(config.L2_TOKEN_INITIAL_SUPPLY.toString()),
     "L2Token has incorrect total supply"
   );
   assertEquals(
@@ -665,12 +710,12 @@ async function verifyL2Token(
   const tokenDistributorBalance = await l2Token.balanceOf(l2TokenDistributor.address);
   assertNumbersEquals(
     arbTreasuryBalance,
-    parseEther(GovernanceConstants.L2_NUM_OF_TOKENS_FOR_TREASURY),
+    parseEther(config.L2_NUM_OF_TOKENS_FOR_TREASURY),
     "Incorrect initial L2Token balance for ArbTreasury"
   );
   assertNumbersEquals(
     tokenDistributorBalance,
-    parseEther(GovernanceConstants.L2_NUM_OF_TOKENS_FOR_CLAIMING),
+    parseEther(config.L2_NUM_OF_TOKENS_FOR_CLAIMING),
     "Incorrect initial L2Token balance for TokenDistributor"
   );
   assertNumbersEquals(
@@ -707,7 +752,14 @@ async function verifyL2TreasuryGovernor(
   l2Token: L2ArbitrumToken,
   l2Executor: UpgradeExecutor,
   l2ProxyAdmin: ProxyAdmin,
-  arbProvider: Provider
+  arbProvider: Provider,
+  config: {
+    L2_VOTING_DELAY: number;
+    L2_VOTING_PERIOD: number;
+    L2_PROPOSAL_TRESHOLD: number;
+    L2_TREASURY_QUORUM_TRESHOLD: number;
+    L2_MIN_PERIOD_AFTER_QUORUM: number;
+  }
 ) {
   //// check ownership
   assertEquals(
@@ -729,17 +781,17 @@ async function verifyL2TreasuryGovernor(
   );
   assertNumbersEquals(
     await l2TreasuryGoverner.votingDelay(),
-    BigNumber.from(GovernanceConstants.L2_VOTING_DELAY),
+    BigNumber.from(config.L2_VOTING_DELAY),
     "Incorrect voting delay set for L2 treasury governor"
   );
   assertNumbersEquals(
     await l2TreasuryGoverner.votingPeriod(),
-    BigNumber.from(GovernanceConstants.L2_VOTING_PERIOD),
+    BigNumber.from(config.L2_VOTING_PERIOD),
     "Incorrect voting period set for L2 treasury governor"
   );
   assertNumbersEquals(
     await l2TreasuryGoverner.proposalThreshold(),
-    BigNumber.from(GovernanceConstants.L2_PROPOSAL_TRESHOLD),
+    BigNumber.from(config.L2_PROPOSAL_TRESHOLD),
     "Incorrect proposal threshold set for L2 treasury governor"
   );
   assertEquals(
@@ -749,12 +801,12 @@ async function verifyL2TreasuryGovernor(
   );
   assertNumbersEquals(
     await l2TreasuryGoverner["quorumNumerator()"](),
-    BigNumber.from(GovernanceConstants.L2_TREASURY_QUORUM_TRESHOLD),
+    BigNumber.from(config.L2_TREASURY_QUORUM_TRESHOLD),
     "Incorrect quorum treshold set for L2 treasury governor"
   );
   assertNumbersEquals(
     await l2TreasuryGoverner.lateQuorumVoteExtension(),
-    BigNumber.from(GovernanceConstants.L2_MIN_PERIOD_AFTER_QUORUM),
+    BigNumber.from(config.L2_MIN_PERIOD_AFTER_QUORUM),
     "Incorrect min period after quorum set for L2 treasury governor"
   );
 }
@@ -861,7 +913,13 @@ async function verifyL2TokenDistributor(
   l2Token: L2ArbitrumToken,
   l2Executor: UpgradeExecutor,
   l2CoreGovernor: L2ArbitrumGovernor,
-  arbProvider: Provider
+  arbProvider: Provider,
+  config: {
+    L2_NUM_OF_TOKENS_FOR_CLAIMING: string;
+    L2_SWEEP_RECECIVER: string;
+    L2_CLAIM_PERIOD_START: number;
+    L2_CLAIM_PERIOD_END: number;
+  }
 ) {
   //// check ownership
   assertEquals(
@@ -873,12 +931,12 @@ async function verifyL2TokenDistributor(
   //// check token balances
   assertNumbersEquals(
     await l2Token.balanceOf(l2TokenDistributor.address),
-    parseEther(GovernanceConstants.L2_NUM_OF_TOKENS_FOR_CLAIMING),
+    parseEther(config.L2_NUM_OF_TOKENS_FOR_CLAIMING),
     "Incorrect initial L2Token balance for TokenDistributor"
   );
   assertNumbersEquals(
     await l2TokenDistributor.totalClaimable(),
-    parseEther(GovernanceConstants.L2_NUM_OF_TOKENS_FOR_CLAIMING),
+    parseEther(config.L2_NUM_OF_TOKENS_FOR_CLAIMING),
     "Incorrect totalClaimable amount for TokenDistributor"
   );
 
@@ -890,17 +948,17 @@ async function verifyL2TokenDistributor(
   );
   assertEquals(
     await l2TokenDistributor.sweepReceiver(),
-    GovernanceConstants.L2_SWEEP_RECECIVER,
+    config.L2_SWEEP_RECECIVER,
     "Incorrect sweep receiver set for TokenDistributor"
   );
   assertNumbersEquals(
     await l2TokenDistributor.claimPeriodStart(),
-    BigNumber.from(GovernanceConstants.L2_CLAIM_PERIOD_START),
+    BigNumber.from(config.L2_CLAIM_PERIOD_START),
     "Incorrect claim period start set for TokenDistributor"
   );
   assertNumbersEquals(
     await l2TokenDistributor.claimPeriodEnd(),
-    BigNumber.from(GovernanceConstants.L2_CLAIM_PERIOD_END),
+    BigNumber.from(config.L2_CLAIM_PERIOD_END),
     "Incorrect claim period end set for TokenDistributor"
   );
 
@@ -935,7 +993,8 @@ async function verifyL2ReverseGateway(
   l2ReverseGateway: L2ReverseCustomGateway,
   l1ReverseGateway: L1ForceOnlyReverseCustomGateway,
   l2ProxyAdmin: ProxyAdmin,
-  arbProvider: Provider
+  arbProvider: Provider,
+  arbOneNetwork: L2Network
 ) {
   //// check proxy admin
   assertEquals(
@@ -952,7 +1011,7 @@ async function verifyL2ReverseGateway(
   );
   assertEquals(
     await l2ReverseGateway.router(),
-    GovernanceConstants.L2_GATEWAY_ROUTER,
+    arbOneNetwork.tokenBridge.l2GatewayRouter,
     "Incorrect router set for 21ReverseGateway"
   );
 }
@@ -965,7 +1024,10 @@ async function verifyNovaUpgradeExecutor(
   novaUpgradeExecutor: UpgradeExecutor,
   l1Timelock: L1ArbitrumTimelock,
   novaProxyAdmin: ProxyAdmin,
-  novaProvider: Provider
+  novaProvider: Provider,
+  config: {
+    NOVA_9_OF_12_SECURITY_COUNCIL: string;
+  }
 ) {
   //// check proxy admin
   assertEquals(
@@ -983,10 +1045,7 @@ async function verifyNovaUpgradeExecutor(
     "NovaUpgradeExecutor should have admin role on itself"
   );
   assert(
-    await novaUpgradeExecutor.hasRole(
-      executorRole,
-      GovernanceConstants.NOVA_9_OF_12_SECURITY_COUNCIL
-    ),
+    await novaUpgradeExecutor.hasRole(executorRole, config.NOVA_9_OF_12_SECURITY_COUNCIL),
     "Nova 9/12 council should have executor role on Nova upgrade executor"
   );
   const l1TimelockAddressAliased = new Address(l1Timelock.address).applyAlias().value;
@@ -1005,7 +1064,13 @@ async function verifyNovaToken(
   l1Token: L1ArbitrumToken,
   novaProxyAdmin: ProxyAdmin,
   novaProvider: Provider,
-  ethProvider: Provider
+  ethProvider: Provider,
+  novaNetwork: L2Network,
+  config: {
+    NOVA_TOKEN_NAME: string;
+    NOVA_TOKEN_SYMBOL: string;
+    NOVA_TOKEN_DECIMALS: number;
+  }
 ) {
   //// check proxy admin
   assertEquals(
@@ -1017,22 +1082,22 @@ async function verifyNovaToken(
   //// check initialization params
   assertEquals(
     await novaToken.name(),
-    GovernanceConstants.NOVA_TOKEN_NAME,
+    config.NOVA_TOKEN_NAME,
     "Incorrect token name set for Nova token"
   );
   assertEquals(
     await novaToken.symbol(),
-    GovernanceConstants.NOVA_TOKEN_SYMBOL,
+    config.NOVA_TOKEN_SYMBOL,
     "Incorrect token symbol set on Nova token"
   );
   assertEquals(
     (await novaToken.decimals()).toString(),
-    GovernanceConstants.NOVA_TOKEN_DECIMALS.toString(),
+    config.NOVA_TOKEN_DECIMALS.toString(),
     "Incorrect token decimals set on Nova token"
   );
   assertEquals(
     await novaToken.l2Gateway(),
-    GovernanceConstants.NOVA_TOKEN_GATEWAY,
+    novaNetwork.tokenBridge.l2CustomGateway,
     "Incorrect L2 gateway set on Nova token"
   );
   assertEquals(
@@ -1070,30 +1135,6 @@ async function verifyNovaProxyAdmin(
     "NovaUpgradeExecutor should be NovaProxyAdmin's owner"
   );
 }
-
-// type Face = {
-//   l1GovernanceFactory: L1GovernanceFactory,
-//   l1TokenProxy: L1ArbitrumToken,
-//   l1Executor: UpgradeExecutor,
-//   l1Timelock: L1ArbitrumTimelock,
-//   l1ProxyAdmin: ProxyAdmin
-//   l1ReverseCustomGatewayProxy: L1ForceOnlyReverseCustomGateway,
-
-//   l2Token: L1ArbitrumToken,s
-//   l2Executor: UpgradeExecutor
-//   l2GovernanceFactory: L2GovernanceFactory,
-//   l2CoreGoverner: L2ArbitrumGovernor,
-//   l2CoreTimelock: ArbitrumTimelock,
-//   l2ProxyAdmin: ProxyAdmin,
-//   l2TreasuryGoverner: L2ArbitrumGovernor,
-//   l2ArbTreasury: FixedDelegateErc20Wallet,
-//   l2TokenDistributor: TokenDistributor,
-//   l2ReverseCustomGatewayProxy: L2ReverseCustomGateway
-
-//   novaProxyAdmin: ProxyAdmin,
-//   novaUpgradeExecutorProxy: UpgradeExecutor,
-//   novaTokenProxy: L2CustomGatewayToken
-// }
 
 /**
  * Load L1 contracts by reading addresses from file `DEPLOYED_CONTRACTS_FILE_NAME` and return loaded contracts in key-value format.
@@ -1219,7 +1260,7 @@ async function getProxyOwner(contractAddress: string, provider: Provider) {
  * @param message
  */
 async function assertEquals(actual: string, expected: string, message: string) {
-  if (actual != expected) {
+  if (actual.toLowerCase() != expected.toLowerCase()) {
     console.error("Actual: ", actual);
     console.error("Expected: ", expected);
     throw new Error(message);
@@ -1257,6 +1298,4 @@ async function main() {
   await verifyDeployment();
 }
 
-main()
-  .then(() => console.log("Done."))
-  .catch(console.error);
+main().then(() => console.log("Done."));
