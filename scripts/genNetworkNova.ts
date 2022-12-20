@@ -9,6 +9,7 @@ import { deployErc20AndInit } from "../test-ts/deployBridge";
  * Deployed contracts' addresses are stored to 'localNetworkNova.json'
  */
 async function main() {
+  // CHRIS: TODO: get rid of the deployer settings
   const config = {
     novaUrl: process.env["NOVA_URL"] as string,
     ethUrl: process.env["ETH_URL"] as string,
@@ -73,6 +74,4 @@ const setupNova = async (
   };
 };
 
-main()
-  .then(() => console.log("Done."))
-  .catch(console.error);
+main().then(() => console.log("Done."));

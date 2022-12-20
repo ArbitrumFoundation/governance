@@ -1,11 +1,10 @@
-import { Address, L1ToL2MessageStatus, L1TransactionReceipt } from "@arbitrum/sdk";
+import { Address, L1ToL2MessageStatus, L1TransactionReceipt, L2Network } from "@arbitrum/sdk";
 import { Inbox__factory } from "@arbitrum/sdk/dist/lib/abi/factories/Inbox__factory";
 import { L1CustomGateway__factory } from "@arbitrum/sdk/dist/lib/abi/factories/L1CustomGateway__factory";
 import { L1GatewayRouter__factory } from "@arbitrum/sdk/dist/lib/abi/factories/L1GatewayRouter__factory";
 import { L2CustomGateway__factory } from "@arbitrum/sdk/dist/lib/abi/factories/L2CustomGateway__factory";
 import { L2GatewayRouter__factory } from "@arbitrum/sdk/dist/lib/abi/factories/L2GatewayRouter__factory";
-import { JsonRpcProvider } from "@ethersproject/providers";
-import { BigNumber, ethers, Signer, Wallet } from "ethers";
+import { BigNumber, ethers, Signer } from "ethers";
 import { parseEther } from "ethers/lib/utils";
 import {
   ArbitrumTimelock,
@@ -44,8 +43,7 @@ import {
   DeployedEventObject as L2DeployedEventObject,
   L2GovernanceFactory,
 } from "../typechain-types/src/L2GovernanceFactory";
-import * as GovernanceConstants from "./governance.constants";
-import { getDeployers, isDeployingToNova } from "./providerSetup";
+import { getDeployersAndConfig as getDeployersAndConfig, isDeployingToNova } from "./providerSetup";
 import { setClaimRecipients } from "./tokenDistributorHelper";
 
 // store address for every deployed contract
@@ -111,7 +109,8 @@ const DEPLOYED_CONTRACTS_FILE_NAME = "deployedContracts.json";
  */
 export const deployGovernance = async () => {
   console.log("Get deployers and signers");
-  const { ethDeployer, arbDeployer, novaDeployer } = await getDeployers();
+  const { ethDeployer, arbDeployer, novaDeployer, deployerConfig, arbNetwork, novaNetwork } =
+    await getDeployersAndConfig();
 
   console.log("Deploy L1 logic contracts");
   const l1UpgradeExecutorLogic = await deployL1LogicContracts(ethDeployer);
@@ -138,14 +137,16 @@ export const deployGovernance = async () => {
     l1GovernanceFactory,
     l2GovernanceFactory,
     ethDeployer,
-    arbDeployer
+    arbDeployer,
+    arbNetwork
   );
 
   console.log("Deploy and init L1 Arbitrum token");
   const { l1Token } = await deployAndInitL1Token(
     l1GovernanceFactory,
     l1ReverseGateway,
-    ethDeployer
+    ethDeployer,
+    novaNetwork
   );
 
   let _novaProxyAdmin: ProxyAdmin | undefined;
@@ -160,20 +161,33 @@ export const deployGovernance = async () => {
     _novaUpgradeExecutorProxy = novaUpgradeExecutorProxy;
 
     console.log("Deploy token to Nova");
-    const novaToken = await deployTokenToNova(novaDeployer, novaProxyAdmin, l1Token);
+    const novaToken = await deployTokenToNova(
+      novaDeployer,
+      novaProxyAdmin,
+      l1Token,
+      novaNetwork,
+      deployerConfig
+    );
     _novaToken = novaToken;
   }
 
   // step 1
   console.log("Init L2 governance");
-  const l2DeployResult = await initL2Governance(arbDeployer, l2GovernanceFactory, l1Token.address);
+  const l2DeployResult = await initL2Governance(
+    arbDeployer,
+    l2GovernanceFactory,
+    l1Token.address,
+    deployerConfig
+  );
 
   // step 2
   console.log("Init L1 governance");
   const l1DeployResult = await initL1Governance(
     l1GovernanceFactory,
     l1UpgradeExecutorLogic,
-    l2DeployResult
+    l2DeployResult,
+    arbNetwork,
+    deployerConfig
   );
 
   // step 3
@@ -186,7 +200,8 @@ export const deployGovernance = async () => {
       l1DeployResult,
       _novaUpgradeExecutorProxy!,
       _novaProxyAdmin!,
-      novaDeployer
+      novaDeployer,
+      deployerConfig
     );
   }
 
@@ -205,22 +220,33 @@ export const deployGovernance = async () => {
   }
 
   console.log("Post deployment L2 token tasks");
-  await postDeploymentL2TokenTasks(arbDeployer, l2DeployResult);
+  await postDeploymentL2TokenTasks(arbDeployer, l2DeployResult, deployerConfig);
 
   // deploy ARB distributor
   console.log("Deploy TokenDistributor");
-  const tokenDistributor = await deployTokenDistributor(arbDeployer, l2DeployResult, arbDeployer);
+  const tokenDistributor = await deployTokenDistributor(
+    arbDeployer,
+    l2DeployResult,
+    arbDeployer,
+    deployerConfig
+  );
 
   // write addresses before the last step which takes hours
   console.log("Write deployed contract addresses to deployedContracts.json");
   writeAddresses();
 
   console.log("Set TokenDistributor recipients");
-  await initTokenDistributor(tokenDistributor, arbDeployer, l2DeployResult.executor);
+  await initTokenDistributor(
+    tokenDistributor,
+    arbDeployer,
+    l2DeployResult.executor,
+    deployerConfig
+  );
 };
 
 async function deployL1LogicContracts(ethDeployer: Signer) {
   const l1UpgradeExecutorLogic = await new UpgradeExecutor__factory(ethDeployer).deploy();
+  await l1UpgradeExecutorLogic.deployed();
 
   // store address
   deployedContracts["l1UpgradeExecutorLogic"] = l1UpgradeExecutorLogic.address;
@@ -230,10 +256,15 @@ async function deployL1LogicContracts(ethDeployer: Signer) {
 
 async function deployL2LogicContracts(arbDeployer: Signer) {
   const timelockLogic = await new ArbitrumTimelock__factory(arbDeployer).deploy();
+  await timelockLogic.deployed();
   const governorLogic = await new L2ArbitrumGovernor__factory(arbDeployer).deploy();
+  await governorLogic.deployed();
   const fixedDelegateLogic = await new FixedDelegateErc20Wallet__factory(arbDeployer).deploy();
+  await fixedDelegateLogic.deployed();
   const l2TokenLogic = await new L2ArbitrumToken__factory(arbDeployer).deploy();
+  await l2TokenLogic.deployed();
   const upgradeExecutor = await new UpgradeExecutor__factory(arbDeployer).deploy();
+  await upgradeExecutor.deployed();
 
   // store addresses
   deployedContracts["l2TimelockLogic"] = timelockLogic.address;
@@ -284,7 +315,8 @@ async function deployReverseGateways(
   l1GovernanceFactory: L1GovernanceFactory,
   l2GovernanceFactory: L2GovernanceFactory,
   ethDeployer: Signer,
-  arbDeployer: Signer
+  arbDeployer: Signer,
+  arbNetwork: L2Network
 ): Promise<L1ForceOnlyReverseCustomGateway> {
   //// deploy reverse gateway on L1
 
@@ -334,8 +366,8 @@ async function deployReverseGateways(
   await (
     await l1ReverseCustomGateway.initialize(
       l2ReverseCustomGatewayProxy.address,
-      GovernanceConstants.L1_ARB_ROUTER,
-      GovernanceConstants.L1_ARB_INBOX,
+      arbNetwork.tokenBridge.l1GatewayRouter,
+      arbNetwork.ethBridge.inbox,
       await ethDeployer.getAddress()
     )
   ).wait();
@@ -348,7 +380,7 @@ async function deployReverseGateways(
   await (
     await l2ReverseCustomGateway.initialize(
       l1ReverseCustomGateway.address,
-      GovernanceConstants.L2_GATEWAY_ROUTER
+      arbNetwork.tokenBridge.l2GatewayRouter
     )
   ).wait();
 
@@ -358,7 +390,8 @@ async function deployReverseGateways(
 async function deployAndInitL1Token(
   l1GovernanceFactory: L1GovernanceFactory,
   l1ReverseCustomGateway: L1ForceOnlyReverseCustomGateway,
-  ethDeployer: Signer
+  ethDeployer: Signer,
+  novaNetwork: L2Network
 ) {
   // deploy logic
   const l1TokenLogic = await new L1ArbitrumToken__factory(ethDeployer).deploy();
@@ -382,8 +415,8 @@ async function deployAndInitL1Token(
   await (
     await l1Token.initialize(
       l1ReverseCustomGateway.address,
-      GovernanceConstants.L1_NOVA_ROUTER,
-      GovernanceConstants.L1_NOVA_GATEWAY
+      novaNetwork.tokenBridge.l1GatewayRouter,
+      novaNetwork.tokenBridge.l1CustomGateway
     )
   ).wait();
 
@@ -397,6 +430,7 @@ async function deployNovaUpgradeExecutor(novaDeployer: Signer) {
 
   // deploy logic
   const novaUpgradeExecutorLogic = await new UpgradeExecutor__factory(novaDeployer).deploy();
+  await novaUpgradeExecutorLogic.deployed();
 
   // deploy proxy with proxyAdmin as owner
   const novaUpgradeExecutorProxy = await new TransparentUpgradeableProxy__factory(
@@ -415,10 +449,17 @@ async function deployNovaUpgradeExecutor(novaDeployer: Signer) {
 async function deployTokenToNova(
   novaDeployer: Signer,
   proxyAdmin: ProxyAdmin,
-  l1Token: L1ArbitrumToken
+  l1Token: L1ArbitrumToken,
+  novaNetwork: L2Network,
+  config: {
+    NOVA_TOKEN_NAME: string;
+    NOVA_TOKEN_SYMBOL: string;
+    NOVA_TOKEN_DECIMALS: number;
+  }
 ) {
   // deploy token logic
   const novaTokenLogic = await new L2CustomGatewayToken__factory(novaDeployer).deploy();
+  await novaTokenLogic.deployed();
 
   // deploy token proxy
   const novaTokenProxy = await new TransparentUpgradeableProxy__factory(novaDeployer).deploy(
@@ -432,10 +473,10 @@ async function deployTokenToNova(
   const novaToken = L2CustomGatewayToken__factory.connect(novaTokenProxy.address, novaDeployer);
   await (
     await novaToken.initialize(
-      GovernanceConstants.NOVA_TOKEN_NAME,
-      GovernanceConstants.NOVA_TOKEN_SYMBOL,
-      GovernanceConstants.NOVA_TOKEN_DECIMALS,
-      GovernanceConstants.NOVA_TOKEN_GATEWAY,
+      config.NOVA_TOKEN_NAME,
+      config.NOVA_TOKEN_SYMBOL,
+      config.NOVA_TOKEN_DECIMALS,
+      novaNetwork.tokenBridge.l2CustomGateway,
       l1Token.address
     )
   ).wait();
@@ -450,25 +491,37 @@ async function deployTokenToNova(
 async function initL2Governance(
   arbDeployer: Signer,
   l2GovernanceFactory: L2GovernanceFactory,
-  l1TokenAddress: string
+  l1TokenAddress: string,
+  config: {
+    L2_TIMELOCK_DELAY: number;
+    L2_TOKEN_INITIAL_SUPPLY: string;
+    L2_7_OF_12_SECURITY_COUNCIL: string;
+    L2_CORE_QUORUM_TRESHOLD: number;
+    L2_TREASURY_QUORUM_TRESHOLD: number;
+    L2_PROPOSAL_TRESHOLD: number;
+    L2_VOTING_DELAY: number;
+    L2_VOTING_PERIOD: number;
+    L2_MIN_PERIOD_AFTER_QUORUM: number;
+    L2_9_OF_12_SECURITY_COUNCIL: string;
+  }
 ) {
   const arbInitialSupplyRecipientAddr = await arbDeployer.getAddress();
 
   // deploy
   const l2GovDeployReceipt = await (
     await l2GovernanceFactory.deployStep1({
-      _l2MinTimelockDelay: GovernanceConstants.L2_TIMELOCK_DELAY,
-      _l2TokenInitialSupply: parseEther(GovernanceConstants.L2_TOKEN_INITIAL_SUPPLY),
-      _upgradeProposer: GovernanceConstants.L2_7_OF_12_SECURITY_COUNCIL,
-      _coreQuorumThreshold: GovernanceConstants.L2_CORE_QUORUM_TRESHOLD,
+      _l2MinTimelockDelay: config.L2_TIMELOCK_DELAY,
       _l1Token: l1TokenAddress,
-      _treasuryQuorumThreshold: GovernanceConstants.L2_TREASURY_QUORUM_TRESHOLD,
-      _proposalThreshold: GovernanceConstants.L2_PROPOSAL_TRESHOLD,
-      _votingDelay: GovernanceConstants.L2_VOTING_DELAY,
-      _votingPeriod: GovernanceConstants.L2_VOTING_PERIOD,
-      _minPeriodAfterQuorum: GovernanceConstants.L2_MIN_PERIOD_AFTER_QUORUM,
+      _l2TokenInitialSupply: parseEther(config.L2_TOKEN_INITIAL_SUPPLY),
+      _votingPeriod: config.L2_VOTING_PERIOD,
+      _votingDelay: config.L2_VOTING_DELAY,
+      _coreQuorumThreshold: config.L2_CORE_QUORUM_TRESHOLD,
+      _treasuryQuorumThreshold: config.L2_TREASURY_QUORUM_TRESHOLD,
+      _proposalThreshold: config.L2_PROPOSAL_TRESHOLD,
+      _minPeriodAfterQuorum: config.L2_MIN_PERIOD_AFTER_QUORUM,
+      _l2NonEmergencySecurityCouncil: config.L2_7_OF_12_SECURITY_COUNCIL,
       _l2InitialSupplyRecipient: arbInitialSupplyRecipientAddr,
-      _l2EmergencySecurityCouncil: GovernanceConstants.L2_9_OF_12_SECURITY_COUNCIL,
+      _l2EmergencySecurityCouncil: config.L2_9_OF_12_SECURITY_COUNCIL,
     })
   ).wait();
 
@@ -492,16 +545,21 @@ async function initL2Governance(
 async function initL1Governance(
   l1GovernanceFactory: L1GovernanceFactory,
   l1UpgradeExecutorLogic: UpgradeExecutor,
-  l2DeployResult: L2DeployedEventObject
+  l2DeployResult: L2DeployedEventObject,
+  arbNetwork: L2Network,
+  config: {
+    L1_TIMELOCK_DELAY: number;
+    L1_9_OF_12_SECURITY_COUNCIL: string;
+  }
 ) {
   // deploy
   const l1GovDeployReceipt = await (
     await l1GovernanceFactory.deployStep2(
       l1UpgradeExecutorLogic.address,
-      GovernanceConstants.L1_TIMELOCK_DELAY,
-      GovernanceConstants.L1_ARB_INBOX,
+      config.L1_TIMELOCK_DELAY,
+      arbNetwork.ethBridge.inbox,
       l2DeployResult.coreTimelock,
-      GovernanceConstants.L1_9_OF_12_SECURITY_COUNCIL
+      config.L1_9_OF_12_SECURITY_COUNCIL
     )
   ).wait();
 
@@ -533,7 +591,10 @@ async function setExecutorRolesOnNova(
   l1DeployResult: L1DeployedEventObject,
   novaUpgradeExecutorProxy: TransparentUpgradeableProxy,
   novaProxyAdmin: ProxyAdmin,
-  novaDeployer: Signer
+  novaDeployer: Signer,
+  config: {
+    NOVA_9_OF_12_SECURITY_COUNCIL: string;
+  }
 ) {
   const l1TimelockAddress = new Address(l1DeployResult.timelock);
   const l1TimelockAliased = l1TimelockAddress.applyAlias().value;
@@ -543,10 +604,12 @@ async function setExecutorRolesOnNova(
     novaUpgradeExecutorProxy.address,
     novaDeployer
   );
-  await novaUpgradeExecutor.initialize(novaUpgradeExecutor.address, [
-    l1TimelockAliased,
-    GovernanceConstants.NOVA_9_OF_12_SECURITY_COUNCIL,
-  ]);
+  await (
+    await novaUpgradeExecutor.initialize(novaUpgradeExecutor.address, [
+      l1TimelockAliased,
+      config.NOVA_9_OF_12_SECURITY_COUNCIL,
+    ])
+  ).wait();
 
   // transfer ownership over novaProxyAdmin to executor
   await (await novaProxyAdmin.transferOwnership(novaUpgradeExecutor.address)).wait();
@@ -602,7 +665,6 @@ async function registerTokenOnArbOne(
       "Register token L1 to L2 message not redeemed. Status: " + arbSetTokenTx.status.toString()
     );
   }
-
   //// register reverse gateway on ArbOne Router
 
   const l1GatewayRouter = L1GatewayRouter__factory.connect(
@@ -730,22 +792,26 @@ async function registerTokenOnNova(
 
 async function postDeploymentL2TokenTasks(
   arbInitialSupplyRecipient: Signer,
-  l2DeployResult: L2DeployedEventObject
+  l2DeployResult: L2DeployedEventObject,
+  config: {
+    L2_NUM_OF_TOKENS_FOR_TREASURY: string;
+  }
 ) {
   // transfer L2 token ownership to upgradeExecutor
   const l2Token = L2ArbitrumToken__factory.connect(
     l2DeployResult.token,
     arbInitialSupplyRecipient.provider!
   );
-  await l2Token.connect(arbInitialSupplyRecipient).transferOwnership(l2DeployResult.executor);
+  await (
+    await l2Token.connect(arbInitialSupplyRecipient).transferOwnership(l2DeployResult.executor)
+  ).wait();
 
   // transfer tokens from arbDeployer to the treasury
-  await l2Token
-    .connect(arbInitialSupplyRecipient)
-    .transfer(
-      l2DeployResult.arbTreasury,
-      parseEther(GovernanceConstants.L2_NUM_OF_TOKENS_FOR_TREASURY)
-    );
+  await (
+    await l2Token
+      .connect(arbInitialSupplyRecipient)
+      .transfer(l2DeployResult.arbTreasury, parseEther(config.L2_NUM_OF_TOKENS_FOR_TREASURY))
+  ).wait();
 
   /// when distributor is deployed remaining tokens are transfered to it
 }
@@ -753,7 +819,15 @@ async function postDeploymentL2TokenTasks(
 async function deployTokenDistributor(
   arbDeployer: Signer,
   l2DeployResult: L2DeployedEventObject,
-  arbInitialSupplyRecipient: Signer
+  arbInitialSupplyRecipient: Signer,
+  config: {
+    L2_SWEEP_RECECIVER: string;
+    L2_CLAIM_PERIOD_START: number;
+    L2_CLAIM_PERIOD_END: number;
+    L2_NUM_OF_TOKENS_FOR_CLAIMING: string;
+    L2_NUM_OF_RECIPIENT_BATCHES_ALREADY_SET: number;
+    L2_NUM_OF_RECIPIENTS: number;
+  }
 ): Promise<TokenDistributor> {
   // deploy TokenDistributor
   const delegationExcludeAddress = await L2ArbitrumGovernor__factory.connect(
@@ -762,10 +836,10 @@ async function deployTokenDistributor(
   ).EXCLUDE_ADDRESS();
   const tokenDistributor = await new TokenDistributor__factory(arbDeployer).deploy(
     l2DeployResult.token,
-    GovernanceConstants.L2_SWEEP_RECECIVER,
+    config.L2_SWEEP_RECECIVER,
     await arbDeployer.getAddress(),
-    GovernanceConstants.L2_CLAIM_PERIOD_START,
-    GovernanceConstants.L2_CLAIM_PERIOD_END,
+    config.L2_CLAIM_PERIOD_START,
+    config.L2_CLAIM_PERIOD_END,
     delegationExcludeAddress
   );
   await tokenDistributor.deployed();
@@ -781,10 +855,7 @@ async function deployTokenDistributor(
   await (
     await l2Token
       .connect(arbInitialSupplyRecipient)
-      .transfer(
-        tokenDistributor.address,
-        parseEther(GovernanceConstants.L2_NUM_OF_TOKENS_FOR_CLAIMING)
-      )
+      .transfer(tokenDistributor.address, parseEther(config.L2_NUM_OF_TOKENS_FOR_CLAIMING))
   ).wait();
 
   return tokenDistributor;
@@ -793,7 +864,15 @@ async function deployTokenDistributor(
 async function initTokenDistributor(
   tokenDistributor: TokenDistributor,
   arbDeployer: Signer,
-  l2ExecutorAddress: string
+  l2ExecutorAddress: string,
+  config: {
+    L2_NUM_OF_RECIPIENTS: number;
+    L2_NUM_OF_TOKENS_FOR_CLAIMING: string;
+    L2_NUM_OF_RECIPIENT_BATCHES_ALREADY_SET: number;
+    RECIPIENTS_BATCH_SIZE: number;
+    BASE_L2_GAS_PRICE_LIMIT: number;
+    BASE_L1_GAS_PRICE_LIMIT: number;
+  }
 ) {
   // we store start block when recipient batches are being set
   const startBlockKey = "distributorSetRecipientsStartBlock";
@@ -802,7 +881,7 @@ async function initTokenDistributor(
   }
 
   // set claim recipients
-  const numOfRecipientsSet = await setClaimRecipients(tokenDistributor, arbDeployer);
+  const numOfRecipientsSet = await setClaimRecipients(tokenDistributor, arbDeployer, config);
 
   // we store end block when all recipients batches are set
   deployedContracts["distributorSetRecipientsEndBlock"] = (
@@ -810,11 +889,11 @@ async function initTokenDistributor(
   ).toString();
 
   // check num of recipients and claimable amount before transferring ownership
-  if (numOfRecipientsSet != GovernanceConstants.L2_NUM_OF_RECIPIENTS) {
+  if (numOfRecipientsSet != config.L2_NUM_OF_RECIPIENTS) {
     throw new Error("Incorrect number of recipients set: " + numOfRecipientsSet);
   }
   const totalClaimable = await tokenDistributor.totalClaimable();
-  if (!totalClaimable.eq(parseEther(GovernanceConstants.L2_NUM_OF_TOKENS_FOR_CLAIMING))) {
+  if (!totalClaimable.eq(parseEther(config.L2_NUM_OF_TOKENS_FOR_CLAIMING))) {
     throw new Error("Incorrect totalClaimable amount of tokenDistributor: " + totalClaimable);
   }
 
@@ -842,6 +921,4 @@ async function main() {
   console.log("Deployment finished!");
 }
 
-main()
-  .then(() => console.log("Done."))
-  .catch(console.error);
+main().then(() => console.log("Done."));

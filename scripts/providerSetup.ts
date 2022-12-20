@@ -21,6 +21,10 @@ import { Wallet } from "@ethersproject/wallet";
 import dotenv from "dotenv";
 import { Signer } from "ethers";
 import { ArbSdkError } from "@arbitrum/sdk/dist/lib/dataEntities/errors";
+import { getProvidersAndSetupNetworks } from "../test-ts/testSetup";
+import path from "path";
+import { DeployerConfig, loadDeployerConfig } from "./deployerConfig";
+import { getL2Network, L2Network } from "@arbitrum/sdk";
 import { testSetup } from "../test-ts/testSetup";
 
 dotenv.config();
@@ -33,12 +37,13 @@ const ARBITRUM_NOVA_CHAIN_ID = 42170;
 // in case of local env testing, config is extracted in `testSetup()`
 export const config = {
   isLocalDeployment: process.env["DEPLOY_TO_LOCAL_ENVIRONMENT"] as string,
-  ethRpc: process.env["MAINNET_RPC"] as string,
-  arbRpc: process.env["ARB_ONE_RPC"] as string,
-  novaRpc: process.env["NOVA_RPC"] as string,
-  ethDeployerKey: process.env["ETH_DEPLOYER_KEY"] as string,
-  arbDeployerKey: process.env["ARB_DEPLOYER_KEY"] as string,
-  novaDeployerKey: process.env["NOVA_DEPLOYER_KEY"] as string,
+  ethRpc: process.env["ETH_URL"] as string,
+  arbRpc: process.env["ARB_URL"] as string,
+  novaRpc: process.env["NOVA_URL"] as string,
+  ethDeployerKey: process.env["ETH_KEY"] as string,
+  arbDeployerKey: process.env["ARB_KEY"] as string,
+  novaDeployerKey: process.env["NOVA_KEY"] as string,
+  deployerConfigFileName: process.env["DEPLOYER_FILE"] as string,
 };
 
 export const getSigner = (provider: JsonRpcProvider, key?: string) => {
@@ -52,18 +57,37 @@ export const getSigner = (provider: JsonRpcProvider, key?: string) => {
  * If script is used in local testing environment it uses `testSetup` to set up testing environment.
  * @returns
  */
-export const getDeployers = async (): Promise<{
+export const getDeployersAndConfig = async (): Promise<{
   ethDeployer: Signer;
   arbDeployer: Signer;
   novaDeployer: Signer;
+  deployerConfig: DeployerConfig;
+  arbNetwork: L2Network;
+  novaNetwork: L2Network;
 }> => {
   if (config.isLocalDeployment === "true") {
     // setup local test environment
-    const { l2Deployer, l1Deployer } = await testSetup();
+    const {
+      l2Provider,
+      l1Provider,
+      l2Network: arbNetwork,
+    } = await getProvidersAndSetupNetworks({
+      l1Url: config.ethRpc,
+      l2Url: config.arbRpc,
+      networkFilename: "localNetwork.json",
+    });
 
-    // additionally, get nova deployer
-    const novaProvider = new JsonRpcProvider(process.env["NOVA_URL"] as string);
-    const novaDeployer = getSigner(novaProvider, process.env["NOVA_KEY"] as string);
+    const { l2Provider: novaProvider, l2Network: novaNetwork } = await getProvidersAndSetupNetworks(
+      {
+        l1Url: config.ethRpc,
+        l2Url: config.novaRpc,
+        networkFilename: "localNetworkNova.json",
+      }
+    );
+
+    const l1Deployer = getSigner(l1Provider, config.ethDeployerKey);
+    const l2Deployer = getSigner(l2Provider, config.arbDeployerKey);
+    const novaDeployer = getSigner(novaProvider, config.novaDeployerKey);
 
     // check that production chains are not mistakenly used in local env
     if (l1Deployer.provider) {
@@ -85,10 +109,16 @@ export const getDeployers = async (): Promise<{
       }
     }
 
+    const testDeployerConfigName = path.join(__dirname, "testConfig.json");
+    const deployerConfig = await loadDeployerConfig(testDeployerConfigName);
+
     return {
       ethDeployer: l1Deployer,
       arbDeployer: l2Deployer,
       novaDeployer: novaDeployer,
+      deployerConfig,
+      arbNetwork,
+      novaNetwork,
     };
   } else {
     // deploying to production
@@ -114,10 +144,19 @@ export const getDeployers = async (): Promise<{
     const arbDeployer = getSigner(arbProvider, config.arbDeployerKey);
     const novaDeployer = getSigner(novaProvider, config.novaDeployerKey);
 
+    const testDeployerConfigName = path.join(__dirname, config.deployerConfigFileName);
+    const deployerConfig = await loadDeployerConfig(testDeployerConfigName);
+
+    const arbNetwork = await getL2Network(arbProvider);
+    const novaNetwork = await getL2Network(novaProvider);
+
     return {
       ethDeployer,
       arbDeployer,
       novaDeployer,
+      deployerConfig,
+      arbNetwork,
+      novaNetwork,
     };
   }
 };
@@ -134,24 +173,20 @@ export const getProviders = async (): Promise<{
   ethProvider: Provider;
   arbProvider: Provider;
   novaProvider: Provider;
+  deployerConfig: DeployerConfig;
+  arbNetwork: L2Network;
+  novaNetwork: L2Network;
 }> => {
-  let ethProvider: Provider, arbProvider: Provider, novaProvider: Provider;
-
-  if (config.isLocalDeployment === "true") {
-    ethProvider = new JsonRpcProvider(process.env["ETH_URL"] as string);
-    arbProvider = new JsonRpcProvider(process.env["ARB_URL"] as string);
-    novaProvider = new JsonRpcProvider(process.env["NOVA_URL"] as string);
-  } else {
-    // deploying to production
-    ethProvider = new JsonRpcProvider(config.ethRpc);
-    arbProvider = new JsonRpcProvider(config.arbRpc);
-    novaProvider = new JsonRpcProvider(config.novaRpc);
-  }
+  const { arbDeployer, deployerConfig, ethDeployer, novaDeployer, arbNetwork, novaNetwork } =
+    await getDeployersAndConfig();
 
   return {
-    ethProvider,
-    arbProvider,
-    novaProvider,
+    ethProvider: ethDeployer.provider!,
+    arbProvider: arbDeployer.provider!,
+    novaProvider: novaDeployer.provider!,
+    deployerConfig,
+    arbNetwork,
+    novaNetwork,
   };
 };
 
@@ -159,25 +194,21 @@ export const getProviders = async (): Promise<{
  * Get addresses for every deployer account.
  * @returns
  */
-export const getDeployerAddresses = (): {
+export const getDeployerAddresses = async (): Promise<{
   ethDeployerAddress: string;
   arbDeployerAddress: string;
-} => {
-  if (config.isLocalDeployment === "true") {
-    const ethDeployerAddress = new Wallet(process.env["ETH_KEY"] as string).address;
-    const arbDeployerAddress = new Wallet(process.env["ARB_KEY"] as string).address;
-    return {
-      ethDeployerAddress,
-      arbDeployerAddress,
-    };
-  } else {
-    const ethDeployerAddress = new Wallet(config.ethDeployerKey).address;
-    const arbDeployerAddress = new Wallet(config.arbDeployerKey).address;
-    return {
-      ethDeployerAddress,
-      arbDeployerAddress,
-    };
-  }
+  novaDeployerAddress: string;
+}> => {
+  const { ethDeployer, arbDeployer, novaDeployer } = await getDeployersAndConfig();
+  const ethDeployerAddress = await ethDeployer.getAddress();
+  const arbDeployerAddress = await arbDeployer.getAddress();
+  const novaDeployerAddress = await novaDeployer.getAddress();
+
+  return {
+    ethDeployerAddress,
+    arbDeployerAddress,
+    novaDeployerAddress,
+  };
 };
 
 /**

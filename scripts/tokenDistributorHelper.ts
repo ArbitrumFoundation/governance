@@ -2,7 +2,6 @@ import { ARB_GAS_INFO } from "@arbitrum/sdk/dist/lib/dataEntities/constants";
 import { BigNumber, ethers, Signer } from "ethers";
 import { formatEther, formatUnits, parseEther } from "ethers/lib/utils";
 import { TokenDistributor } from "../typechain-types";
-import * as GovernanceConstants from "./governance.constants";
 import { ArbGasInfo__factory } from "@arbitrum/sdk/dist/lib/abi/factories/ArbGasInfo__factory";
 
 export const TOKEN_RECIPIENTS_FILE_NAME = "files/recipients.json";
@@ -24,22 +23,28 @@ const validClaimAmounts: BigNumber[] = [
  */
 export async function setClaimRecipients(
   tokenDistributor: TokenDistributor,
-  arbDeployer: Signer
+  arbDeployer: Signer,
+  config: {
+    L2_NUM_OF_RECIPIENT_BATCHES_ALREADY_SET: number;
+    RECIPIENTS_BATCH_SIZE: number;
+    BASE_L2_GAS_PRICE_LIMIT: number;
+    BASE_L1_GAS_PRICE_LIMIT: number;
+  }
 ): Promise<number> {
   const tokenRecipientsByPoints = require("../" + TOKEN_RECIPIENTS_FILE_NAME);
   const { tokenRecipients, tokenAmounts } = mapPointsToAmounts(tokenRecipientsByPoints);
 
   // set recipients in batches
-  const batchSize = GovernanceConstants.RECIPIENTS_BATCH_SIZE;
+  const batchSize = config.RECIPIENTS_BATCH_SIZE;
   const numOfBatches = Math.floor(tokenRecipients.length / batchSize);
 
   // 0.1 gwei
-  const l2GasPriceLimit = BigNumber.from(GovernanceConstants.BASE_L2_GAS_PRICE_LIMIT);
+  const l2GasPriceLimit = BigNumber.from(config.BASE_L2_GAS_PRICE_LIMIT);
   // 15 gwei
-  const l1GasPriceLimit = BigNumber.from(GovernanceConstants.BASE_L1_GAS_PRICE_LIMIT);
+  const l1GasPriceLimit = BigNumber.from(config.BASE_L1_GAS_PRICE_LIMIT);
   const arbGasInfo = ArbGasInfo__factory.connect(ARB_GAS_INFO, arbDeployer);
 
-  const firstBatch = GovernanceConstants.L2_NUM_OF_RECIPIENT_BATCHES_ALREADY_SET;
+  const firstBatch = config.L2_NUM_OF_RECIPIENT_BATCHES_ALREADY_SET;
   let canClaimEventsEmitted = 0;
   for (let i = firstBatch; i <= numOfBatches; i++) {
     console.log("---- Batch ", i, "/", numOfBatches);

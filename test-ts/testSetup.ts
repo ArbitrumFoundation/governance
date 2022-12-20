@@ -40,12 +40,14 @@ import * as path from "path";
 import * as fs from "fs";
 import { ArbSdkError } from "@arbitrum/sdk/dist/lib/dataEntities/errors";
 import { parseEther } from "ethers/lib/utils";
+import { l1Networks, l2Networks } from "@arbitrum/sdk/dist/lib/dataEntities/networks";
 
 dotenv.config();
 
 export const config = {
   arbUrl: process.env["ARB_URL"] as string,
   ethUrl: process.env["ETH_URL"] as string,
+
   arbKey: process.env["ARB_KEY"] as string,
   ethKey: process.env["ETH_KEY"] as string,
 };
@@ -162,7 +164,6 @@ export const setupNetworks = async (
     },
   };
 
-  
   addCustomNetwork({
     customL1Network: l1Network,
     customL2Network: l2Network,
@@ -196,7 +197,7 @@ export const getSigner = (provider: JsonRpcProvider, key?: string) => {
   else return provider.getSigner(0);
 };
 
-export const testSetup = async (): Promise<{
+export const testSetup = async() : Promise<{
   l1Network: L1Network;
   l2Network: L2Network;
   l1Signer: Signer;
@@ -208,63 +209,31 @@ export const testSetup = async (): Promise<{
   l1Deployer: Signer;
   l2Deployer: Signer;
 }> => {
-  const ethProvider = new JsonRpcProvider(config.ethUrl);
-  const arbProvider = new JsonRpcProvider(config.arbUrl);
+  const { l1Network, l1Provider, l2Network, l2Provider } = await getProvidersAndSetupNetworks({
+    l1Url: config.ethUrl,
+    l2Url: config.arbUrl,
 
-  const l1Deployer = getSigner(ethProvider, config.ethKey);
-  const l2Deployer = getSigner(arbProvider, config.arbKey);
+    networkFilename: "localNetwork.json",
+  });
+  
+  const l1Deployer = getSigner(l1Provider, config.ethKey);
+  const l2Deployer = getSigner(l2Provider, config.arbKey);
+
 
   const seed = Wallet.createRandom();
-  const l1Signer = seed.connect(ethProvider);
-  const l2Signer = seed.connect(arbProvider);
+  const l1Signer = seed.connect(l1Provider);
+  const l2Signer = seed.connect(l2Provider);
 
-  let setL1Network: L1Network, setL2Network: L2Network;
-  try {
-    const l1Network = await getL1Network(l1Deployer);
-    const l2Network = await getL2Network(l2Deployer);
-    setL1Network = l1Network;
-    setL2Network = l2Network;
-  } catch (err) {
-    // the networks havent been added yet
-
-    // check if theres an existing network available
-    const localNetworkFile = path.join(__dirname, "..", "localNetwork.json");
-    if (fs.existsSync(localNetworkFile)) {
-      const { l1Network, l2Network } = JSON.parse(
-        fs.readFileSync(localNetworkFile).toString()
-      ) as {
-        l1Network: L1Network;
-        l2Network: L2Network;
-      };
-      addCustomNetwork({
-        customL1Network: l1Network,
-        customL2Network: l2Network,
-      });
-      setL1Network = l1Network;
-      setL2Network = l2Network;
-    } else {
-      // deploy a new network
-      const { l1Network, l2Network } = await setupNetworks(
-        l1Deployer,
-        l2Deployer,
-        config.ethUrl,
-        config.arbUrl
-      );
-      setL1Network = l1Network;
-      setL2Network = l2Network;
-    }
-  }
-
-  const erc20Bridger = new Erc20Bridger(setL2Network);
-  const adminErc20Bridger = new AdminErc20Bridger(setL2Network);
-  const ethBridger = new EthBridger(setL2Network);
-  const inboxTools = new InboxTools(l1Signer, setL2Network);
+  const erc20Bridger = new Erc20Bridger(l2Network);
+  const adminErc20Bridger = new AdminErc20Bridger(l2Network);
+  const ethBridger = new EthBridger(l2Network);
+  const inboxTools = new InboxTools(l1Signer, l2Network);
 
   return {
     l1Signer,
     l2Signer,
-    l1Network: setL1Network,
-    l2Network: setL2Network,
+    l1Network,
+    l2Network,
     erc20Bridger,
     adminErc20Bridger,
     ethBridger,
@@ -274,32 +243,91 @@ export const testSetup = async (): Promise<{
   };
 };
 
-export const preFundAmount = parseEther('0.1')
+export const getNetworkConfig = async () => {
+  
+};
+
+export const getProvidersAndSetupNetworks = async (setupConfig: {
+  l1Url: string;
+  l2Url: string;
+  networkFilename?: string;
+}): Promise<{
+  l1Network: L1Network;
+  l2Network: L2Network;
+  l1Provider: JsonRpcProvider;
+  l2Provider: JsonRpcProvider;
+}> => {
+  const l1Provider = new JsonRpcProvider(setupConfig.l1Url);
+  const l2Provider = new JsonRpcProvider(setupConfig.l2Url);
+
+  if (setupConfig.networkFilename) {
+    // check if theres an existing network available
+    const localNetworkFile = path.join(
+      __dirname,
+      "..",
+      setupConfig.networkFilename
+    );
+    if (fs.existsSync(localNetworkFile)) {
+      const { l1Network, l2Network } = JSON.parse(
+        fs.readFileSync(localNetworkFile).toString()
+      ) as {
+        l1Network: L1Network;
+        l2Network: L2Network;
+      };
+
+      const existingL1Network = l1Networks[l1Network.chainID.toString()];
+      const existingL2Network = l2Networks[l2Network.chainID.toString()];
+      if(!existingL2Network) {
+        addCustomNetwork({
+          // dont add the l1 network if it's already been added
+          customL1Network: existingL1Network ? undefined : l1Network,
+          customL2Network: l2Network,
+        });
+      }
+
+      return {
+        l1Network,
+        l1Provider,
+        l2Network,
+        l2Provider
+      }
+    } else throw Error(`Missing file ${localNetworkFile}`);
+  } else {
+    return {
+      l1Network: await getL1Network(l1Provider),
+      l1Provider,
+      l2Network: await getL2Network(l2Provider),
+      l2Provider
+    }
+  }
+};
+
+export const preFundAmount = parseEther("0.1");
 
 const fund = async (
   signer: Signer,
   amount?: BigNumber,
   fundingKey?: string
 ) => {
-  const wallet = getSigner(signer.provider! as JsonRpcProvider, fundingKey)
+  const wallet = getSigner(signer.provider! as JsonRpcProvider, fundingKey);
   await (
     await wallet.sendTransaction({
       to: await signer.getAddress(),
       value: amount || preFundAmount,
     })
-  ).wait()
-}
+  ).wait();
+};
 
 export const fundL1 = async (
   l1Signer: Signer,
   amount?: BigNumber
 ): Promise<void> => {
-  await fund(l1Signer, amount, config.ethKey)
-}
+  await fund(l1Signer, amount, config.ethKey);
+};
 
 export const fundL2 = async (
   l2Signer: Signer,
   amount?: BigNumber
 ): Promise<void> => {
-  await fund(l2Signer, amount, config.arbKey)
-}
+  await fund(l2Signer, amount, config.arbKey);
+};
