@@ -2,6 +2,7 @@ import { BigNumber, ethers } from "ethers";
 import {
   ArbitrumTimelock,
   ArbitrumTimelock__factory,
+  ArbitrumVestingWallet__factory,
   ArbitrumVestingWalletsFactory,
   ArbitrumVestingWalletsFactory__factory,
   FixedDelegateErc20Wallet,
@@ -196,7 +197,8 @@ export const verifyDeployment = async () => {
     await loadVestedRecipients(path.join(__dirname, "..", VESTED_RECIPIENTS_FILE_NAME)),
     arbContracts["vestedWalletFactory"],
     arbContracts["l2Token"],
-    arbProvider
+    arbProvider,
+    deployerConfig
   );
 
   //// Nova contracts
@@ -1161,7 +1163,10 @@ async function verifyVestedWallets(
   vestedRecipients: VestedRecipients,
   vestedWalletFactory: ArbitrumVestingWalletsFactory,
   l2Token: L2ArbitrumToken,
-  arbProvider: Provider
+  arbProvider: Provider,
+  config: {
+    L2_CLAIM_PERIOD_START: number;
+  }
 ) {
   // find all the events emitted by this address
   // check that every recipient has received the correct amount
@@ -1195,6 +1200,26 @@ async function verifyVestedWallets(
       vestedRecipients[vr],
       tokenBalance,
       "Recipient amount not equal token balance"
+    );
+
+    const vestingWallet = ArbitrumVestingWallet__factory.connect(
+      log.vestingWalletAddress,
+      arbProvider
+    );
+    const oneYearInSeconds = 365 * 24 * 60 * 60;
+
+    const start = await vestingWallet.start();
+    assertNumbersEquals(
+      start,
+      BigNumber.from(config.L2_CLAIM_PERIOD_START + oneYearInSeconds),
+      "Invalid vesting start time"
+    );
+
+    const duration = await vestingWallet.duration();
+    assertNumbersEquals(
+      duration,
+      BigNumber.from(oneYearInSeconds * 3),
+      "Invalid vesting duration time"
     );
   }
 }
