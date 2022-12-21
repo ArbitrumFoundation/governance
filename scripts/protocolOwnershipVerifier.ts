@@ -12,11 +12,10 @@ import { Provider } from "@ethersproject/providers";
 import { RollupCore } from "@arbitrum/sdk/dist/lib/abi/RollupCore";
 import { L2Network } from "@arbitrum/sdk";
 
+const DEPLOYED_CONTRACTS_FILE_NAME = "deployedContracts.json";
+
 const L1_ARB_PROTOCOL_PROXY_ADMIN = "0x554723262467f125ac9e1cdfa9ce15cc53822dbd";
 const L1_NOVA_PROTOCOL_PROXY_ADMIN = "0x71D78dC7cCC0e037e12de1E50f5470903ce37148";
-
-const L1_UPGRADE_EXECUTOR = "0xC234E41AE2cb00311956Aa7109fC801ae8c80941";
-const L2_UPGRADE_EXECUTOR = "0x98e4dB7e07e584F89A2F6043E7b7C89DC27769eD";
 
 /**
  * Verifies ownership of protocol contracts is successfully transferred to DAO
@@ -25,19 +24,23 @@ export const verifyOwnership = async () => {
   const { arbNetwork, novaNetwork } = await getDeployersAndConfig();
   const { ethProvider, arbProvider, novaProvider } = await getProviders();
 
+  const contractAddresses = require("../" + DEPLOYED_CONTRACTS_FILE_NAME);
+  const l1Executor = contractAddresses["l1Executor"];
+  const l2Executor = contractAddresses["l2Executor"];
+
   console.log("Verify ownership over Arb protocol contracts");
   const arbOneRollup = RollupCore__factory.connect(arbNetwork.ethBridge.rollup, ethProvider);
-  await verifyProtocolOwnership(arbOneRollup, L1_ARB_PROTOCOL_PROXY_ADMIN, ethProvider);
+  await verifyProtocolOwnership(arbOneRollup, L1_ARB_PROTOCOL_PROXY_ADMIN, l1Executor, ethProvider);
 
   console.log("Verify ownership over Arb token bridge contracts");
-  await verifyTokenBridgeOwnership(arbNetwork, ethProvider, arbProvider);
+  await verifyTokenBridgeOwnership(arbNetwork, l1Executor, l2Executor, ethProvider, arbProvider);
 
   console.log("Verify ownership over Nova protocol contracts");
   const novaRollup = RollupCore__factory.connect(novaNetwork.ethBridge.rollup, ethProvider);
-  await verifyProtocolOwnership(novaRollup, L1_NOVA_PROTOCOL_PROXY_ADMIN, ethProvider);
+  await verifyProtocolOwnership(novaRollup, L1_NOVA_PROTOCOL_PROXY_ADMIN, l1Executor, ethProvider);
 
   console.log("Verify ownership over Nova token bridge contracts");
-  await verifyTokenBridgeOwnership(arbNetwork, ethProvider, novaProvider);
+  await verifyTokenBridgeOwnership(novaNetwork, l1Executor, l2Executor, ethProvider, novaProvider);
 };
 
 /**
@@ -48,6 +51,7 @@ export const verifyOwnership = async () => {
 async function verifyProtocolOwnership(
   rollupCore: RollupCore,
   proxyAdmin: string,
+  l1Executor: string,
   ethProvider: Provider
 ) {
   const contracts = await getProtocolContracts(rollupCore, ethProvider);
@@ -84,14 +88,14 @@ async function verifyProtocolOwnership(
 
   assertEquals(
     await getProxyOwner(contracts["rollup"].address, ethProvider),
-    L1_UPGRADE_EXECUTOR,
-    "L1_UPGRADE_EXECUTOR should be rollups's owner"
+    l1Executor,
+    "l1Executor should be rollups's owner"
   );
   const proxyAdminContract = ProxyAdmin__factory.connect(proxyAdmin, ethProvider);
   assertEquals(
     await proxyAdminContract.owner(),
-    L1_UPGRADE_EXECUTOR,
-    "L1_UPGRADE_EXECUTOR should be ethBridge proxyAdmin's owner"
+    l1Executor,
+    "l1Executor should be ethBridge proxyAdmin's owner"
   );
 }
 
@@ -102,6 +106,8 @@ async function verifyProtocolOwnership(
  */
 async function verifyTokenBridgeOwnership(
   l2Network: L2Network,
+  l1Executor: string,
+  l2Executor: string,
   ethProvider: Provider,
   l2Provider: Provider
 ) {
@@ -158,15 +164,15 @@ async function verifyTokenBridgeOwnership(
   const l1ProxyAdminContract = ProxyAdmin__factory.connect(l1ProxyAdmin, ethProvider);
   assertEquals(
     await l1ProxyAdminContract.owner(),
-    L1_UPGRADE_EXECUTOR,
-    "L1_UPGRADE_EXECUTOR should be tokenBridge proxyAdmin's owner"
+    l1Executor,
+    "l1Executor should be tokenBridge proxyAdmin's owner"
   );
 
   const l2ProxyAdminContract = ProxyAdmin__factory.connect(l2ProxyAdmin, l2Provider);
   assertEquals(
     await l2ProxyAdminContract.owner(),
-    L2_UPGRADE_EXECUTOR,
-    "L2_UPGRADE_EXECUTOR should be tokenBridge proxyAdmin's owner"
+    l2Executor,
+    "l2Executor should be tokenBridge proxyAdmin's owner"
   );
 }
 
