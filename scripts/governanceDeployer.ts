@@ -882,7 +882,10 @@ async function registerTokenOnNova(
 
   // do the registration
   const extraValue = 1000;
-  if (deployedContracts.registerTokenNova) {
+  console.log("going in here")
+  if (!deployedContracts.registerTokenNova) {
+    console.log("in here a")
+
     const l1NovaRegistrationTx = await l1Token.registerTokenOnL2(
       {
         l2TokenAddress: novaTokenAddress,
@@ -898,20 +901,26 @@ async function registerTokenOnNova(
       {
         value: valueForNovaGateway.add(valueForNovaRouter).add(extraValue),
       }
+
     );
 
     //// wait for L2 TXs
+    console.log("in here b")
 
     const l1NovaRegistrationTxReceipt = await L1TransactionReceipt.monkeyPatchWait(
       l1NovaRegistrationTx
     ).wait();
+    console.log("in here c")
     const l1ToNovaMsgs = await l1NovaRegistrationTxReceipt.getL1ToL2Messages(
       novaDeployer.provider!
     );
+    console.log("in here d")
 
     // status should be REDEEMED
     const novaSetTokenTx = await l1ToNovaMsgs[0].waitForStatus();
+    console.log("in here e")
     const novaSetGatewaysTX = await l1ToNovaMsgs[1].waitForStatus();
+    console.log("in here f")
     if (novaSetTokenTx.status != L1ToL2MessageStatus.REDEEMED) {
       throw new Error(
         "Register token L1 to L2 message not redeemed. Status: " + novaSetTokenTx.status.toString()
@@ -1084,13 +1093,13 @@ function readAddresses(): DeployProgressCache {
  * Write addresses of deployed contracts to local JSON file
  */
 function writeAddresses() {
-  fs.writeFileSync(DEPLOYED_CONTRACTS_FILE_NAME, JSON.stringify(deployedContracts));
+  fs.writeFileSync(DEPLOYED_CONTRACTS_FILE_NAME, JSON.stringify(deployedContracts, null, 2));
 }
 
 async function main() {
   console.log("Start governance deployment process...");
   deployedContracts = readAddresses();
-  console.log(`Cache: ${JSON.stringify(deployedContracts)}`);
+  console.log(`Cache: ${JSON.stringify(deployedContracts, null, 2)}`);
   try {
     await deployGovernance();
   } finally {

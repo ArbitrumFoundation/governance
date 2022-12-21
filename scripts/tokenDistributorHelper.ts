@@ -19,7 +19,7 @@ export async function setClaimRecipients(
   const { tokenRecipients, tokenAmounts } = mapPointsToAmounts(tokenRecipientsByPoints);
 
   // set recipients in batches
-  const BATCH_SIZE = 100;
+  const BATCH_SIZE = 2;
   const recipientsAlreadySet = await getNumberOfRecipientsSet(tokenDistributor);
 
   // 0.1 gwei
