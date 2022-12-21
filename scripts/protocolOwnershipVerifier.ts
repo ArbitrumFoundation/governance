@@ -5,31 +5,39 @@ import { SequencerInbox__factory } from "@arbitrum/sdk/dist/lib/abi/factories/Se
 import { Outbox__factory } from "@arbitrum/sdk/dist/lib/abi/factories/Outbox__factory";
 import { ChallengeManager__factory } from "@arbitrum/sdk/dist/lib/abi/factories/ChallengeManager__factory";
 
-import { getProviders } from "./providerSetup";
+import { getDeployersAndConfig, getProviders } from "./providerSetup";
 import { assertEquals, getProxyOwner } from "./testUtils";
 import { ProxyAdmin__factory } from "../typechain-types";
 import { Provider } from "@ethersproject/providers";
 import { RollupCore } from "@arbitrum/sdk/dist/lib/abi/RollupCore";
+import { L2Network } from "@arbitrum/sdk";
 
-const ARB_ROLLUP_ADDRESS = "0x5eF0D09d1E6204141B4d37530808eD19f60FBa35";
-const NOVA_ROLLUP_ADDRESS = "0xFb209827c58283535b744575e11953DCC4bEAD88";
-const ARB_PROTOCOL_PROXY_ADMIN = "0x554723262467f125ac9e1cdfa9ce15cc53822dbd";
-const NOVA_PROTOCOL_PROXY_ADMIN = "0x71D78dC7cCC0e037e12de1E50f5470903ce37148";
+const L1_ARB_PROTOCOL_PROXY_ADMIN = "0x554723262467f125ac9e1cdfa9ce15cc53822dbd";
+const L1_NOVA_PROTOCOL_PROXY_ADMIN = "0x71D78dC7cCC0e037e12de1E50f5470903ce37148";
+
 const L1_UPGRADE_EXECUTOR = "0xC234E41AE2cb00311956Aa7109fC801ae8c80941";
+const L2_UPGRADE_EXECUTOR = "0x98e4dB7e07e584F89A2F6043E7b7C89DC27769eD";
 
 /**
  * Verifies ownership of protocol contracts is successfully transferred to DAO
  */
 export const verifyOwnership = async () => {
-  const { ethProvider } = await getProviders();
+  const { arbNetwork, novaNetwork } = await getDeployersAndConfig();
+  const { ethProvider, arbProvider, novaProvider } = await getProviders();
 
   console.log("Verify ownership over Arb protocol contracts");
-  const arbOneRollup = RollupCore__factory.connect(ARB_ROLLUP_ADDRESS, ethProvider);
-  await verifyProtocolOwnership(arbOneRollup, ARB_PROTOCOL_PROXY_ADMIN, ethProvider);
+  const arbOneRollup = RollupCore__factory.connect(arbNetwork.ethBridge.rollup, ethProvider);
+  await verifyProtocolOwnership(arbOneRollup, L1_ARB_PROTOCOL_PROXY_ADMIN, ethProvider);
+
+  console.log("Verify ownership over Arb token bridge contracts");
+  await verifyTokenBridgeOwnership(arbNetwork, ethProvider, arbProvider);
 
   console.log("Verify ownership over Nova protocol contracts");
-  const novaRollup = RollupCore__factory.connect(NOVA_ROLLUP_ADDRESS, ethProvider);
-  await verifyProtocolOwnership(novaRollup, NOVA_PROTOCOL_PROXY_ADMIN, ethProvider);
+  const novaRollup = RollupCore__factory.connect(novaNetwork.ethBridge.rollup, ethProvider);
+  await verifyProtocolOwnership(novaRollup, L1_NOVA_PROTOCOL_PROXY_ADMIN, ethProvider);
+
+  console.log("Verify ownership over Nova token bridge contracts");
+  await verifyTokenBridgeOwnership(arbNetwork, ethProvider, novaProvider);
 };
 
 /**
@@ -77,13 +85,88 @@ async function verifyProtocolOwnership(
   assertEquals(
     await getProxyOwner(contracts["rollup"].address, ethProvider),
     L1_UPGRADE_EXECUTOR,
-    "L1_UPGRADE_EXECUTOR should be L1GovernanceFactory's owner"
+    "L1_UPGRADE_EXECUTOR should be rollups's owner"
   );
   const proxyAdminContract = ProxyAdmin__factory.connect(proxyAdmin, ethProvider);
   assertEquals(
     await proxyAdminContract.owner(),
     L1_UPGRADE_EXECUTOR,
-    "L1_UPGRADE_EXECUTOR should be challengeManager's proxy admin"
+    "L1_UPGRADE_EXECUTOR should be ethBridge proxyAdmin's owner"
+  );
+}
+
+/**
+ * Verify:
+ * - L1/L2 router, erc20 gateway, custom gateway and weth gateway are owned by proxyAdmin
+ * - proxyAdmin is owned by DAO (ownership transferred from multisig)
+ */
+async function verifyTokenBridgeOwnership(
+  l2Network: L2Network,
+  ethProvider: Provider,
+  l2Provider: Provider
+) {
+  //// check l1ProxyAdmin is proxy admin of token bridge contracts
+
+  const l1ProxyAdmin = l2Network.tokenBridge.l1ProxyAdmin;
+  assertEquals(
+    await getProxyOwner(l2Network.tokenBridge.l1GatewayRouter, ethProvider),
+    l1ProxyAdmin,
+    l1ProxyAdmin + " should be l1GatewayRouter's proxy admin"
+  );
+  assertEquals(
+    await getProxyOwner(l2Network.tokenBridge.l1ERC20Gateway, ethProvider),
+    l1ProxyAdmin,
+    l1ProxyAdmin + " should be l1ERC20Gateway's proxy admin"
+  );
+  assertEquals(
+    await getProxyOwner(l2Network.tokenBridge.l1CustomGateway, ethProvider),
+    l1ProxyAdmin,
+    l1ProxyAdmin + " should be l1CustomGateway's proxy admin"
+  );
+  assertEquals(
+    await getProxyOwner(l2Network.tokenBridge.l1WethGateway, ethProvider),
+    l1ProxyAdmin,
+    l1ProxyAdmin + " should be l1WethGateway's proxy admin"
+  );
+
+  //// check l2ProxyAdmin is proxy admin of token bridge contracts
+
+  const l2ProxyAdmin = l2Network.tokenBridge.l2ProxyAdmin;
+  assertEquals(
+    await getProxyOwner(l2Network.tokenBridge.l2GatewayRouter, l2Provider),
+    l2ProxyAdmin,
+    l2ProxyAdmin + " should be l2GatewayRouter's proxy admin"
+  );
+  assertEquals(
+    await getProxyOwner(l2Network.tokenBridge.l2ERC20Gateway, l2Provider),
+    l2ProxyAdmin,
+    l2ProxyAdmin + " should be l2ERC20Gateway's proxy admin"
+  );
+  assertEquals(
+    await getProxyOwner(l2Network.tokenBridge.l2CustomGateway, l2Provider),
+    l2ProxyAdmin,
+    l2ProxyAdmin + " should be l2CustomGateway's proxy admin"
+  );
+  assertEquals(
+    await getProxyOwner(l2Network.tokenBridge.l2WethGateway, l2Provider),
+    l2ProxyAdmin,
+    l2ProxyAdmin + " should be l2WethGateway's proxy admin"
+  );
+
+  //// verify ownership over rollup and proxyAdmin is transferred to DAO
+
+  const l1ProxyAdminContract = ProxyAdmin__factory.connect(l1ProxyAdmin, ethProvider);
+  assertEquals(
+    await l1ProxyAdminContract.owner(),
+    L1_UPGRADE_EXECUTOR,
+    "L1_UPGRADE_EXECUTOR should be tokenBridge proxyAdmin's owner"
+  );
+
+  const l2ProxyAdminContract = ProxyAdmin__factory.connect(l2ProxyAdmin, l2Provider);
+  assertEquals(
+    await l2ProxyAdminContract.owner(),
+    L2_UPGRADE_EXECUTOR,
+    "L2_UPGRADE_EXECUTOR should be tokenBridge proxyAdmin's owner"
   );
 }
 
