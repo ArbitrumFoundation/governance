@@ -6,6 +6,9 @@
   "author": "Offchain Labs",
   "license": "MIT",
   "scripts": {
+    "build": "yarn build:governance && yarn build:token-bridge-types",
+    "build:governance": "hardhat compile",
+    "build:token-bridge-types": "cd token-bridge-contracts && yarn && yarn build",
     "gen:network": "ts-node ./scripts/genNetwork.ts",
     "gen:nova:network": "ts-node ./scripts/genNetworkNova.ts",
     "gen:recipients": "ts-node ./scripts/genRecipients.ts",

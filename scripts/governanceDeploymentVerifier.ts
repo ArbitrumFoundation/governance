@@ -33,8 +33,8 @@ import {
   L2CustomGatewayToken,
   L2CustomGatewayToken__factory,
   L2ReverseCustomGateway,
-  L2ReverseCustomGateway__factory,
-} from "../typechain-types-imported";
+  L2ReverseCustomGateway__factory
+} from "../lib/token-bridge-contracts/build/types"
 import { getDeployerAddresses, getProviders, isDeployingToNova } from "./providerSetup";
 import { Address, L2Network } from "@arbitrum/sdk";
 import { parseEther } from "ethers/lib/utils";
