@@ -40,11 +40,14 @@ import { L1CustomGateway__factory } from "@arbitrum/sdk/dist/lib/abi/factories/L
 import { L1GatewayRouter__factory } from "@arbitrum/sdk/dist/lib/abi/factories/L1GatewayRouter__factory";
 import { Provider } from "@ethersproject/providers";
 import dotenv from "dotenv";
+import { VestedWalletDeployer } from "./vestedWalletsDeployer";
+import path from "path";
 
 dotenv.config();
 
 // JSON file which contains all the deployed contract addresses
 const DEPLOYED_CONTRACTS_FILE_NAME = "deployedContracts.json";
+const VESTED_RECIPIENTS_FILE_NAME = "files/vestedRecipients.json";
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
 /**
@@ -696,7 +699,7 @@ async function verifyL2Token(
   assertEquals(await l2Token.symbol(), "ARB", "L2Token symbol should be ARB");
   assertNumbersEquals(
     await l2Token.totalSupply(),
-    ethers.utils.parseEther(config.L2_TOKEN_INITIAL_SUPPLY.toString()),
+    ethers.utils.parseEther(config.L2_TOKEN_INITIAL_SUPPLY),
     "L2Token has incorrect total supply"
   );
   assertEquals(
@@ -708,6 +711,8 @@ async function verifyL2Token(
   // check balances
   const arbTreasuryBalance = await l2Token.balanceOf(arbTreasury.address);
   const tokenDistributorBalance = await l2Token.balanceOf(l2TokenDistributor.address);
+  const vestingRecipients = VestedWalletDeployer.loadRecipients(path.join(__dirname, "..", VESTED_RECIPIENTS_FILE_NAME))
+  const vestingTotal = Object.values(vestingRecipients).reduce((a, b) => a.add(b))
   assertNumbersEquals(
     arbTreasuryBalance,
     parseEther(config.L2_NUM_OF_TOKENS_FOR_TREASURY),
@@ -719,7 +724,7 @@ async function verifyL2Token(
     "Incorrect initial L2Token balance for TokenDistributor"
   );
   assertNumbersEquals(
-    arbTreasuryBalance.add(tokenDistributorBalance),
+    arbTreasuryBalance.add(tokenDistributorBalance).add(vestingTotal),
     await l2Token.totalSupply(),
     "ArbTreasury and TokenDistributor should own all the tokens "
   );

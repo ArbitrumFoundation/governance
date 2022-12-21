@@ -1,10 +1,4 @@
-import {
-  Address,
-  getL2Network,
-  L1ToL2MessageStatus,
-  L1TransactionReceipt,
-  L2Network,
-} from "@arbitrum/sdk";
+import { Address, L1ToL2MessageStatus, L1TransactionReceipt, L2Network } from "@arbitrum/sdk";
 import { Inbox__factory } from "@arbitrum/sdk/dist/lib/abi/factories/Inbox__factory";
 import { L1CustomGateway__factory } from "@arbitrum/sdk/dist/lib/abi/factories/L1CustomGateway__factory";
 import { L1GatewayRouter__factory } from "@arbitrum/sdk/dist/lib/abi/factories/L1GatewayRouter__factory";
@@ -50,10 +44,14 @@ import {
 } from "../typechain-types/src/L2GovernanceFactory";
 import { getDeployersAndConfig as getDeployersAndConfig, isDeployingToNova } from "./providerSetup";
 import { getNumberOfRecipientsSet, setClaimRecipients } from "./tokenDistributorHelper";
+import { VestedWalletDeployer } from "./vestedWalletsDeployer";
+import fs from "fs";
+import path from "path";
 
 // store address for every deployed contract
 let deployedContracts: { [key: string]: string } = {};
 const DEPLOYED_CONTRACTS_FILE_NAME = "deployedContracts.json";
+const VESTED_RECIPIENTS_FILE_NAME = "files/vestedRecipients.json";
 
 /**
  * Performs each step of the Arbitrum governance deployment process.
@@ -226,6 +224,14 @@ export const deployGovernance = async () => {
 
   console.log("Post deployment L2 token tasks");
   await postDeploymentL2TokenTasks(arbDeployer, l2DeployResult, deployerConfig);
+
+  console.log("Distribute to vested wallets");
+  await deployAndTransferVestedWallets(
+    arbDeployer,
+    arbDeployer,
+    l2DeployResult.token,
+    deployerConfig
+  );
 
   // deploy ARB distributor
   console.log("Deploy TokenDistributor");
@@ -802,6 +808,33 @@ async function postDeploymentL2TokenTasks(
   ).wait();
 
   /// when distributor is deployed remaining tokens are transfered to it
+}
+
+async function deployAndTransferVestedWallets(
+  arbDeployer: Signer,
+  arbInitialSupplyRecipient: Signer,
+  l2TokenAddress: string,
+  config: {
+    L2_CLAIM_PERIOD_START: number;
+  }
+) {
+  const tokenRecipientsByPoints = path.join(__dirname, "..", VESTED_RECIPIENTS_FILE_NAME);
+  const recipients = VestedWalletDeployer.loadRecipients(tokenRecipientsByPoints);
+
+  const oneYearInSeconds = 365 * 24 * 60 * 60;
+
+  const wall = new VestedWalletDeployer(
+    arbDeployer,
+    arbInitialSupplyRecipient,
+    l2TokenAddress,
+    recipients,
+    // start vesting in 1 years time
+    config.L2_CLAIM_PERIOD_START + oneYearInSeconds,
+    // vesting lasts for 3 years
+    oneYearInSeconds * 3
+  );
+
+  await wall.deploy();
 }
 
 async function deployAndInitTokenDistributor(
