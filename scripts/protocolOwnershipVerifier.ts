@@ -11,8 +11,10 @@ import { ProxyAdmin__factory } from "../typechain-types";
 import { Provider } from "@ethersproject/providers";
 import { RollupCore } from "@arbitrum/sdk/dist/lib/abi/RollupCore";
 
-const ROLLUP_ADDRESS = "0x5eF0D09d1E6204141B4d37530808eD19f60FBa35";
-const L1_PROTOCOL_PROXY_ADMIN = "0x554723262467f125ac9e1cdfa9ce15cc53822dbd";
+const ARB_ROLLUP_ADDRESS = "0x5eF0D09d1E6204141B4d37530808eD19f60FBa35";
+const NOVA_ROLLUP_ADDRESS = "0xFb209827c58283535b744575e11953DCC4bEAD88";
+const ARB_PROTOCOL_PROXY_ADMIN = "0x554723262467f125ac9e1cdfa9ce15cc53822dbd";
+const NOVA_PROTOCOL_PROXY_ADMIN = "0x71D78dC7cCC0e037e12de1E50f5470903ce37148";
 const L1_UPGRADE_EXECUTOR = "0xC234E41AE2cb00311956Aa7109fC801ae8c80941";
 
 /**
@@ -21,8 +23,13 @@ const L1_UPGRADE_EXECUTOR = "0xC234E41AE2cb00311956Aa7109fC801ae8c80941";
 export const verifyOwnership = async () => {
   const { ethProvider } = await getProviders();
 
-  const arbOneRollup = RollupCore__factory.connect(ROLLUP_ADDRESS, ethProvider);
-  await verifyArbProtocolOwnership(arbOneRollup, ethProvider);
+  console.log("Verify ownership over Arb protocol contracts");
+  const arbOneRollup = RollupCore__factory.connect(ARB_ROLLUP_ADDRESS, ethProvider);
+  await verifyProtocolOwnership(arbOneRollup, ARB_PROTOCOL_PROXY_ADMIN, ethProvider);
+
+  console.log("Verify ownership over Nova protocol contracts");
+  const novaRollup = RollupCore__factory.connect(NOVA_ROLLUP_ADDRESS, ethProvider);
+  await verifyProtocolOwnership(novaRollup, NOVA_PROTOCOL_PROXY_ADMIN, ethProvider);
 };
 
 /**
@@ -30,47 +37,51 @@ export const verifyOwnership = async () => {
  * - bridge, inbox, seqInbox, outbox and challengeManager are owned by proxyAdmin
  * - proxyAdmin and rollup are owned by DAO (ownership transferred from multisig)
  */
-async function verifyArbProtocolOwnership(arbOneRollup: RollupCore, ethProvider: Provider) {
-  const arbL1Contracts = await getProtocolContracts(arbOneRollup, ethProvider);
+async function verifyProtocolOwnership(
+  rollupCore: RollupCore,
+  proxyAdmin: string,
+  ethProvider: Provider
+) {
+  const contracts = await getProtocolContracts(rollupCore, ethProvider);
 
   //// verify proxy admin
 
   assertEquals(
-    await getProxyOwner(arbL1Contracts["bridge"].address, ethProvider),
-    L1_PROTOCOL_PROXY_ADMIN,
-    "L1_PROTOCOL_PROXY_ADMIN should be bridge's proxy admin"
+    await getProxyOwner(contracts["bridge"].address, ethProvider),
+    proxyAdmin,
+    proxyAdmin + " should be bridge's proxy admin"
   );
   assertEquals(
-    await getProxyOwner(arbL1Contracts["inbox"].address, ethProvider),
-    L1_PROTOCOL_PROXY_ADMIN,
-    "L1_PROTOCOL_PROXY_ADMIN should be inbox's proxy admin"
+    await getProxyOwner(contracts["inbox"].address, ethProvider),
+    proxyAdmin,
+    proxyAdmin + " should be inbox's proxy admin"
   );
   assertEquals(
-    await getProxyOwner(arbL1Contracts["sequencerInbox"].address, ethProvider),
-    L1_PROTOCOL_PROXY_ADMIN,
-    "L1_PROTOCOL_PROXY_ADMIN should be sequencerInbox's proxy admin"
+    await getProxyOwner(contracts["sequencerInbox"].address, ethProvider),
+    proxyAdmin,
+    proxyAdmin + " should be sequencerInbox's proxy admin"
   );
   assertEquals(
-    await getProxyOwner(arbL1Contracts["outbox"].address, ethProvider),
-    L1_PROTOCOL_PROXY_ADMIN,
-    "L1_PROTOCOL_PROXY_ADMIN should be outbox's proxy admin"
+    await getProxyOwner(contracts["outbox"].address, ethProvider),
+    proxyAdmin,
+    proxyAdmin + " should be outbox's proxy admin"
   );
   assertEquals(
-    await getProxyOwner(arbL1Contracts["challengeManager"].address, ethProvider),
-    L1_PROTOCOL_PROXY_ADMIN,
-    "L1_PROTOCOL_PROXY_ADMIN should be challengeManager's proxy admin"
+    await getProxyOwner(contracts["challengeManager"].address, ethProvider),
+    proxyAdmin,
+    proxyAdmin + " should be challengeManager's proxy admin"
   );
 
   //// verify ownership over rollup and proxyAdmin is transferred to DAO
 
   assertEquals(
-    await getProxyOwner(arbL1Contracts["rollup"].address, ethProvider),
+    await getProxyOwner(contracts["rollup"].address, ethProvider),
     L1_UPGRADE_EXECUTOR,
     "L1_UPGRADE_EXECUTOR should be L1GovernanceFactory's owner"
   );
-  const proxyAdmin = ProxyAdmin__factory.connect(L1_PROTOCOL_PROXY_ADMIN, ethProvider);
+  const proxyAdminContract = ProxyAdmin__factory.connect(proxyAdmin, ethProvider);
   assertEquals(
-    await proxyAdmin.owner(),
+    await proxyAdminContract.owner(),
     L1_UPGRADE_EXECUTOR,
     "L1_UPGRADE_EXECUTOR should be challengeManager's proxy admin"
   );
