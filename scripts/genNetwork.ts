@@ -5,11 +5,6 @@ import * as fs from "fs";
 async function main() {
   const ethProvider = new ethers.providers.JsonRpcProvider(config.ethUrl);
   const arbProvider = new ethers.providers.JsonRpcProvider(config.arbUrl);
-  console.log(
-    config.ethUrl,
-config.arbUrl
-
-  )
 
   const ethDeployer = getSigner(ethProvider, config.ethKey);
   const arbDeployer = getSigner(arbProvider, config.arbKey);
