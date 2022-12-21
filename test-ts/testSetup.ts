@@ -16,7 +16,7 @@
 /* eslint-env node */
 "use strict";
 
-import { JsonRpcProvider } from "@ethersproject/providers";
+import { JsonRpcProvider, Provider } from "@ethersproject/providers";
 import { Wallet } from "@ethersproject/wallet";
 
 import dotenv from "dotenv";
@@ -41,6 +41,8 @@ import * as fs from "fs";
 import { ArbSdkError } from "@arbitrum/sdk/dist/lib/dataEntities/errors";
 import { parseEther } from "ethers/lib/utils";
 import { l1Networks, l2Networks } from "@arbitrum/sdk/dist/lib/dataEntities/networks";
+import { L2GatewayRouter__factory } from "@arbitrum/sdk/dist/lib/abi/factories/L2GatewayRouter__factory";
+import { wait } from "../src-ts/utils";
 
 dotenv.config();
 
@@ -78,16 +80,10 @@ export const getCustomNetworks = async (
     rollup: string;
   };
 
-  const rollup = RollupAdminLogic__factory.connect(
-    parsedDeploymentData.rollup,
-    l1Provider
-  );
+  const rollup = RollupAdminLogic__factory.connect(parsedDeploymentData.rollup, l1Provider);
   const confirmPeriodBlocks = await rollup.confirmPeriodBlocks();
 
-  const bridge = Bridge__factory.connect(
-    parsedDeploymentData.bridge,
-    l1Provider
-  );
+  const bridge = Bridge__factory.connect(parsedDeploymentData.bridge, l1Provider);
   const outboxAddr = await bridge.allowedOutboxList(0);
 
   const l1NetworkInfo = await l1Provider.getNetwork();
@@ -134,10 +130,7 @@ export const setupNetworks = async (
   l1Url: string,
   l2Url: string
 ) => {
-  const { l1Network, l2Network: coreL2Network } = await getCustomNetworks(
-    l1Url,
-    l2Url
-  );
+  const { l1Network, l2Network: coreL2Network } = await getCustomNetworks(l1Url, l2Url);
   const { l1: l1Contracts, l2: l2Contracts } = await deployErc20AndInit(
     l1Deployer,
     l2Deployer,
@@ -191,13 +184,12 @@ export const setupNetworks = async (
 };
 
 export const getSigner = (provider: JsonRpcProvider, key?: string) => {
-  if (!key && !provider)
-    throw new ArbSdkError("Provide at least one of key or provider.");
+  if (!key && !provider) throw new ArbSdkError("Provide at least one of key or provider.");
   if (key) return new Wallet(key).connect(provider);
   else return provider.getSigner(0);
 };
 
-export const testSetup = async() : Promise<{
+export const testSetup = async (): Promise<{
   l1Network: L1Network;
   l2Network: L2Network;
   l1Signer: Signer;
@@ -215,10 +207,9 @@ export const testSetup = async() : Promise<{
 
     networkFilename: "localNetwork.json",
   });
-  
+
   const l1Deployer = getSigner(l1Provider, config.ethKey);
   const l2Deployer = getSigner(l2Provider, config.arbKey);
-
 
   const seed = Wallet.createRandom();
   const l1Signer = seed.connect(l1Provider);
@@ -243,9 +234,7 @@ export const testSetup = async() : Promise<{
   };
 };
 
-export const getNetworkConfig = async () => {
-  
-};
+export const getNetworkConfig = async () => {};
 
 export const getProvidersAndSetupNetworks = async (setupConfig: {
   l1Url: string;
@@ -262,22 +251,16 @@ export const getProvidersAndSetupNetworks = async (setupConfig: {
 
   if (setupConfig.networkFilename) {
     // check if theres an existing network available
-    const localNetworkFile = path.join(
-      __dirname,
-      "..",
-      setupConfig.networkFilename
-    );
+    const localNetworkFile = path.join(__dirname, "..", setupConfig.networkFilename);
     if (fs.existsSync(localNetworkFile)) {
-      const { l1Network, l2Network } = JSON.parse(
-        fs.readFileSync(localNetworkFile).toString()
-      ) as {
+      const { l1Network, l2Network } = JSON.parse(fs.readFileSync(localNetworkFile).toString()) as {
         l1Network: L1Network;
         l2Network: L2Network;
       };
 
       const existingL1Network = l1Networks[l1Network.chainID.toString()];
       const existingL2Network = l2Networks[l2Network.chainID.toString()];
-      if(!existingL2Network) {
+      if (!existingL2Network) {
         addCustomNetwork({
           // dont add the l1 network if it's already been added
           customL1Network: existingL1Network ? undefined : l1Network,
@@ -289,26 +272,22 @@ export const getProvidersAndSetupNetworks = async (setupConfig: {
         l1Network,
         l1Provider,
         l2Network,
-        l2Provider
-      }
+        l2Provider,
+      };
     } else throw Error(`Missing file ${localNetworkFile}`);
   } else {
     return {
       l1Network: await getL1Network(l1Provider),
       l1Provider,
       l2Network: await getL2Network(l2Provider),
-      l2Provider
-    }
+      l2Provider,
+    };
   }
 };
 
 export const preFundAmount = parseEther("0.1");
 
-const fund = async (
-  signer: Signer,
-  amount?: BigNumber,
-  fundingKey?: string
-) => {
+const fund = async (signer: Signer, amount?: BigNumber, fundingKey?: string) => {
   const wallet = getSigner(signer.provider! as JsonRpcProvider, fundingKey);
   await (
     await wallet.sendTransaction({
@@ -318,16 +297,10 @@ const fund = async (
   ).wait();
 };
 
-export const fundL1 = async (
-  l1Signer: Signer,
-  amount?: BigNumber
-): Promise<void> => {
+export const fundL1 = async (l1Signer: Signer, amount?: BigNumber): Promise<void> => {
   await fund(l1Signer, amount, config.ethKey);
 };
 
-export const fundL2 = async (
-  l2Signer: Signer,
-  amount?: BigNumber
-): Promise<void> => {
+export const fundL2 = async (l2Signer: Signer, amount?: BigNumber): Promise<void> => {
   await fund(l2Signer, amount, config.arbKey);
 };

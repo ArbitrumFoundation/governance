@@ -11,23 +11,25 @@ const TOKEN_RECIPIENTS_FILE_NAME = "files/recipients.json";
  * @param tokenDistributor
  * @param arbDeployer
  */
-export async function setClaimRecipients(tokenDistributor: TokenDistributor, arbDeployer: Signer, config: { L2_NUM_OF_RECIPIENT_BATCHES_ALREADY_SET: number}) {
+export async function setClaimRecipients(
+  tokenDistributor: TokenDistributor,
+  arbDeployer: Signer
+) {
   const tokenRecipientsByPoints = require("../" + TOKEN_RECIPIENTS_FILE_NAME);
   const { tokenRecipients, tokenAmounts } = mapPointsToAmounts(tokenRecipientsByPoints);
 
   // set recipients in batches
   const BATCH_SIZE = 100;
-  const numOfBatches = Math.floor(tokenRecipients.length / BATCH_SIZE);
+  const recipientsAlreadySet = await getNumberOfRecipientsSet(tokenDistributor);
 
   // 0.1 gwei
   const BASE_GAS_PRICE = BigNumber.from(100000000);
-
   for (
-    let i = config.L2_NUM_OF_RECIPIENT_BATCHES_ALREADY_SET;
-    i <= numOfBatches;
-    i++
+    let i = recipientsAlreadySet;
+    i < tokenRecipients.length;
+    i = i + BATCH_SIZE
   ) {
-    console.log("---- Batch ", i, "/", numOfBatches);
+    console.log("---- Batch recipients", i, "-", i + BATCH_SIZE);
 
     let gasPriceBestGuess = await arbDeployer.provider!.getGasPrice();
 
@@ -54,22 +56,8 @@ export async function setClaimRecipients(tokenDistributor: TokenDistributor, arb
     // generally sleep 2 seconds to keep TX fees from going up, and to avoid filling all the blockspace
     await new Promise((resolve) => setTimeout(resolve, 2000));
 
-    let recipientsBatch: string[] = [];
-    let amountsBatch: BigNumber[] = [];
-
-    // slice batches
-    if (i < numOfBatches) {
-      recipientsBatch = tokenRecipients.slice(i * BATCH_SIZE, (i + 1) * BATCH_SIZE);
-      amountsBatch = tokenAmounts.slice(i * BATCH_SIZE, (i + 1) * BATCH_SIZE);
-    } else {
-      if (tokenRecipients.length == numOfBatches * BATCH_SIZE) {
-        // nothing left
-        break;
-      }
-      // last remaining batch
-      recipientsBatch = tokenRecipients.slice(i * BATCH_SIZE);
-      amountsBatch = tokenAmounts.slice(i * BATCH_SIZE);
-    }
+    const recipientsBatch: string[] = tokenRecipients.slice(i, i + BATCH_SIZE);
+    const amountsBatch: BigNumber[] = tokenAmounts.slice(i, i + BATCH_SIZE);
 
     // set recipients
     const txReceipt = await (

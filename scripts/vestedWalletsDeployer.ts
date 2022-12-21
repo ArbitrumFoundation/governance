@@ -35,7 +35,7 @@ export const deployVestedWallets = async (
   tokenAddress: string,
   recipients: VestedRecipients,
   startTimeSeconds: number,
-  durationSeconds: number
+  durationSeconds: number,
 ) => {
   const token = L2ArbitrumToken__factory.connect(tokenAddress, tokenHolder);
 
