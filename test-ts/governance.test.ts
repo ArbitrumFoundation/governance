@@ -15,7 +15,7 @@ import {
   TransparentUpgradeableProxy__factory,
   UpgradeExecutor__factory,
 } from "../typechain-types";
-import { fundL1, fundL2, getNetworkConfig, testSetup } from "./testSetup";
+import { fundL1, fundL2, testSetup } from "./testSetup";
 import { defaultAbiCoder } from "@ethersproject/abi";
 import { BigNumber, constants, Signer, Wallet } from "ethers";
 import { id, keccak256, parseEther } from "ethers/lib/utils";

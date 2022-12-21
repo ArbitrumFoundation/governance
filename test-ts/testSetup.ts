@@ -234,8 +234,6 @@ export const testSetup = async (): Promise<{
   };
 };
 
-export const getNetworkConfig = async () => {};
-
 export const getProvidersAndSetupNetworks = async (setupConfig: {
   l1Url: string;
   l2Url: string;
