@@ -85,7 +85,7 @@ export interface DeployerConfig {
   /**
    * Receiver of the airdrop leftovers
    */
-  L2_SWEEP_RECECIVER: string;
+  L2_SWEEP_RECEIVER: string;
   /**
    * Airdrop claim start block number
    */
@@ -128,6 +128,10 @@ export interface DeployerConfig {
    * Proxy admin of Nova protocol contracts
    */
   L1_NOVA_PROTOCOL_PROXY_ADMIN: string;
+  /**
+   * Keccak256 hash of the  initial (i.e., at deploy time) constitution text
+   */
+  ARBITRUM_DAO_CONSTITUTION_HASH: string;
 }
 
 export const loadDeployerConfig = async (fileLocation: string) => {

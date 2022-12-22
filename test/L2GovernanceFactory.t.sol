@@ -5,6 +5,7 @@ import "../src/L2GovernanceFactory.sol";
 import "../src/L2ArbitrumGovernor.sol";
 import "../src/UpgradeExecutor.sol";
 import "../src/ArbitrumTimelock.sol";
+import "../src/ArbitrumDAOConstitution.sol";
 
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
@@ -37,6 +38,8 @@ contract L2GovernanceFactoryTest is Test {
 
     address l2InitialSupplyRecipient = address(456);
 
+    bytes32 constitutionHash = bytes32("0x0123");
+
     DeployCoreParams deployCoreParams = DeployCoreParams({
         _l2MinTimelockDelay: l2MinTimelockDelay,
         _l1Token: l1Token,
@@ -49,7 +52,8 @@ contract L2GovernanceFactoryTest is Test {
         _minPeriodAfterQuorum: minPeriodAfterQuorum,
         _l2NonEmergencySecurityCouncil: l2NonEmergencySecurityCouncil,
         _l2InitialSupplyRecipient: l2InitialSupplyRecipient,
-        _l2EmergencySecurityCouncil: l2EmergencyCouncil
+        _l2EmergencySecurityCouncil: l2EmergencyCouncil,
+        _constitutionHash: constitutionHash
     });
 
     function deploy()
@@ -63,7 +67,8 @@ contract L2GovernanceFactoryTest is Test {
             FixedDelegateErc20Wallet arbTreasury,
             ProxyAdmin proxyAdmin,
             UpgradeExecutor executor,
-            L2GovernanceFactory l2GovernanceFactory
+            L2GovernanceFactory l2GovernanceFactory,
+            ArbitrumDAOConstitution arbitrumDAOConstitution
         )
     {
         L2GovernanceFactory l2GovernanceFactory;
@@ -103,7 +108,8 @@ contract L2GovernanceFactoryTest is Test {
             dtc.arbTreasury,
             dc.proxyAdmin,
             dc.executor,
-            l2GovernanceFactory
+            l2GovernanceFactory,
+            dc.arbitrumDAOConstitution
         );
     }
 
@@ -171,7 +177,8 @@ contract L2GovernanceFactoryTest is Test {
             FixedDelegateErc20Wallet arbTreasury,
             ProxyAdmin proxyAdmin,
             UpgradeExecutor executor,
-            L2GovernanceFactory l2GovernanceFactory
+            L2GovernanceFactory l2GovernanceFactory,
+            ArbitrumDAOConstitution arbitrumDAOConstitution
         ) = deploy();
         assertGt(address(token).code.length, 0, "no token deployed");
         assertGt(address(coreGov).code.length, 0, "no governer deployed");
@@ -193,7 +200,8 @@ contract L2GovernanceFactoryTest is Test {
             FixedDelegateErc20Wallet arbTreasury,
             ProxyAdmin proxyAdmin,
             UpgradeExecutor upgradeExecutor,
-            L2GovernanceFactory l2GovernanceFactory
+            L2GovernanceFactory l2GovernanceFactory,
+            ArbitrumDAOConstitution arbitrumDAOConstitution
         ) = deploy();
         vm.expectRevert("Initializable: contract is already initialized");
         token.initialize(l1Token, l2TokenInitialSupply, l1Token);
@@ -230,9 +238,16 @@ contract L2GovernanceFactoryTest is Test {
             FixedDelegateErc20Wallet arbTreasury,
             ProxyAdmin proxyAdmin,
             UpgradeExecutor upgradeExecutor,
-            L2GovernanceFactory l2GovernanceFactory
+            L2GovernanceFactory l2GovernanceFactory,
+            ArbitrumDAOConstitution arbitrumDAOConstitution
         ) = deploy();
         assertEq(token.owner(), address(upgradeExecutor), "token.owner()");
+        assertEq(
+            arbitrumDAOConstitution.owner(),
+            address(upgradeExecutor),
+            "arbitrumDAOConstitution.owner()"
+        );
+
         assertEq(token.l1Address(), l1Token, "token.l1Address()");
         assertEq(token.totalSupply(), l2TokenInitialSupply, "token.totalSupply()");
 
@@ -291,7 +306,8 @@ contract L2GovernanceFactoryTest is Test {
             FixedDelegateErc20Wallet arbTreasury,
             ProxyAdmin proxyAdmin,
             UpgradeExecutor executor,
-            L2GovernanceFactory l2GovernanceFactory
+            L2GovernanceFactory l2GovernanceFactory,
+            ArbitrumDAOConstitution arbitrumDAOConstitution
         ) = deploy();
         assertEq(proxyAdmin.owner(), address(executor), "L2 Executor owns l2 proxyAdmin");
 
@@ -326,14 +342,17 @@ contract L2GovernanceFactoryTest is Test {
             FixedDelegateErc20Wallet arbTreasury,
             ProxyAdmin proxyAdmin,
             UpgradeExecutor executor,
-            L2GovernanceFactory l2GovernanceFactory
+            L2GovernanceFactory l2GovernanceFactory,
+            ArbitrumDAOConstitution arbitrumDAOConstitution
         ) = deploy();
         assertTrue(
             coreTimelock.hasRole(coreTimelock.PROPOSER_ROLE(), address(coreGov)),
             "core gov can propose"
         );
         assertTrue(
-            coreTimelock.hasRole(coreTimelock.PROPOSER_ROLE(), address(l2NonEmergencySecurityCouncil)),
+            coreTimelock.hasRole(
+                coreTimelock.PROPOSER_ROLE(), address(l2NonEmergencySecurityCouncil)
+            ),
             "l2NonEmergencySecurityCouncil can propose"
         );
         assertTrue(

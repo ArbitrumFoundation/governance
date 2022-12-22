@@ -45,10 +45,13 @@ import {
 } from "../typechain-types/src/L2GovernanceFactory";
 import { getDeployersAndConfig as getDeployersAndConfig, isDeployingToNova } from "./providerSetup";
 import { setClaimRecipients } from "./tokenDistributorHelper";
+import { deployVestedWallets, loadVestedRecipients } from "./vestedWalletsDeployer";
+import path from "path";
 
 // store address for every deployed contract
 let deployedContracts: { [key: string]: string } = {};
 const DEPLOYED_CONTRACTS_FILE_NAME = "deployedContracts.json";
+const VESTED_RECIPIENTS_FILE_NAME = "files/vestedRecipients.json";
 
 /**
  * Performs each step of the Arbitrum governance deployment process.
@@ -221,6 +224,14 @@ export const deployGovernance = async () => {
 
   console.log("Post deployment L2 token tasks");
   await postDeploymentL2TokenTasks(arbDeployer, l2DeployResult, deployerConfig);
+
+  console.log("Distribute to vested wallets");
+  await deployAndTransferVestedWallets(
+    arbDeployer,
+    arbDeployer,
+    l2DeployResult.token,
+    deployerConfig
+  );
 
   // deploy ARB distributor
   console.log("Deploy TokenDistributor");
@@ -503,6 +514,7 @@ async function initL2Governance(
     L2_VOTING_PERIOD: number;
     L2_MIN_PERIOD_AFTER_QUORUM: number;
     L2_9_OF_12_SECURITY_COUNCIL: string;
+    ARBITRUM_DAO_CONSTITUTION_HASH: string;
   }
 ) {
   const arbInitialSupplyRecipientAddr = await arbDeployer.getAddress();
@@ -522,6 +534,7 @@ async function initL2Governance(
       _l2NonEmergencySecurityCouncil: config.L2_7_OF_12_SECURITY_COUNCIL,
       _l2InitialSupplyRecipient: arbInitialSupplyRecipientAddr,
       _l2EmergencySecurityCouncil: config.L2_9_OF_12_SECURITY_COUNCIL,
+      _constitutionHash: config.ARBITRUM_DAO_CONSTITUTION_HASH,
     })
   ).wait();
 
@@ -538,6 +551,7 @@ async function initL2Governance(
   deployedContracts["l2Token"] = l2DeployResult.token;
   deployedContracts["l2TreasuryGoverner"] = l2DeployResult.treasuryGoverner;
   deployedContracts["l2ArbTreasury"] = l2DeployResult.arbTreasury;
+  deployedContracts["arbitrumDAOConstitution"] = l2DeployResult.arbitrumDAOConstitution;
 
   return l2DeployResult;
 }
@@ -816,12 +830,39 @@ async function postDeploymentL2TokenTasks(
   /// when distributor is deployed remaining tokens are transfered to it
 }
 
+async function deployAndTransferVestedWallets(
+  arbDeployer: Signer,
+  arbInitialSupplyRecipient: Signer,
+  l2TokenAddress: string,
+  config: {
+    L2_CLAIM_PERIOD_START: number;
+  }
+) {
+  const tokenRecipientsByPoints = path.join(__dirname, "..", VESTED_RECIPIENTS_FILE_NAME);
+  const recipients = loadVestedRecipients(tokenRecipientsByPoints);
+  
+  const oneYearInSeconds = 365 * 24 * 60 * 60;
+
+  const vestedWalletFactory = await deployVestedWallets(
+    arbDeployer,
+    arbInitialSupplyRecipient,
+    l2TokenAddress,
+    recipients,
+    // start vesting in 1 years time
+    config.L2_CLAIM_PERIOD_START + oneYearInSeconds,
+    // vesting lasts for 3 years
+    oneYearInSeconds * 3
+  );
+
+  deployedContracts["vestedWalletFactory"] = vestedWalletFactory.address;
+}
+
 async function deployTokenDistributor(
   arbDeployer: Signer,
   l2DeployResult: L2DeployedEventObject,
   arbInitialSupplyRecipient: Signer,
   config: {
-    L2_SWEEP_RECECIVER: string;
+    L2_SWEEP_RECEIVER: string;
     L2_CLAIM_PERIOD_START: number;
     L2_CLAIM_PERIOD_END: number;
     L2_NUM_OF_TOKENS_FOR_CLAIMING: string;
@@ -836,7 +877,7 @@ async function deployTokenDistributor(
   ).EXCLUDE_ADDRESS();
   const tokenDistributor = await new TokenDistributor__factory(arbDeployer).deploy(
     l2DeployResult.token,
-    config.L2_SWEEP_RECECIVER,
+    config.L2_SWEEP_RECEIVER,
     await arbDeployer.getAddress(),
     config.L2_CLAIM_PERIOD_START,
     config.L2_CLAIM_PERIOD_END,

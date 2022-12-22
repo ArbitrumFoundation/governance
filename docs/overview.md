@@ -122,6 +122,17 @@ The contracts in the diagram encode ownership chains that ensure only governance
 
 This means that forming a proposal involves working backwards from the target, wrapping the data multiple times to define the path the upgrade will take.
 
+#### Arbitrum DAO Constitution
+
+The Arbitrum DAO Constitution contract stores the hash of the canonical text of the constitution. 
+To upgrade the constitution, a proposal should be created which calls `ArbitrumDAOConstitution.setConstitutionHash` with the new content hash. The proposal's "description" field should read:
+
+> Update the constitution hash to be the keccak256 hash of the following text: 
+> "... constitution text etc ..."
+
+If keccak256 hash of the new constitution text doesn't match the provided hash, the DAO should reject the proposal. 
+
+
 ### Further readings
 
 A walkthrough of a proposal's lifecycle from proposal creation to being executed is available [here](./proposal_lifecycle_example.md).
