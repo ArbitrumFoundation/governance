@@ -45,8 +45,7 @@ import {
 } from "../typechain-types/src/L2GovernanceFactory";
 import { getDeployersAndConfig as getDeployersAndConfig, isDeployingToNova } from "./providerSetup";
 import { setClaimRecipients } from "./tokenDistributorHelper";
-import { VestedWalletDeployer } from "./vestedWalletsDeployer";
-import fs from "fs";
+import { deployVestedWallets, loadVestedRecipients } from "./vestedWalletsDeployer";
 import path from "path";
 
 // store address for every deployed contract
@@ -840,11 +839,11 @@ async function deployAndTransferVestedWallets(
   }
 ) {
   const tokenRecipientsByPoints = path.join(__dirname, "..", VESTED_RECIPIENTS_FILE_NAME);
-  const recipients = VestedWalletDeployer.loadRecipients(tokenRecipientsByPoints);
-
+  const recipients = loadVestedRecipients(tokenRecipientsByPoints);
+  
   const oneYearInSeconds = 365 * 24 * 60 * 60;
 
-  const wall = new VestedWalletDeployer(
+  const vestedWalletFactory = await deployVestedWallets(
     arbDeployer,
     arbInitialSupplyRecipient,
     l2TokenAddress,
@@ -855,7 +854,7 @@ async function deployAndTransferVestedWallets(
     oneYearInSeconds * 3
   );
 
-  await wall.deploy();
+  deployedContracts["vestedWalletFactory"] = vestedWalletFactory.address;
 }
 
 async function deployTokenDistributor(
