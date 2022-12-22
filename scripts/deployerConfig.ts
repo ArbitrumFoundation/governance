@@ -99,7 +99,33 @@ export interface DeployerConfig {
    */
   L2_NUM_OF_RECIPIENTS: number;
   /**
+<<<<<<< HEAD
    * Keccak256 hash of the initial (i.e., at deploy time) constitution text
+=======
+   * Num of airdrop recipient batches that were successfully set, by default 0. If deployer script fails
+   * while setting recipient batches, this value can be updated so in the next run deployer scripts continues
+   * setting recipients from the right batch (where it failed the last time)
+   */
+  L2_NUM_OF_RECIPIENT_BATCHES_ALREADY_SET: number;
+  /**
+   * Batch size when setting the airdrop recipients in token distributor
+   */
+  RECIPIENTS_BATCH_SIZE: number;
+  /**
+   * Base Arb gas price of 0.1 gwei
+   */
+  BASE_L2_GAS_PRICE_LIMIT: number;
+  /**
+   * Acceptable upper limit for L1 gas price
+   */
+  BASE_L1_GAS_PRICE_LIMIT: number;
+  /**
+   * Block range for eth_getLogs calls
+   */
+  GET_LOGS_BLOCK_RANGE: number;
+  /**
+   * Keccak256 hash of the  initial (i.e., at deploy time) constitution text
+>>>>>>> main
    */
   ARBITRUM_DAO_CONSTITUTION_HASH: string;
 }
