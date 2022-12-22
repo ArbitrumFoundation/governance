@@ -1,7 +1,10 @@
 import { BigNumber, ethers } from "ethers";
 import {
+  ArbitrumDAOConstitution,
+  ArbitrumDAOConstitution__factory,
   ArbitrumTimelock,
   ArbitrumTimelock__factory,
+  ArbitrumVestingWallet__factory,
   ArbitrumVestingWalletsFactory,
   ArbitrumVestingWalletsFactory__factory,
   FixedDelegateErc20Wallet,
@@ -184,6 +187,7 @@ export const verifyDeployment = async () => {
     arbProvider,
     deployerConfig
   );
+  await verifyArbitrumDAOConstitution(arbContracts["arbitrumDAOConstitution"], arbContracts["l2Executor"], deployerConfig)
   await verifyL2ProxyAdmin(arbContracts["l2ProxyAdmin"], arbContracts["l2Executor"]);
   await verifyL2ReverseGateway(
     arbContracts["l2ReverseCustomGatewayProxy"],
@@ -196,7 +200,8 @@ export const verifyDeployment = async () => {
     await loadVestedRecipients(path.join(__dirname, "..", VESTED_RECIPIENTS_FILE_NAME)),
     arbContracts["vestedWalletFactory"],
     arbContracts["l2Token"],
-    arbProvider
+    arbProvider,
+    deployerConfig
   );
 
   //// Nova contracts
@@ -932,7 +937,7 @@ async function verifyL2TokenDistributor(
   arbProvider: Provider,
   config: {
     L2_NUM_OF_TOKENS_FOR_CLAIMING: string;
-    L2_SWEEP_RECECIVER: string;
+    L2_SWEEP_RECEIVER: string;
     L2_CLAIM_PERIOD_START: number;
     L2_CLAIM_PERIOD_END: number;
   }
@@ -964,7 +969,7 @@ async function verifyL2TokenDistributor(
   );
   assertEquals(
     await l2TokenDistributor.sweepReceiver(),
-    config.L2_SWEEP_RECECIVER,
+    config.L2_SWEEP_RECEIVER,
     "Incorrect sweep receiver set for TokenDistributor"
   );
   assertNumbersEquals(
@@ -1000,6 +1005,23 @@ async function verifyL2ProxyAdmin(l2ProxyAdmin: ProxyAdmin, l2Executor: UpgradeE
   );
 }
 
+
+async function verifyArbitrumDAOConstitution(arbitrumDAOConstitution: ArbitrumDAOConstitution,   arbOneUpgradeExecutor: UpgradeExecutor, config: {
+  ARBITRUM_DAO_CONSTITUTION_HASH: string
+}){
+  assertEquals(
+    await arbitrumDAOConstitution.owner(),
+    arbOneUpgradeExecutor.address,
+    "arbOneUpgradeExecutor should be ArbitrumDAOConstitution owner"
+  );
+
+  assertEquals(
+    await arbitrumDAOConstitution.constitutionHash(),
+    config.ARBITRUM_DAO_CONSTITUTION_HASH,
+    "Initial constitutionHash should be properly set"
+  )
+
+}
 /**
  * Verify:
  * - proxy admin is correct
@@ -1161,7 +1183,10 @@ async function verifyVestedWallets(
   vestedRecipients: VestedRecipients,
   vestedWalletFactory: ArbitrumVestingWalletsFactory,
   l2Token: L2ArbitrumToken,
-  arbProvider: Provider
+  arbProvider: Provider,
+  config: {
+    L2_CLAIM_PERIOD_START: number;
+  }
 ) {
   // find all the events emitted by this address
   // check that every recipient has received the correct amount
@@ -1195,6 +1220,26 @@ async function verifyVestedWallets(
       vestedRecipients[vr],
       tokenBalance,
       "Recipient amount not equal token balance"
+    );
+
+    const vestingWallet = ArbitrumVestingWallet__factory.connect(
+      log.vestingWalletAddress,
+      arbProvider
+    );
+    const oneYearInSeconds = 365 * 24 * 60 * 60;
+
+    const start = await vestingWallet.start();
+    assertNumbersEquals(
+      start,
+      BigNumber.from(config.L2_CLAIM_PERIOD_START + oneYearInSeconds),
+      "Invalid vesting start time"
+    );
+
+    const duration = await vestingWallet.duration();
+    assertNumbersEquals(
+      duration,
+      BigNumber.from(oneYearInSeconds * 3),
+      "Invalid vesting duration time"
     );
   }
 }
@@ -1269,6 +1314,10 @@ function loadArbContracts(arbProvider: Provider) {
       contractAddresses["vestedWalletFactory"],
       arbProvider
     ),
+    arbitrumDAOConstitution: ArbitrumDAOConstitution__factory.connect(
+      contractAddresses["arbitrumDAOConstitution"],
+      arbProvider
+    )
   };
 }
 

@@ -264,6 +264,8 @@ describe("Governor", function () {
     // we use a non zero dummy address for the l1 token
     // it doesnt exist yet but we plan to upgrade the l2 token contract add this address
     const l1TokenAddress = "0x0000000000000000000000000000000000000001";
+    const arbDaoConstitutionHash = "0x0000000000000000000000000000000000000000000000000000000000000001";
+
     const sevenSecurityCouncil = Wallet.createRandom();
     const nineTwelthSecurityCouncil = Wallet.createRandom();
 
@@ -310,6 +312,7 @@ describe("Governor", function () {
           _minPeriodAfterQuorum: 1,
           _l2InitialSupplyRecipient: l2SignerAddr,
           _l2EmergencySecurityCouncil: nineTwelthSecurityCouncil.address,
+          _constitutionHash: arbDaoConstitutionHash
         },
 
         { gasLimit: 30000000 }
