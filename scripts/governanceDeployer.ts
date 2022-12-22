@@ -496,6 +496,7 @@ async function initL2Governance(
     L2_VOTING_PERIOD: number;
     L2_MIN_PERIOD_AFTER_QUORUM: number;
     L2_9_OF_12_SECURITY_COUNCIL: string;
+    ARBITRUM_DAO_CONSTITUTION_HASH: string;
   }
 ) {
   const arbInitialSupplyRecipientAddr = await arbDeployer.getAddress();
@@ -515,6 +516,8 @@ async function initL2Governance(
       _minPeriodAfterQuorum: config.L2_MIN_PERIOD_AFTER_QUORUM,
       _l2InitialSupplyRecipient: arbInitialSupplyRecipientAddr,
       _l2EmergencySecurityCouncil: config.L2_9_OF_12_SECURITY_COUNCIL,
+      _constitutionHash: config.ARBITRUM_DAO_CONSTITUTION_HASH,
+
     })
   ).wait();
 
@@ -531,6 +534,8 @@ async function initL2Governance(
   deployedContracts["l2Token"] = l2DeployResult.token;
   deployedContracts["l2TreasuryGoverner"] = l2DeployResult.treasuryGoverner;
   deployedContracts["l2ArbTreasury"] = l2DeployResult.arbTreasury;
+  deployedContracts["arbitrumDAOConstitution"] = l2DeployResult.arbitrumDAOConstitution;
+
 
   return l2DeployResult;
 }
@@ -841,7 +846,7 @@ async function deployAndInitTokenDistributor(
   l2DeployResult: L2DeployedEventObject,
   arbInitialSupplyRecipient: Signer,
   config: {
-    L2_SWEEP_RECECIVER: string;
+    L2_SWEEP_RECEIVER: string;
     L2_CLAIM_PERIOD_START: number;
     L2_CLAIM_PERIOD_END: number;
     L2_NUM_OF_TOKENS_FOR_CLAIMING: string;
@@ -856,7 +861,7 @@ async function deployAndInitTokenDistributor(
   ).EXCLUDE_ADDRESS();
   const tokenDistributor = await new TokenDistributor__factory(arbDeployer).deploy(
     l2DeployResult.token,
-    config.L2_SWEEP_RECECIVER,
+    config.L2_SWEEP_RECEIVER,
     await arbDeployer.getAddress(),
     config.L2_CLAIM_PERIOD_START,
     config.L2_CLAIM_PERIOD_END,
