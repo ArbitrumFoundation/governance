@@ -21,6 +21,7 @@ import {
   L2GovernanceFactory__factory,
   ProxyAdmin,
   ProxyAdmin__factory,
+  TokenDistributor,
   TokenDistributor__factory,
   TransparentUpgradeableProxy,
   TransparentUpgradeableProxy__factory,
@@ -43,7 +44,7 @@ import {
   L2GovernanceFactory,
 } from "../typechain-types/src/L2GovernanceFactory";
 import { getDeployersAndConfig as getDeployersAndConfig, isDeployingToNova } from "./providerSetup";
-import { getNumberOfRecipientsSet, setClaimRecipients } from "./tokenDistributorHelper";
+import { setClaimRecipients } from "./tokenDistributorHelper";
 import { deployVestedWallets, loadVestedRecipients } from "./vestedWalletsDeployer";
 import path from "path";
 
@@ -234,7 +235,24 @@ export const deployGovernance = async () => {
 
   // deploy ARB distributor
   console.log("Deploy TokenDistributor");
-  await deployAndInitTokenDistributor(arbDeployer, l2DeployResult, arbDeployer, deployerConfig);
+  const tokenDistributor = await deployTokenDistributor(
+    arbDeployer,
+    l2DeployResult,
+    arbDeployer,
+    deployerConfig
+  );
+
+  // write addresses before the last step which takes hours
+  console.log("Write deployed contract addresses to deployedContracts.json");
+  writeAddresses();
+
+  console.log("Set TokenDistributor recipients");
+  await initTokenDistributor(
+    tokenDistributor,
+    arbDeployer,
+    l2DeployResult.executor,
+    deployerConfig
+  );
 };
 
 async function deployL1LogicContracts(ethDeployer: Signer) {
@@ -505,19 +523,18 @@ async function initL2Governance(
   const l2GovDeployReceipt = await (
     await l2GovernanceFactory.deployStep1({
       _l2MinTimelockDelay: config.L2_TIMELOCK_DELAY,
-      _l2TokenInitialSupply: parseEther(config.L2_TOKEN_INITIAL_SUPPLY),
-      _l2NonEmergencySecurityCouncil: config.L2_7_OF_12_SECURITY_COUNCIL,
-      _coreQuorumThreshold: config.L2_CORE_QUORUM_TRESHOLD,
       _l1Token: l1TokenAddress,
+      _l2TokenInitialSupply: parseEther(config.L2_TOKEN_INITIAL_SUPPLY),
+      _votingPeriod: config.L2_VOTING_PERIOD,
+      _votingDelay: config.L2_VOTING_DELAY,
+      _coreQuorumThreshold: config.L2_CORE_QUORUM_TRESHOLD,
       _treasuryQuorumThreshold: config.L2_TREASURY_QUORUM_TRESHOLD,
       _proposalThreshold: config.L2_PROPOSAL_TRESHOLD,
-      _votingDelay: config.L2_VOTING_DELAY,
-      _votingPeriod: config.L2_VOTING_PERIOD,
       _minPeriodAfterQuorum: config.L2_MIN_PERIOD_AFTER_QUORUM,
+      _l2NonEmergencySecurityCouncil: config.L2_7_OF_12_SECURITY_COUNCIL,
       _l2InitialSupplyRecipient: arbInitialSupplyRecipientAddr,
       _l2EmergencySecurityCouncil: config.L2_9_OF_12_SECURITY_COUNCIL,
       _constitutionHash: config.ARBITRUM_DAO_CONSTITUTION_HASH,
-
     })
   ).wait();
 
@@ -535,7 +552,6 @@ async function initL2Governance(
   deployedContracts["l2TreasuryGoverner"] = l2DeployResult.treasuryGoverner;
   deployedContracts["l2ArbTreasury"] = l2DeployResult.arbTreasury;
   deployedContracts["arbitrumDAOConstitution"] = l2DeployResult.arbitrumDAOConstitution;
-
 
   return l2DeployResult;
 }
@@ -841,7 +857,7 @@ async function deployAndTransferVestedWallets(
   deployedContracts["vestedWalletFactory"] = vestedWalletFactory.address;
 }
 
-async function deployAndInitTokenDistributor(
+async function deployTokenDistributor(
   arbDeployer: Signer,
   l2DeployResult: L2DeployedEventObject,
   arbInitialSupplyRecipient: Signer,
@@ -853,7 +869,7 @@ async function deployAndInitTokenDistributor(
     L2_NUM_OF_RECIPIENT_BATCHES_ALREADY_SET: number;
     L2_NUM_OF_RECIPIENTS: number;
   }
-) {
+): Promise<TokenDistributor> {
   // deploy TokenDistributor
   const delegationExcludeAddress = await L2ArbitrumGovernor__factory.connect(
     l2DeployResult.coreGoverner,
@@ -883,11 +899,37 @@ async function deployAndInitTokenDistributor(
       .transfer(tokenDistributor.address, parseEther(config.L2_NUM_OF_TOKENS_FOR_CLAIMING))
   ).wait();
 
+  return tokenDistributor;
+}
+
+async function initTokenDistributor(
+  tokenDistributor: TokenDistributor,
+  arbDeployer: Signer,
+  l2ExecutorAddress: string,
+  config: {
+    L2_NUM_OF_RECIPIENTS: number;
+    L2_NUM_OF_TOKENS_FOR_CLAIMING: string;
+    L2_NUM_OF_RECIPIENT_BATCHES_ALREADY_SET: number;
+    RECIPIENTS_BATCH_SIZE: number;
+    BASE_L2_GAS_PRICE_LIMIT: number;
+    BASE_L1_GAS_PRICE_LIMIT: number;
+  }
+) {
+  // we store start block when recipient batches are being set
+  const startBlockKey = "distributorSetRecipientsStartBlock";
+  if (!(startBlockKey in deployedContracts)) {
+    deployedContracts[startBlockKey] = (await arbDeployer.provider!.getBlockNumber()).toString();
+  }
+
   // set claim recipients
-  await setClaimRecipients(tokenDistributor, arbDeployer, config);
+  const numOfRecipientsSet = await setClaimRecipients(tokenDistributor, arbDeployer, config);
+
+  // we store end block when all recipients batches are set
+  deployedContracts["distributorSetRecipientsEndBlock"] = (
+    await arbDeployer.provider!.getBlockNumber()
+  ).toString();
 
   // check num of recipients and claimable amount before transferring ownership
-  const numOfRecipientsSet = await getNumberOfRecipientsSet(tokenDistributor);
   if (numOfRecipientsSet != config.L2_NUM_OF_RECIPIENTS) {
     throw new Error("Incorrect number of recipients set: " + numOfRecipientsSet);
   }
@@ -897,7 +939,7 @@ async function deployAndInitTokenDistributor(
   }
 
   // transfer ownership to L2 UpgradeExecutor
-  await (await tokenDistributor.transferOwnership(l2DeployResult.executor)).wait();
+  await (await tokenDistributor.transferOwnership(l2ExecutorAddress)).wait();
 }
 
 /**
