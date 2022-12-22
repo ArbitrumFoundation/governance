@@ -1,5 +1,7 @@
 import { BigNumber, ethers } from "ethers";
 import {
+  ArbitrumDAOConstitution,
+  ArbitrumDAOConstitution__factory,
   ArbitrumTimelock,
   ArbitrumTimelock__factory,
   FixedDelegateErc20Wallet,
@@ -44,11 +46,14 @@ import {
   getRecipientsDataFromFile,
 } from "./tokenDistributorHelper";
 import dotenv from "dotenv";
+import { VestedWalletDeployer } from "./vestedWalletsDeployer";
+import path from "path";
 
 dotenv.config();
 
 // JSON file which contains all the deployed contract addresses
 const DEPLOYED_CONTRACTS_FILE_NAME = "deployedContracts.json";
+const VESTED_RECIPIENTS_FILE_NAME = "files/vestedRecipients.json";
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
 /**
@@ -182,6 +187,7 @@ export const verifyDeployment = async () => {
     arbProvider,
     deployerConfig
   );
+  await verifyArbitrumDAOConstitution(arbContracts["arbitrumDAOConstitution"], arbContracts["l2Executor"], deployerConfig)
   await verifyL2ProxyAdmin(arbContracts["l2ProxyAdmin"], arbContracts["l2Executor"]);
   await verifyL2ReverseGateway(
     arbContracts["l2ReverseCustomGatewayProxy"],
@@ -700,7 +706,7 @@ async function verifyL2Token(
   assertEquals(await l2Token.symbol(), "ARB", "L2Token symbol should be ARB");
   assertNumbersEquals(
     await l2Token.totalSupply(),
-    ethers.utils.parseEther(config.L2_TOKEN_INITIAL_SUPPLY.toString()),
+    ethers.utils.parseEther(config.L2_TOKEN_INITIAL_SUPPLY),
     "L2Token has incorrect total supply"
   );
   assertEquals(
@@ -712,6 +718,8 @@ async function verifyL2Token(
   // check balances
   const arbTreasuryBalance = await l2Token.balanceOf(arbTreasury.address);
   const tokenDistributorBalance = await l2Token.balanceOf(l2TokenDistributor.address);
+  const vestingRecipients = VestedWalletDeployer.loadRecipients(path.join(__dirname, "..", VESTED_RECIPIENTS_FILE_NAME))
+  const vestingTotal = Object.values(vestingRecipients).reduce((a, b) => a.add(b))
   assertNumbersEquals(
     arbTreasuryBalance,
     parseEther(config.L2_NUM_OF_TOKENS_FOR_TREASURY),
@@ -723,7 +731,7 @@ async function verifyL2Token(
     "Incorrect initial L2Token balance for TokenDistributor"
   );
   assertNumbersEquals(
-    arbTreasuryBalance.add(tokenDistributorBalance),
+    arbTreasuryBalance.add(tokenDistributorBalance).add(vestingTotal),
     await l2Token.totalSupply(),
     "ArbTreasury and TokenDistributor should own all the tokens "
   );
@@ -920,7 +928,7 @@ async function verifyL2TokenDistributor(
   arbProvider: Provider,
   config: {
     L2_NUM_OF_TOKENS_FOR_CLAIMING: string;
-    L2_SWEEP_RECECIVER: string;
+    L2_SWEEP_RECEIVER: string;
     L2_CLAIM_PERIOD_START: number;
     L2_CLAIM_PERIOD_END: number;
     L2_NUM_OF_RECIPIENTS: number;
@@ -954,7 +962,7 @@ async function verifyL2TokenDistributor(
   );
   assertEquals(
     await l2TokenDistributor.sweepReceiver(),
-    config.L2_SWEEP_RECECIVER,
+    config.L2_SWEEP_RECEIVER,
     "Incorrect sweep receiver set for TokenDistributor"
   );
   assertNumbersEquals(
@@ -1019,6 +1027,23 @@ async function verifyL2ProxyAdmin(l2ProxyAdmin: ProxyAdmin, l2Executor: UpgradeE
   );
 }
 
+
+async function verifyArbitrumDAOConstitution(arbitrumDAOConstitution: ArbitrumDAOConstitution,   arbOneUpgradeExecutor: UpgradeExecutor, config: {
+  ARBITRUM_DAO_CONSTITUTION_HASH: string
+}){
+  assertEquals(
+    await arbitrumDAOConstitution.owner(),
+    arbOneUpgradeExecutor.address,
+    "arbOneUpgradeExecutor should be ArbitrumDAOConstitution owner"
+  );
+
+  assertEquals(
+    await arbitrumDAOConstitution.constitutionHash(),
+    config.ARBITRUM_DAO_CONSTITUTION_HASH,
+    "Initial constitutionHash should be properly set"
+  )
+
+}
 /**
  * Verify:
  * - proxy admin is correct
@@ -1237,6 +1262,10 @@ function loadArbContracts(arbProvider: Provider) {
       contractAddresses["l2ReverseCustomGatewayProxy"],
       arbProvider
     ),
+    arbitrumDAOConstitution: ArbitrumDAOConstitution__factory.connect(
+      contractAddresses["arbitrumDAOConstitution"],
+      arbProvider
+    )
   };
 }
 
