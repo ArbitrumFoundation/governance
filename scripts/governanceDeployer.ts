@@ -95,6 +95,8 @@ interface DeployProgressCache {
   l2TokenDistributor?: string;
   l2TokenTransferFunds?: boolean;
   l2TokenTransferOwnership?: boolean;
+  distributorSetRecipientsStartBlock?: number;
+  distributorSetRecipientsEndBlock?: number;
 }
 let deployedContracts: DeployProgressCache = {};
 const DEPLOYED_CONTRACTS_FILE_NAME = "deployedContracts.json";
@@ -615,7 +617,6 @@ async function initL2Governance(
     L2_MIN_PERIOD_AFTER_QUORUM: number;
     L2_9_OF_12_SECURITY_COUNCIL: string;
     ARBITRUM_DAO_CONSTITUTION_HASH: string;
-    
   }
 ) {
   if (!deployedContracts.l2CoreGoverner) {
@@ -663,7 +664,7 @@ async function initL2Governance(
     arbTreasury: deployedContracts.l2ArbTreasury!,
     proxyAdmin: deployedContracts.l2ProxyAdmin!,
     executor: deployedContracts.l2Executor!,
-    arbitrumDAOConstitution: deployedContracts.arbitrumDAOConstitution!
+    arbitrumDAOConstitution: deployedContracts.arbitrumDAOConstitution!,
   };
 }
 
@@ -906,9 +907,9 @@ async function registerTokenOnNova(
 
   // do the registration
   const extraValue = 1000;
-  console.log("going in here")
+  console.log("going in here");
   if (!deployedContracts.registerTokenNova) {
-    console.log("in here a")
+    console.log("in here a");
 
     const l1NovaRegistrationTx = await l1Token.registerTokenOnL2(
       {
@@ -925,26 +926,25 @@ async function registerTokenOnNova(
       {
         value: valueForNovaGateway.add(valueForNovaRouter).add(extraValue),
       }
-
     );
 
     //// wait for L2 TXs
-    console.log("in here b")
+    console.log("in here b");
 
     const l1NovaRegistrationTxReceipt = await L1TransactionReceipt.monkeyPatchWait(
       l1NovaRegistrationTx
     ).wait();
-    console.log("in here c")
+    console.log("in here c");
     const l1ToNovaMsgs = await l1NovaRegistrationTxReceipt.getL1ToL2Messages(
       novaDeployer.provider!
     );
-    console.log("in here d")
+    console.log("in here d");
 
     // status should be REDEEMED
     const novaSetTokenTx = await l1ToNovaMsgs[0].waitForStatus();
-    console.log("in here e")
+    console.log("in here e");
     const novaSetGatewaysTX = await l1ToNovaMsgs[1].waitForStatus();
-    console.log("in here f")
+    console.log("in here f");
     if (novaSetTokenTx.status != L1ToL2MessageStatus.REDEEMED) {
       throw new Error(
         "Register token L1 to L2 message not redeemed. Status: " + novaSetTokenTx.status.toString()
@@ -1100,24 +1100,27 @@ async function initTokenDistributor(
     RECIPIENTS_BATCH_SIZE: number;
     BASE_L2_GAS_PRICE_LIMIT: number;
     BASE_L1_GAS_PRICE_LIMIT: number;
-    GET_LOGS_BLOCK_RANGE: number
+    GET_LOGS_BLOCK_RANGE: number;
   }
 ) {
   // we store start block when recipient batches are being set
-  const startBlockKey = "distributorSetRecipientsStartBlock";
-  const previousStartBlock = deployedContracts[startBlockKey]
-  if (!(startBlockKey in deployedContracts)) {
+  const previousStartBlock = deployedContracts.distributorSetRecipientsStartBlock;
+  if (deployedContracts.distributorSetRecipientsStartBlock == undefined) {
     // store the start block in case we fail
-    deployedContracts[startBlockKey] = (await arbDeployer.provider!.getBlockNumber()).toString();
+    deployedContracts.distributorSetRecipientsStartBlock =
+      await arbDeployer.provider!.getBlockNumber();
   }
 
   // set claim recipients
-  const numOfRecipientsSet = await setClaimRecipients(tokenDistributor, arbDeployer, config, previousStartBlock);
+  const numOfRecipientsSet = await setClaimRecipients(
+    tokenDistributor,
+    arbDeployer,
+    config,
+    previousStartBlock
+  );
 
   // we store end block when all recipients batches are set
-  deployedContracts["distributorSetRecipientsEndBlock"] = (
-    await arbDeployer.provider!.getBlockNumber()
-  ).toString();
+  deployedContracts.distributorSetRecipientsEndBlock = await arbDeployer.provider!.getBlockNumber();
 
   // check num of recipients and claimable amount before transferring ownership
   if (numOfRecipientsSet != config.L2_NUM_OF_RECIPIENTS) {
