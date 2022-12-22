@@ -85,7 +85,7 @@ export interface DeployerConfig {
   /**
    * Receiver of the airdrop leftovers
    */
-  L2_SWEEP_RECECIVER: string;
+  L2_SWEEP_RECEIVER: string;
   /**
    * Airdrop claim start block number
    */
@@ -98,6 +98,10 @@ export interface DeployerConfig {
    * Total number of airdrop recipients
    */
   L2_NUM_OF_RECIPIENTS: number;
+  /**
+   * Keccak256 hash of the initial (i.e., at deploy time) constitution text
+   */
+  ARBITRUM_DAO_CONSTITUTION_HASH: string;
 }
 
 export const loadDeployerConfig = async (fileLocation: string) => {

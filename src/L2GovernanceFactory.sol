@@ -6,6 +6,7 @@ import "./L2ArbitrumGovernor.sol";
 import "./ArbitrumTimelock.sol";
 import "./UpgradeExecutor.sol";
 import "./FixedDelegateErc20Wallet.sol";
+import "./ArbitrumDAOConstitution.sol";
 import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -23,6 +24,7 @@ struct DeployCoreParams {
     address _l2NonEmergencySecurityCouncil; // 7/12 security council
     address _l2InitialSupplyRecipient;
     address _l2EmergencySecurityCouncil; // 9/12 security council
+    bytes32 _constitutionHash;
 }
 
 struct DeployTreasuryParams {
@@ -44,6 +46,7 @@ struct DeployedContracts {
     ArbitrumTimelock coreTimelock;
     L2ArbitrumToken token;
     UpgradeExecutor executor;
+    ArbitrumDAOConstitution arbitrumDAOConstitution;
 }
 
 struct DeployedTreasuryContracts {
@@ -96,7 +99,8 @@ contract L2GovernanceFactory is Ownable {
         L2ArbitrumGovernor treasuryGoverner,
         FixedDelegateErc20Wallet arbTreasury,
         ProxyAdmin proxyAdmin,
-        UpgradeExecutor executor
+        UpgradeExecutor executor,
+        ArbitrumDAOConstitution arbitrumDAOConstitution
     );
 
     enum Step {
@@ -197,6 +201,10 @@ contract L2GovernanceFactory is Ownable {
             _minPeriodAfterQuorum: params._minPeriodAfterQuorum
         });
 
+
+        dc.arbitrumDAOConstitution = new ArbitrumDAOConstitution(params._constitutionHash);
+        dc.arbitrumDAOConstitution.transferOwnership(upExecutor);
+
         dc.coreTimelock.grantRole(dc.coreTimelock.PROPOSER_ROLE(), address(dc.coreGov));
 
         bytes32 cancellerRole = dc.coreTimelock.CANCELLER_ROLE();
@@ -243,7 +251,8 @@ contract L2GovernanceFactory is Ownable {
             dtc.treasuryGov,
             dtc.arbTreasury,
             dc.proxyAdmin,
-            dc.executor
+            dc.executor,
+            dc.arbitrumDAOConstitution
             );
 
         step = Step.Three;
