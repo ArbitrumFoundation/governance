@@ -121,14 +121,6 @@ export interface DeployerConfig {
    */
   GET_LOGS_BLOCK_RANGE: number;
   /**
-   * Proxy admin of ArbitrumOne protocol contracts
-   */
-  L1_ARB_PROTOCOL_PROXY_ADMIN: string;
-  /**
-   * Proxy admin of Nova protocol contracts
-   */
-  L1_NOVA_PROTOCOL_PROXY_ADMIN: string;
-  /**
    * Keccak256 hash of the  initial (i.e., at deploy time) constitution text
    */
   ARBITRUM_DAO_CONSTITUTION_HASH: string;
