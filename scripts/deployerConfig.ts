@@ -120,6 +120,14 @@ export interface DeployerConfig {
    * Block range for eth_getLogs calls
    */
   GET_LOGS_BLOCK_RANGE: number;
+  /**
+   * Proxy admin of ArbitrumOne protocol contracts
+   */
+  L1_ARB_PROTOCOL_PROXY_ADMIN: string;
+  /**
+   * Proxy admin of Nova protocol contracts
+   */
+  L1_NOVA_PROTOCOL_PROXY_ADMIN: string;
 }
 
 export const loadDeployerConfig = async (fileLocation: string) => {

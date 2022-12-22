@@ -13,15 +13,11 @@ import { RollupCore } from "@arbitrum/sdk/dist/lib/abi/RollupCore";
 import { L2Network } from "@arbitrum/sdk";
 
 const DEPLOYED_CONTRACTS_FILE_NAME = "deployedContracts.json";
-
-const L1_ARB_PROTOCOL_PROXY_ADMIN = "0x554723262467f125ac9e1cdfa9ce15cc53822dbd";
-const L1_NOVA_PROTOCOL_PROXY_ADMIN = "0x71D78dC7cCC0e037e12de1E50f5470903ce37148";
-
 /**
  * Verifies ownership of protocol contracts is successfully transferred to DAO
  */
 export const verifyOwnership = async () => {
-  const { arbNetwork, novaNetwork } = await getDeployersAndConfig();
+  const { arbNetwork, novaNetwork, deployerConfig } = await getDeployersAndConfig();
   const { ethProvider, arbProvider, novaProvider } = await getProviders();
 
   const contractAddresses = require("../" + DEPLOYED_CONTRACTS_FILE_NAME);
@@ -30,14 +26,24 @@ export const verifyOwnership = async () => {
 
   console.log("Verify ownership over Arb protocol contracts");
   const arbOneRollup = RollupCore__factory.connect(arbNetwork.ethBridge.rollup, ethProvider);
-  await verifyProtocolOwnership(arbOneRollup, L1_ARB_PROTOCOL_PROXY_ADMIN, l1Executor, ethProvider);
+  await verifyProtocolOwnership(
+    arbOneRollup,
+    deployerConfig.L1_ARB_PROTOCOL_PROXY_ADMIN,
+    l1Executor,
+    ethProvider
+  );
 
   console.log("Verify ownership over Arb token bridge contracts");
   await verifyTokenBridgeOwnership(arbNetwork, l1Executor, l2Executor, ethProvider, arbProvider);
 
   console.log("Verify ownership over Nova protocol contracts");
   const novaRollup = RollupCore__factory.connect(novaNetwork.ethBridge.rollup, ethProvider);
-  await verifyProtocolOwnership(novaRollup, L1_NOVA_PROTOCOL_PROXY_ADMIN, l1Executor, ethProvider);
+  await verifyProtocolOwnership(
+    novaRollup,
+    deployerConfig.L1_NOVA_PROTOCOL_PROXY_ADMIN,
+    l1Executor,
+    ethProvider
+  );
 
   console.log("Verify ownership over Nova token bridge contracts");
   await verifyTokenBridgeOwnership(novaNetwork, l1Executor, l2Executor, ethProvider, novaProvider);
