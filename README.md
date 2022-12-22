@@ -5,11 +5,6 @@ This project contains smart contracts for Arbitrum token and governance. Please 
 
 ## Run Foundry unit tests
 
-Install dependencies
-```
-yarn
-```
-
 If not already installed, install [Foundry](https://github.com/foundry-rs/foundry#installation).
 
 Make sure Foundry is up-to-date
