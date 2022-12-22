@@ -21,6 +21,7 @@ import {
   L2GovernanceFactory__factory,
   ProxyAdmin,
   ProxyAdmin__factory,
+  TokenDistributor,
   TokenDistributor__factory,
   TransparentUpgradeableProxy,
   TransparentUpgradeableProxy__factory,
@@ -43,7 +44,7 @@ import {
   L2GovernanceFactory,
 } from "../typechain-types/src/L2GovernanceFactory";
 import { getDeployersAndConfig as getDeployersAndConfig, isDeployingToNova } from "./providerSetup";
-import { getNumberOfRecipientsSet, setClaimRecipients } from "./tokenDistributorHelper";
+import { setClaimRecipients } from "./tokenDistributorHelper";
 import { deployVestedWallets, loadVestedRecipients } from "./vestedWalletsDeployer";
 import fs from "fs";
 import path from "path";
@@ -321,7 +322,24 @@ export const deployGovernance = async () => {
 
   // deploy ARB distributor
   console.log("Deploy TokenDistributor");
-  await deployAndInitTokenDistributor(arbDeployer, l2DeployResult, arbDeployer, deployerConfig);
+  const tokenDistributor = await deployTokenDistributor(
+    arbDeployer,
+    l2DeployResult,
+    arbDeployer,
+    deployerConfig
+  );
+
+  // write addresses before the last step which takes hours
+  console.log("Write deployed contract addresses to deployedContracts.json");
+  writeAddresses();
+
+  console.log("Set TokenDistributor recipients");
+  await initTokenDistributor(
+    tokenDistributor,
+    arbDeployer,
+    l2DeployResult.executor,
+    deployerConfig
+  );
 };
 
 async function deployL1LogicContracts(ethDeployer: Signer) {
@@ -1019,7 +1037,7 @@ async function deployAndTransferVestedWallets(
   }
 }
 
-async function deployAndInitTokenDistributor(
+async function deployTokenDistributor(
   arbDeployer: Signer,
   l2DeployResult: L2DeployedEventObject,
   arbInitialSupplyRecipient: Signer,
@@ -1030,7 +1048,7 @@ async function deployAndInitTokenDistributor(
     L2_NUM_OF_TOKENS_FOR_CLAIMING: string;
     L2_NUM_OF_RECIPIENTS: number;
   }
-) {
+): Promise<TokenDistributor> {
   // deploy TokenDistributor
   const delegationExcludeAddress = await L2ArbitrumGovernor__factory.connect(
     l2DeployResult.coreGoverner,
@@ -1068,11 +1086,40 @@ async function deployAndInitTokenDistributor(
     deployedContracts.l2TokenTransferFunds = true;
   }
 
+  return tokenDistributor;
+}
+
+async function initTokenDistributor(
+  tokenDistributor: TokenDistributor,
+  arbDeployer: Signer,
+  l2ExecutorAddress: string,
+  config: {
+    L2_NUM_OF_RECIPIENTS: number;
+    L2_NUM_OF_TOKENS_FOR_CLAIMING: string;
+    L2_NUM_OF_RECIPIENT_BATCHES_ALREADY_SET: number;
+    RECIPIENTS_BATCH_SIZE: number;
+    BASE_L2_GAS_PRICE_LIMIT: number;
+    BASE_L1_GAS_PRICE_LIMIT: number;
+    GET_LOGS_BLOCK_RANGE: number
+  }
+) {
+  // we store start block when recipient batches are being set
+  const startBlockKey = "distributorSetRecipientsStartBlock";
+  const previousStartBlock = deployedContracts[startBlockKey]
+  if (!(startBlockKey in deployedContracts)) {
+    // store the start block in case we fail
+    deployedContracts[startBlockKey] = (await arbDeployer.provider!.getBlockNumber()).toString();
+  }
+
   // set claim recipients
-  await setClaimRecipients(tokenDistributor, arbDeployer);
+  const numOfRecipientsSet = await setClaimRecipients(tokenDistributor, arbDeployer, config, previousStartBlock);
+
+  // we store end block when all recipients batches are set
+  deployedContracts["distributorSetRecipientsEndBlock"] = (
+    await arbDeployer.provider!.getBlockNumber()
+  ).toString();
 
   // check num of recipients and claimable amount before transferring ownership
-  const numOfRecipientsSet = await getNumberOfRecipientsSet(tokenDistributor);
   if (numOfRecipientsSet != config.L2_NUM_OF_RECIPIENTS) {
     throw new Error("Incorrect number of recipients set: " + numOfRecipientsSet);
   }
@@ -1083,7 +1130,7 @@ async function deployAndInitTokenDistributor(
 
   if (!deployedContracts.l2TokenTransferOwnership) {
     // transfer ownership to L2 UpgradeExecutor
-    await (await tokenDistributor.transferOwnership(l2DeployResult.executor)).wait();
+    await (await tokenDistributor.transferOwnership(l2ExecutorAddress)).wait();
     deployedContracts.l2TokenTransferOwnership = true;
   }
 }
