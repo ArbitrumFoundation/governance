@@ -213,6 +213,7 @@ export const deployGovernance = async () => {
     l1Token,
     l2DeployResult.token,
     l1ReverseGateway,
+    l1DeployResult.executor,
     ethDeployer,
     arbDeployer
   );
@@ -633,6 +634,7 @@ async function registerTokenOnArbOne(
   l1Token: L1ArbitrumToken,
   arbTokenAddress: string,
   l1ReverseCustomGateway: L1ForceOnlyReverseCustomGateway,
+  l1Executor: string,
   ethDeployer: Signer,
   arbDeployer: Signer
 ) {
@@ -720,6 +722,9 @@ async function registerTokenOnArbOne(
       "Register gateway L1 to L2 message not redeemed. Status: " + arbSetGwTx.status.toString()
     );
   }
+
+  // transfer ownership over L1 reverse gateway to L1 executor
+  await (await l1ReverseCustomGateway.connect(ethDeployer).setOwner(l1Executor)).wait();
 }
 
 async function registerTokenOnNova(

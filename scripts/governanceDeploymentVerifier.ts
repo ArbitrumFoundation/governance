@@ -110,8 +110,8 @@ export const verifyDeployment = async () => {
     l1Contracts["l1ReverseCustomGatewayProxy"],
     arbContracts["l2ReverseCustomGatewayProxy"],
     l1Contracts["l1ProxyAdmin"],
+    l1Contracts["l1Executor"],
     ethProvider,
-    ethDeployerAddress,
     arbOneNetwork
   );
 
@@ -191,7 +191,11 @@ export const verifyDeployment = async () => {
     arbProvider,
     deployerConfig
   );
-  await verifyArbitrumDAOConstitution(arbContracts["arbitrumDAOConstitution"], arbContracts["l2Executor"], deployerConfig)
+  await verifyArbitrumDAOConstitution(
+    arbContracts["arbitrumDAOConstitution"],
+    arbContracts["l2Executor"],
+    deployerConfig
+  );
   await verifyL2ProxyAdmin(arbContracts["l2ProxyAdmin"], arbContracts["l2Executor"]);
   await verifyL2ReverseGateway(
     arbContracts["l2ReverseCustomGatewayProxy"],
@@ -425,8 +429,8 @@ async function verifyL1ReverseGateway(
   l1ReverseGateway: L1ForceOnlyReverseCustomGateway,
   l2ReverseGateway: L2ReverseCustomGateway,
   l1ProxyAdmin: ProxyAdmin,
+  l1Executor: UpgradeExecutor,
   ethProvider: Provider,
-  ethDeployerAddress: string,
   arbOneNetwork: L2Network
 ) {
   //// check proxy admin
@@ -439,8 +443,8 @@ async function verifyL1ReverseGateway(
   // check owner
   assertEquals(
     await l1ReverseGateway.owner(),
-    ethDeployerAddress,
-    "EthDeployer should be l1ReverseGateway's owner"
+    l1Executor.address,
+    "L1Executor should be l1ReverseGateway's owner"
   );
 
   /// check initialization params
@@ -1040,10 +1044,13 @@ async function verifyL2ProxyAdmin(l2ProxyAdmin: ProxyAdmin, l2Executor: UpgradeE
   );
 }
 
-
-async function verifyArbitrumDAOConstitution(arbitrumDAOConstitution: ArbitrumDAOConstitution,   arbOneUpgradeExecutor: UpgradeExecutor, config: {
-  ARBITRUM_DAO_CONSTITUTION_HASH: string
-}){
+async function verifyArbitrumDAOConstitution(
+  arbitrumDAOConstitution: ArbitrumDAOConstitution,
+  arbOneUpgradeExecutor: UpgradeExecutor,
+  config: {
+    ARBITRUM_DAO_CONSTITUTION_HASH: string;
+  }
+) {
   assertEquals(
     await arbitrumDAOConstitution.owner(),
     arbOneUpgradeExecutor.address,
@@ -1054,8 +1061,7 @@ async function verifyArbitrumDAOConstitution(arbitrumDAOConstitution: ArbitrumDA
     await arbitrumDAOConstitution.constitutionHash(),
     config.ARBITRUM_DAO_CONSTITUTION_HASH,
     "Initial constitutionHash should be properly set"
-  )
-
+  );
 }
 /**
  * Verify:
@@ -1352,7 +1358,7 @@ function loadArbContracts(arbProvider: Provider) {
     arbitrumDAOConstitution: ArbitrumDAOConstitution__factory.connect(
       contractAddresses["arbitrumDAOConstitution"],
       arbProvider
-    )
+    ),
   };
 }
 
