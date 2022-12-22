@@ -36,11 +36,15 @@ import {
   L2ReverseCustomGateway__factory,
 } from "../typechain-types-imported";
 import { getDeployerAddresses, getProviders, isDeployingToNova } from "./providerSetup";
-import { Address, getL2Network, L2Network } from "@arbitrum/sdk";
+import { Address, L2Network } from "@arbitrum/sdk";
 import { parseEther } from "ethers/lib/utils";
 import { L1CustomGateway__factory } from "@arbitrum/sdk/dist/lib/abi/factories/L1CustomGateway__factory";
 import { L1GatewayRouter__factory } from "@arbitrum/sdk/dist/lib/abi/factories/L1GatewayRouter__factory";
 import { Provider } from "@ethersproject/providers";
+import {
+  getRecipientsDataFromContractEvents,
+  getRecipientsDataFromFile,
+} from "./tokenDistributorHelper";
 import dotenv from "dotenv";
 import { VestedWalletDeployer } from "./vestedWalletsDeployer";
 import path from "path";
@@ -927,6 +931,8 @@ async function verifyL2TokenDistributor(
     L2_SWEEP_RECEIVER: string;
     L2_CLAIM_PERIOD_START: number;
     L2_CLAIM_PERIOD_END: number;
+    L2_NUM_OF_RECIPIENTS: number;
+    GET_LOGS_BLOCK_RANGE: number;
   }
 ) {
   //// check ownership
@@ -976,6 +982,35 @@ async function verifyL2TokenDistributor(
     await voteToken.delegates(l2TokenDistributor.address),
     await l2CoreGovernor.EXCLUDE_ADDRESS(),
     "L2TokenDistributor should delegate to EXCLUDE_ADDRESS"
+  );
+
+  //// verify that emmited 'CanClaim' events match recipient-amount pairs from file
+  const deploymentInfo = require("../" + DEPLOYED_CONTRACTS_FILE_NAME);
+  const recipientDataFromContract = await getRecipientsDataFromContractEvents(
+    l2TokenDistributor,
+    Number(deploymentInfo["distributorSetRecipientsStartBlock"]),
+    Number(deploymentInfo["distributorSetRecipientsEndBlock"]),
+    config
+  );
+  const recipientDataFromFile = getRecipientsDataFromFile();
+  assertNumbersEquals(
+    BigNumber.from(Object.keys(recipientDataFromContract).length),
+    BigNumber.from(Object.keys(recipientDataFromFile).length),
+    "Different number of events emitted compared to number of eligible accounts"
+  );
+  for (const account in recipientDataFromContract) {
+    assertNumbersEquals(
+      recipientDataFromContract[account],
+      recipientDataFromFile[account],
+      "Emitted event data does not match recipient-amount pairs from file"
+    );
+  }
+
+  const totalEvents = Object.keys(recipientDataFromContract).length;
+  assertNumbersEquals(
+    BigNumber.from(totalEvents),
+    BigNumber.from(config.L2_NUM_OF_RECIPIENTS),
+    "Incorrect number of recipients set in TokenDistributor"
   );
 }
 

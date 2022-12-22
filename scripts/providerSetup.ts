@@ -25,6 +25,7 @@ import { getProvidersAndSetupNetworks } from "../test-ts/testSetup";
 import path from "path";
 import { DeployerConfig, loadDeployerConfig } from "./deployerConfig";
 import { getL2Network, L2Network } from "@arbitrum/sdk";
+import { testSetup } from "../test-ts/testSetup";
 
 dotenv.config();
 
@@ -42,12 +43,11 @@ export const config = {
   ethDeployerKey: process.env["ETH_KEY"] as string,
   arbDeployerKey: process.env["ARB_KEY"] as string,
   novaDeployerKey: process.env["NOVA_KEY"] as string,
-  deployerConfigFileName: process.env["DEPLOYER_FILE"] as string
+  deployerConfigFileName: process.env["DEPLOYER_FILE"] as string,
 };
 
 export const getSigner = (provider: JsonRpcProvider, key?: string) => {
-  if (!key && !provider)
-    throw new ArbSdkError("Provide at least one of key or provider.");
+  if (!key && !provider) throw new ArbSdkError("Provide at least one of key or provider.");
   if (key) return new Wallet(key).connect(provider);
   else return provider.getSigner(0);
 };
@@ -61,24 +61,29 @@ export const getDeployersAndConfig = async (): Promise<{
   ethDeployer: Signer;
   arbDeployer: Signer;
   novaDeployer: Signer;
-  deployerConfig: DeployerConfig,
-  arbNetwork: L2Network,
-  novaNetwork: L2Network
+  deployerConfig: DeployerConfig;
+  arbNetwork: L2Network;
+  novaNetwork: L2Network;
 }> => {
-  if (config.isLocalDeployment === "true") {
+  if (config.isLocalDeployment !== "false") {
     // setup local test environment
-    const { l2Provider, l1Provider, l2Network: arbNetwork } =
-      await getProvidersAndSetupNetworks({
-        l1Url: config.ethRpc,
-        l2Url: config.arbRpc,
-        networkFilename: "localNetwork.json",
-      });
-
-    const { l2Provider: novaProvider, l2Network: novaNetwork } = await getProvidersAndSetupNetworks({
+    const {
+      l2Provider,
+      l1Provider,
+      l2Network: arbNetwork,
+    } = await getProvidersAndSetupNetworks({
       l1Url: config.ethRpc,
-      l2Url: config.novaRpc,
-      networkFilename: "localNetworkNova.json",
+      l2Url: config.arbRpc,
+      networkFilename: "localNetwork.json",
     });
+
+    const { l2Provider: novaProvider, l2Network: novaNetwork } = await getProvidersAndSetupNetworks(
+      {
+        l1Url: config.ethRpc,
+        l2Url: config.novaRpc,
+        networkFilename: "localNetworkNova.json",
+      }
+    );
 
     const l1Deployer = getSigner(l1Provider, config.ethDeployerKey);
     const l2Deployer = getSigner(l2Provider, config.arbDeployerKey);
@@ -104,10 +109,7 @@ export const getDeployersAndConfig = async (): Promise<{
       }
     }
 
-    const testDeployerConfigName = path.join(
-      __dirname,
-      "testConfig.json"
-    );
+    const testDeployerConfigName = path.join(__dirname, "testConfig.json");
     const deployerConfig = await loadDeployerConfig(testDeployerConfigName);
 
     return {
@@ -116,7 +118,7 @@ export const getDeployersAndConfig = async (): Promise<{
       novaDeployer: novaDeployer,
       deployerConfig,
       arbNetwork,
-      novaNetwork
+      novaNetwork,
     };
   } else {
     // deploying to production
@@ -127,35 +129,26 @@ export const getDeployersAndConfig = async (): Promise<{
     // check that production chain IDs are used in production mode
     const ethChainId = (await ethProvider.getNetwork()).chainId;
     if (ethChainId != ETH_CHAIN_ID) {
-      throw new Error(
-        "Production chain ID should be used in production mode for L1"
-      );
+      throw new Error("Production chain ID should be used in production mode for L1");
     }
     const arbChainId = (await arbProvider.getNetwork()).chainId;
     if (arbChainId != ARBITRUM_ONE_CHAIN_ID) {
-      throw new Error(
-        "Production chain ID should be used in production mode for L2"
-      );
+      throw new Error("Production chain ID should be used in production mode for L2");
     }
     const novaChainId = (await novaProvider.getNetwork()).chainId;
     if (novaChainId != ARBITRUM_NOVA_CHAIN_ID) {
-      throw new Error(
-        "Production chain ID should be used in production mode for Nova"
-      );
+      throw new Error("Production chain ID should be used in production mode for Nova");
     }
 
     const ethDeployer = getSigner(ethProvider, config.ethDeployerKey);
     const arbDeployer = getSigner(arbProvider, config.arbDeployerKey);
     const novaDeployer = getSigner(novaProvider, config.novaDeployerKey);
 
-    const testDeployerConfigName = path.join(
-      __dirname,
-      config.deployerConfigFileName
-    );
+    const testDeployerConfigName = path.join(__dirname, config.deployerConfigFileName);
     const deployerConfig = await loadDeployerConfig(testDeployerConfigName);
 
-    const arbNetwork = await getL2Network(arbProvider)
-    const novaNetwork = await getL2Network(novaProvider)
+    const arbNetwork = await getL2Network(arbProvider);
+    const novaNetwork = await getL2Network(novaProvider);
 
     return {
       ethDeployer,
@@ -163,7 +156,7 @@ export const getDeployersAndConfig = async (): Promise<{
       novaDeployer,
       deployerConfig,
       arbNetwork,
-      novaNetwork
+      novaNetwork,
     };
   }
 };
@@ -181,10 +174,11 @@ export const getProviders = async (): Promise<{
   arbProvider: Provider;
   novaProvider: Provider;
   deployerConfig: DeployerConfig;
-  arbNetwork: L2Network,
-  novaNetwork: L2Network
+  arbNetwork: L2Network;
+  novaNetwork: L2Network;
 }> => {
-  const { arbDeployer, deployerConfig, ethDeployer, novaDeployer, arbNetwork, novaNetwork} = await getDeployersAndConfig();
+  const { arbDeployer, deployerConfig, ethDeployer, novaDeployer, arbNetwork, novaNetwork } =
+    await getDeployersAndConfig();
 
   return {
     ethProvider: ethDeployer.provider!,
@@ -192,7 +186,7 @@ export const getProviders = async (): Promise<{
     novaProvider: novaDeployer.provider!,
     deployerConfig,
     arbNetwork,
-    novaNetwork
+    novaNetwork,
   };
 };
 
@@ -205,8 +199,7 @@ export const getDeployerAddresses = async (): Promise<{
   arbDeployerAddress: string;
   novaDeployerAddress: string;
 }> => {
-  const { ethDeployer, arbDeployer, novaDeployer } =
-    await getDeployersAndConfig();
+  const { ethDeployer, arbDeployer, novaDeployer } = await getDeployersAndConfig();
   const ethDeployerAddress = await ethDeployer.getAddress();
   const arbDeployerAddress = await arbDeployer.getAddress();
   const novaDeployerAddress = await novaDeployer.getAddress();
