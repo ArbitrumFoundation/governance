@@ -25,18 +25,30 @@ export async function setClaimRecipients(
   tokenDistributor: TokenDistributor,
   arbDeployer: Signer,
   config: {
-    L2_NUM_OF_RECIPIENT_BATCHES_ALREADY_SET: number;
     RECIPIENTS_BATCH_SIZE: number;
     BASE_L2_GAS_PRICE_LIMIT: number;
     BASE_L1_GAS_PRICE_LIMIT: number;
-  }
+    GET_LOGS_BLOCK_RANGE: number;
+  },
+  previousStartBlock?: number,
 ): Promise<number> {
   const tokenRecipientsByPoints = require("../" + TOKEN_RECIPIENTS_FILE_NAME);
   const { tokenRecipients, tokenAmounts } = mapPointsToAmounts(tokenRecipientsByPoints);
 
   // set recipients in batches
-  const batchSize = config.RECIPIENTS_BATCH_SIZE;
-  const numOfBatches = Math.floor(tokenRecipients.length / batchSize);
+  // const recipientsAlreadySet = await getNumberOfRecipientsSet(tokenDistributor);
+  let recipientsAlreadySet = 0;
+  if (previousStartBlock) {
+    const blockNow = await arbDeployer.provider!.getBlockNumber();
+    const recipients = await getRecipientsDataFromContractEvents(
+      tokenDistributor,
+      previousStartBlock,
+      blockNow,
+      config
+    );
+
+    recipientsAlreadySet = Object.keys(recipients).length;
+  }
 
   // 0.1 gwei
   const l2GasPriceLimit = BigNumber.from(config.BASE_L2_GAS_PRICE_LIMIT);
@@ -44,10 +56,13 @@ export async function setClaimRecipients(
   const l1GasPriceLimit = BigNumber.from(config.BASE_L1_GAS_PRICE_LIMIT);
   const arbGasInfo = ArbGasInfo__factory.connect(ARB_GAS_INFO, arbDeployer);
 
-  const firstBatch = config.L2_NUM_OF_RECIPIENT_BATCHES_ALREADY_SET;
   let canClaimEventsEmitted = 0;
-  for (let i = firstBatch; i <= numOfBatches; i++) {
-    console.log("---- Batch ", i, "/", numOfBatches);
+  for (
+    let i = recipientsAlreadySet;
+    i < tokenRecipients.length;
+    i = i + config.RECIPIENTS_BATCH_SIZE
+  ) {
+    console.log("---- Batch recipients", i, "-", i + config.RECIPIENTS_BATCH_SIZE);
 
     // if L1 or L2 are congested, wait until it clears out
     await waitForAcceptableGasPrice(l2GasPriceLimit, false, () =>
@@ -58,22 +73,8 @@ export async function setClaimRecipients(
     // generally sleep 2 seconds to keep TX fees from going up, and to avoid filling all the blockspace
     await new Promise((resolve) => setTimeout(resolve, 2000));
 
-    let recipientsBatch: string[] = [];
-    let amountsBatch: BigNumber[] = [];
-
-    // slice batches
-    if (i < numOfBatches) {
-      recipientsBatch = tokenRecipients.slice(i * batchSize, (i + 1) * batchSize);
-      amountsBatch = tokenAmounts.slice(i * batchSize, (i + 1) * batchSize);
-    } else {
-      if (tokenRecipients.length == numOfBatches * batchSize) {
-        // nothing left
-        break;
-      }
-      // last remaining batch
-      recipientsBatch = tokenRecipients.slice(i * batchSize);
-      amountsBatch = tokenAmounts.slice(i * batchSize);
-    }
+    const recipientsBatch: string[] = tokenRecipients.slice(i, i + config.RECIPIENTS_BATCH_SIZE);
+    const amountsBatch: BigNumber[] = tokenAmounts.slice(i, i + config.RECIPIENTS_BATCH_SIZE);
 
     if (!isAmountsBatchValid(amountsBatch)) {
       throw new Error("Unsupported claim amount!");
