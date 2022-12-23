@@ -1,33 +1,10 @@
-import { BigNumber, Signer } from "ethers";
+import { Signer } from "ethers";
 import {
   ArbitrumVestingWalletsFactory__factory,
   L2ArbitrumToken__factory,
 } from "../typechain-types";
 import { WalletCreatedEvent } from "../typechain-types/src/ArbitrumVestingWalletFactory.sol/ArbitrumVestingWalletsFactory";
-import fs from "fs";
-import { parseEther } from "ethers/lib/utils";
-
-export type Recipients = { readonly [key: string]: BigNumber };
-
-export const loadRecipients = (fileLocation: string): Recipients => {
-  const fileContents = fs.readFileSync(fileLocation).toString();
-  const jsonFile = JSON.parse(fileContents);
-  const addresses = Object.keys(jsonFile);
-  const recipients: { [key: string]: BigNumber } = {};
-
-  for (const addr of addresses) {
-    // the token has 18 decimals, like ether, so we can use parseEther
-    recipients[addr.toLowerCase()] = parseEther(jsonFile[addr]);
-
-    if (recipients[addr.toLowerCase()].lt(parseEther("1"))) {
-      throw new Error(
-        `Unexpected token count less than 1: ${recipients[addr.toLowerCase()].toString()}`
-      );
-    }
-  }
-
-  return recipients;
-};
+import { Recipients } from "./testUtils";
 
 export const deployVestedWallets = async (
   deployer: Signer,
@@ -35,7 +12,7 @@ export const deployVestedWallets = async (
   tokenAddress: string,
   recipients: Recipients,
   startTimeSeconds: number,
-  durationSeconds: number,
+  durationSeconds: number
 ) => {
   const token = L2ArbitrumToken__factory.connect(tokenAddress, tokenHolder);
 

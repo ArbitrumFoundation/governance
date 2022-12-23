@@ -29,7 +29,7 @@ async function main() {
     config.novaUrl
   );
 
-  fs.writeFileSync("localNetworkNova.json", JSON.stringify({ l1Network, l2Network }, null, 2));
+  fs.writeFileSync("./files/local/networkNova.json", JSON.stringify({ l1Network, l2Network }, null, 2));
   console.log("localNetworkNova.json updated");
 }
 
