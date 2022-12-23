@@ -825,6 +825,7 @@ async function registerTokenOnArbOne(
     //// wait for ArbOne router TXs
 
     const l1ArbRouterTxReceipt = await L1TransactionReceipt.monkeyPatchWait(l1ArbRouterTx).wait();
+    console.log(l1ArbRouterTxReceipt);
     const l1ToArbMsgs = await l1ArbRouterTxReceipt.getL1ToL2Messages(arbDeployer.provider!);
 
     // status should be REDEEMED
