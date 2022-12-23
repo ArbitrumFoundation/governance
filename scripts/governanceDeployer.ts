@@ -49,6 +49,7 @@ import { deployVestedWallets, loadRecipients } from "./vestedWalletsDeployer";
 import fs from "fs";
 import path from "path";
 import { Provider } from "@ethersproject/providers";
+import { TransferEvent } from "../typechain-types/src/Util.sol/IERC20VotesUpgradeable";
 
 // store address for every deployed contract
 interface DeployProgressCache {
@@ -1040,18 +1041,30 @@ async function transferAllocations(initialTokenRecipient: Signer, tokenAddress: 
   const token = L2ArbitrumToken__factory.connect(tokenAddress, initialTokenRecipient);
 
   for (const rec of Object.keys(recipients)) {
-    const filter = token.filters["Transfer(address,address,uint256)"](null, rec);
+    const filter = token.filters["Transfer(address,address,uint256)"](
+      await initialTokenRecipient.getAddress(),
+      rec
+    );
 
     const logs = await initialTokenRecipient.provider!.getLogs({
       fromBlock: 0,
       toBlock: "latest",
-      ...filter
-    })
+      ...filter,
+    });
 
-    if(logs.length > 1) throw new Error("")
+    if (logs.length > 1) {
+      console.error(logs);
+      throw new Error(`Too many transfer logs for ${rec}`);
+    }
 
-
-
+    logs.map((l) => {
+      const e = token.interface.parseLog(l).args as TransferEvent["args"];
+      return {
+        from: e.from,
+        to: e.to,
+        value: e.value,
+      };
+    });
   }
 
   // load the file and loop through it
