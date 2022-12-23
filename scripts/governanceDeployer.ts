@@ -103,6 +103,7 @@ interface DeployProgressCache {
 let deployedContracts: DeployProgressCache = {};
 const DEPLOYED_CONTRACTS_FILE_NAME = "deployedContracts.json";
 const VESTED_RECIPIENTS_FILE_NAME = "files/vestedRecipients.json";
+const TRANSFER_RECIPIENTS_FILE_NAME = "files/transferRecipients.json";
 
 export type TypeChainContractFactory<TContract extends Contract> = {
   deploy(...args: Array<any>): Promise<TContract>;
@@ -1032,26 +1033,36 @@ async function deployAndTransferVestedWallets(
   }
 }
 
-async function transferAllocations(
-  initialTokenRecipient: Signer,
-  tokenAddress: string,
-) {
+async function transferAllocations(initialTokenRecipient: Signer, tokenAddress: string) {
+  const tokenRecipientsByPoints = path.join(__dirname, "..", TRANSFER_RECIPIENTS_FILE_NAME);
+  const recipients = loadRecipients(tokenRecipientsByPoints);
+
+  const token = L2ArbitrumToken__factory.connect(tokenAddress, initialTokenRecipient);
+
+  for (const rec of Object.keys(recipients)) {
+    const filter = token.filters["Transfer(address,address,uint256)"](null, rec);
+
+    const logs = await initialTokenRecipient.provider!.getLogs({
+      fromBlock: 0,
+      toBlock: "latest",
+      ...filter
+    })
+
+    if(logs.length > 1) throw new Error("")
+
+
+
+  }
+
   // load the file and loop through it
 
-
   // check that each of the items has been transferred to - we could use a start date for helpers?
-
-
-
 
   if (!deployedContracts.l2TokenTransferTeam) {
     // transfer tokens to the team
     const l2Token = L2ArbitrumToken__factory.connect(tokenAddress, initialTokenRecipient);
     await (
-      await l2Token.transfer(
-        tokenDistributor.address,
-        parseEther(config.L2_TOKEN_TEAM_ALLOCATION)
-      )
+      await l2Token.transfer(tokenDistributor.address, parseEther(config.L2_TOKEN_TEAM_ALLOCATION))
     ).wait();
 
     deployedContracts.l2TokenTransferTeam = true;
@@ -1069,7 +1080,7 @@ async function transferAllocations(
 
     deployedContracts.l2TokenTransferFoundation = true;
   }
-};
+}
 
 async function deployTokenDistributor(
   arbDeployer: Signer,
