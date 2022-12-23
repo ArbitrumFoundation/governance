@@ -174,7 +174,8 @@ export const verifyDeployment = async () => {
     arbContracts["l2Executor"],
     arbContracts["l2GovernanceFactory"],
     arbContracts["l2ProxyAdmin"],
-    arbProvider
+    arbProvider,
+    deployerConfig
   );
   await verifyL2ArbTreasury(
     arbContracts["l2ArbTreasury"],
