@@ -847,7 +847,10 @@ async function verifyL2TreasuryTimelock(
   l2UpgradeExecutor: UpgradeExecutor,
   l2GovernanceFactory: L2GovernanceFactory,
   l2ProxyAdmin: ProxyAdmin,
-  arbProvider: Provider
+  arbProvider: Provider,
+  config: {
+    L2_TREASURY_TIMELOCK_DELAY: string
+  }
 ) {
   //// check proxy admin
   assertEquals(
@@ -859,7 +862,7 @@ async function verifyL2TreasuryTimelock(
   //// check initialization params are correctly set
   assertNumbersEquals(
     await l2TreasuryTimelock.getMinDelay(),
-    BigNumber.from(0),
+    BigNumber.from(config.L2_TREASURY_TIMELOCK_DELAY),
     "Incorrect min delay set for L2 treasury governor"
   );
 
