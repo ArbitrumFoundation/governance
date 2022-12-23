@@ -7,33 +7,33 @@ import { WalletCreatedEvent } from "../typechain-types/src/ArbitrumVestingWallet
 import fs from "fs";
 import { parseEther } from "ethers/lib/utils";
 
-export type VestedRecipients = { readonly [key: string]: BigNumber };
+export type Recipients = { readonly [key: string]: BigNumber };
 
-export const loadVestedRecipients = (fileLocation: string): VestedRecipients => {
+export const loadRecipients = (fileLocation: string): Recipients => {
   const fileContents = fs.readFileSync(fileLocation).toString();
   const jsonFile = JSON.parse(fileContents);
   const addresses = Object.keys(jsonFile);
-  const vestedRecipients: { [key: string]: BigNumber } = {};
+  const recipients: { [key: string]: BigNumber } = {};
 
   for (const addr of addresses) {
     // the token has 18 decimals, like ether, so we can use parseEther
-    vestedRecipients[addr.toLowerCase()] = parseEther(jsonFile[addr]);
+    recipients[addr.toLowerCase()] = parseEther(jsonFile[addr]);
 
-    if (vestedRecipients[addr.toLowerCase()].lt(parseEther("1"))) {
+    if (recipients[addr.toLowerCase()].lt(parseEther("1"))) {
       throw new Error(
-        `Unexpected token count less than 1: ${vestedRecipients[addr.toLowerCase()].toString()}`
+        `Unexpected token count less than 1: ${recipients[addr.toLowerCase()].toString()}`
       );
     }
   }
 
-  return vestedRecipients;
+  return recipients;
 };
 
 export const deployVestedWallets = async (
   deployer: Signer,
   tokenHolder: Signer,
   tokenAddress: string,
-  recipients: VestedRecipients,
+  recipients: Recipients,
   startTimeSeconds: number,
   durationSeconds: number,
 ) => {

@@ -59,6 +59,10 @@ export interface DeployerConfig {
    * Minimum delay for an operation to become valid
    */
   L2_TREASURY_TIMELOCK_DELAY: number;
+  /**
+   * Keccak256 hash of the  initial (i.e., at deploy time) constitution text
+   */
+  ARBITRUM_DAO_CONSTITUTION_HASH: string;
 
   ////////////////
   ///// Nova /////
@@ -118,10 +122,6 @@ export interface DeployerConfig {
    * Block range for eth_getLogs calls
    */
   GET_LOGS_BLOCK_RANGE: number;
-  /**
-   * Keccak256 hash of the  initial (i.e., at deploy time) constitution text
-   */
-  ARBITRUM_DAO_CONSTITUTION_HASH: string;
 }
 
 export const loadDeployerConfig = async (fileLocation: string) => {

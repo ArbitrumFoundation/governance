@@ -45,7 +45,7 @@ import {
 } from "../typechain-types/src/L2GovernanceFactory";
 import { getDeployersAndConfig as getDeployersAndConfig, isDeployingToNova } from "./providerSetup";
 import { setClaimRecipients } from "./tokenDistributorHelper";
-import { deployVestedWallets, loadVestedRecipients } from "./vestedWalletsDeployer";
+import { deployVestedWallets, loadRecipients } from "./vestedWalletsDeployer";
 import fs from "fs";
 import path from "path";
 import { Provider } from "@ethersproject/providers";
@@ -93,10 +93,12 @@ interface DeployProgressCache {
   vestedWalletInProgress?: boolean;
   vestedWalletFactory?: string;
   l2TokenDistributor?: string;
-  l2TokenTransferFunds?: boolean;
+  l2TokenTransferTokenDistributor?: boolean;
   l2TokenTransferOwnership?: boolean;
   distributorSetRecipientsStartBlock?: number;
   distributorSetRecipientsEndBlock?: number;
+  l2TokenTransferTeam?: boolean;
+  l2TokenTransferFoundation?: boolean;
 }
 let deployedContracts: DeployProgressCache = {};
 const DEPLOYED_CONTRACTS_FILE_NAME = "deployedContracts.json";
@@ -617,7 +619,7 @@ async function initL2Governance(
     L2_MIN_PERIOD_AFTER_QUORUM: number;
     L2_9_OF_12_SECURITY_COUNCIL: string;
     ARBITRUM_DAO_CONSTITUTION_HASH: string;
-    L2_TREASURY_TIMELOCK_DELAY: number
+    L2_TREASURY_TIMELOCK_DELAY: number;
   }
 ) {
   if (!deployedContracts.l2CoreGoverner) {
@@ -639,7 +641,7 @@ async function initL2Governance(
         _l2InitialSupplyRecipient: arbInitialSupplyRecipientAddr,
         _l2EmergencySecurityCouncil: config.L2_9_OF_12_SECURITY_COUNCIL,
         _constitutionHash: config.ARBITRUM_DAO_CONSTITUTION_HASH,
-        _l2TreasuryMinTimelockDelay: config.L2_TREASURY_TIMELOCK_DELAY
+        _l2TreasuryMinTimelockDelay: config.L2_TREASURY_TIMELOCK_DELAY,
       })
     ).wait();
 
@@ -909,10 +911,7 @@ async function registerTokenOnNova(
 
   // do the registration
   const extraValue = 1000;
-  console.log("going in here");
   if (!deployedContracts.registerTokenNova) {
-    console.log("in here a");
-
     const l1NovaRegistrationTx = await l1Token.registerTokenOnL2(
       {
         l2TokenAddress: novaTokenAddress,
@@ -931,22 +930,16 @@ async function registerTokenOnNova(
     );
 
     //// wait for L2 TXs
-    console.log("in here b");
-
     const l1NovaRegistrationTxReceipt = await L1TransactionReceipt.monkeyPatchWait(
       l1NovaRegistrationTx
     ).wait();
-    console.log("in here c");
     const l1ToNovaMsgs = await l1NovaRegistrationTxReceipt.getL1ToL2Messages(
       novaDeployer.provider!
     );
-    console.log("in here d");
 
     // status should be REDEEMED
     const novaSetTokenTx = await l1ToNovaMsgs[0].waitForStatus();
-    console.log("in here e");
     const novaSetGatewaysTX = await l1ToNovaMsgs[1].waitForStatus();
-    console.log("in here f");
     if (novaSetTokenTx.status != L1ToL2MessageStatus.REDEEMED) {
       throw new Error(
         "Register token L1 to L2 message not redeemed. Status: " + novaSetTokenTx.status.toString()
@@ -1009,7 +1002,7 @@ async function deployAndTransferVestedWallets(
   }
 ) {
   const tokenRecipientsByPoints = path.join(__dirname, "..", VESTED_RECIPIENTS_FILE_NAME);
-  const recipients = loadVestedRecipients(tokenRecipientsByPoints);
+  const recipients = loadRecipients(tokenRecipientsByPoints);
 
   const oneYearInSeconds = 365 * 24 * 60 * 60;
 
@@ -1038,6 +1031,45 @@ async function deployAndTransferVestedWallets(
     deployedContracts.vestedWalletFactory = vestedWalletFactory.address;
   }
 }
+
+async function transferAllocations(
+  initialTokenRecipient: Signer,
+  tokenAddress: string,
+) {
+  // load the file and loop through it
+
+
+  // check that each of the items has been transferred to - we could use a start date for helpers?
+
+
+
+
+  if (!deployedContracts.l2TokenTransferTeam) {
+    // transfer tokens to the team
+    const l2Token = L2ArbitrumToken__factory.connect(tokenAddress, initialTokenRecipient);
+    await (
+      await l2Token.transfer(
+        tokenDistributor.address,
+        parseEther(config.L2_TOKEN_TEAM_ALLOCATION)
+      )
+    ).wait();
+
+    deployedContracts.l2TokenTransferTeam = true;
+  }
+
+  if (!deployedContracts.l2TokenTransferFoundation) {
+    // transfer tokens to the foundation
+    const l2Token = L2ArbitrumToken__factory.connect(l2DeployResult.token, initialTokenRecipient);
+    await (
+      await l2Token.transfer(
+        tokenDistributor.address,
+        parseEther(config.L2_TOKEN_FOUNDATION_ALLOCATION)
+      )
+    ).wait();
+
+    deployedContracts.l2TokenTransferFoundation = true;
+  }
+};
 
 async function deployTokenDistributor(
   arbDeployer: Signer,
@@ -1073,7 +1105,7 @@ async function deployTokenDistributor(
     }
   );
 
-  if (!deployedContracts.l2TokenTransferFunds) {
+  if (!deployedContracts.l2TokenTransferTokenDistributor) {
     // transfer tokens from arbDeployer to the distributor
     const l2Token = L2ArbitrumToken__factory.connect(
       l2DeployResult.token,
@@ -1085,7 +1117,7 @@ async function deployTokenDistributor(
         .transfer(tokenDistributor.address, parseEther(config.L2_NUM_OF_TOKENS_FOR_CLAIMING))
     ).wait();
 
-    deployedContracts.l2TokenTransferFunds = true;
+    deployedContracts.l2TokenTransferTokenDistributor = true;
   }
 
   return tokenDistributor;
