@@ -16,4 +16,4 @@ async function main() {
   );
 }
 
-main().then(() => console.log("Done."));
+main().then(() => console.log("Verification complete."));
