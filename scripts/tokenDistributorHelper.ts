@@ -3,8 +3,6 @@ import { BigNumber, ethers, Signer } from "ethers";
 import { formatEther, formatUnits, parseEther } from "ethers/lib/utils";
 import { TokenDistributor } from "../typechain-types";
 import { ArbGasInfo__factory } from "@arbitrum/sdk/dist/lib/abi/factories/ArbGasInfo__factory";
-import { loadRecipients } from "./vestedWalletsDeployer";
-import path from "path";
 
 export const TOKEN_RECIPIENTS_FILE_NAME = "files/recipients.json";
 const validClaimAmounts: BigNumber[] = [

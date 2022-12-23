@@ -215,13 +215,6 @@ export const verifyDeployment = async () => {
     arbProvider,
     arbOneNetwork
   );
-  await verifyVestedWallets(
-    await loadRecipients(path.join(__dirname, "..", VESTED_RECIPIENTS_FILE_NAME)),
-    arbContracts.vestedWalletFactory,
-    arbContracts.l2Token,
-    arbProvider,
-    deployerConfig
-  );
 
   //// Nova contracts
   if (isDeployingToNova()) {
@@ -721,7 +714,6 @@ export async function verifyTokenDistribution(
     L2_ADDRESS_FOR_TEAM: string;
     L2_NUM_OF_TOKENS_FOR_TEAM: string;
     L2_CLAIM_PERIOD_START: number;
-    L2_NUM_OF_RECIPIENTS: number;
     GET_LOGS_BLOCK_RANGE: number;
   }
 ) {
@@ -746,6 +738,10 @@ export async function verifyTokenDistribution(
   const daoTotal = Object.values(daoRecipients).reduce((a, b) => a.add(b));
 
   // find the initial supply recipient - this is the arb deployer
+  // use index = 1 because
+  // the first transfer is to the contract deployer from 0 address
+  // the second transfer is to the owner AKA the intiial supply recipient 
+  // the third transfer is to the upgrade executor 
   const initialSupplyRecipient = (
     await arbProvider.getLogs({
       ...l2Token.filters.OwnershipTransferred(),
@@ -754,9 +750,9 @@ export async function verifyTokenDistribution(
     })
   )
     .sort((a, b) => a.blockNumber - b.blockNumber)
-    .map(
-      (l) => l2Token.interface.parseLog(l).args as OwnershipTransferredEvent["args"]
-    )[0].newOwner;
+    .map((l) => l2Token.interface.parseLog(l).args as OwnershipTransferredEvent["args"])[1] 
+    
+    .newOwner;
 
   const initSupplyRecipientBalance = await l2Token.balanceOf(initialSupplyRecipient);
   assertNumbersEquals(
@@ -785,7 +781,7 @@ export async function verifyTokenDistribution(
     "Incorrect initial L2Token balance for foundation"
   );
 
-  const teamBalance = await l2Token.balanceOf(config.L2_NUM_OF_TOKENS_FOR_TEAM);
+  const teamBalance = await l2Token.balanceOf(config.L2_ADDRESS_FOR_TEAM);
   assertNumbersEquals(
     teamBalance,
     parseEther(config.L2_NUM_OF_TOKENS_FOR_TEAM),
@@ -1048,7 +1044,6 @@ async function verifyL2TokenDistributor(
     L2_SWEEP_RECEIVER: string;
     L2_CLAIM_PERIOD_START: number;
     L2_CLAIM_PERIOD_END: number;
-    L2_NUM_OF_RECIPIENTS: number;
     GET_LOGS_BLOCK_RANGE: number;
   }
 ) {
@@ -1112,7 +1107,6 @@ async function verifyL2TokenDistributor(
 async function verifyClaimsSetCorrectly(
   l2TokenDistributor: TokenDistributor,
   config: {
-    L2_NUM_OF_RECIPIENTS: number; // CHRIS: TODO: get rid of this - we dont need it
     GET_LOGS_BLOCK_RANGE: number;
   }
 ) {
@@ -1408,6 +1402,7 @@ async function verifyDaoRecipients(
       initialSupplyRecipientAddress,
       dr
     );
+
     const transferLogs = (
       await arbProvider.getLogs({
         ...filter,

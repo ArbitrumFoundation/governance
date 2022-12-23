@@ -115,10 +115,6 @@ export interface DeployerConfig {
    */
   L2_CLAIM_PERIOD_END: number;
   /**
-   * Total number of airdrop recipients
-   */
-  L2_NUM_OF_RECIPIENTS: number;
-  /**
    * Batch size when setting the airdrop recipients in token distributor
    */
   RECIPIENTS_BATCH_SIZE: number;

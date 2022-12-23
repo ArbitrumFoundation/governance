@@ -46,6 +46,7 @@ import {
 import { getDeployersAndConfig as getDeployersAndConfig, isDeployingToNova } from "./providerSetup";
 import {
   TOKEN_RECIPIENTS_FILE_NAME,
+  getRecipientsDataFromContractEvents,
   mapPointsToAmounts,
   setClaimRecipients,
 } from "./tokenDistributorHelper";
@@ -92,6 +93,7 @@ interface DeployProgressCache {
   executorRolesSetOnNova2?: boolean;
   registerTokenArbOne1?: boolean;
   registerTokenArbOne2?: boolean;
+  registerTokenArbOne3?: boolean;
   registerTokenNova?: boolean;
   l2TokenTask1?: boolean;
   l2TokenTask2?: boolean;
@@ -841,7 +843,6 @@ async function registerTokenOnArbOne(
     deployedContracts.registerTokenArbOne1 = true;
   }
   //// register reverse gateway on ArbOne Router
-
   const l1GatewayRouter = L1GatewayRouter__factory.connect(
     await l1ReverseCustomGateway.router(),
     ethDeployer
@@ -886,8 +887,12 @@ async function registerTokenOnArbOne(
     deployedContracts.registerTokenArbOne2 = true;
   }
 
-  // transfer ownership over L1 reverse gateway to L1 executor
-  await (await l1ReverseCustomGateway.connect(ethDeployer).setOwner(l1Executor)).wait();
+  // transfer ownership of L1 reverse gateway to L1 executor
+  if (!deployedContracts.registerTokenArbOne3) {
+    await (await l1ReverseCustomGateway.connect(ethDeployer).setOwner(l1Executor)).wait();
+
+    deployedContracts.registerTokenArbOne3 = true;
+  }
 }
 
 async function registerTokenOnNova(
@@ -1090,7 +1095,7 @@ async function transferDaoAllocations(initialTokenRecipient: Signer, tokenAddres
       toBlock: "latest",
       ...filter,
     });
-
+    
     if (logs.length === 0) {
       // this recipient has not been transferred to yet
       await (await token.transfer(rec, recipients[rec])).wait();
@@ -1117,7 +1122,6 @@ async function deployTokenDistributor(
     L2_SWEEP_RECEIVER: string;
     L2_CLAIM_PERIOD_START: number;
     L2_CLAIM_PERIOD_END: number;
-    L2_NUM_OF_RECIPIENTS: number;
   }
 ): Promise<TokenDistributor> {
   // deploy TokenDistributor
@@ -1164,7 +1168,6 @@ async function initTokenDistributor(
   arbDeployer: Signer,
   l2ExecutorAddress: string,
   config: {
-    L2_NUM_OF_RECIPIENTS: number;
     RECIPIENTS_BATCH_SIZE: number;
     BASE_L2_GAS_PRICE_LIMIT: number;
     BASE_L1_GAS_PRICE_LIMIT: number;
@@ -1180,26 +1183,33 @@ async function initTokenDistributor(
   }
 
   // set claim recipients
-  const numOfRecipientsSet = await setClaimRecipients(
-    tokenDistributor,
-    arbDeployer,
-    config,
-    previousStartBlock
-  );
+  await setClaimRecipients(tokenDistributor, arbDeployer, config, previousStartBlock);
 
   // we store end block when all recipients batches are set
   deployedContracts.distributorSetRecipientsEndBlock = await arbDeployer.provider!.getBlockNumber();
 
+  const blockNow = await arbDeployer.provider!.getBlockNumber();
+  const numOfRecipientsSet = Object.keys(
+    await getRecipientsDataFromContractEvents(
+      tokenDistributor,
+      previousStartBlock || 0,
+      blockNow,
+      config
+    )
+  ).length;
+
   // check num of recipients and claimable amount before transferring ownership
-  if (numOfRecipientsSet != config.L2_NUM_OF_RECIPIENTS) {
-    throw new Error("Incorrect number of recipients set: " + numOfRecipientsSet);
-  }
   const totalClaimable = await tokenDistributor.totalClaimable();
   const tokenRecipientsByPoints = require("../" + TOKEN_RECIPIENTS_FILE_NAME);
   const { tokenAmounts } = mapPointsToAmounts(tokenRecipientsByPoints);
   const recipientTotals = tokenAmounts.reduce((a, b) => a.add(b));
   if (!totalClaimable.eq(recipientTotals)) {
     throw new Error("Incorrect totalClaimable amount of tokenDistributor: " + totalClaimable);
+  }
+  if (numOfRecipientsSet != tokenAmounts.length) {
+    throw new Error(
+      `Incorrect number of recipients set: ${numOfRecipientsSet}/${tokenAmounts.length}`
+    );
   }
 
   if (!deployedContracts.l2TokenTransferOwnership) {
