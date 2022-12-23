@@ -103,10 +103,6 @@ export interface DeployerConfig {
    */
   L2_NUM_OF_TOKENS_FOR_TEAM: string;
   /**
-   * Num of tokens to be sent to distributor (based on sum of claimable tokens in JSON file)
-   */
-  L2_NUM_OF_TOKENS_FOR_CLAIMING: string;
-  /**
    * Receiver of the airdrop leftovers
    */
   L2_SWEEP_RECEIVER: string;

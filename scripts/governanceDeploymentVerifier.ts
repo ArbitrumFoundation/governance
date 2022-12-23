@@ -45,8 +45,10 @@ import { L1CustomGateway__factory } from "@arbitrum/sdk/dist/lib/abi/factories/L
 import { L1GatewayRouter__factory } from "@arbitrum/sdk/dist/lib/abi/factories/L1GatewayRouter__factory";
 import { Provider } from "@ethersproject/providers";
 import {
+  TOKEN_RECIPIENTS_FILE_NAME,
   getRecipientsDataFromContractEvents,
   getRecipientsDataFromFile,
+  mapPointsToAmounts,
 } from "./tokenDistributorHelper";
 import dotenv from "dotenv";
 import { Recipients, loadRecipients } from "./vestedWalletsDeployer";
@@ -701,7 +703,6 @@ async function verifyL2Token(
   config: {
     L2_TOKEN_INITIAL_SUPPLY: string;
     L2_NUM_OF_TOKENS_FOR_TREASURY: string;
-    L2_NUM_OF_TOKENS_FOR_CLAIMING: string;
     L2_ADDRESS_FOR_FOUNDATION: string;
     L2_NUM_OF_TOKENS_FOR_FOUNDATION: string;
     L2_ADDRESS_FOR_TEAM: string;
@@ -744,9 +745,12 @@ async function verifyL2Token(
     parseEther(config.L2_NUM_OF_TOKENS_FOR_TREASURY),
     "Incorrect initial L2Token balance for ArbTreasury"
   );
+  const tokenRecipientsByPoints = require("../" + TOKEN_RECIPIENTS_FILE_NAME);
+  const { tokenAmounts } = mapPointsToAmounts(tokenRecipientsByPoints);
+  const recipientTotals = tokenAmounts.reduce((a, b) => a.add(b));
   assertNumbersEquals(
     tokenDistributorBalance,
-    parseEther(config.L2_NUM_OF_TOKENS_FOR_CLAIMING),
+    recipientTotals,
     "Incorrect initial L2Token balance for TokenDistributor"
   );
   const foundationBalance = await l2Token.balanceOf(config.L2_ADDRESS_FOR_FOUNDATION);
@@ -962,7 +966,6 @@ async function verifyL2TokenDistributor(
   l2CoreGovernor: L2ArbitrumGovernor,
   arbProvider: Provider,
   config: {
-    L2_NUM_OF_TOKENS_FOR_CLAIMING: string;
     L2_SWEEP_RECEIVER: string;
     L2_CLAIM_PERIOD_START: number;
     L2_CLAIM_PERIOD_END: number;
@@ -978,14 +981,17 @@ async function verifyL2TokenDistributor(
   );
 
   //// check token balances
+  const tokenRecipientsByPoints = require("../" + TOKEN_RECIPIENTS_FILE_NAME);
+  const { tokenAmounts } = mapPointsToAmounts(tokenRecipientsByPoints);
+  const recipientTotals = tokenAmounts.reduce((a, b) => a.add(b));
   assertNumbersEquals(
     await l2Token.balanceOf(l2TokenDistributor.address),
-    parseEther(config.L2_NUM_OF_TOKENS_FOR_CLAIMING),
+    recipientTotals,
     "Incorrect initial L2Token balance for TokenDistributor"
   );
   assertNumbersEquals(
     await l2TokenDistributor.totalClaimable(),
-    parseEther(config.L2_NUM_OF_TOKENS_FOR_CLAIMING),
+    recipientTotals,
     "Incorrect totalClaimable amount for TokenDistributor"
   );
 

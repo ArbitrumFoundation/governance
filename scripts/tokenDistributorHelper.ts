@@ -287,7 +287,6 @@ export function checkConfigTotals(config: {
   L2_NUM_OF_TOKENS_FOR_TREASURY: string;
   L2_NUM_OF_TOKENS_FOR_FOUNDATION: string;
   L2_NUM_OF_TOKENS_FOR_TEAM: string;
-  L2_NUM_OF_TOKENS_FOR_CLAIMING: string;
   TOKEN_RECIPIENTS_FILE_NAME: string;
   VESTED_RECIPIENTS_FILE_NAME: string;
   DAO_RECIPIENTS_FILE_NAME: string;

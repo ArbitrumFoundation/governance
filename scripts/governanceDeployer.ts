@@ -1113,7 +1113,6 @@ async function deployTokenDistributor(
     L2_SWEEP_RECEIVER: string;
     L2_CLAIM_PERIOD_START: number;
     L2_CLAIM_PERIOD_END: number;
-    L2_NUM_OF_TOKENS_FOR_CLAIMING: string;
     L2_NUM_OF_RECIPIENTS: number;
   }
 ): Promise<TokenDistributor> {
@@ -1143,13 +1142,12 @@ async function deployTokenDistributor(
     // transfer tokens from arbDeployer to the distributor
     const l2Token = L2ArbitrumToken__factory.connect(
       l2DeployResult.token,
-      arbInitialSupplyRecipient.provider!
+      arbInitialSupplyRecipient
     );
-    await (
-      await l2Token
-        .connect(arbInitialSupplyRecipient)
-        .transfer(tokenDistributor.address, parseEther(config.L2_NUM_OF_TOKENS_FOR_CLAIMING))
-    ).wait();
+    const tokenRecipientsByPoints = require("../" + TOKEN_RECIPIENTS_FILE_NAME);
+    const { tokenAmounts } = mapPointsToAmounts(tokenRecipientsByPoints);
+    const recipientTotals = tokenAmounts.reduce((a, b) => a.add(b));
+    await (await l2Token.transfer(tokenDistributor.address, recipientTotals)).wait();
 
     deployedContracts.l2TokenTransferTokenDistributor = true;
   }
@@ -1163,7 +1161,6 @@ async function initTokenDistributor(
   l2ExecutorAddress: string,
   config: {
     L2_NUM_OF_RECIPIENTS: number;
-    L2_NUM_OF_TOKENS_FOR_CLAIMING: string;
     RECIPIENTS_BATCH_SIZE: number;
     BASE_L2_GAS_PRICE_LIMIT: number;
     BASE_L1_GAS_PRICE_LIMIT: number;
@@ -1194,7 +1191,10 @@ async function initTokenDistributor(
     throw new Error("Incorrect number of recipients set: " + numOfRecipientsSet);
   }
   const totalClaimable = await tokenDistributor.totalClaimable();
-  if (!totalClaimable.eq(parseEther(config.L2_NUM_OF_TOKENS_FOR_CLAIMING))) {
+  const tokenRecipientsByPoints = require("../" + TOKEN_RECIPIENTS_FILE_NAME);
+  const { tokenAmounts } = mapPointsToAmounts(tokenRecipientsByPoints);
+  const recipientTotals = tokenAmounts.reduce((a, b) => a.add(b));
+  if (!totalClaimable.eq(recipientTotals)) {
     throw new Error("Incorrect totalClaimable amount of tokenDistributor: " + totalClaimable);
   }
 
