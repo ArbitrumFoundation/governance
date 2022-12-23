@@ -1096,7 +1096,6 @@ async function initTokenDistributor(
   config: {
     L2_NUM_OF_RECIPIENTS: number;
     L2_NUM_OF_TOKENS_FOR_CLAIMING: string;
-    L2_NUM_OF_RECIPIENT_BATCHES_ALREADY_SET: number;
     RECIPIENTS_BATCH_SIZE: number;
     BASE_L2_GAS_PRICE_LIMIT: number;
     BASE_L1_GAS_PRICE_LIMIT: number;
