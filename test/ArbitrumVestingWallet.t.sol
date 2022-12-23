@@ -31,7 +31,6 @@ contract ArbitrumVestingWalletTest is Test {
     address someRando = address(123);
     address tdDelegate = address(127);
 
-
     function deployDeps() public returns (L2ArbitrumToken, L2ArbitrumGovernor, TokenDistributor) {
         address token = TestUtil.deployProxy(address(new L2ArbitrumToken()));
         L2ArbitrumToken(token).initialize(l1Token, initialSupply, owner);

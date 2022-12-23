@@ -617,6 +617,7 @@ async function initL2Governance(
     L2_MIN_PERIOD_AFTER_QUORUM: number;
     L2_9_OF_12_SECURITY_COUNCIL: string;
     ARBITRUM_DAO_CONSTITUTION_HASH: string;
+    L2_TREASURY_TIMELOCK_DELAY: number
   }
 ) {
   if (!deployedContracts.l2CoreGoverner) {
@@ -638,6 +639,7 @@ async function initL2Governance(
         _l2InitialSupplyRecipient: arbInitialSupplyRecipientAddr,
         _l2EmergencySecurityCouncil: config.L2_9_OF_12_SECURITY_COUNCIL,
         _constitutionHash: config.ARBITRUM_DAO_CONSTITUTION_HASH,
+        _l2TreasuryMinTimelockDelay: config.L2_TREASURY_TIMELOCK_DELAY
       })
     ).wait();
 

@@ -55,6 +55,10 @@ export interface DeployerConfig {
    * The number of blocks that are required to pass since a proposal reaches quorum until its voting period ends
    */
   L2_MIN_PERIOD_AFTER_QUORUM: number;
+  /**
+   * Minimum delay for an operation to become valid
+   */
+  L2_TREASURY_TIMELOCK_DELAY: number;
 
   ////////////////
   ///// Nova /////
@@ -99,9 +103,6 @@ export interface DeployerConfig {
    */
   L2_NUM_OF_RECIPIENTS: number;
   /**
-<<<<<<< HEAD
-   * Keccak256 hash of the initial (i.e., at deploy time) constitution text
-=======
    * Num of airdrop recipient batches that were successfully set, by default 0. If deployer script fails
    * while setting recipient batches, this value can be updated so in the next run deployer scripts continues
    * setting recipients from the right batch (where it failed the last time)
@@ -125,7 +126,6 @@ export interface DeployerConfig {
   GET_LOGS_BLOCK_RANGE: number;
   /**
    * Keccak256 hash of the  initial (i.e., at deploy time) constitution text
->>>>>>> main
    */
   ARBITRUM_DAO_CONSTITUTION_HASH: string;
 }

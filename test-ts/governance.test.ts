@@ -312,7 +312,8 @@ describe("Governor", function () {
           _minPeriodAfterQuorum: 1,
           _l2InitialSupplyRecipient: l2SignerAddr,
           _l2EmergencySecurityCouncil: nineTwelthSecurityCouncil.address,
-          _constitutionHash: arbDaoConstitutionHash
+          _constitutionHash: arbDaoConstitutionHash,
+          _l2TreasuryMinTimelockDelay: l2TimeLockDelay
         },
 
         { gasLimit: 30000000 }

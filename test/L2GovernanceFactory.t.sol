@@ -39,6 +39,7 @@ contract L2GovernanceFactoryTest is Test {
     address l2InitialSupplyRecipient = address(456);
 
     bytes32 constitutionHash = bytes32("0x0123");
+    uint256 l2TreasuryMinTimelockDelay = 87;
 
     DeployCoreParams deployCoreParams = DeployCoreParams({
         _l2MinTimelockDelay: l2MinTimelockDelay,
@@ -53,7 +54,8 @@ contract L2GovernanceFactoryTest is Test {
         _l2NonEmergencySecurityCouncil: l2NonEmergencySecurityCouncil,
         _l2InitialSupplyRecipient: l2InitialSupplyRecipient,
         _l2EmergencySecurityCouncil: l2EmergencyCouncil,
-        _constitutionHash: constitutionHash
+        _constitutionHash: constitutionHash,
+        _l2TreasuryMinTimelockDelay: l2TreasuryMinTimelockDelay
     });
 
     function deploy()
@@ -111,6 +113,44 @@ contract L2GovernanceFactoryTest is Test {
             l2GovernanceFactory,
             dc.arbitrumDAOConstitution
         );
+    }
+
+    function deployAndSteps()
+        internal
+        returns (DeployedContracts memory, DeployedTreasuryContracts memory)
+    {
+        address owner = address(232_323);
+        address _coreTimelockLogic = address(new ArbitrumTimelock());
+        address _coreGovernorLogic = address(new L2ArbitrumGovernor());
+        address _treasuryTimelockLogic = address(new ArbitrumTimelock());
+        address _treasuryLogic = address(new FixedDelegateErc20Wallet());
+        address _treasuryGovernorLogic = address(new L2ArbitrumGovernor());
+        address _l2TokenLogic = address(new L2ArbitrumToken());
+        address _upgradeExecutorLogic = address(new UpgradeExecutor());
+
+        vm.prank(owner);
+        L2GovernanceFactory l2GovernanceFactory = new L2GovernanceFactory(
+            _coreTimelockLogic,
+            _coreGovernorLogic,
+            _treasuryTimelockLogic,
+            _treasuryLogic,
+            _treasuryGovernorLogic,
+            _l2TokenLogic,
+            _upgradeExecutorLogic
+        );
+
+        // owner can't skip to step 3
+        vm.startPrank(owner);
+        (DeployedContracts memory contracts, DeployedTreasuryContracts memory treasuryContracts) =
+            l2GovernanceFactory.deployStep1(deployCoreParams);
+        vm.stopPrank();
+
+        // owner shoud successfully carrout out step 3
+        vm.startPrank(owner);
+        l2GovernanceFactory.deployStep3(aliasedL1Timelock);
+        vm.stopPrank();
+
+        return (contracts, treasuryContracts);
     }
 
     function testDeploySteps() public {
@@ -252,7 +292,11 @@ contract L2GovernanceFactoryTest is Test {
         assertEq(token.totalSupply(), l2TokenInitialSupply, "token.totalSupply()");
 
         assertEq(coreTimelock.getMinDelay(), l2MinTimelockDelay, "coreTimelock.getMinDelay()");
-        assertEq(treasuryTimelock.getMinDelay(), 0, "treasuryTimelock.minDelay() zero");
+        assertEq(
+            treasuryTimelock.getMinDelay(),
+            l2TreasuryMinTimelockDelay,
+            "treasuryTimelock.minDelay() zero"
+        );
 
         assertEq(gov.votingPeriod(), votingPeriod, "gov.votingPeriod()");
         assertEq(treasuryGov.votingPeriod(), votingPeriod, "treasuryGov.votingPeriod()");
@@ -384,5 +428,74 @@ contract L2GovernanceFactoryTest is Test {
             executor.hasRole(executor.ADMIN_ROLE(), address(l2GovernanceFactory)),
             "l2GovernanceFactory admin role is revoked"
         );
+    }
+
+    function testUpgraderCanCancel() public {
+        (DeployedContracts memory dc, DeployedTreasuryContracts memory dtc) = deployAndSteps();
+
+        L2ArbitrumGovernor l2ArbitrumGovernor = dc.coreGov;
+        L2ArbitrumToken token = dc.token;
+        ArbitrumTimelock timelock = dc.coreTimelock;
+        UpgradeExecutor executor = dc.executor;
+
+        address[] memory targets = new address[](1);
+        targets[0] = address(629);
+        // just some test data - it will never be executed
+        bytes[] memory calldatas = new bytes[](1);
+        calldatas[0] = abi.encodeWithSelector(l2ArbitrumGovernor.setProposalThreshold.selector, 2);
+
+        uint256[] memory values = new uint256[](1);
+        values[0] = 0;
+
+        string memory propString = "test prop";
+
+        vm.startPrank(address(executor));
+        // set the proposal threshold to 0 so we can make a proposal
+        l2ArbitrumGovernor.relay(
+            address(l2ArbitrumGovernor),
+            0,
+            abi.encodeWithSelector(l2ArbitrumGovernor.setProposalThreshold.selector, 0)
+        );
+
+        vm.stopPrank();
+
+        l2ArbitrumGovernor.propose(targets, values, calldatas, propString);
+
+        vm.prank(l2InitialSupplyRecipient);
+        token.delegate(l2InitialSupplyRecipient);
+
+        uint256 propId = l2ArbitrumGovernor.hashProposal(
+            targets, values, calldatas, keccak256(bytes(propString))
+        );
+
+        uint256 propSnapshot = l2ArbitrumGovernor.proposalSnapshot(propId);
+        vm.roll(propSnapshot + 1);
+
+        vm.prank(l2InitialSupplyRecipient);
+        l2ArbitrumGovernor.castVote(propId, 1);
+
+        (uint256 a, uint256 b, uint256 c) = l2ArbitrumGovernor.proposalVotes(propId);
+
+        uint256 propDeadline = l2ArbitrumGovernor.proposalDeadline(propId);
+
+        vm.roll(propDeadline + 1);
+
+        l2ArbitrumGovernor.queue(targets, values, calldatas, keccak256(bytes(propString)));
+
+        bytes32 opHash = timelock.hashOperationBatch(
+            targets, values, calldatas, bytes32(0), keccak256(bytes(propString))
+        );
+
+        assertEq(timelock.isOperation(opHash), true, "Operation exists");
+
+        vm.startPrank(address(executor));
+        // use relay to cancel the proposal on the timelock
+        l2ArbitrumGovernor.relay(
+            address(timelock), 0, abi.encodeWithSelector(timelock.cancel.selector, opHash)
+        );
+
+        vm.stopPrank();
+
+        assertEq(timelock.isOperation(opHash), false, "Operation removed");
     }
 }
