@@ -850,7 +850,7 @@ async function verifyL2TreasuryTimelock(
   l2ProxyAdmin: ProxyAdmin,
   arbProvider: Provider,
   config: {
-    L2_TREASURY_TIMELOCK_DELAY: string
+    L2_TREASURY_TIMELOCK_DELAY: number
   }
 ) {
   //// check proxy admin
