@@ -52,6 +52,7 @@ import {
 } from "./tokenDistributorHelper";
 import dotenv from "dotenv";
 import { Recipients, loadRecipients } from "./vestedWalletsDeployer";
+import { assert, assertEquals, assertNumbersEquals, getProxyOwner } from "./testUtils";
 import { WalletCreatedEvent } from "../typechain-types/src/ArbitrumVestingWalletFactory.sol/ArbitrumVestingWalletsFactory";
 import path from "path";
 import { TransferEvent } from "../typechain-types/src/Util.sol/IERC20VotesUpgradeable";
@@ -115,8 +116,8 @@ export const verifyDeployment = async () => {
     l1Contracts["l1ReverseCustomGatewayProxy"],
     arbContracts["l2ReverseCustomGatewayProxy"],
     l1Contracts["l1ProxyAdmin"],
+    l1Contracts["l1Executor"],
     ethProvider,
-    ethDeployerAddress,
     arbOneNetwork
   );
 
@@ -179,7 +180,8 @@ export const verifyDeployment = async () => {
     arbContracts["l2Executor"],
     arbContracts["l2GovernanceFactory"],
     arbContracts["l2ProxyAdmin"],
-    arbProvider
+    arbProvider,
+    deployerConfig
   );
   await verifyL2ArbTreasury(
     arbContracts["l2ArbTreasury"],
@@ -434,8 +436,8 @@ async function verifyL1ReverseGateway(
   l1ReverseGateway: L1ForceOnlyReverseCustomGateway,
   l2ReverseGateway: L2ReverseCustomGateway,
   l1ProxyAdmin: ProxyAdmin,
+  l1Executor: UpgradeExecutor,
   ethProvider: Provider,
-  ethDeployerAddress: string,
   arbOneNetwork: L2Network
 ) {
   //// check proxy admin
@@ -448,8 +450,8 @@ async function verifyL1ReverseGateway(
   // check owner
   assertEquals(
     await l1ReverseGateway.owner(),
-    ethDeployerAddress,
-    "EthDeployer should be l1ReverseGateway's owner"
+    l1Executor.address,
+    "L1Executor should be l1ReverseGateway's owner"
   );
 
   /// check initialization params
@@ -976,7 +978,10 @@ async function verifyL2TreasuryTimelock(
   l2UpgradeExecutor: UpgradeExecutor,
   l2GovernanceFactory: L2GovernanceFactory,
   l2ProxyAdmin: ProxyAdmin,
-  arbProvider: Provider
+  arbProvider: Provider,
+  config: {
+    L2_TREASURY_TIMELOCK_DELAY: number
+  }
 ) {
   //// check proxy admin
   assertEquals(
@@ -988,7 +993,7 @@ async function verifyL2TreasuryTimelock(
   //// check initialization params are correctly set
   assertNumbersEquals(
     await l2TreasuryTimelock.getMinDelay(),
-    BigNumber.from(0),
+    BigNumber.from(config.L2_TREASURY_TIMELOCK_DELAY),
     "Incorrect min delay set for L2 treasury governor"
   );
 
@@ -1551,72 +1556,6 @@ function loadNovaContracts(novaProvider: Provider) {
       novaProvider
     ),
   };
-}
-
-/**
- * Gets the proxy owner by reading storage
- *
- * @param contractAddress
- * @param provider
- * @returns
- */
-async function getProxyOwner(contractAddress: string, provider: Provider) {
-  // gets address in format like 0x000000000000000000000000a898b332e65d0cc9cb538495ff145983806d8453
-  const ownerStorageValue = await provider.getStorageAt(
-    contractAddress,
-    "0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103"
-  );
-
-  if (!ownerStorageValue) {
-    return "";
-  }
-
-  // remove execess bytes -> 0xa898b332e65d0cc9cb538495ff145983806d8453
-  const formatAddress = ownerStorageValue.substring(0, 2) + ownerStorageValue.substring(26);
-
-  // return address as checksum address -> 0xA898b332e65D0cc9CB538495FF145983806D8453
-  return ethers.utils.getAddress(formatAddress);
-}
-
-/**
- * Simple assertion function for strings
- *
- * @param actual
- * @param expected
- * @param message
- */
-async function assertEquals(actual: string, expected: string, message: string) {
-  if (actual.toLowerCase() != expected.toLowerCase()) {
-    console.error("Actual: ", actual);
-    console.error("Expected: ", expected);
-    throw new Error(message);
-  }
-}
-
-/**
- * Simple assertion function for BigNumbers
- *
- * @param actual
- * @param expected
- * @param message
- */
-async function assertNumbersEquals(actual: BigNumber, expected: BigNumber, message: string) {
-  if (!actual.eq(expected)) {
-    console.error("Actual: ", actual.toString());
-    console.error("Expected: ", expected.toString());
-    throw new Error(message);
-  }
-}
-
-/**
- * Simple assertion function
- * @param condition
- * @param message
- */
-async function assert(condition: Boolean, message: string) {
-  if (!condition) {
-    throw new Error(message);
-  }
 }
 
 async function main() {
