@@ -197,6 +197,8 @@ export const getDeployersAndConfig = async (): Promise<{
 }> => {
   // make sure we were able to load the env vars
   checkEnvVars(envVars);
+  
+  console.log("Environment variables", envVars)
 
   const daoRecipients = loadDaoRecipients();
   const vestedRecipients = loadVestedRecipients();
