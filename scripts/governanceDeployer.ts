@@ -46,7 +46,6 @@ import {
 import { getDeployersAndConfig as getDeployersAndConfig, isDeployingToNova } from "./providerSetup";
 import {
   TOKEN_RECIPIENTS_FILE_NAME,
-  checkConfigTotals,
   mapPointsToAmounts,
   setClaimRecipients,
 } from "./tokenDistributorHelper";
@@ -1202,6 +1201,49 @@ async function initTokenDistributor(
     // transfer ownership to L2 UpgradeExecutor
     await (await tokenDistributor.transferOwnership(l2ExecutorAddress)).wait();
     deployedContracts.l2TokenTransferOwnership = true;
+  }
+}
+
+/**
+ * Sanity check token supply totals
+ * @param config
+ */
+export function checkConfigTotals(config: {
+  L2_TOKEN_INITIAL_SUPPLY: string;
+  L2_NUM_OF_TOKENS_FOR_TREASURY: string;
+  L2_NUM_OF_TOKENS_FOR_FOUNDATION: string;
+  L2_NUM_OF_TOKENS_FOR_TEAM: string;
+  TOKEN_RECIPIENTS_FILE_NAME: string;
+  VESTED_RECIPIENTS_FILE_NAME: string;
+  DAO_RECIPIENTS_FILE_NAME: string;
+}) {
+  const totalSupply = parseEther(config.L2_TOKEN_INITIAL_SUPPLY);
+  const treasuryVal = parseEther(config.L2_NUM_OF_TOKENS_FOR_TREASURY);
+  const foundationVal = parseEther(config.L2_NUM_OF_TOKENS_FOR_FOUNDATION);
+  const teamVal = parseEther(config.L2_NUM_OF_TOKENS_FOR_TEAM);
+
+  const claimPoints = require("../" + config.TOKEN_RECIPIENTS_FILE_NAME);
+  const { tokenAmounts } = mapPointsToAmounts(claimPoints);
+  const claimtotal = tokenAmounts.reduce((a, b) => a.add(b));
+
+  const vestedFilePath = path.join(__dirname, "..", config.VESTED_RECIPIENTS_FILE_NAME);
+  const vestedRecipients = loadRecipients(vestedFilePath);
+  const vestedTotal = Object.values(vestedRecipients).reduce((a, b) => a.add(b));
+
+  const tokenRecipientsByPoints = path.join(__dirname, "..", config.DAO_RECIPIENTS_FILE_NAME);
+  const daoRecipients = loadRecipients(tokenRecipientsByPoints);
+  const daoTotal = Object.values(daoRecipients).reduce((a, b) => a.add(b));
+
+  const distributionTotals = treasuryVal
+    .add(foundationVal)
+    .add(teamVal)
+    .add(claimtotal)
+    .add(vestedTotal)
+    .add(daoTotal);
+  if (!distributionTotals.eq(totalSupply)) {
+    throw new Error(
+      `Unepected distribution total: ${distributionTotals.toString()} ${totalSupply.toString()}`
+    );
   }
 }
 

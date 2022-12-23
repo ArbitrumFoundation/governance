@@ -1,4 +1,4 @@
-import { BigNumber, ethers } from "ethers";
+import { BigNumber, Signer, ethers } from "ethers";
 import {
   ArbitrumDAOConstitution,
   ArbitrumDAOConstitution__factory,
@@ -54,12 +54,15 @@ import dotenv from "dotenv";
 import { Recipients, loadRecipients } from "./vestedWalletsDeployer";
 import { WalletCreatedEvent } from "../typechain-types/src/ArbitrumVestingWalletFactory.sol/ArbitrumVestingWalletsFactory";
 import path from "path";
+import { TransferEvent } from "../typechain-types/src/Util.sol/IERC20VotesUpgradeable";
+import { OwnershipTransferredEvent } from "../typechain-types/src/L2ArbitrumToken";
 
 dotenv.config();
 
 // JSON file which contains all the deployed contract addresses
 const DEPLOYED_CONTRACTS_FILE_NAME = "deployedContracts.json";
 const VESTED_RECIPIENTS_FILE_NAME = "files/vestedRecipients.json";
+const DAO_RECIPIENTS_FILE_NAME = "files/daoRecipients.json";
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
 /**
@@ -685,6 +688,97 @@ async function verifyL2UpgradeExecutor(
   );
 }
 
+async function verifyTokenDistribution(
+  l2Token: L2ArbitrumToken,
+  arbTreasury: FixedDelegateErc20Wallet,
+  l1Token: L1ArbitrumToken,
+  l2Executor: UpgradeExecutor,
+  l2ProxyAdmin: ProxyAdmin,
+  l2TokenDistributor: TokenDistributor,
+  vestedWalletFactory: ArbitrumVestingWalletsFactory,
+  arbProvider: Provider,
+  ethProvider: Provider,
+  config: {
+    L2_TOKEN_INITIAL_SUPPLY: string;
+    L2_NUM_OF_TOKENS_FOR_TREASURY: string;
+    L2_ADDRESS_FOR_FOUNDATION: string;
+    L2_NUM_OF_TOKENS_FOR_FOUNDATION: string;
+    L2_ADDRESS_FOR_TEAM: string;
+    L2_NUM_OF_TOKENS_FOR_TEAM: string;
+    L2_CLAIM_PERIOD_START: number;
+  }
+) {
+  assertNumbersEquals(
+    await l2Token.totalSupply(),
+    ethers.utils.parseEther(config.L2_TOKEN_INITIAL_SUPPLY),
+    "L2Token has incorrect total supply"
+  );
+
+  const arbTreasuryBalance = await l2Token.balanceOf(arbTreasury.address);
+  assertNumbersEquals(
+    arbTreasuryBalance,
+    parseEther(config.L2_NUM_OF_TOKENS_FOR_TREASURY),
+    "Incorrect initial L2Token balance for ArbTreasury"
+  );
+
+  const vestingRecipients = loadRecipients(path.join(__dirname, "..", VESTED_RECIPIENTS_FILE_NAME));
+  const vestingTotal = Object.values(vestingRecipients).reduce((a, b) => a.add(b));
+  await verifyVestedWallets(vestingRecipients, vestedWalletFactory, l2Token, arbProvider, config);
+
+  const daoRecipients = loadRecipients(path.join(__dirname, "..", DAO_RECIPIENTS_FILE_NAME));
+  const daoTotal = Object.values(daoRecipients).reduce((a, b) => a.add(b));
+
+  // find the initial supply recipient - this is the arb deployer
+  const initialSupplyRecipient = (
+    await arbProvider.getLogs({
+      ...l2Token.filters.OwnershipTransferred(),
+      fromBlock: 0,
+      toBlock: "latest",
+    })
+  )
+    .sort((a, b) => a.blockNumber - b.blockNumber)
+    .map(
+      (l) => l2Token.interface.parseLog(l).args as OwnershipTransferredEvent["args"]
+    )[0].newOwner;
+
+  await verifyDaoRecipients(initialSupplyRecipient, daoRecipients, l2Token, arbProvider);
+
+  const tokenRecipientsByPoints = require("../" + TOKEN_RECIPIENTS_FILE_NAME);
+  const { tokenAmounts } = mapPointsToAmounts(tokenRecipientsByPoints);
+  const recipientTotals = tokenAmounts.reduce((a, b) => a.add(b));
+  const tokenDistributorBalance = await l2Token.balanceOf(l2TokenDistributor.address);
+  assertNumbersEquals(
+    tokenDistributorBalance,
+    recipientTotals,
+    "Incorrect initial L2Token balance for TokenDistributor"
+  );
+
+  const foundationBalance = await l2Token.balanceOf(config.L2_ADDRESS_FOR_FOUNDATION);
+  assertNumbersEquals(
+    foundationBalance,
+    parseEther(config.L2_NUM_OF_TOKENS_FOR_FOUNDATION),
+    "Incorrect initial L2Token balance for foundation"
+  );
+
+  const teamBalance = await l2Token.balanceOf(config.L2_NUM_OF_TOKENS_FOR_TEAM);
+  assertNumbersEquals(
+    teamBalance,
+    parseEther(config.L2_NUM_OF_TOKENS_FOR_TEAM),
+    "Incorrect initial L2Token balance for team"
+  );
+
+  assertNumbersEquals(
+    arbTreasuryBalance
+      .add(tokenDistributorBalance)
+      .add(vestingTotal)
+      .add(foundationBalance)
+      .add(teamBalance)
+      .add(daoTotal),
+    await l2Token.totalSupply(),
+    "Invalid total distribution"
+  );
+}
+
 /**
  * Verify:
  * - initialization params are correctly set
@@ -736,41 +830,50 @@ async function verifyL2Token(
   );
 
   // check balances
-  const arbTreasuryBalance = await l2Token.balanceOf(arbTreasury.address);
-  const tokenDistributorBalance = await l2Token.balanceOf(l2TokenDistributor.address);
+
   const vestingRecipients = loadRecipients(path.join(__dirname, "..", VESTED_RECIPIENTS_FILE_NAME));
   const vestingTotal = Object.values(vestingRecipients).reduce((a, b) => a.add(b));
+
+  const arbTreasuryBalance = await l2Token.balanceOf(arbTreasury.address);
   assertNumbersEquals(
     arbTreasuryBalance,
     parseEther(config.L2_NUM_OF_TOKENS_FOR_TREASURY),
     "Incorrect initial L2Token balance for ArbTreasury"
   );
+  const daoRecipients = loadRecipients(path.join(__dirname, "..", DAO_RECIPIENTS_FILE_NAME));
+  const daoTotal = Object.values(daoRecipients).reduce((a, b) => a.add(b));
+
   const tokenRecipientsByPoints = require("../" + TOKEN_RECIPIENTS_FILE_NAME);
   const { tokenAmounts } = mapPointsToAmounts(tokenRecipientsByPoints);
   const recipientTotals = tokenAmounts.reduce((a, b) => a.add(b));
+  const tokenDistributorBalance = await l2Token.balanceOf(l2TokenDistributor.address);
   assertNumbersEquals(
     tokenDistributorBalance,
     recipientTotals,
     "Incorrect initial L2Token balance for TokenDistributor"
   );
+
   const foundationBalance = await l2Token.balanceOf(config.L2_ADDRESS_FOR_FOUNDATION);
   assertNumbersEquals(
     foundationBalance,
     parseEther(config.L2_NUM_OF_TOKENS_FOR_FOUNDATION),
     "Incorrect initial L2Token balance for foundation"
   );
+
   const teamBalance = await l2Token.balanceOf(config.L2_NUM_OF_TOKENS_FOR_TEAM);
   assertNumbersEquals(
     teamBalance,
     parseEther(config.L2_NUM_OF_TOKENS_FOR_TEAM),
     "Incorrect initial L2Token balance for team"
   );
+
   assertNumbersEquals(
     arbTreasuryBalance
       .add(tokenDistributorBalance)
       .add(vestingTotal)
       .add(foundationBalance)
-      .add(teamBalance),
+      .add(teamBalance)
+      .add(daoTotal),
     await l2Token.totalSupply(),
     "Invalid total distribution"
   );
@@ -1305,6 +1408,48 @@ async function verifyVestedWallets(
       duration,
       BigNumber.from(oneYearInSeconds * 3),
       "Invalid vesting duration time"
+    );
+  }
+}
+
+/**
+ * Verify:
+ * - All dao recipients recieved a transfer of the correct amount
+ */
+async function verifyDaoRecipients(
+  initialSupplyRecipientAddress: string,
+  daoRecipients: Recipients,
+  l2Token: L2ArbitrumToken,
+  arbProvider: Provider
+) {
+  for (const dr of Object.keys(daoRecipients)) {
+    const filter = l2Token.filters["Transfer(address,address,uint256)"](
+      initialSupplyRecipientAddress,
+      dr
+    );
+    const transferLogs = (
+      await arbProvider.getLogs({
+        ...filter,
+        fromBlock: 0,
+        toBlock: "latest",
+      })
+    ).map((l) => {
+      return l2Token.interface.parseLog(l).args as TransferEvent["args"];
+    });
+
+    assertNumbersEquals(
+      BigNumber.from(transferLogs.length),
+      BigNumber.from(1),
+      `Too many logs: ${transferLogs}`
+    );
+
+    const tLog = transferLogs[0];
+    const tokenBalance = await l2Token.balanceOf(tLog.to);
+
+    assertNumbersEquals(
+      daoRecipients[dr],
+      tokenBalance,
+      "Dao recipient amount not equal token balance"
     );
   }
 }
