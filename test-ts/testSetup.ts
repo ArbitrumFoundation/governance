@@ -204,8 +204,7 @@ export const testSetup = async (): Promise<{
   const { l1Network, l1Provider, l2Network, l2Provider } = await getProvidersAndSetupNetworks({
     l1Url: config.ethUrl,
     l2Url: config.arbUrl,
-
-    networkFilename: "localNetwork.json",
+    networkFilename: "files/local/network.json",
   });
 
   const l1Deployer = getSigner(l1Provider, config.ethKey);
