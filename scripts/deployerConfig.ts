@@ -55,6 +55,10 @@ export interface DeployerConfig {
    * The number of blocks that are required to pass since a proposal reaches quorum until its voting period ends
    */
   L2_MIN_PERIOD_AFTER_QUORUM: number;
+  /**
+   * Minimum delay for an operation to become valid
+   */
+  L2_TREASURY_TIMELOCK_DELAY: number;
 
   ////////////////
   ///// Nova /////

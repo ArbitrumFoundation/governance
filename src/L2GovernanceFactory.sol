@@ -25,6 +25,7 @@ struct DeployCoreParams {
     address _l2InitialSupplyRecipient;
     address _l2EmergencySecurityCouncil; // 9/12 security council
     bytes32 _constitutionHash;
+    uint256 _l2TreasuryMinTimelockDelay;
 }
 
 struct DeployTreasuryParams {
@@ -38,6 +39,7 @@ struct DeployTreasuryParams {
     uint256 _treasuryQuorumThreshold;
     uint256 _proposalThreshold;
     uint64 _minPeriodAfterQuorum;
+    uint256 _l2TreasuryMinTimelockDelay;
 }
 
 struct DeployedContracts {
@@ -61,19 +63,18 @@ struct DeployedTreasuryContracts {
 ///     L1:
 ///         - UpgradeExecutor logic
 ///     L2:
-        //  - ArbitrumTimelock logic (for core gov)
-        //  - L2ArbitrumGovernor logic (for core gov)
-        //  - ArbitrumTimelock logic (for treasury)
-        //  - FixedDelegateErc20Wallet logic 
-        //  - L2ArbitrumGovernor logic (for treasury)
-        //  - L2ArbitrumToken logic
-        //  - UpgradeExecutor logic
+//  - ArbitrumTimelock logic (for core gov)
+//  - L2ArbitrumGovernor logic (for core gov)
+//  - ArbitrumTimelock logic (for treasury)
+//  - FixedDelegateErc20Wallet logic
+//  - L2ArbitrumGovernor logic (for treasury)
+//  - L2ArbitrumToken logic
+//  - UpgradeExecutor logic
 
-     
 /// 2. Then deploy the following (in any order):
 ///     L1:
 ///         - L1GoveranceFactory
-///         - L1Token logic 
+///         - L1Token logic
 ///         - Gnosis Safe Multisig 9 of 12 Security Council
 ///     L2:
 ///         - L2GovernanceFactory
@@ -201,7 +202,6 @@ contract L2GovernanceFactory is Ownable {
             _minPeriodAfterQuorum: params._minPeriodAfterQuorum
         });
 
-
         dc.arbitrumDAOConstitution = new ArbitrumDAOConstitution(params._constitutionHash);
         dc.arbitrumDAOConstitution.transferOwnership(upExecutor);
 
@@ -215,7 +215,9 @@ contract L2GovernanceFactory is Ownable {
         // allow the 7/12 security council to schedule actions
         // we don't give _l2NonEmergencySecurityCouncil the canceller role since it shouldn't
         // have the affordance to cancel proposals proposed by others
-        dc.coreTimelock.grantRole(dc.coreTimelock.PROPOSER_ROLE(), address(params._l2NonEmergencySecurityCouncil));
+        dc.coreTimelock.grantRole(
+            dc.coreTimelock.PROPOSER_ROLE(), address(params._l2NonEmergencySecurityCouncil)
+        );
         // anyone is allowed to execute on the timelock
         dc.coreTimelock.grantRole(dc.coreTimelock.EXECUTOR_ROLE(), address(0));
 
@@ -237,7 +239,8 @@ contract L2GovernanceFactory is Ownable {
                 _votingDelay: params._votingDelay,
                 _treasuryQuorumThreshold: params._treasuryQuorumThreshold,
                 _proposalThreshold: params._proposalThreshold,
-                _minPeriodAfterQuorum: params._minPeriodAfterQuorum
+                _minPeriodAfterQuorum: params._minPeriodAfterQuorum,
+                _l2TreasuryMinTimelockDelay: params._l2TreasuryMinTimelockDelay
             })
         );
 
@@ -279,7 +282,9 @@ contract L2GovernanceFactory is Ownable {
         // requires a timelock, so we add one with 0 delay
         ArbitrumTimelock treasuryTimelock =
             deployTimelock(params._proxyAdmin, treasuryTimelockLogic);
-        treasuryTimelock.initialize(0, new address[](0), new address[](0));
+        treasuryTimelock.initialize(
+            params._l2TreasuryMinTimelockDelay, new address[](0), new address[](0)
+        );
 
         L2ArbitrumGovernor treasuryGov = deployGovernor(params._proxyAdmin, treasuryGovernorLogic);
         treasuryGov.initialize({
