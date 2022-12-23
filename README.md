@@ -64,15 +64,25 @@ Set the env variables (you can use the ones from .env-sample)
 cp .env-sample .env
 ```
 
+Install dependencies
+```
+yarn
+```
+
+Compile contracts
+```
+yarn build
+```
+
 Deploy Nitro contracts to the local node
 ```
-make gen-network
+yarn gen:network
 ```
 
 Addresses for deployed contracts are stored to `localNetwork.json`
 
 Finally run integration tests against local node
 ```
-make test-integration
+yarn test-integration
 ```
 

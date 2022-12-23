@@ -95,10 +95,10 @@ jobs:
           cp ./.env-sample ./.env
       
       - name: Compile contracts
-        run: npx hardhat compile
+        run: yarn build
 
       - name: Generate network file
-        run: make gen-network
+        run: yarn gen:network
 
       - name: Generate nova network file
         run: yarn gen:nova:network
@@ -138,8 +138,11 @@ jobs:
         run: |
           cp ./.env-sample ./.env
 
+      - name: Compile contracts
+        run: yarn build
+
       - name: Generate network file
-        run: make gen-network
+        run: yarn gen:network
 
       - name: Run integration tests
-        run: make test-integration
+        run: yarn test:integration

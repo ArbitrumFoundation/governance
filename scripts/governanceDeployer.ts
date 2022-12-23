@@ -34,7 +34,7 @@ import {
   L2CustomGatewayToken,
   L2CustomGatewayToken__factory,
   L2ReverseCustomGateway__factory,
-} from "../typechain-types-imported/index";
+} from "../token-bridge-contracts/build/types";
 import {
   DeployedEventObject as L1DeployedEventObject,
   L1GovernanceFactory,
