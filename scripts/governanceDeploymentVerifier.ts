@@ -49,6 +49,7 @@ import {
   getRecipientsDataFromFile,
 } from "./tokenDistributorHelper";
 import dotenv from "dotenv";
+import { assert, assertEquals, assertNumbersEquals, getProxyOwner } from "./testUtils";
 import { VestedRecipients, loadVestedRecipients } from "./vestedWalletsDeployer";
 import { WalletCreatedEvent } from "../typechain-types/src/ArbitrumVestingWalletFactory.sol/ArbitrumVestingWalletsFactory";
 import path from "path";
@@ -1382,72 +1383,6 @@ function loadNovaContracts(novaProvider: Provider) {
       novaProvider
     ),
   };
-}
-
-/**
- * Gets the proxy owner by reading storage
- *
- * @param contractAddress
- * @param provider
- * @returns
- */
-async function getProxyOwner(contractAddress: string, provider: Provider) {
-  // gets address in format like 0x000000000000000000000000a898b332e65d0cc9cb538495ff145983806d8453
-  const ownerStorageValue = await provider.getStorageAt(
-    contractAddress,
-    "0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103"
-  );
-
-  if (!ownerStorageValue) {
-    return "";
-  }
-
-  // remove execess bytes -> 0xa898b332e65d0cc9cb538495ff145983806d8453
-  const formatAddress = ownerStorageValue.substring(0, 2) + ownerStorageValue.substring(26);
-
-  // return address as checksum address -> 0xA898b332e65D0cc9CB538495FF145983806D8453
-  return ethers.utils.getAddress(formatAddress);
-}
-
-/**
- * Simple assertion function for strings
- *
- * @param actual
- * @param expected
- * @param message
- */
-async function assertEquals(actual: string, expected: string, message: string) {
-  if (actual.toLowerCase() != expected.toLowerCase()) {
-    console.error("Actual: ", actual);
-    console.error("Expected: ", expected);
-    throw new Error(message);
-  }
-}
-
-/**
- * Simple assertion function for BigNumbers
- *
- * @param actual
- * @param expected
- * @param message
- */
-async function assertNumbersEquals(actual: BigNumber, expected: BigNumber, message: string) {
-  if (!actual.eq(expected)) {
-    console.error("Actual: ", actual.toString());
-    console.error("Expected: ", expected.toString());
-    throw new Error(message);
-  }
-}
-
-/**
- * Simple assertion function
- * @param condition
- * @param message
- */
-async function assert(condition: Boolean, message: string) {
-  if (!condition) {
-    throw new Error(message);
-  }
 }
 
 async function main() {
