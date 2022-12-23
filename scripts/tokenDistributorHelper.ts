@@ -3,6 +3,8 @@ import { BigNumber, ethers, Signer } from "ethers";
 import { formatEther, formatUnits, parseEther } from "ethers/lib/utils";
 import { TokenDistributor } from "../typechain-types";
 import { ArbGasInfo__factory } from "@arbitrum/sdk/dist/lib/abi/factories/ArbGasInfo__factory";
+import { loadRecipients } from "./vestedWalletsDeployer";
+import path from "path";
 
 export const TOKEN_RECIPIENTS_FILE_NAME = "files/recipients.json";
 const validClaimAmounts: BigNumber[] = [
@@ -30,13 +32,12 @@ export async function setClaimRecipients(
     BASE_L1_GAS_PRICE_LIMIT: number;
     GET_LOGS_BLOCK_RANGE: number;
   },
-  previousStartBlock?: number,
+  previousStartBlock?: number
 ): Promise<number> {
   const tokenRecipientsByPoints = require("../" + TOKEN_RECIPIENTS_FILE_NAME);
   const { tokenRecipients, tokenAmounts } = mapPointsToAmounts(tokenRecipientsByPoints);
 
   // set recipients in batches
-  // const recipientsAlreadySet = await getNumberOfRecipientsSet(tokenDistributor);
   let recipientsAlreadySet = 0;
   if (previousStartBlock) {
     const blockNow = await arbDeployer.provider!.getBlockNumber();
@@ -275,4 +276,48 @@ export function isClaimAmountValid(amount: BigNumber) {
  */
 export function isAmountsBatchValid(amounts: BigNumber[]) {
   return amounts.every((elem) => isClaimAmountValid(elem));
+}
+
+/**
+ * Sanity check token supply totals
+ * @param config
+ */
+export function checkConfigTotals(config: {
+  L2_TOKEN_INITIAL_SUPPLY: string;
+  L2_NUM_OF_TOKENS_FOR_TREASURY: string;
+  L2_NUM_OF_TOKENS_FOR_FOUNDATION: string;
+  L2_NUM_OF_TOKENS_FOR_TEAM: string;
+  L2_NUM_OF_TOKENS_FOR_CLAIMING: string;
+  TOKEN_RECIPIENTS_FILE_NAME: string;
+  VESTED_RECIPIENTS_FILE_NAME: string;
+  DAO_RECIPIENTS_FILE_NAME: string;
+}) {
+  const totalSupply = parseEther(config.L2_TOKEN_INITIAL_SUPPLY);
+  const treasuryVal = parseEther(config.L2_NUM_OF_TOKENS_FOR_TREASURY);
+  const foundationVal = parseEther(config.L2_NUM_OF_TOKENS_FOR_FOUNDATION);
+  const teamVal = parseEther(config.L2_NUM_OF_TOKENS_FOR_TEAM);
+
+  const claimPoints = require("../" + config.TOKEN_RECIPIENTS_FILE_NAME);
+  const { tokenAmounts } = mapPointsToAmounts(claimPoints);
+  const claimtotal = tokenAmounts.reduce((a, b) => a.add(b));
+
+  const vestedFilePath = path.join(__dirname, "..", config.VESTED_RECIPIENTS_FILE_NAME);
+  const vestedRecipients = loadRecipients(vestedFilePath);
+  const vestedTotal = Object.values(vestedRecipients).reduce((a, b) => a.add(b));
+
+  const tokenRecipientsByPoints = path.join(__dirname, "..", config.DAO_RECIPIENTS_FILE_NAME);
+  const daoRecipients = loadRecipients(tokenRecipientsByPoints);
+  const daoTotal = Object.values(daoRecipients).reduce((a, b) => a.add(b));
+
+  const distributionTotals = treasuryVal
+    .add(foundationVal)
+    .add(teamVal)
+    .add(claimtotal)
+    .add(vestedTotal)
+    .add(daoTotal);
+  if (!distributionTotals.eq(totalSupply)) {
+    throw new Error(
+      `Unepected distribution total: ${distributionTotals.toString()} ${totalSupply.toString()}`
+    );
+  }
 }

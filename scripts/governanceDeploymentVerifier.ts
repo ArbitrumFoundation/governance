@@ -36,8 +36,8 @@ import {
   L2CustomGatewayToken,
   L2CustomGatewayToken__factory,
   L2ReverseCustomGateway,
-  L2ReverseCustomGateway__factory
-} from "../token-bridge-contracts/build/types"
+  L2ReverseCustomGateway__factory,
+} from "../token-bridge-contracts/build/types";
 import { getDeployerAddresses, getProviders, isDeployingToNova } from "./providerSetup";
 import { Address, L2Network } from "@arbitrum/sdk";
 import { parseEther } from "ethers/lib/utils";
@@ -49,7 +49,7 @@ import {
   getRecipientsDataFromFile,
 } from "./tokenDistributorHelper";
 import dotenv from "dotenv";
-import { VestedRecipients, loadVestedRecipients } from "./vestedWalletsDeployer";
+import { Recipients, loadRecipients } from "./vestedWalletsDeployer";
 import { WalletCreatedEvent } from "../typechain-types/src/ArbitrumVestingWalletFactory.sol/ArbitrumVestingWalletsFactory";
 import path from "path";
 
@@ -191,7 +191,11 @@ export const verifyDeployment = async () => {
     arbProvider,
     deployerConfig
   );
-  await verifyArbitrumDAOConstitution(arbContracts["arbitrumDAOConstitution"], arbContracts["l2Executor"], deployerConfig)
+  await verifyArbitrumDAOConstitution(
+    arbContracts["arbitrumDAOConstitution"],
+    arbContracts["l2Executor"],
+    deployerConfig
+  );
   await verifyL2ProxyAdmin(arbContracts["l2ProxyAdmin"], arbContracts["l2Executor"]);
   await verifyL2ReverseGateway(
     arbContracts["l2ReverseCustomGatewayProxy"],
@@ -201,7 +205,7 @@ export const verifyDeployment = async () => {
     arbOneNetwork
   );
   await verifyVestedWallets(
-    await loadVestedRecipients(path.join(__dirname, "..", VESTED_RECIPIENTS_FILE_NAME)),
+    await loadRecipients(path.join(__dirname, "..", VESTED_RECIPIENTS_FILE_NAME)),
     arbContracts["vestedWalletFactory"],
     arbContracts["l2Token"],
     arbProvider,
@@ -698,6 +702,10 @@ async function verifyL2Token(
     L2_TOKEN_INITIAL_SUPPLY: string;
     L2_NUM_OF_TOKENS_FOR_TREASURY: string;
     L2_NUM_OF_TOKENS_FOR_CLAIMING: string;
+    L2_ADDRESS_FOR_FOUNDATION: string;
+    L2_NUM_OF_TOKENS_FOR_FOUNDATION: string;
+    L2_ADDRESS_FOR_TEAM: string;
+    L2_NUM_OF_TOKENS_FOR_TEAM: string;
   }
 ) {
   //// check ownership
@@ -729,9 +737,7 @@ async function verifyL2Token(
   // check balances
   const arbTreasuryBalance = await l2Token.balanceOf(arbTreasury.address);
   const tokenDistributorBalance = await l2Token.balanceOf(l2TokenDistributor.address);
-  const vestingRecipients = loadVestedRecipients(
-    path.join(__dirname, "..", VESTED_RECIPIENTS_FILE_NAME)
-  );
+  const vestingRecipients = loadRecipients(path.join(__dirname, "..", VESTED_RECIPIENTS_FILE_NAME));
   const vestingTotal = Object.values(vestingRecipients).reduce((a, b) => a.add(b));
   assertNumbersEquals(
     arbTreasuryBalance,
@@ -743,10 +749,26 @@ async function verifyL2Token(
     parseEther(config.L2_NUM_OF_TOKENS_FOR_CLAIMING),
     "Incorrect initial L2Token balance for TokenDistributor"
   );
+  const foundationBalance = await l2Token.balanceOf(config.L2_ADDRESS_FOR_FOUNDATION);
   assertNumbersEquals(
-    arbTreasuryBalance.add(tokenDistributorBalance).add(vestingTotal),
+    foundationBalance,
+    parseEther(config.L2_NUM_OF_TOKENS_FOR_FOUNDATION),
+    "Incorrect initial L2Token balance for foundation"
+  );
+  const teamBalance = await l2Token.balanceOf(config.L2_NUM_OF_TOKENS_FOR_TEAM);
+  assertNumbersEquals(
+    teamBalance,
+    parseEther(config.L2_NUM_OF_TOKENS_FOR_TEAM),
+    "Incorrect initial L2Token balance for team"
+  );
+  assertNumbersEquals(
+    arbTreasuryBalance
+      .add(tokenDistributorBalance)
+      .add(vestingTotal)
+      .add(foundationBalance)
+      .add(teamBalance),
     await l2Token.totalSupply(),
-    "ArbTreasury and TokenDistributor should own all the tokens "
+    "Invalid total distribution"
   );
 
   //// check token registration was successful for ArbOne
@@ -1040,10 +1062,13 @@ async function verifyL2ProxyAdmin(l2ProxyAdmin: ProxyAdmin, l2Executor: UpgradeE
   );
 }
 
-
-async function verifyArbitrumDAOConstitution(arbitrumDAOConstitution: ArbitrumDAOConstitution,   arbOneUpgradeExecutor: UpgradeExecutor, config: {
-  ARBITRUM_DAO_CONSTITUTION_HASH: string
-}){
+async function verifyArbitrumDAOConstitution(
+  arbitrumDAOConstitution: ArbitrumDAOConstitution,
+  arbOneUpgradeExecutor: UpgradeExecutor,
+  config: {
+    ARBITRUM_DAO_CONSTITUTION_HASH: string;
+  }
+) {
   assertEquals(
     await arbitrumDAOConstitution.owner(),
     arbOneUpgradeExecutor.address,
@@ -1054,8 +1079,7 @@ async function verifyArbitrumDAOConstitution(arbitrumDAOConstitution: ArbitrumDA
     await arbitrumDAOConstitution.constitutionHash(),
     config.ARBITRUM_DAO_CONSTITUTION_HASH,
     "Initial constitutionHash should be properly set"
-  )
-
+  );
 }
 /**
  * Verify:
@@ -1215,7 +1239,7 @@ async function verifyNovaProxyAdmin(
  * - Each vested wallet has the recipient balance of tokens
  */
 async function verifyVestedWallets(
-  vestedRecipients: VestedRecipients,
+  vestedRecipients: Recipients,
   vestedWalletFactory: ArbitrumVestingWalletsFactory,
   l2Token: L2ArbitrumToken,
   arbProvider: Provider,
@@ -1352,7 +1376,7 @@ function loadArbContracts(arbProvider: Provider) {
     arbitrumDAOConstitution: ArbitrumDAOConstitution__factory.connect(
       contractAddresses["arbitrumDAOConstitution"],
       arbProvider
-    )
+    ),
   };
 }
 

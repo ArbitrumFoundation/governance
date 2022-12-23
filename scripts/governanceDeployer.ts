@@ -44,7 +44,12 @@ import {
   L2GovernanceFactory,
 } from "../typechain-types/src/L2GovernanceFactory";
 import { getDeployersAndConfig as getDeployersAndConfig, isDeployingToNova } from "./providerSetup";
-import { setClaimRecipients } from "./tokenDistributorHelper";
+import {
+  TOKEN_RECIPIENTS_FILE_NAME,
+  checkConfigTotals,
+  mapPointsToAmounts,
+  setClaimRecipients,
+} from "./tokenDistributorHelper";
 import { deployVestedWallets, loadRecipients } from "./vestedWalletsDeployer";
 import fs from "fs";
 import path from "path";
@@ -91,6 +96,8 @@ interface DeployProgressCache {
   registerTokenNova?: boolean;
   l2TokenTask1?: boolean;
   l2TokenTask2?: boolean;
+  l2TokenTask3?: boolean;
+  l2TokenTask4?: boolean;
   vestedWalletInProgress?: boolean;
   vestedWalletFactory?: string;
   l2TokenDistributor?: string;
@@ -98,13 +105,11 @@ interface DeployProgressCache {
   l2TokenTransferOwnership?: boolean;
   distributorSetRecipientsStartBlock?: number;
   distributorSetRecipientsEndBlock?: number;
-  l2TokenTransferTeam?: boolean;
-  l2TokenTransferFoundation?: boolean;
 }
 let deployedContracts: DeployProgressCache = {};
 const DEPLOYED_CONTRACTS_FILE_NAME = "deployedContracts.json";
 const VESTED_RECIPIENTS_FILE_NAME = "files/vestedRecipients.json";
-const TRANSFER_RECIPIENTS_FILE_NAME = "files/transferRecipients.json";
+const DAO_RECIPIENTS_FILE_NAME = "files/daoRecipients.json";
 
 export type TypeChainContractFactory<TContract extends Contract> = {
   deploy(...args: Array<any>): Promise<TContract>;
@@ -207,6 +212,14 @@ export const deployGovernance = async () => {
   console.log("Get deployers and signers");
   const { ethDeployer, arbDeployer, novaDeployer, deployerConfig, arbNetwork, novaNetwork } =
     await getDeployersAndConfig();
+
+  // sanity check the token totals before we start the deployment
+  checkConfigTotals({
+    ...deployerConfig,
+    DAO_RECIPIENTS_FILE_NAME,
+    TOKEN_RECIPIENTS_FILE_NAME,
+    VESTED_RECIPIENTS_FILE_NAME,
+  });
 
   console.log("Deploy L1 logic contracts");
   const l1UpgradeExecutorLogic = await deployL1LogicContracts(ethDeployer);
@@ -325,6 +338,9 @@ export const deployGovernance = async () => {
     l2DeployResult.token,
     deployerConfig
   );
+
+  console.log("Distribute to team");
+  await transferDaoAllocations(arbDeployer, l2DeployResult.token);
 
   // deploy ARB distributor
   console.log("Deploy TokenDistributor");
@@ -962,36 +978,55 @@ async function postDeploymentL2TokenTasks(
   l2DeployResult: L2DeployedEventObject,
   config: {
     L2_NUM_OF_TOKENS_FOR_TREASURY: string;
+    L2_ADDRESS_FOR_FOUNDATION: string;
+    L2_NUM_OF_TOKENS_FOR_FOUNDATION: string;
+    L2_ADDRESS_FOR_TEAM: string;
+    L2_NUM_OF_TOKENS_FOR_TEAM: string;
   }
 ) {
+  const l2Token = L2ArbitrumToken__factory.connect(l2DeployResult.token, arbInitialSupplyRecipient);
   if (!deployedContracts.l2TokenTask1) {
     // transfer L2 token ownership to upgradeExecutor
-    const l2Token = L2ArbitrumToken__factory.connect(
-      l2DeployResult.token,
-      arbInitialSupplyRecipient.provider!
-    );
-    await (
-      await l2Token.connect(arbInitialSupplyRecipient).transferOwnership(l2DeployResult.executor)
-    ).wait();
+
+    await (await l2Token.transferOwnership(l2DeployResult.executor)).wait();
 
     deployedContracts.l2TokenTask1 = true;
   }
 
   if (!deployedContracts.l2TokenTask2) {
-    const l2Token = L2ArbitrumToken__factory.connect(
-      l2DeployResult.token,
-      arbInitialSupplyRecipient.provider!
-    );
     // transfer tokens from arbDeployer to the treasury
     await (
-      await l2Token
-        .connect(arbInitialSupplyRecipient)
-        .transfer(l2DeployResult.arbTreasury, parseEther(config.L2_NUM_OF_TOKENS_FOR_TREASURY))
+      await l2Token.transfer(
+        l2DeployResult.arbTreasury,
+        parseEther(config.L2_NUM_OF_TOKENS_FOR_TREASURY)
+      )
     ).wait();
 
     deployedContracts.l2TokenTask2 = true;
+  }
 
-    /// when distributor is deployed remaining tokens are transfered to it
+  if (!deployedContracts.l2TokenTask3) {
+    // transfer tokens from arbDeployer to the foundation
+    await (
+      await l2Token.transfer(
+        config.L2_ADDRESS_FOR_FOUNDATION,
+        parseEther(config.L2_NUM_OF_TOKENS_FOR_FOUNDATION)
+      )
+    ).wait();
+
+    deployedContracts.l2TokenTask3 = true;
+  }
+
+  if (!deployedContracts.l2TokenTask4) {
+    // transfer tokens from arbDeployer to the team
+    await (
+      await l2Token.transfer(
+        config.L2_ADDRESS_FOR_TEAM,
+        parseEther(config.L2_NUM_OF_TOKENS_FOR_TEAM)
+      )
+    ).wait();
+
+    deployedContracts.l2TokenTask4 = true;
   }
 }
 
@@ -1034,8 +1069,8 @@ async function deployAndTransferVestedWallets(
   }
 }
 
-async function transferAllocations(initialTokenRecipient: Signer, tokenAddress: string) {
-  const tokenRecipientsByPoints = path.join(__dirname, "..", TRANSFER_RECIPIENTS_FILE_NAME);
+async function transferDaoAllocations(initialTokenRecipient: Signer, tokenAddress: string) {
+  const tokenRecipientsByPoints = path.join(__dirname, "..", DAO_RECIPIENTS_FILE_NAME);
   const recipients = loadRecipients(tokenRecipientsByPoints);
 
   const token = L2ArbitrumToken__factory.connect(tokenAddress, initialTokenRecipient);
@@ -1052,46 +1087,21 @@ async function transferAllocations(initialTokenRecipient: Signer, tokenAddress: 
       ...filter,
     });
 
-    if (logs.length > 1) {
+    if (logs.length === 0) {
+      // this recipient has not been transferred to yet
+      await (await token.transfer(rec, recipients[rec])).wait();
+    } else if (logs.length === 1) {
+      const { value } = token.interface.parseLog(logs[0]).args as TransferEvent["args"];
+
+      if (!value.eq(recipients[rec])) {
+        throw new Error(
+          `Incorrect value sent to ${rec}:${recipients[rec].toString()}:${value.toString()}`
+        );
+      }
+    } else {
       console.error(logs);
       throw new Error(`Too many transfer logs for ${rec}`);
     }
-
-    logs.map((l) => {
-      const e = token.interface.parseLog(l).args as TransferEvent["args"];
-      return {
-        from: e.from,
-        to: e.to,
-        value: e.value,
-      };
-    });
-  }
-
-  // load the file and loop through it
-
-  // check that each of the items has been transferred to - we could use a start date for helpers?
-
-  if (!deployedContracts.l2TokenTransferTeam) {
-    // transfer tokens to the team
-    const l2Token = L2ArbitrumToken__factory.connect(tokenAddress, initialTokenRecipient);
-    await (
-      await l2Token.transfer(tokenDistributor.address, parseEther(config.L2_TOKEN_TEAM_ALLOCATION))
-    ).wait();
-
-    deployedContracts.l2TokenTransferTeam = true;
-  }
-
-  if (!deployedContracts.l2TokenTransferFoundation) {
-    // transfer tokens to the foundation
-    const l2Token = L2ArbitrumToken__factory.connect(l2DeployResult.token, initialTokenRecipient);
-    await (
-      await l2Token.transfer(
-        tokenDistributor.address,
-        parseEther(config.L2_TOKEN_FOUNDATION_ALLOCATION)
-      )
-    ).wait();
-
-    deployedContracts.l2TokenTransferFoundation = true;
   }
 }
 

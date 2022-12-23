@@ -87,6 +87,22 @@ export interface DeployerConfig {
    */
   L2_NUM_OF_TOKENS_FOR_TREASURY: string;
   /**
+   * Foundation address
+   */
+  L2_ADDRESS_FOR_FOUNDATION: string;
+  /**
+   * Num of tokens to be sent to foundation
+   */
+  L2_NUM_OF_TOKENS_FOR_FOUNDATION: string;
+  /**
+   * Team address
+   */
+  L2_ADDRESS_FOR_TEAM: string;
+  /**
+   * Num of tokens to be sent to team
+   */
+  L2_NUM_OF_TOKENS_FOR_TEAM: string;
+  /**
    * Num of tokens to be sent to distributor (based on sum of claimable tokens in JSON file)
    */
   L2_NUM_OF_TOKENS_FOR_CLAIMING: string;
