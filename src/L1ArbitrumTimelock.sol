@@ -171,7 +171,7 @@ contract L1ArbitrumTimelock is TimelockControllerUpgradeable, L1ArbitrumMessenge
         } else {
             if(data.length != 0) {
                 // check the target has code if data was supplied
-                // this is a bit more important than normal since if the magic is improperly 
+                // this is a bit more important than normal here since if the magic is improperly 
                 // specified in the proposal then we'll end up in this code block
                 // generally though, all proposals with data that specify a target with no code should
                 // be voted against
