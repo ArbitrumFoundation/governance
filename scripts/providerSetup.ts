@@ -25,7 +25,8 @@ import { getProvidersAndSetupNetworks } from "../test-ts/testSetup";
 import path from "path";
 import { DeployerConfig, loadDeployerConfig } from "./deployerConfig";
 import { getL2Network, L2Network } from "@arbitrum/sdk";
-import { testSetup } from "../test-ts/testSetup";
+import { ClaimRecipients, Recipients, loadRecipients, mapPointsToAmounts } from "./testUtils";
+import fs from "fs";
 
 dotenv.config();
 
@@ -35,7 +36,7 @@ const ARBITRUM_NOVA_CHAIN_ID = 42170;
 
 // dotenv config used in case of deploying to production
 // in case of local env testing, config is extracted in `testSetup()`
-export const config = {
+export const envVars = {
   isLocalDeployment: process.env["DEPLOY_TO_LOCAL_ENVIRONMENT"] as string,
   ethRpc: process.env["ETH_URL"] as string,
   arbRpc: process.env["ARB_URL"] as string,
@@ -43,13 +44,139 @@ export const config = {
   ethDeployerKey: process.env["ETH_KEY"] as string,
   arbDeployerKey: process.env["ARB_KEY"] as string,
   novaDeployerKey: process.env["NOVA_KEY"] as string,
-  deployerConfigFileName: process.env["DEPLOYER_FILE"] as string,
+  deployerConfigLocation: process.env["DEPLOY_CONFIG_FILE_LOCATION"] as string,
+  vestedRecipientsLocation: process.env["VESTED_RECIPIENTS_FILE_LOCATION"] as string,
+  daoRecipientsLocation: process.env["DAO_RECIPIENTS_FILE_LOCATION"] as string,
+  claimRecipientsLocation: process.env["CLAIM_RECIPIENTS_FILE_LOCATION"] as string,
+  deployedContractsLocation: process.env["DEPLOYED_CONTRACTS_FILE_LOCATION"] as string,
+};
+
+const checkEnvVars = (conf: typeof envVars) => {
+  if (conf.isLocalDeployment == undefined) throw new Error("Missing isLocalDeployment in env vars");
+  if (conf.ethRpc == undefined) throw new Error("Missing ethRpc in env vars");
+  if (conf.arbRpc == undefined) throw new Error("Missing arbRpc in env vars");
+  if (conf.novaRpc == undefined) throw new Error("Missing novaRpc in env vars");
+  // eth key can sometimes be inferred for local
+  if (!conf.isLocalDeployment && conf.ethDeployerKey == undefined)
+    throw new Error("Missing ethDeployerKey in env vars");
+  if (conf.arbDeployerKey == undefined) throw new Error("Missing arbDeployerKey in env vars");
+  if (conf.novaDeployerKey == undefined) throw new Error("Missing novaDeployerKey in env vars");
+  if (conf.deployerConfigLocation == undefined)
+    throw new Error("Missing deployerConfigLocation in env vars");
+  if (!fs.existsSync(conf.deployerConfigLocation))
+    throw new Error(`Missing file at ${conf.deployerConfigLocation}`);
+
+  if (conf.vestedRecipientsLocation == undefined)
+    throw new Error("Missing vestedRecipientsLocation in env vars");
+  if (!fs.existsSync(conf.vestedRecipientsLocation))
+    throw new Error(`Missing file at ${conf.vestedRecipientsLocation}`);
+
+  if (conf.daoRecipientsLocation == undefined)
+    throw new Error("Missing daoRecipientsLocation in env vars");
+  if (!fs.existsSync(conf.daoRecipientsLocation))
+    throw new Error(`Missing file at ${conf.daoRecipientsLocation}`);
+
+  if (conf.claimRecipientsLocation == undefined)
+    throw new Error("Missing claimRecipientsLocation in env vars");
+  if (!fs.existsSync(conf.claimRecipientsLocation))
+    throw new Error(`Missing file at ${conf.claimRecipientsLocation}`);
+
+  if (conf.deployedContractsLocation == undefined)
+    throw new Error("Missing deployedContractsLocation in env vars");
 };
 
 export const getSigner = (provider: JsonRpcProvider, key?: string) => {
   if (!key && !provider) throw new ArbSdkError("Provide at least one of key or provider.");
   if (key) return new Wallet(key).connect(provider);
   else return provider.getSigner(0);
+};
+
+export const loadDaoRecipients = () => {
+  checkEnvVars(envVars);
+
+  const daoRecipientsFileLocation = path.join(__dirname, "..", envVars.daoRecipientsLocation);
+  return loadRecipients(daoRecipientsFileLocation);
+};
+
+export const loadVestedRecipients = () => {
+  checkEnvVars(envVars);
+
+  const vestedRecipientsFileLocation = path.join(__dirname, "..", envVars.vestedRecipientsLocation);
+  return loadRecipients(vestedRecipientsFileLocation);
+};
+
+export const loadClaimRecipients = (): Recipients => {
+  checkEnvVars(envVars);
+
+  const tokenRecipientsByPoints = JSON.parse(
+    fs.readFileSync(path.join(__dirname, "..", envVars.claimRecipientsLocation)).toString()
+  ) as ClaimRecipients;
+  const { tokenRecipients, tokenAmounts } = mapPointsToAmounts(tokenRecipientsByPoints);
+
+  return Object.fromEntries(tokenRecipients.map((tr, i) => [tr, tokenAmounts[i]]));
+};
+
+// store address for every deployed contract
+export interface DeployProgressCache {
+  l1UpgradeExecutorLogic?: string;
+  l2TimelockLogic?: string;
+  l2GovernorLogic?: string;
+  l2FixedDelegateLogic?: string;
+  l2TokenLogic?: string;
+  l2UpgradeExecutorLogic?: string;
+  l1GovernanceFactory?: string;
+  l2GovernanceFactory?: string;
+  l1ReverseCustomGatewayLogic?: string;
+  l1ReverseCustomGatewayProxy?: string;
+  l2ReverseCustomGatewayLogic?: string;
+  l2ReverseCustomGatewayProxy?: string;
+  l1TokenLogic?: string;
+  l1TokenProxy?: string;
+  novaProxyAdmin?: string;
+  novaUpgradeExecutorLogic?: string;
+  novaUpgradeExecutorProxy?: string;
+  novaTokenLogic?: string;
+  novaTokenProxy?: string;
+  l2CoreGoverner?: string;
+  l2CoreTimelock?: string;
+  l2Executor?: string;
+  l2ProxyAdmin?: string;
+  l2Token?: string;
+  l2TreasuryGoverner?: string;
+  l2ArbTreasury?: string;
+  arbitrumDAOConstitution?: string;
+  l1Executor?: string;
+  l1ProxyAdmin?: string;
+  l1Timelock?: string;
+  step3Executed?: boolean;
+  executorRolesSetOnNova1?: boolean;
+  executorRolesSetOnNova2?: boolean;
+  registerTokenArbOne1?: boolean;
+  registerTokenArbOne2?: boolean;
+  registerTokenArbOne3?: boolean;
+  registerTokenNova?: boolean;
+  l2TokenTask1?: boolean;
+  l2TokenTask2?: boolean;
+  l2TokenTask3?: boolean;
+  l2TokenTask4?: boolean;
+  vestedWalletInProgress?: boolean;
+  vestedWalletFactory?: string;
+  l2TokenDistributor?: string;
+  l2TokenTransferTokenDistributor?: boolean;
+  l2TokenTransferOwnership?: boolean;
+  distributorSetRecipientsStartBlock?: number;
+  distributorSetRecipientsEndBlock?: number;
+}
+
+export const loadDeployedContracts = (): DeployProgressCache => {
+  if (!fs.existsSync(envVars.deployedContractsLocation)) return {};
+  return JSON.parse(
+    fs.readFileSync(envVars.deployedContractsLocation).toString()
+  ) as DeployProgressCache;
+};
+
+export const updateDeployedContracts = (cache: DeployProgressCache) => {
+  fs.writeFileSync(envVars.deployedContractsLocation, JSON.stringify(cache, null, 2));
 };
 
 /**
@@ -64,30 +191,46 @@ export const getDeployersAndConfig = async (): Promise<{
   deployerConfig: DeployerConfig;
   arbNetwork: L2Network;
   novaNetwork: L2Network;
+  daoRecipients: Recipients;
+  vestedRecipients: Recipients;
+  claimRecipients: Recipients;
 }> => {
-  if (config.isLocalDeployment !== "false") {
+  // make sure we were able to load the env vars
+  checkEnvVars(envVars);
+  console.log("Environment variables", {
+    ...envVars,
+    arbDeployerKey: "******",
+    ethDeployerKey: "******",
+    novaDeployerKey: "******",
+  });
+
+  const daoRecipients = loadDaoRecipients();
+  const vestedRecipients = loadVestedRecipients();
+  const claimRecipients = loadClaimRecipients();
+
+  if (envVars.isLocalDeployment !== "false") {
     // setup local test environment
     const {
       l2Provider,
       l1Provider,
       l2Network: arbNetwork,
     } = await getProvidersAndSetupNetworks({
-      l1Url: config.ethRpc,
-      l2Url: config.arbRpc,
-      networkFilename: "localNetwork.json",
+      l1Url: envVars.ethRpc,
+      l2Url: envVars.arbRpc,
+      networkFilename: "files/local/network.json",
     });
 
     const { l2Provider: novaProvider, l2Network: novaNetwork } = await getProvidersAndSetupNetworks(
       {
-        l1Url: config.ethRpc,
-        l2Url: config.novaRpc,
-        networkFilename: "localNetworkNova.json",
+        l1Url: envVars.ethRpc,
+        l2Url: envVars.novaRpc,
+        networkFilename: "files/local/networkNova.json",
       }
     );
 
-    const l1Deployer = getSigner(l1Provider, config.ethDeployerKey);
-    const l2Deployer = getSigner(l2Provider, config.arbDeployerKey);
-    const novaDeployer = getSigner(novaProvider, config.novaDeployerKey);
+    const l1Deployer = getSigner(l1Provider, envVars.ethDeployerKey);
+    const l2Deployer = getSigner(l2Provider, envVars.arbDeployerKey);
+    const novaDeployer = getSigner(novaProvider, envVars.novaDeployerKey);
 
     // check that production chains are not mistakenly used in local env
     if (l1Deployer.provider) {
@@ -109,7 +252,7 @@ export const getDeployersAndConfig = async (): Promise<{
       }
     }
 
-    const testDeployerConfigName = path.join(__dirname, "testConfig.json");
+    const testDeployerConfigName = path.join(__dirname, "..", envVars.deployerConfigLocation);
     const deployerConfig = await loadDeployerConfig(testDeployerConfigName);
 
     return {
@@ -119,12 +262,15 @@ export const getDeployersAndConfig = async (): Promise<{
       deployerConfig,
       arbNetwork,
       novaNetwork,
+      daoRecipients,
+      vestedRecipients,
+      claimRecipients,
     };
   } else {
     // deploying to production
-    const ethProvider = new JsonRpcProvider(config.ethRpc);
-    const arbProvider = new JsonRpcProvider(config.arbRpc);
-    const novaProvider = new JsonRpcProvider(config.novaRpc);
+    const ethProvider = new JsonRpcProvider(envVars.ethRpc);
+    const arbProvider = new JsonRpcProvider(envVars.arbRpc);
+    const novaProvider = new JsonRpcProvider(envVars.novaRpc);
 
     // check that production chain IDs are used in production mode
     const ethChainId = (await ethProvider.getNetwork()).chainId;
@@ -140,11 +286,11 @@ export const getDeployersAndConfig = async (): Promise<{
       throw new Error("Production chain ID should be used in production mode for Nova");
     }
 
-    const ethDeployer = getSigner(ethProvider, config.ethDeployerKey);
-    const arbDeployer = getSigner(arbProvider, config.arbDeployerKey);
-    const novaDeployer = getSigner(novaProvider, config.novaDeployerKey);
+    const ethDeployer = getSigner(ethProvider, envVars.ethDeployerKey);
+    const arbDeployer = getSigner(arbProvider, envVars.arbDeployerKey);
+    const novaDeployer = getSigner(novaProvider, envVars.novaDeployerKey);
 
-    const testDeployerConfigName = path.join(__dirname, config.deployerConfigFileName);
+    const testDeployerConfigName = path.join(__dirname, "..", envVars.deployerConfigLocation);
     const deployerConfig = await loadDeployerConfig(testDeployerConfigName);
 
     const arbNetwork = await getL2Network(arbProvider);
@@ -157,6 +303,9 @@ export const getDeployersAndConfig = async (): Promise<{
       deployerConfig,
       arbNetwork,
       novaNetwork,
+      daoRecipients,
+      vestedRecipients,
+      claimRecipients,
     };
   }
 };

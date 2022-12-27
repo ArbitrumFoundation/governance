@@ -43,74 +43,18 @@ import {
   DeployedEventObject as L2DeployedEventObject,
   L2GovernanceFactory,
 } from "../typechain-types/src/L2GovernanceFactory";
-import { getDeployersAndConfig as getDeployersAndConfig, isDeployingToNova } from "./providerSetup";
 import {
-  TOKEN_RECIPIENTS_FILE_NAME,
-  getRecipientsDataFromContractEvents,
-  mapPointsToAmounts,
-  setClaimRecipients,
-} from "./tokenDistributorHelper";
-import { deployVestedWallets, loadRecipients } from "./vestedWalletsDeployer";
-import fs from "fs";
-import path from "path";
+  DeployProgressCache,
+  getDeployersAndConfig as getDeployersAndConfig,
+  isDeployingToNova,
+  loadDeployedContracts,
+  updateDeployedContracts,
+} from "./providerSetup";
+import { getRecipientsDataFromContractEvents, setClaimRecipients } from "./tokenDistributorHelper";
+import { deployVestedWallets } from "./vestedWalletsDeployer";
 import { Provider } from "@ethersproject/providers";
 import { TransferEvent } from "../typechain-types/src/Util.sol/IERC20VotesUpgradeable";
-
-// store address for every deployed contract
-interface DeployProgressCache {
-  l1UpgradeExecutorLogic?: string;
-  l2TimelockLogic?: string;
-  l2GovernorLogic?: string;
-  l2FixedDelegateLogic?: string;
-  l2TokenLogic?: string;
-  l2UpgradeExecutorLogic?: string;
-  l1GovernanceFactory?: string;
-  l2GovernanceFactory?: string;
-  l1ReverseCustomGatewayLogic?: string;
-  l1ReverseCustomGatewayProxy?: string;
-  l2ReverseCustomGatewayLogic?: string;
-  l2ReverseCustomGatewayProxy?: string;
-  l1TokenLogic?: string;
-  l1TokenProxy?: string;
-  novaProxyAdmin?: string;
-  novaUpgradeExecutorLogic?: string;
-  novaUpgradeExecutorProxy?: string;
-  novaTokenLogic?: string;
-  novaTokenProxy?: string;
-  l2CoreGoverner?: string;
-  l2CoreTimelock?: string;
-  l2Executor?: string;
-  l2ProxyAdmin?: string;
-  l2Token?: string;
-  l2TreasuryGoverner?: string;
-  l2ArbTreasury?: string;
-  arbitrumDAOConstitution?: string;
-  l1Executor?: string;
-  l1ProxyAdmin?: string;
-  l1Timelock?: string;
-  step3Executed?: boolean;
-  executorRolesSetOnNova1?: boolean;
-  executorRolesSetOnNova2?: boolean;
-  registerTokenArbOne1?: boolean;
-  registerTokenArbOne2?: boolean;
-  registerTokenArbOne3?: boolean;
-  registerTokenNova?: boolean;
-  l2TokenTask1?: boolean;
-  l2TokenTask2?: boolean;
-  l2TokenTask3?: boolean;
-  l2TokenTask4?: boolean;
-  vestedWalletInProgress?: boolean;
-  vestedWalletFactory?: string;
-  l2TokenDistributor?: string;
-  l2TokenTransferTokenDistributor?: boolean;
-  l2TokenTransferOwnership?: boolean;
-  distributorSetRecipientsStartBlock?: number;
-  distributorSetRecipientsEndBlock?: number;
-}
-let deployedContracts: DeployProgressCache = {};
-const DEPLOYED_CONTRACTS_FILE_NAME = "deployedContracts.json";
-const VESTED_RECIPIENTS_FILE_NAME = "files/vestedRecipients.json";
-const DAO_RECIPIENTS_FILE_NAME = "files/daoRecipients.json";
+import { Recipients } from "./testUtils";
 
 export type TypeChainContractFactory<TContract extends Contract> = {
   deploy(...args: Array<any>): Promise<TContract>;
@@ -211,16 +155,20 @@ async function getOrInitDefault<TContract extends Contract>(
  */
 export const deployGovernance = async () => {
   console.log("Get deployers and signers");
-  const { ethDeployer, arbDeployer, novaDeployer, deployerConfig, arbNetwork, novaNetwork } =
-    await getDeployersAndConfig();
+  const {
+    ethDeployer,
+    arbDeployer,
+    novaDeployer,
+    deployerConfig,
+    arbNetwork,
+    novaNetwork,
+    claimRecipients,
+    daoRecipients,
+    vestedRecipients,
+  } = await getDeployersAndConfig();
 
   // sanity check the token totals before we start the deployment
-  checkConfigTotals({
-    ...deployerConfig,
-    DAO_RECIPIENTS_FILE_NAME,
-    TOKEN_RECIPIENTS_FILE_NAME,
-    VESTED_RECIPIENTS_FILE_NAME,
-  });
+  checkConfigTotals(claimRecipients, daoRecipients, vestedRecipients, deployerConfig);
 
   console.log("Deploy L1 logic contracts");
   const l1UpgradeExecutorLogic = await deployL1LogicContracts(ethDeployer);
@@ -338,11 +286,12 @@ export const deployGovernance = async () => {
     arbDeployer,
     arbDeployer,
     l2DeployResult.token,
+    vestedRecipients,
     deployerConfig
   );
 
   console.log("Distribute to team");
-  await transferDaoAllocations(arbDeployer, l2DeployResult.token);
+  await transferDaoAllocations(arbDeployer, l2DeployResult.token, daoRecipients);
 
   // deploy ARB distributor
   console.log("Deploy TokenDistributor");
@@ -350,18 +299,20 @@ export const deployGovernance = async () => {
     arbDeployer,
     l2DeployResult,
     arbDeployer,
+    claimRecipients,
     deployerConfig
   );
 
   // write addresses before the last step which takes hours
   console.log("Write deployed contract addresses to deployedContracts.json");
-  writeAddresses();
+  updateDeployedContracts(deployedContracts);
 
   console.log("Set TokenDistributor recipients");
   await initTokenDistributor(
     tokenDistributor,
     arbDeployer,
     l2DeployResult.executor,
+    claimRecipients,
     deployerConfig
   );
 };
@@ -1043,13 +994,11 @@ async function deployAndTransferVestedWallets(
   arbDeployer: Signer,
   arbInitialSupplyRecipient: Signer,
   l2TokenAddress: string,
+  vestedRecipients: Recipients,
   config: {
     L2_CLAIM_PERIOD_START: number;
   }
 ) {
-  const tokenRecipientsByPoints = path.join(__dirname, "..", VESTED_RECIPIENTS_FILE_NAME);
-  const recipients = loadRecipients(tokenRecipientsByPoints);
-
   const oneYearInSeconds = 365 * 24 * 60 * 60;
 
   if (!deployedContracts.vestedWalletFactory) {
@@ -1067,7 +1016,7 @@ async function deployAndTransferVestedWallets(
       arbDeployer,
       arbInitialSupplyRecipient,
       l2TokenAddress,
-      recipients,
+      vestedRecipients,
       // start vesting in 1 years time
       config.L2_CLAIM_PERIOD_START + oneYearInSeconds,
       // vesting lasts for 3 years
@@ -1078,13 +1027,14 @@ async function deployAndTransferVestedWallets(
   }
 }
 
-async function transferDaoAllocations(initialTokenRecipient: Signer, tokenAddress: string) {
-  const tokenRecipientsByPoints = path.join(__dirname, "..", DAO_RECIPIENTS_FILE_NAME);
-  const recipients = loadRecipients(tokenRecipientsByPoints);
-
+async function transferDaoAllocations(
+  initialTokenRecipient: Signer,
+  tokenAddress: string,
+  daoRecipients: Recipients
+) {
   const token = L2ArbitrumToken__factory.connect(tokenAddress, initialTokenRecipient);
 
-  for (const rec of Object.keys(recipients)) {
+  for (const rec of Object.keys(daoRecipients)) {
     const filter = token.filters["Transfer(address,address,uint256)"](
       await initialTokenRecipient.getAddress(),
       rec
@@ -1095,16 +1045,16 @@ async function transferDaoAllocations(initialTokenRecipient: Signer, tokenAddres
       toBlock: "latest",
       ...filter,
     });
-    
+
     if (logs.length === 0) {
       // this recipient has not been transferred to yet
-      await (await token.transfer(rec, recipients[rec])).wait();
+      await (await token.transfer(rec, daoRecipients[rec])).wait();
     } else if (logs.length === 1) {
       const { value } = token.interface.parseLog(logs[0]).args as TransferEvent["args"];
 
-      if (!value.eq(recipients[rec])) {
+      if (!value.eq(daoRecipients[rec])) {
         throw new Error(
-          `Incorrect value sent to ${rec}:${recipients[rec].toString()}:${value.toString()}`
+          `Incorrect value sent to ${rec}:${daoRecipients[rec].toString()}:${value.toString()}`
         );
       }
     } else {
@@ -1118,6 +1068,7 @@ async function deployTokenDistributor(
   arbDeployer: Signer,
   l2DeployResult: L2DeployedEventObject,
   arbInitialSupplyRecipient: Signer,
+  claimRecipients: Recipients,
   config: {
     L2_SWEEP_RECEIVER: string;
     L2_CLAIM_PERIOD_START: number;
@@ -1152,10 +1103,8 @@ async function deployTokenDistributor(
       l2DeployResult.token,
       arbInitialSupplyRecipient
     );
-    const tokenRecipientsByPoints = require("../" + TOKEN_RECIPIENTS_FILE_NAME);
-    const { tokenAmounts } = mapPointsToAmounts(tokenRecipientsByPoints);
-    const recipientTotals = tokenAmounts.reduce((a, b) => a.add(b));
-    await (await l2Token.transfer(tokenDistributor.address, recipientTotals)).wait();
+    const recipientTotal = Object.values(claimRecipients).reduce((a, b) => a.add(b));
+    await (await l2Token.transfer(tokenDistributor.address, recipientTotal)).wait();
 
     deployedContracts.l2TokenTransferTokenDistributor = true;
   }
@@ -1167,6 +1116,7 @@ async function initTokenDistributor(
   tokenDistributor: TokenDistributor,
   arbDeployer: Signer,
   l2ExecutorAddress: string,
+  claimRecipients: Recipients,
   config: {
     RECIPIENTS_BATCH_SIZE: number;
     BASE_L2_GAS_PRICE_LIMIT: number;
@@ -1183,7 +1133,13 @@ async function initTokenDistributor(
   }
 
   // set claim recipients
-  await setClaimRecipients(tokenDistributor, arbDeployer, config, previousStartBlock);
+  await setClaimRecipients(
+    tokenDistributor,
+    arbDeployer,
+    claimRecipients,
+    config,
+    previousStartBlock
+  );
 
   // we store end block when all recipients batches are set
   deployedContracts.distributorSetRecipientsEndBlock = await arbDeployer.provider!.getBlockNumber();
@@ -1200,15 +1156,17 @@ async function initTokenDistributor(
 
   // check num of recipients and claimable amount before transferring ownership
   const totalClaimable = await tokenDistributor.totalClaimable();
-  const tokenRecipientsByPoints = require("../" + TOKEN_RECIPIENTS_FILE_NAME);
-  const { tokenAmounts } = mapPointsToAmounts(tokenRecipientsByPoints);
-  const recipientTotals = tokenAmounts.reduce((a, b) => a.add(b));
+
+  const recipientTotals = Object.values(claimRecipients).reduce((a, b) => a.add(b));
+
   if (!totalClaimable.eq(recipientTotals)) {
     throw new Error("Incorrect totalClaimable amount of tokenDistributor: " + totalClaimable);
   }
-  if (numOfRecipientsSet != tokenAmounts.length) {
+  if (numOfRecipientsSet != Object.keys(claimRecipients).length) {
     throw new Error(
-      `Incorrect number of recipients set: ${numOfRecipientsSet}/${tokenAmounts.length}`
+      `Incorrect number of recipients set: ${numOfRecipientsSet}/${
+        Object.keys(claimRecipients).length
+      }`
     );
   }
 
@@ -1223,30 +1181,24 @@ async function initTokenDistributor(
  * Sanity check token supply totals
  * @param config
  */
-export function checkConfigTotals(config: {
-  L2_TOKEN_INITIAL_SUPPLY: string;
-  L2_NUM_OF_TOKENS_FOR_TREASURY: string;
-  L2_NUM_OF_TOKENS_FOR_FOUNDATION: string;
-  L2_NUM_OF_TOKENS_FOR_TEAM: string;
-  TOKEN_RECIPIENTS_FILE_NAME: string;
-  VESTED_RECIPIENTS_FILE_NAME: string;
-  DAO_RECIPIENTS_FILE_NAME: string;
-}) {
+export function checkConfigTotals(
+  claimRecipients: Recipients,
+  daoRecipients: Recipients,
+  vestedRecipients: Recipients,
+  config: {
+    L2_TOKEN_INITIAL_SUPPLY: string;
+    L2_NUM_OF_TOKENS_FOR_TREASURY: string;
+    L2_NUM_OF_TOKENS_FOR_FOUNDATION: string;
+    L2_NUM_OF_TOKENS_FOR_TEAM: string;
+  }
+) {
   const totalSupply = parseEther(config.L2_TOKEN_INITIAL_SUPPLY);
   const treasuryVal = parseEther(config.L2_NUM_OF_TOKENS_FOR_TREASURY);
   const foundationVal = parseEther(config.L2_NUM_OF_TOKENS_FOR_FOUNDATION);
   const teamVal = parseEther(config.L2_NUM_OF_TOKENS_FOR_TEAM);
 
-  const claimPoints = require("../" + config.TOKEN_RECIPIENTS_FILE_NAME);
-  const { tokenAmounts } = mapPointsToAmounts(claimPoints);
-  const claimtotal = tokenAmounts.reduce((a, b) => a.add(b));
-
-  const vestedFilePath = path.join(__dirname, "..", config.VESTED_RECIPIENTS_FILE_NAME);
-  const vestedRecipients = loadRecipients(vestedFilePath);
+  const claimtotal = Object.values(claimRecipients).reduce((a, b) => a.add(b));
   const vestedTotal = Object.values(vestedRecipients).reduce((a, b) => a.add(b));
-
-  const tokenRecipientsByPoints = path.join(__dirname, "..", config.DAO_RECIPIENTS_FILE_NAME);
-  const daoRecipients = loadRecipients(tokenRecipientsByPoints);
   const daoTotal = Object.values(daoRecipients).reduce((a, b) => a.add(b));
 
   const distributionTotals = treasuryVal
@@ -1262,30 +1214,19 @@ export function checkConfigTotals(config: {
   }
 }
 
-function readAddresses(): DeployProgressCache {
-  if (!fs.existsSync(DEPLOYED_CONTRACTS_FILE_NAME)) return {};
-  return JSON.parse(
-    fs.readFileSync(DEPLOYED_CONTRACTS_FILE_NAME).toString()
-  ) as DeployProgressCache;
-}
-
-/**
- * Write addresses of deployed contracts to local JSON file
- */
-function writeAddresses() {
-  fs.writeFileSync(DEPLOYED_CONTRACTS_FILE_NAME, JSON.stringify(deployedContracts, null, 2));
-}
+// use a global cache
+let deployedContracts: DeployProgressCache = {};
 
 async function main() {
   console.log("Start governance deployment process...");
-  deployedContracts = readAddresses();
+  deployedContracts = loadDeployedContracts();
   console.log(`Cache: ${JSON.stringify(deployedContracts, null, 2)}`);
   try {
     await deployGovernance();
   } finally {
     // write addresses of deployed contracts even when exception is thrown
     console.log("Write deployed contract addresses to deployedContracts.json");
-    writeAddresses();
+    updateDeployedContracts(deployedContracts);
   }
   console.log("Deployment finished!");
 }

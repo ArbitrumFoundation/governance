@@ -38,32 +38,30 @@ import {
   L2ReverseCustomGateway,
   L2ReverseCustomGateway__factory,
 } from "../token-bridge-contracts/build/types";
-import { getDeployerAddresses, getProviders, isDeployingToNova } from "./providerSetup";
+import {
+  DeployProgressCache,
+  getDeployerAddresses,
+  getProviders,
+  isDeployingToNova,
+  loadClaimRecipients,
+  loadDaoRecipients,
+  loadDeployedContracts,
+  loadVestedRecipients,
+} from "./providerSetup";
 import { Address, L2Network } from "@arbitrum/sdk";
 import { parseEther } from "ethers/lib/utils";
 import { L1CustomGateway__factory } from "@arbitrum/sdk/dist/lib/abi/factories/L1CustomGateway__factory";
 import { L1GatewayRouter__factory } from "@arbitrum/sdk/dist/lib/abi/factories/L1GatewayRouter__factory";
 import { Provider } from "@ethersproject/providers";
-import {
-  TOKEN_RECIPIENTS_FILE_NAME,
-  getRecipientsDataFromContractEvents,
-  getRecipientsDataFromFile,
-  mapPointsToAmounts,
-} from "./tokenDistributorHelper";
+import { getRecipientsDataFromContractEvents } from "./tokenDistributorHelper";
 import dotenv from "dotenv";
-import { Recipients, loadRecipients } from "./vestedWalletsDeployer";
-import { assert, assertEquals, assertNumbersEquals, getProxyOwner } from "./testUtils";
+import { Recipients, assert, assertEquals, assertNumbersEquals, getProxyOwner } from "./testUtils";
 import { WalletCreatedEvent } from "../typechain-types/src/ArbitrumVestingWalletFactory.sol/ArbitrumVestingWalletsFactory";
 import { TransferEvent } from "../typechain-types/src/Util.sol/IERC20VotesUpgradeable";
 import { OwnershipTransferredEvent } from "../typechain-types/src/L2ArbitrumToken";
-import path from "path";
 
 dotenv.config();
 
-// JSON file which contains all the deployed contract addresses
-const DEPLOYED_CONTRACTS_FILE_NAME = "deployedContracts.json";
-const VESTED_RECIPIENTS_FILE_NAME = "files/vestedRecipients.json";
-const DAO_RECIPIENTS_FILE_NAME = "files/daoRecipients.json";
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
 /**
@@ -80,9 +78,16 @@ export const verifyDeployment = async () => {
   } = await getProviders();
   const { ethDeployerAddress, arbDeployerAddress } = await getDeployerAddresses();
 
-  const l1Contracts = loadL1Contracts(ethProvider);
-  const arbContracts = loadArbContracts(arbProvider);
-  const novaContracts = isDeployingToNova() ? loadNovaContracts(novaProvider) : undefined;
+  const deployedContracts = loadDeployedContracts();
+  const l1Contracts = loadL1Contracts(ethProvider, deployedContracts);
+  const arbContracts = loadArbContracts(arbProvider, deployedContracts);
+  const novaContracts = isDeployingToNova()
+    ? loadNovaContracts(novaProvider, deployedContracts)
+    : undefined;
+
+  const daoRecipients = loadDaoRecipients();
+  const vestedRecipients = loadVestedRecipients();
+  const claimRecipients = loadClaimRecipients();
 
   console.log("Verify L1 contracts are properly deployed");
   await verifyL1GovernanceFactory(l1Contracts["l1GovernanceFactory"], ethDeployerAddress);
@@ -163,6 +168,13 @@ export const verifyDeployment = async () => {
     arbContracts.l2TokenDistributor,
     arbContracts.vestedWalletFactory,
     arbProvider,
+    claimRecipients,
+    daoRecipients,
+    vestedRecipients,
+    {
+      distributorSetRecipientsEndBlock: deployedContracts.distributorSetRecipientsEndBlock!,
+      distributorSetRecipientsStartBlock: deployedContracts.distributorSetRecipientsStartBlock!,
+    },
     deployerConfig
   );
   await verifyL2TreasuryGovernor(
@@ -200,6 +212,7 @@ export const verifyDeployment = async () => {
     arbContracts.l2Executor,
     arbContracts.l2CoreGoverner,
     arbProvider,
+    claimRecipients,
     deployerConfig
   );
   await verifyArbitrumDAOConstitution(
@@ -706,6 +719,13 @@ export async function verifyTokenDistribution(
   l2TokenDistributor: TokenDistributor,
   vestedWalletFactory: ArbitrumVestingWalletsFactory,
   arbProvider: Provider,
+  claimRecipients: Recipients,
+  daoRecipients: Recipients,
+  vestedRecipients: Recipients,
+  deploymentInfo: {
+    distributorSetRecipientsStartBlock: number;
+    distributorSetRecipientsEndBlock: number;
+  },
   config: {
     L2_TOKEN_INITIAL_SUPPLY: string;
     L2_NUM_OF_TOKENS_FOR_TREASURY: string;
@@ -730,18 +750,13 @@ export async function verifyTokenDistribution(
     "Incorrect initial L2Token balance for ArbTreasury"
   );
 
-  const vestingRecipients = loadRecipients(path.join(__dirname, "..", VESTED_RECIPIENTS_FILE_NAME));
-  const vestingTotal = Object.values(vestingRecipients).reduce((a, b) => a.add(b));
-  await verifyVestedWallets(vestingRecipients, vestedWalletFactory, l2Token, arbProvider, config);
-
-  const daoRecipients = loadRecipients(path.join(__dirname, "..", DAO_RECIPIENTS_FILE_NAME));
-  const daoTotal = Object.values(daoRecipients).reduce((a, b) => a.add(b));
+  await verifyVestedWallets(vestedRecipients, vestedWalletFactory, l2Token, arbProvider, config);
 
   // find the initial supply recipient - this is the arb deployer
   // use index = 1 because
   // the first transfer is to the contract deployer from 0 address
-  // the second transfer is to the owner AKA the intiial supply recipient 
-  // the third transfer is to the upgrade executor 
+  // the second transfer is to the owner AKA the intiial supply recipient
+  // the third transfer is to the upgrade executor
   const initialSupplyRecipient = (
     await arbProvider.getLogs({
       ...l2Token.filters.OwnershipTransferred(),
@@ -750,9 +765,9 @@ export async function verifyTokenDistribution(
     })
   )
     .sort((a, b) => a.blockNumber - b.blockNumber)
-    .map((l) => l2Token.interface.parseLog(l).args as OwnershipTransferredEvent["args"])[1] 
-    
-    .newOwner;
+    .map(
+      (l) => l2Token.interface.parseLog(l).args as OwnershipTransferredEvent["args"]
+    )[1].newOwner;
 
   const initSupplyRecipientBalance = await l2Token.balanceOf(initialSupplyRecipient);
   assertNumbersEquals(
@@ -763,11 +778,9 @@ export async function verifyTokenDistribution(
 
   await verifyDaoRecipients(initialSupplyRecipient, daoRecipients, l2Token, arbProvider);
 
-  const tokenRecipientsByPoints = require("../" + TOKEN_RECIPIENTS_FILE_NAME);
-  const { tokenAmounts } = mapPointsToAmounts(tokenRecipientsByPoints);
-  const recipientTotals = tokenAmounts.reduce((a, b) => a.add(b));
+  const recipientTotals = Object.values(claimRecipients).reduce((a, b) => a.add(b));
   const tokenDistributorBalance = await l2Token.balanceOf(l2TokenDistributor.address);
-  await verifyClaimsSetCorrectly(l2TokenDistributor, config);
+  await verifyClaimsSetCorrectly(l2TokenDistributor, claimRecipients, deploymentInfo, config);
   assertNumbersEquals(
     tokenDistributorBalance,
     recipientTotals,
@@ -787,6 +800,9 @@ export async function verifyTokenDistribution(
     parseEther(config.L2_NUM_OF_TOKENS_FOR_TEAM),
     "Incorrect initial L2Token balance for team"
   );
+
+  const vestingTotal = Object.values(vestedRecipients).reduce((a, b) => a.add(b));
+  const daoTotal = Object.values(daoRecipients).reduce((a, b) => a.add(b));
 
   assertNumbersEquals(
     arbTreasuryBalance
@@ -1040,6 +1056,7 @@ async function verifyL2TokenDistributor(
   l2Executor: UpgradeExecutor,
   l2CoreGovernor: L2ArbitrumGovernor,
   arbProvider: Provider,
+  claimRecipients: Recipients,
   config: {
     L2_SWEEP_RECEIVER: string;
     L2_CLAIM_PERIOD_START: number;
@@ -1055,9 +1072,7 @@ async function verifyL2TokenDistributor(
   );
 
   //// check token balances
-  const tokenRecipientsByPoints = require("../" + TOKEN_RECIPIENTS_FILE_NAME);
-  const { tokenAmounts } = mapPointsToAmounts(tokenRecipientsByPoints);
-  const recipientTotals = tokenAmounts.reduce((a, b) => a.add(b));
+  const recipientTotals = Object.values(claimRecipients).reduce((a, b) => a.add(b));
   assertNumbersEquals(
     await l2Token.balanceOf(l2TokenDistributor.address),
     recipientTotals,
@@ -1106,28 +1121,31 @@ async function verifyL2TokenDistributor(
  */
 async function verifyClaimsSetCorrectly(
   l2TokenDistributor: TokenDistributor,
+  claimRecipients: Recipients,
+  deploymentInfo: {
+    distributorSetRecipientsStartBlock: number;
+    distributorSetRecipientsEndBlock: number;
+  },
   config: {
     GET_LOGS_BLOCK_RANGE: number;
   }
 ) {
   //// verify that emmited 'CanClaim' events match recipient-amount pairs from file
-  const deploymentInfo = require("../" + DEPLOYED_CONTRACTS_FILE_NAME);
   const recipientDataFromContract = await getRecipientsDataFromContractEvents(
     l2TokenDistributor,
-    Number(deploymentInfo["distributorSetRecipientsStartBlock"]),
-    Number(deploymentInfo["distributorSetRecipientsEndBlock"]),
+    Number(deploymentInfo.distributorSetRecipientsStartBlock),
+    Number(deploymentInfo.distributorSetRecipientsEndBlock),
     config
   );
-  const recipientDataFromFile = getRecipientsDataFromFile();
   assertNumbersEquals(
     BigNumber.from(Object.keys(recipientDataFromContract).length),
-    BigNumber.from(Object.keys(recipientDataFromFile).length),
+    BigNumber.from(Object.keys(claimRecipients).length),
     "Different number of events emitted compared to number of eligible accounts"
   );
   for (const account in recipientDataFromContract) {
     assertNumbersEquals(
       recipientDataFromContract[account],
-      recipientDataFromFile[account],
+      claimRecipients[account],
       "Emitted event data does not match recipient-amount pairs from file"
     );
   }
@@ -1431,13 +1449,19 @@ async function verifyDaoRecipients(
 }
 
 /**
- * Load L1 contracts by reading addresses from file `DEPLOYED_CONTRACTS_FILE_NAME` and return loaded contracts in key-value format.
  *
  * @param ethProvider
  * @returns
  */
-export function loadL1Contracts(ethProvider: Provider) {
-  const contractAddresses = require("../" + DEPLOYED_CONTRACTS_FILE_NAME);
+export function loadL1Contracts(ethProvider: Provider, contractAddresses: DeployProgressCache) {
+  if (contractAddresses.l1GovernanceFactory == undefined)
+    throw new Error("Missing l1GovernanceFactory");
+  if (contractAddresses.l1TokenProxy == undefined) throw new Error("Missing l1TokenProxy");
+  if (contractAddresses.l1Executor == undefined) throw new Error("Missing l1Executor");
+  if (contractAddresses.l1Timelock == undefined) throw new Error("Missing l1Timelock");
+  if (contractAddresses.l1ProxyAdmin == undefined) throw new Error("Missing l1ProxyAdmin");
+  if (contractAddresses.l1ReverseCustomGatewayProxy == undefined)
+    throw new Error("Missing l1ReverseCustomGatewayProxy");
   return {
     // load L1 contracts
     l1GovernanceFactory: L1GovernanceFactory__factory.connect(
@@ -1456,74 +1480,94 @@ export function loadL1Contracts(ethProvider: Provider) {
 }
 
 /**
- * Load Arb contracts by reading addresses from file `DEPLOYED_CONTRACTS_FILE_NAME` and return loaded contracts in key-value format.
  *
  * @param arbProvider
  * @returns
  */
-export function loadArbContracts(arbProvider: Provider) {
-  const contractAddresses = require("../" + DEPLOYED_CONTRACTS_FILE_NAME);
+export function loadArbContracts(arbProvider: Provider, contractAddresses: DeployProgressCache) {
+  if (contractAddresses.l2Token == undefined) throw new Error("Missing l2Token");
+  if (contractAddresses.l2Executor == undefined) throw new Error("Missing l2Executor");
+  if (contractAddresses.l2GovernanceFactory == undefined)
+    throw new Error("Missing l2GovernanceFactory");
+  if (contractAddresses.l2CoreGoverner == undefined) throw new Error("Missing l2CoreGoverner");
+  if (contractAddresses.l2CoreTimelock == undefined) throw new Error("Missing l2CoreTimelock");
+  if (contractAddresses.l2ProxyAdmin == undefined) throw new Error("Missing l2ProxyAdmin");
+  if (contractAddresses.l2TreasuryGoverner == undefined)
+    throw new Error("Missing l2TreasuryGoverner");
+  if (contractAddresses.l2ArbTreasury == undefined) throw new Error("Missing l2ArbTreasury");
+  if (contractAddresses.l2TokenDistributor == undefined)
+    throw new Error("Missing l2TokenDistributor");
+  if (contractAddresses.l2ReverseCustomGatewayProxy == undefined)
+    throw new Error("Missing l2ReverseCustomGatewayProxy");
+  if (contractAddresses.vestedWalletFactory == undefined)
+    throw new Error("Missing vestedWalletFactory");
+  if (contractAddresses.arbitrumDAOConstitution == undefined)
+    throw new Error("Missing arbitrumDAOConstitution");
+
   return {
     // load L2 contracts
-    l2Token: L2ArbitrumToken__factory.connect(contractAddresses["l2Token"], arbProvider),
+    l2Token: L2ArbitrumToken__factory.connect(contractAddresses.l2Token, arbProvider),
     l2Executor: UpgradeExecutor__factory.connect(contractAddresses["l2Executor"], arbProvider),
     l2GovernanceFactory: L2GovernanceFactory__factory.connect(
-      contractAddresses["l2GovernanceFactory"],
+      contractAddresses.l2GovernanceFactory,
       arbProvider
     ),
     l2CoreGoverner: L2ArbitrumGovernor__factory.connect(
-      contractAddresses["l2CoreGoverner"],
+      contractAddresses.l2CoreGoverner,
       arbProvider
     ),
     l2CoreTimelock: ArbitrumTimelock__factory.connect(
-      contractAddresses["l2CoreTimelock"],
+      contractAddresses.l2CoreTimelock,
       arbProvider
     ),
-    l2ProxyAdmin: ProxyAdmin__factory.connect(contractAddresses["l2ProxyAdmin"], arbProvider),
+    l2ProxyAdmin: ProxyAdmin__factory.connect(contractAddresses.l2ProxyAdmin, arbProvider),
     l2TreasuryGoverner: L2ArbitrumGovernor__factory.connect(
-      contractAddresses["l2TreasuryGoverner"],
+      contractAddresses.l2TreasuryGoverner,
       arbProvider
     ),
     l2ArbTreasury: FixedDelegateErc20Wallet__factory.connect(
-      contractAddresses["l2ArbTreasury"],
+      contractAddresses.l2ArbTreasury,
       arbProvider
     ),
     l2TokenDistributor: TokenDistributor__factory.connect(
-      contractAddresses["l2TokenDistributor"],
+      contractAddresses.l2TokenDistributor,
       arbProvider
     ),
     l2ReverseCustomGatewayProxy: L2ReverseCustomGateway__factory.connect(
-      contractAddresses["l2ReverseCustomGatewayProxy"],
+      contractAddresses.l2ReverseCustomGatewayProxy,
       arbProvider
     ),
     vestedWalletFactory: ArbitrumVestingWalletsFactory__factory.connect(
-      contractAddresses["vestedWalletFactory"],
+      contractAddresses.vestedWalletFactory,
       arbProvider
     ),
     arbitrumDAOConstitution: ArbitrumDAOConstitution__factory.connect(
-      contractAddresses["arbitrumDAOConstitution"],
+      contractAddresses.arbitrumDAOConstitution,
       arbProvider
     ),
   };
 }
 
 /**
- * Load Nova contracts by reading addresses from file `DEPLOYED_CONTRACTS_FILE_NAME` and return loaded contracts in key-value format.
  *
  * @param novaProvider
  * @returns
  */
-export function loadNovaContracts(novaProvider: Provider) {
-  const contractAddresses = require("../" + DEPLOYED_CONTRACTS_FILE_NAME);
+export function loadNovaContracts(novaProvider: Provider, contractAddresses: DeployProgressCache) {
+  if (contractAddresses.novaProxyAdmin == undefined) throw new Error("Missing novaProxyAdmin");
+  if (contractAddresses.novaUpgradeExecutorProxy == undefined)
+    throw new Error("Missing novaUpgradeExecutorProxy");
+  if (contractAddresses.novaTokenProxy == undefined) throw new Error("Missing novaTokenProxy");
+
   return {
     // load Nova contracts
     novaProxyAdmin: ProxyAdmin__factory.connect(contractAddresses["novaProxyAdmin"], novaProvider),
     novaUpgradeExecutorProxy: UpgradeExecutor__factory.connect(
-      contractAddresses["novaUpgradeExecutorProxy"],
+      contractAddresses.novaUpgradeExecutorProxy,
       novaProvider
     ),
     novaTokenProxy: L2CustomGatewayToken__factory.connect(
-      contractAddresses["novaTokenProxy"],
+      contractAddresses.novaTokenProxy,
       novaProvider
     ),
   };

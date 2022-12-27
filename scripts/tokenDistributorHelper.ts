@@ -3,8 +3,9 @@ import { BigNumber, ethers, Signer } from "ethers";
 import { formatEther, formatUnits, parseEther } from "ethers/lib/utils";
 import { TokenDistributor } from "../typechain-types";
 import { ArbGasInfo__factory } from "@arbitrum/sdk/dist/lib/abi/factories/ArbGasInfo__factory";
+import { Recipients } from "./testUtils";
 
-export const TOKEN_RECIPIENTS_FILE_NAME = "files/recipients.json";
+export const CLAIM_RECIPIENTS_FILE_NAME = "files/recipients.json";
 const validClaimAmounts: BigNumber[] = [
   parseEther("3000"),
   parseEther("4500"),
@@ -24,6 +25,7 @@ const validClaimAmounts: BigNumber[] = [
 export async function setClaimRecipients(
   tokenDistributor: TokenDistributor,
   arbDeployer: Signer,
+  claimRecipients: Recipients,
   config: {
     RECIPIENTS_BATCH_SIZE: number;
     BASE_L2_GAS_PRICE_LIMIT: number;
@@ -32,9 +34,6 @@ export async function setClaimRecipients(
   },
   previousStartBlock?: number
 ): Promise<number> {
-  const tokenRecipientsByPoints = require("../" + TOKEN_RECIPIENTS_FILE_NAME);
-  const { tokenRecipients, tokenAmounts } = mapPointsToAmounts(tokenRecipientsByPoints);
-
   // set recipients in batches
   let recipientsAlreadySet = 0;
   if (previousStartBlock) {
@@ -54,6 +53,9 @@ export async function setClaimRecipients(
   // 15 gwei
   const l1GasPriceLimit = BigNumber.from(config.BASE_L1_GAS_PRICE_LIMIT);
   const arbGasInfo = ArbGasInfo__factory.connect(ARB_GAS_INFO, arbDeployer);
+
+  const tokenRecipients = Object.keys(claimRecipients);
+  const tokenAmounts = Object.values(claimRecipients);
 
   let canClaimEventsEmitted = 0;
   for (
@@ -172,86 +174,10 @@ export async function getRecipientsDataFromContractEvents(
   return recipientData;
 }
 
-/**
- * Parse JSON file and return recipient-amount map.
- * @returns
- */
-export function getRecipientsDataFromFile(): { [key: string]: BigNumber } {
-  let recipientData: { [key: string]: BigNumber } = {};
+export function printRecipientsInfo(claimRecipients: Recipients) {
+  const totalClaimable = Object.values(claimRecipients).reduce((a, b) => a.add(b));
 
-  const tokenRecipientsByPoints = require("../" + TOKEN_RECIPIENTS_FILE_NAME);
-  const { tokenRecipients, tokenAmounts } = mapPointsToAmounts(tokenRecipientsByPoints);
-  tokenRecipients.map((recipient, i) => (recipientData[recipient] = tokenAmounts[i]));
-
-  return recipientData;
-}
-
-/**
- * Map points to claimable token amount per account
- * @param tokenRecipientsByPoints
- */
-export function mapPointsToAmounts(tokenRecipientsByPoints: any) {
-  let tokenRecipients: string[] = [];
-  let tokenAmounts: BigNumber[] = [];
-
-  for (const key in tokenRecipientsByPoints) {
-    tokenRecipients.push(key);
-
-    const points = tokenRecipientsByPoints[key].points;
-    switch (points) {
-      case 1:
-      case 2:
-      case 3: {
-        tokenAmounts.push(parseEther("3000"));
-        break;
-      }
-      case 4: {
-        tokenAmounts.push(parseEther("4500"));
-        break;
-      }
-      case 5: {
-        tokenAmounts.push(parseEther("6000"));
-        break;
-      }
-      case 6: {
-        tokenAmounts.push(parseEther("9000"));
-        break;
-      }
-      case 7: {
-        tokenAmounts.push(parseEther("10500"));
-        break;
-      }
-      case 8:
-      case 9:
-      case 10:
-      case 11:
-      case 12:
-      case 13:
-      case 14:
-      case 15: {
-        tokenAmounts.push(parseEther("12000"));
-        break;
-      }
-
-      default: {
-        throw new Error("Incorrect number of points for account " + key + ": " + points);
-      }
-    }
-  }
-
-  return { tokenRecipients, tokenAmounts };
-}
-
-export function printRecipientsInfo() {
-  const tokenRecipientsByPoints = require("../" + TOKEN_RECIPIENTS_FILE_NAME);
-  const { tokenRecipients, tokenAmounts } = mapPointsToAmounts(tokenRecipientsByPoints);
-
-  let totalClaimable = BigNumber.from(0);
-  tokenAmounts.forEach((element) => {
-    totalClaimable = totalClaimable.add(element);
-  });
-
-  console.log("Number of token recipients:", tokenRecipients.length);
+  console.log("Number of token recipients:", Object.keys(claimRecipients).length);
   console.log("Number of token to claim:", formatEther(totalClaimable));
 }
 

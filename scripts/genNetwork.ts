@@ -16,8 +16,8 @@ async function main() {
     config.arbUrl
   );
 
-  fs.writeFileSync("localNetwork.json", JSON.stringify({ l1Network, l2Network }, null, 2));
-  console.log("localnetwork.json updated");
+  fs.writeFileSync("./files/local/network.json", JSON.stringify({ l1Network, l2Network }, null, 2));
+  console.log("network.json updated");
 }
 
 main().then(() => console.log("Done."));
