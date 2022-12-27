@@ -4,16 +4,17 @@ import { Inbox__factory } from "@arbitrum/sdk/dist/lib/abi/factories/Inbox__fact
 import { SequencerInbox__factory } from "@arbitrum/sdk/dist/lib/abi/factories/SequencerInbox__factory";
 import { Outbox__factory } from "@arbitrum/sdk/dist/lib/abi/factories/Outbox__factory";
 import { ChallengeManager__factory } from "@arbitrum/sdk/dist/lib/abi/factories/ChallengeManager__factory";
+import { ArbOwner__factory } from "@arbitrum/sdk/dist/lib/abi/factories/ArbOwner__factory";
 
 import { getDeployersAndConfig, getProviders } from "./providerSetup";
-import { assertEquals, getProxyOwner } from "./testUtils";
+import { assert, assertEquals, getProxyOwner } from "./testUtils";
 import { ProxyAdmin__factory } from "../typechain-types";
 import { Provider } from "@ethersproject/providers";
 import { RollupCore } from "@arbitrum/sdk/dist/lib/abi/RollupCore";
 import { L2Network } from "@arbitrum/sdk";
 
 const DEPLOYED_CONTRACTS_FILE_NAME = "deployedContracts.json";
-
+const ARB_OWNER_PRECOMPILE = "0x000000000000000000000000000000000000006b";
 /**
  * Verifies ownership of protocol contracts is successfully transferred to DAO
  */
@@ -45,7 +46,23 @@ export const verifyOwnership = async () => {
     ethProvider,
     novaProvider
   );
+
+  console.log("Verify chain owner");
+  await verifyArbOwner(arbProvider, l2Executor);
+  await verifyArbOwner(novaProvider, novaExecutor);
 };
+
+/**
+ * Verify:
+ * - L2 executor is chain owner
+ */
+async function verifyArbOwner(provider: Provider, l2Executor: string) {
+  const ownerPrecompile = ArbOwner__factory.connect(ARB_OWNER_PRECOMPILE, provider);
+
+  const owners: string[] = await ownerPrecompile.getAllChainOwners();
+  assert(owners.length == 1, "There should be only 1 chain owner");
+  assert(owners[0] == l2Executor, "L2Executor should be the chain owner");
+}
 
 /**
  * Verify:
