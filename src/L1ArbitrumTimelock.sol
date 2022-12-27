@@ -19,9 +19,11 @@ contract L1ArbitrumTimelock is TimelockControllerUpgradeable, L1ArbitrumMessenge
     /// @dev When the target of an proposal is this magic value then the proposal
     ///      will be formed into a retryable ticket and posted to an inbox provided in
     ///      the data
-    ///      address below is: address(bytes20(bytes("retryable ticket magic")));
+    ///      address below is: address(bytes20(keccak256(bytes("retryable ticket magic"))));
     ///      we hardcode the bytes rather than the string as it's slightly cheaper
-    address public constant RETRYABLE_TICKET_MAGIC = 0x726574727961626C65207469636b6574206D6167;
+    ///      we use the bytes20 of the keccak since just the bytes20 of the string doesnt contain
+    ///      many letters which would make EIP-55 checksum checking less useful
+    address public constant RETRYABLE_TICKET_MAGIC = 0xa723C008e76E379c55599D2E4d93879BeaFDa79C;
     /// @notice The inbox for the L2 where governance is based
     address public governanceChainInbox;
     /// @notice The timelock of the governance contract on L2
@@ -167,6 +169,16 @@ contract L1ArbitrumTimelock is TimelockControllerUpgradeable, L1ArbitrumMessenge
                 l2Calldata
             );
         } else {
+            if(data.length != 0) {
+                // check the target has code if data was supplied
+                // this is a bit more important than normal since if the magic is improperly 
+                // specified in the proposal then we'll end up in this code block
+                // generally though, all proposals with data that specify a target with no code should
+                // be voted against
+                uint256 size = target.code.length;
+                require(size > 0, "L1ArbitrumTimelock: target must be contract");
+            }
+
             // Not a retryable ticket, so we simply execute
             super._execute(target, value, data);
         }
