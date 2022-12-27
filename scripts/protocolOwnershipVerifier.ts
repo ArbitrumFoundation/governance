@@ -190,7 +190,7 @@ async function verifyTokenBridgeOwnership(
     "l1Executor should be l1WethGateway's proxyAdmin's owner"
   );
 
-  //// check owner of L1 token bridge's proxyAdmins is L1 executor
+  //// check owner of L2 token bridge's proxyAdmins is L2 executor
 
   const l2GatewayRouterProxyAdmin = ProxyAdmin__factory.connect(
     await getProxyOwner(l2Network.tokenBridge.l2GatewayRouter, l2Provider),
