@@ -430,6 +430,7 @@ async function deployReverseGateways(
         await ethDeployer.getAddress()
       )
     ).wait();
+    
 
     // init L2 reverse gateway
     const l2ReverseCustomGateway = L2ReverseCustomGateway__factory.connect(
@@ -812,7 +813,22 @@ async function registerTokenOnArbOne(
   ).mul(2);
   const valueForArbRouter = arbRouterSubmissionFee.add(arbMaxGas.mul(arbGasPrice));
 
+  console.log("next bit");
   if (!deployedContracts.registerTokenArbOne2) {
+    console.log(await l1ReverseCustomGateway.calculateL2TokenAddress(l1Token.address));
+    console.log(
+      (await l1ReverseCustomGateway.provider!.getCode(l1GatewayRouter.address)).length
+      
+    )
+    const a = await l1GatewayRouter.callStatic.setGateways(
+      [l1Token.address],
+      [l1ReverseCustomGateway.address],
+      arbMaxGas,
+      arbGasPrice,
+      arbRouterSubmissionFee,
+      { value: valueForArbRouter.add(extraValue), gasLimit: 3000000 }
+    );
+    console.log(a);
     const l1ArbRouterTx = await l1GatewayRouter.setGateways(
       [l1Token.address],
       [l1ReverseCustomGateway.address],
