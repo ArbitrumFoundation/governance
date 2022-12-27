@@ -30,13 +30,12 @@ export async function setClaimRecipients(
     BASE_L1_GAS_PRICE_LIMIT: number;
     GET_LOGS_BLOCK_RANGE: number;
   },
-  previousStartBlock?: number,
+  previousStartBlock?: number
 ): Promise<number> {
   const tokenRecipientsByPoints = require("../" + TOKEN_RECIPIENTS_FILE_NAME);
   const { tokenRecipients, tokenAmounts } = mapPointsToAmounts(tokenRecipientsByPoints);
 
   // set recipients in batches
-  // const recipientsAlreadySet = await getNumberOfRecipientsSet(tokenDistributor);
   let recipientsAlreadySet = 0;
   if (previousStartBlock) {
     const blockNow = await arbDeployer.provider!.getBlockNumber();

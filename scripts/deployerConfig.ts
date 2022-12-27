@@ -59,6 +59,10 @@ export interface DeployerConfig {
    * Minimum delay for an operation to become valid
    */
   L2_TREASURY_TIMELOCK_DELAY: number;
+  /**
+   * Keccak256 hash of the  initial (i.e., at deploy time) constitution text
+   */
+  ARBITRUM_DAO_CONSTITUTION_HASH: string;
 
   ////////////////
   ///// Nova /////
@@ -83,9 +87,21 @@ export interface DeployerConfig {
    */
   L2_NUM_OF_TOKENS_FOR_TREASURY: string;
   /**
-   * Num of tokens to be sent to distributor (based on sum of claimable tokens in JSON file)
+   * Foundation address
    */
-  L2_NUM_OF_TOKENS_FOR_CLAIMING: string;
+  L2_ADDRESS_FOR_FOUNDATION: string;
+  /**
+   * Num of tokens to be sent to foundation
+   */
+  L2_NUM_OF_TOKENS_FOR_FOUNDATION: string;
+  /**
+   * Team address
+   */
+  L2_ADDRESS_FOR_TEAM: string;
+  /**
+   * Num of tokens to be sent to team
+   */
+  L2_NUM_OF_TOKENS_FOR_TEAM: string;
   /**
    * Receiver of the airdrop leftovers
    */
@@ -98,10 +114,6 @@ export interface DeployerConfig {
    * Airdrop claim end block number
    */
   L2_CLAIM_PERIOD_END: number;
-  /**
-   * Total number of airdrop recipients
-   */
-  L2_NUM_OF_RECIPIENTS: number;
   /**
    * Batch size when setting the airdrop recipients in token distributor
    */
@@ -118,10 +130,6 @@ export interface DeployerConfig {
    * Block range for eth_getLogs calls
    */
   GET_LOGS_BLOCK_RANGE: number;
-  /**
-   * Keccak256 hash of the  initial (i.e., at deploy time) constitution text
-   */
-  ARBITRUM_DAO_CONSTITUTION_HASH: string;
 }
 
 export const loadDeployerConfig = async (fileLocation: string) => {

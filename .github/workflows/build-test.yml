@@ -109,6 +109,9 @@ jobs:
       - name: Verify deployment
         run: yarn verify:governance
 
+      - name: Verify token distribution
+        run: yarn verify:distribution
+
   
   test-integration:
     name: Test integration
