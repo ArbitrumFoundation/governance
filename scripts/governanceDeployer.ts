@@ -430,7 +430,6 @@ async function deployReverseGateways(
         await ethDeployer.getAddress()
       )
     ).wait();
-    
 
     // init L2 reverse gateway
     const l2ReverseCustomGateway = L2ReverseCustomGateway__factory.connect(
