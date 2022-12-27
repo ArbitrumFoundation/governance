@@ -4,6 +4,10 @@ pragma solidity 0.8.16;
 import "@openzeppelin/contracts-upgradeable/governance/TimelockControllerUpgradeable.sol";
 
 /// @title  Timelock to be used in Arbitrum governance
+/// @notice Take care when using the predecessor field when scheduling. Since proposals
+///         can make cross chain calls and those calls are async, it is not guaranteed that they will
+//          be executed cross chain in the same order that they are executed in this timelock. Do not use
+///         the predessor field to preserve ordering in these situations.
 /// @dev    This contract adds no other functionality to the TimelockControllerUpgradeable
 ///         other than the ability to initialize it. TimelockControllerUpgradeable has no
 ///         public methods for this

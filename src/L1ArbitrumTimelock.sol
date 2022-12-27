@@ -81,12 +81,18 @@ contract L1ArbitrumTimelock is TimelockControllerUpgradeable, L1ArbitrumMessenge
     }
 
     /// @inheritdoc TimelockControllerUpgradeable
+    /// @notice Care should be taken when batching together proposals that make cross chain calls
+    ///         Since cross chain calls are async, it is not guaranteed that they will be executed cross
+    ///         chain in the same order that they are executed in this timelock. Do not use
+    ///         the predessor field to preserve ordering in these situations.
     /// @dev Adds the restriction that only the counterparty timelock can call this func
+    /// @param predecessor  Do not use predecessor to preserve ordering for proposals that make cross 
+    ///                     chain calls, since those calls are executed async it and do not preserve order themselves.
     function scheduleBatch(
         address[] calldata targets,
         uint256[] calldata values,
         bytes[] calldata payloads,
-        bytes32 predecessor,
+        bytes32 predecessor, 
         bytes32 salt,
         uint256 delay
     ) public virtual override (TimelockControllerUpgradeable) onlyCounterpartTimelock {
@@ -97,6 +103,8 @@ contract L1ArbitrumTimelock is TimelockControllerUpgradeable, L1ArbitrumMessenge
 
     /// @inheritdoc TimelockControllerUpgradeable
     /// @dev Adds the restriction that only the counterparty timelock can call this func
+    /// @param predecessor  Do not use predecessor to preserve ordering for proposals that make cross 
+    ///                     chain calls, since those calls are executed async it and do not preserve order themselves.
     function schedule(
         address target,
         uint256 value,
