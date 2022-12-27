@@ -813,22 +813,7 @@ async function registerTokenOnArbOne(
   ).mul(2);
   const valueForArbRouter = arbRouterSubmissionFee.add(arbMaxGas.mul(arbGasPrice));
 
-  console.log("next bit");
   if (!deployedContracts.registerTokenArbOne2) {
-    console.log(await l1ReverseCustomGateway.calculateL2TokenAddress(l1Token.address));
-    console.log(
-      (await l1ReverseCustomGateway.provider!.getCode(l1GatewayRouter.address)).length
-      
-    )
-    const a = await l1GatewayRouter.callStatic.setGateways(
-      [l1Token.address],
-      [l1ReverseCustomGateway.address],
-      arbMaxGas,
-      arbGasPrice,
-      arbRouterSubmissionFee,
-      { value: valueForArbRouter.add(extraValue), gasLimit: 3000000 }
-    );
-    console.log(a);
     const l1ArbRouterTx = await l1GatewayRouter.setGateways(
       [l1Token.address],
       [l1ReverseCustomGateway.address],
@@ -841,7 +826,6 @@ async function registerTokenOnArbOne(
     //// wait for ArbOne router TXs
 
     const l1ArbRouterTxReceipt = await L1TransactionReceipt.monkeyPatchWait(l1ArbRouterTx).wait();
-    console.log(l1ArbRouterTxReceipt);
     const l1ToArbMsgs = await l1ArbRouterTxReceipt.getL1ToL2Messages(arbDeployer.provider!);
 
     // status should be REDEEMED
