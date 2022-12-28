@@ -6,7 +6,7 @@ import { Outbox__factory } from "@arbitrum/sdk/dist/lib/abi/factories/Outbox__fa
 import { ChallengeManager__factory } from "@arbitrum/sdk/dist/lib/abi/factories/ChallengeManager__factory";
 import { ArbOwner__factory } from "@arbitrum/sdk/dist/lib/abi/factories/ArbOwner__factory";
 
-import { envVars, getDeployersAndConfig, getProviders } from "./providerSetup";
+import { envVars, getDeployersAndConfig, getProviders, isLocalDeployment } from "./providerSetup";
 import { assert, assertEquals, getProxyOwner } from "./testUtils";
 import { ProxyAdmin__factory } from "../typechain-types";
 import { Provider } from "@ethersproject/providers";
@@ -46,9 +46,11 @@ export const verifyOwnership = async () => {
     novaProvider
   );
 
-  console.log("Verify chain owner");
-  await verifyArbOwner(arbProvider, l2Executor);
-  await verifyArbOwner(novaProvider, novaExecutor);
+  if (!isLocalDeployment()) {
+    console.log("Verify chain owner");
+    await verifyArbOwner(arbProvider, l2Executor);
+    await verifyArbOwner(novaProvider, novaExecutor);
+  }
 };
 
 /**

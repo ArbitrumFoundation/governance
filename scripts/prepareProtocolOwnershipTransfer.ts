@@ -5,7 +5,9 @@ import { RollupAdminLogic__factory } from "@arbitrum/sdk/dist/lib/abi/factories/
 import { ethers, PopulatedTransaction } from "ethers";
 import fs from "fs";
 import { L2Network } from "@arbitrum/sdk";
+import { ArbOwner__factory } from "@arbitrum/sdk/dist/lib/abi/factories/ArbOwner__factory";
 
+const ARB_OWNER_PRECOMPILE = "0x0000000000000000000000000000000000000070";
 const ARB_TXS_FILE_NAME = "files/arbTransferAssetsTXs.json";
 const NOVA_TXS_FILE_NAME = "files/novaTransferAssetsTXs.json";
 
@@ -81,12 +83,42 @@ async function generateAssetTransferTXs(
     l2Provider,
     l2Executor
   );
+  // chain owner
+  const l2ChainOwnerTxs = await getChainOwnerTransferTXs(l2Provider, l2Executor);
+
   return {
     l1RollupOwnerTX: l1RollupOwnerTX,
     l1ProtocolProxyAdminOwnerTX: l1ProtocolProxyAdminOwnerTX,
     l1TokenBridgeProxyAdminOwnerTX: l1TokenBridgeProxyAdminOwnerTX,
     l2TokenBridgeProxyAdminOwnerTX: l2TokenBridgeProxyAdminOwnerTX,
+    l2ChainOwnerTxs: l2ChainOwnerTxs,
   };
+}
+
+/**
+ * Generate TXs to set executor as owner and remove old owners from ArbOwner.
+ *
+ * @param l2Network
+ * @param provider
+ * @param l2Executor
+ * @returns
+ */
+async function getChainOwnerTransferTXs(provider: ethers.providers.Provider, l2Executor: string) {
+  const ownerPrecompile = ArbOwner__factory.connect(ARB_OWNER_PRECOMPILE, provider);
+  const oldOwners = await ownerPrecompile.getAllChainOwners();
+
+  let txs: PopulatedTransaction[] = [];
+  txs.push(await ownerPrecompile.populateTransaction.addChainOwner(l2Executor));
+
+  for (let oldOwner of oldOwners) {
+    // make sure new owner, l2Executor, is not accidentally removed
+    if (oldOwner == l2Executor) {
+      continue;
+    }
+    txs.push(await ownerPrecompile.populateTransaction.removeChainOwner(oldOwner));
+  }
+
+  return txs;
 }
 
 /**

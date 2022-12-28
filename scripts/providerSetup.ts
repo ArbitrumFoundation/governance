@@ -208,7 +208,7 @@ export const getDeployersAndConfig = async (): Promise<{
   const vestedRecipients = loadVestedRecipients();
   const claimRecipients = loadClaimRecipients();
 
-  if (envVars.isLocalDeployment !== "false") {
+  if (isLocalDeployment()) {
     // setup local test environment
     const {
       l2Provider,
@@ -368,4 +368,13 @@ export const getDeployerAddresses = async (): Promise<{
 export function isDeployingToNova(): boolean {
   const deployToNova = process.env["DEPLOY_GOVERNANCE_TO_NOVA"] as string;
   return deployToNova === "true";
+}
+
+/**
+ * Governance is deployed to production when 'DEPLOY_TO_LOCAL_ENVIRONMENT' is set to 'false', otherwise it's deployed to local test env.
+ *
+ * @returns
+ */
+export function isLocalDeployment(): boolean {
+  return envVars.isLocalDeployment !== "false";
 }
