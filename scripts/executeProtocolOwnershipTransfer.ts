@@ -127,19 +127,31 @@ async function getProtocolOwnerWallet(l2Network: L2Network, provider: Provider):
   const address = l1ProtocolOwnerAddress.substring(2).toLocaleLowerCase();
 
   // find file and get contents
-  const encryptedJsonFile = execSync(
-    "docker exec nitro-poster-1 sudo find /home/user/l1keystore -maxdepth 1 -name '*" +
-      address +
-      "*' -print"
-  ).toString();
+  let encryptedJsonFile: string;
+  try {
+    encryptedJsonFile = execSync(
+      "docker exec nitro_poster_1 sudo find /home/user/l1keystore -maxdepth 1 -name '*" +
+        address +
+        "*' -print"
+    ).toString();
+  } catch (e) {
+    encryptedJsonFile = execSync(
+      "docker exec nitro-poster-1 sudo find /home/user/l1keystore -maxdepth 1 -name '*" +
+        address +
+        "*' -print"
+    ).toString();
+  }
 
   if (encryptedJsonFile.length == 0) {
     throw new Error("Could not locate wallet data for address " + address);
   }
 
-  const encryptedJson = execSync(
-    "docker exec nitro-poster-1 sudo cat " + encryptedJsonFile
-  ).toString();
+  let encryptedJson: string;
+  try {
+    encryptedJson = execSync("docker exec nitro_poster_1 sudo cat " + encryptedJsonFile).toString();
+  } catch (e) {
+    encryptedJson = execSync("docker exec nitro-poster-1 sudo cat " + encryptedJsonFile).toString();
+  }
 
   return await Wallet.fromEncryptedJson(encryptedJson, "passphrase");
 }
