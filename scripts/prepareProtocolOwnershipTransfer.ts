@@ -8,8 +8,6 @@ import { L2Network } from "@arbitrum/sdk";
 import { ArbOwner__factory } from "@arbitrum/sdk/dist/lib/abi/factories/ArbOwner__factory";
 
 const ARB_OWNER_PRECOMPILE = "0x0000000000000000000000000000000000000070";
-const ARB_TXS_FILE_NAME = "files/arbTransferAssetsTXs.json";
-const NOVA_TXS_FILE_NAME = "files/novaTransferAssetsTXs.json";
 
 /**
  * Generate calldata for all the TXs needed to transfer asset ownership to DAO.
@@ -33,8 +31,8 @@ export const prepareAssetTransferTXs = async () => {
     l1Executor,
     arbExecutor
   );
-  fs.writeFileSync(ARB_TXS_FILE_NAME, JSON.stringify(arbTXs));
-  console.log("Arb TXs file:", ARB_TXS_FILE_NAME);
+  fs.writeFileSync(envVars.arbTransferAssetsTXsLocation, JSON.stringify(arbTXs));
+  console.log("Arb TXs file:", envVars.arbTransferAssetsTXsLocation);
 
   // TXs to transfer ownership of Nova assets
   const novaTXs = await generateAssetTransferTXs(
@@ -44,8 +42,8 @@ export const prepareAssetTransferTXs = async () => {
     l1Executor,
     novaExecutor
   );
-  fs.writeFileSync(NOVA_TXS_FILE_NAME, JSON.stringify(novaTXs));
-  console.log("Nova TXs file:", NOVA_TXS_FILE_NAME);
+  fs.writeFileSync(envVars.novaTransferAssetsTXsLocation, JSON.stringify(novaTXs));
+  console.log("Nova TXs file:", envVars.novaTransferAssetsTXsLocation);
 };
 
 /**
