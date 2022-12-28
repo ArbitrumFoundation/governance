@@ -7,9 +7,6 @@ import { execSync } from "child_process";
 import { L2Network } from "@arbitrum/sdk";
 import { Provider } from "@ethersproject/providers";
 
-const ARB_TXS_FILE_NAME = "files/arbTransferAssetsTXs.json";
-const NOVA_TXS_FILE_NAME = "files/novaTransferAssetsTXs.json";
-
 /**
  * Load and execute all prepared TXs to transfer ownership of Arb and Nova assets.
  * To be used in local env only.
@@ -32,7 +29,7 @@ export const executeOwnershipTransfer = async () => {
 
   //// Arb transfer
   console.log("Transfer Arb asset's ownership");
-  const arbTxs = fetchAssetTransferTXs(ARB_TXS_FILE_NAME);
+  const arbTxs = fetchAssetTransferTXs(envVars.arbTransferAssetsTXsLocation);
 
   if ((await getOwner(arbNetwork.ethBridge.rollup, arbNetwork, ethProvider)) != l1Executor) {
     console.log("Set new Arb rollup owner");
@@ -57,7 +54,7 @@ export const executeOwnershipTransfer = async () => {
 
   //// Nova
   console.log("Transfer Nova asset's ownership");
-  const novaTxs = fetchAssetTransferTXs(NOVA_TXS_FILE_NAME);
+  const novaTxs = fetchAssetTransferTXs(envVars.novaTransferAssetsTXsLocation);
 
   if ((await getOwner(novaNetwork.ethBridge.rollup, novaNetwork, ethProvider)) != l1Executor) {
     console.log("Set new Nova rollup owner");
