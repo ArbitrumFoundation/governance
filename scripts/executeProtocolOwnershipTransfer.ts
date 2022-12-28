@@ -1,8 +1,9 @@
-import { getDeployerAddresses, getDeployersAndConfig, getProviders } from "./providerSetup";
+import { getDeployersAndConfig, getProviders } from "./providerSetup";
 import { Wallet } from "ethers";
 import fs from "fs";
 import { getProxyOwner } from "./testUtils";
 import { ProxyAdmin__factory } from "../typechain-types";
+import { execSync } from "child_process";
 
 const ARB_TXS_FILE_NAME = "files/arbTransferAssetsTXs.json";
 const NOVA_TXS_FILE_NAME = "files/novaTransferAssetsTXs.json";
@@ -12,12 +13,17 @@ const NOVA_TXS_FILE_NAME = "files/novaTransferAssetsTXs.json";
  * To be used in local env only.
  */
 export const executeOwnershipTransfer = async () => {
-  const { ethDeployer, arbDeployer, novaDeployer } = await getDeployersAndConfig();
+  const { ethDeployer, arbDeployer, novaDeployer, arbNetwork } = await getDeployersAndConfig();
   const { ethProvider } = await getProviders();
 
-  const l1ProtocolOwner = (
-    await Wallet.fromEncryptedJson(fs.readFileSync("./scripts/params").toString(), "passphrase")
-  ).connect(ethProvider);
+  // fetch protocol owner wallet from local test env
+  const l1ProtocolOwnerAddress = await ProxyAdmin__factory.connect(
+    await getProxyOwner(arbNetwork.ethBridge.bridge, ethProvider),
+    ethProvider
+  ).owner();
+  const l1ProtocolOwner = (await getProtocolOwnerWallet(l1ProtocolOwnerAddress)).connect(
+    ethProvider
+  );
 
   //// Arb
   console.log("Transfer Arb asset's ownership");
@@ -48,6 +54,34 @@ export const fetchAssetTransferTXs = (fileName: string) => {
 
   return ownershipTransferTXs;
 };
+
+/**
+ * Fetch protocol owner wallet from local test envirnoment container
+ *
+ * @param l1ProtocolOwnerAddress
+ * @returns
+ */
+async function getProtocolOwnerWallet(l1ProtocolOwnerAddress: string): Promise<Wallet> {
+  // to lower case and remove '0x' prefix
+  const address = l1ProtocolOwnerAddress.substring(2).toLocaleLowerCase();
+
+  // find file and get contents
+  const encryptedJsonFile = execSync(
+    "docker exec nitro-poster-1 sudo find /home/user/l1keystore -maxdepth 1 -name '*" +
+      address +
+      "*' -print"
+  ).toString();
+
+  if (encryptedJsonFile.length == 0) {
+    throw new Error("Could not locate wallet data for address " + address);
+  }
+
+  const encryptedJson = execSync(
+    "docker exec nitro-poster-1 sudo cat " + encryptedJsonFile
+  ).toString();
+
+  return await Wallet.fromEncryptedJson(encryptedJson, "passphrase");
+}
 
 /**
  * Print assets and its owners
