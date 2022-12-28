@@ -84,7 +84,7 @@ contract L1ArbitrumTimelock is TimelockControllerUpgradeable, L1ArbitrumMessenge
     /// @notice Care should be taken when batching together proposals that make cross chain calls
     ///         Since cross chain calls are async, it is not guaranteed that they will be executed cross
     ///         chain in the same order that they are executed in this timelock. Do not use
-    ///         the predessor field to preserve ordering in these situations.
+    ///         the predecessor field to preserve ordering in these situations.
     /// @dev Adds the restriction that only the counterparty timelock can call this func
     /// @param predecessor  Do not use predecessor to preserve ordering for proposals that make cross 
     ///                     chain calls, since those calls are executed async it and do not preserve order themselves.
