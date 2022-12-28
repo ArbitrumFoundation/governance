@@ -1,4 +1,4 @@
-import { getDeployersAndConfig, getProviders } from "./providerSetup";
+import { envVars, getDeployersAndConfig, getProviders } from "./providerSetup";
 import { getProxyOwner } from "./testUtils";
 import { ProxyAdmin__factory } from "../typechain-types";
 import { RollupAdminLogic__factory } from "@arbitrum/sdk/dist/lib/abi/factories/RollupAdminLogic__factory";
@@ -6,7 +6,6 @@ import { ethers, PopulatedTransaction } from "ethers";
 import fs from "fs";
 import { L2Network } from "@arbitrum/sdk";
 
-const DEPLOYED_CONTRACTS_FILE_NAME = "deployedContracts.json";
 const ARB_TXS_FILE_NAME = "files/arbTransferAssetsTXs.json";
 const NOVA_TXS_FILE_NAME = "files/novaTransferAssetsTXs.json";
 
@@ -19,13 +18,13 @@ export const prepareAssetTransferTXs = async () => {
   const { arbNetwork, novaNetwork } = await getDeployersAndConfig();
   const { ethProvider, arbProvider, novaProvider } = await getProviders();
 
-  const contractAddresses = require("../" + DEPLOYED_CONTRACTS_FILE_NAME);
+  const contractAddresses = require("../" + envVars.deployedContractsLocation);
   const l1Executor = contractAddresses["l1Executor"];
   const arbExecutor = contractAddresses["l2Executor"];
   const novaExecutor = contractAddresses["novaUpgradeExecutorProxy"];
 
   // TXs to transfer ownership of ArbOne assets
-  const arbTXs = await getUnsignedTransactions(
+  const arbTXs = await generateAssetTransferTXs(
     arbNetwork,
     ethProvider,
     arbProvider,
@@ -33,9 +32,10 @@ export const prepareAssetTransferTXs = async () => {
     arbExecutor
   );
   fs.writeFileSync(ARB_TXS_FILE_NAME, JSON.stringify(arbTXs));
+  console.log("Arb TXs file:", ARB_TXS_FILE_NAME);
 
   // TXs to transfer ownership of Nova assets
-  const novaTXs = await getUnsignedTransactions(
+  const novaTXs = await generateAssetTransferTXs(
     novaNetwork,
     ethProvider,
     novaProvider,
@@ -43,6 +43,7 @@ export const prepareAssetTransferTXs = async () => {
     novaExecutor
   );
   fs.writeFileSync(NOVA_TXS_FILE_NAME, JSON.stringify(novaTXs));
+  console.log("Nova TXs file:", NOVA_TXS_FILE_NAME);
 };
 
 /**
@@ -54,7 +55,7 @@ export const prepareAssetTransferTXs = async () => {
  *
  * @returns
  */
-async function getUnsignedTransactions(
+async function generateAssetTransferTXs(
   l2Network: L2Network,
   l1Provider: ethers.providers.Provider,
   l2Provider: ethers.providers.Provider,
@@ -82,7 +83,7 @@ async function getUnsignedTransactions(
   );
   return {
     l1RollupOwnerTX: l1RollupOwnerTX,
-    protocolProxyAdminOwnerTX: l1ProtocolProxyAdminOwnerTX,
+    l1ProtocolProxyAdminOwnerTX: l1ProtocolProxyAdminOwnerTX,
     l1TokenBridgeProxyAdminOwnerTX: l1TokenBridgeProxyAdminOwnerTX,
     l2TokenBridgeProxyAdminOwnerTX: l2TokenBridgeProxyAdminOwnerTX,
   };

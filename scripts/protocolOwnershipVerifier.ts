@@ -6,14 +6,13 @@ import { Outbox__factory } from "@arbitrum/sdk/dist/lib/abi/factories/Outbox__fa
 import { ChallengeManager__factory } from "@arbitrum/sdk/dist/lib/abi/factories/ChallengeManager__factory";
 import { ArbOwner__factory } from "@arbitrum/sdk/dist/lib/abi/factories/ArbOwner__factory";
 
-import { getDeployersAndConfig, getProviders } from "./providerSetup";
+import { envVars, getDeployersAndConfig, getProviders } from "./providerSetup";
 import { assert, assertEquals, getProxyOwner } from "./testUtils";
 import { ProxyAdmin__factory } from "../typechain-types";
 import { Provider } from "@ethersproject/providers";
 import { RollupCore } from "@arbitrum/sdk/dist/lib/abi/RollupCore";
 import { L2Network } from "@arbitrum/sdk";
 
-const DEPLOYED_CONTRACTS_FILE_NAME = "deployedContracts.json";
 const ARB_OWNER_PRECOMPILE = "0x000000000000000000000000000000000000006b";
 /**
  * Verifies ownership of protocol contracts is successfully transferred to DAO
@@ -22,7 +21,7 @@ export const verifyOwnership = async () => {
   const { arbNetwork, novaNetwork } = await getDeployersAndConfig();
   const { ethProvider, arbProvider, novaProvider } = await getProviders();
 
-  const contractAddresses = require("../" + DEPLOYED_CONTRACTS_FILE_NAME);
+  const contractAddresses = require("../" + envVars.deployedContractsLocation);
   const l1Executor = contractAddresses["l1Executor"];
   const l2Executor = contractAddresses["l2Executor"];
   const novaExecutor = contractAddresses["novaUpgradeExecutorProxy"];
