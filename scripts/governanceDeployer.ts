@@ -134,22 +134,33 @@ async function getOrInitDefault<TContract extends Contract>(
  * ///         - fetch and store addresses of deployed contracts
  * /// 11. Set executor roles
  * ///         - call l2GovernanceFactory.deployStep3
+ * /// 12. Set executor roles on Nova
  * ///         - call novaUpgradeExecutor.initialize
  * ///         - transfer novaProxyAdmin ownership to upgrade executor
- * /// 12. Post deployment L1 tasks - token registration
+ * /// 13. Register token on ArbOne
  * ///         - register L1 token to ArbOne token mapping on reverse gateways
  * ///         - register L1 token to reverse gateway mapping on Arb routers
+ * /// 14. Register token on Nova
  * ///         - register L1 token to Nova token mapping on custom gateways
  * ///         - register L1 token to custom gateway token mapping on Nova routers
- * /// 13. Post deployment L2 tasks - transfer tokens
- * ///         - transfer part of tokens from arbDeployer (initial supply receiver) to treasury
- * /// 14. Deploy and init TokenDistributor
+ * /// 15. Post deployment L2 tasks - transfer tokens
+ * ///         - transfer L2 token ownership to upgradeExecutor
+ * ///         - transfer part of tokens to treasury
+ * ///         - transfer part of tokens to foundation
+ * ///         - transfer part of tokens to team
+ * /// 16. Distribute to vested wallets
+ * ///         - create vested wallets
+ * ///         - transfer funds to vested wallets
+ * /// 16. Distribute to vested wallets
+ * ///         - send funds to DAOs based on DAO recipients file
+ * /// 17. Deploy TokenDistributor
  * ///         - deploy TokenDistributor
  * ///         - transfer claimable tokens from arbDeployer to distributor
+ * /// 18. Write addresses of deployed contracts to local JSON file
+ * /// 19. Init TokenDistributor
  * ///         - set claim recipients (done in batches over ~2h period)
  * ///         - if number of set recipients and total claimable amount match expected values, transfer ownership to executor
  * ///
- * /// And at the end of script execution write addresses of deployed contracts to local JSON file.
  *
  * @returns
  */
@@ -290,7 +301,7 @@ export const deployGovernance = async () => {
     deployerConfig
   );
 
-  console.log("Distribute to team");
+  console.log("Distribute to DAOs");
   await transferDaoAllocations(arbDeployer, l2DeployResult.token, daoRecipients);
 
   // deploy ARB distributor

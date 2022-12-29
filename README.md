@@ -83,6 +83,89 @@ Addresses for deployed contracts are stored to `localNetwork.json`
 
 Finally run integration tests against local node
 ```
-yarn test-integration
+yarn test:integration
 ```
+
+## Deploy governance to local test environment
+
+To deploy governance in local env we need to have L1 and Nitro instances up and running (same as in previous section). Start the test node by running following script in `nitro` repo:
+
+```
+./test-node.bash --init --no-blockscout
+```
+
+Now that Nitro is running, let's prepare Arbitrum One network. Run following script to deploy Arb token bridge contracts:
+
+```
+yarn gen:network
+```
+
+Info about all the protocol and token bridge contracts is written to `files/local/network.json`.
+
+Do the same for Nova:
+
+```
+yarn run gen:nova:network
+```
+Token bridge contracts are deployed and info is written to `files/local/networkNova.json`.  
+
+Next, we need to do preparation for governance deployment. First install the dependencies:
+
+```
+yarn install
+```
+
+One of the prerequisites is to have env vars properly set. When deploying to test node it's enough to simply copy the sample values:
+
+```
+cp .env-sample .env
+```
+
+There's also a set of governance config parameters that need to be properly set prior to deployment:
+```
+cat files/local/deployConfig.json
+```
+
+Compile governance contracts:
+```
+yarn build
+```
+
+Important! If there were previous deployments in the same test node, make sure to remove the file containing cached info, otherwise it will mess up new deployment:
+```
+rm files/local/deployedContracts.json
+```
+
+Now everything's ready to start the deployment process. Run the following script:
+```
+yarn deploy:governance
+```
+
+Script deploys and initializes governances contracts. Addresses of deployed contracts are stored in `files/local/deployedContract.json`. Script will also deploy TokenDistributor and set token recipients. Depending on the number of recipients this process could take up to few hours. Once deployment is finished make sure everything is properly deployed:
+```
+yarn verify:governance
+```
+
+Additionally we shall check tokens were properly distributed to all the parties as intended:
+```
+yarn verify:distribution
+```
+
+There's another set of tasks required - once governance is deployed ownership of existing Arb/Nova protocol contracts shall be transferred to the DAO. Running the following script will prepare (unsigned) transactions that need to be executed to fully transfer the ownership:
+```
+yarn prepare:ownership:transfer
+```
+
+Script outputs 2 JSON files which contain unsigned TXs (`data` and `to` fields) - `files/local/arbTransferAssetsTXs.json` and `files/local/novaTransferAssetsTXs.json`. In production mode these TXs will be signed and executed by protocol owner multisig. In test mode however we can execute them directly by running script:
+```
+yarn execute:ownership:transfer
+```
+
+Finally, let's make sure owership of protocol assets has been succsessfully transferred to DAO. Verification script works for both production and testing mode.
+```
+yarn verify:protocol:ownership
+```
+
+
+
 
