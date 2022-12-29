@@ -151,7 +151,7 @@ async function getOrInitDefault<TContract extends Contract>(
  * /// 16. Distribute to vested wallets
  * ///         - create vested wallets
  * ///         - transfer funds to vested wallets
- * /// 16. Distribute to vested wallets
+ * /// 16. Distribute to DAOs
  * ///         - send funds to DAOs based on DAO recipients file
  * /// 17. Deploy TokenDistributor
  * ///         - deploy TokenDistributor
