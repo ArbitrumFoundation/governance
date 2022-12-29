@@ -128,7 +128,7 @@ async function getProtocolOwnerWallet(l2Network: L2Network, provider: Provider):
 
   console.log(
     "l1keystore:",
-    execSync("docker exec nitro-poster-1  ls -la /home/user/l1keystore").toString()
+    execSync("docker exec nitro_poster_1  ls -la /home/user/l1keystore").toString()
   );
 
   // find file and get contents
