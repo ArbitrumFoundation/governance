@@ -126,20 +126,23 @@ async function getProtocolOwnerWallet(l2Network: L2Network, provider: Provider):
   // to lower case and remove '0x' prefix
   const address = l1ProtocolOwnerAddress.substring(2).toLocaleLowerCase();
 
+  console.log(
+    "l1keystore:",
+    execSync("docker exec nitro-poster-1  ls -la /home/user/l1keystore").toString()
+  );
+
   // find file and get contents
   let encryptedJsonFile: string;
+  let dockerCommand =
+    "docker exec nitro_poster_1 find /home/user/l1keystore -maxdepth 1 -name '*" +
+    address +
+    "*' -print";
   try {
-    encryptedJsonFile = execSync(
-      "docker exec nitro_poster_1 sudo find /home/user/l1keystore -maxdepth 1 -name '*" +
-        address +
-        "*' -print"
-    ).toString();
+    encryptedJsonFile = execSync(dockerCommand).toString();
   } catch (e) {
-    encryptedJsonFile = execSync(
-      "docker exec nitro-poster-1 sudo find /home/user/l1keystore -maxdepth 1 -name '*" +
-        address +
-        "*' -print"
-    ).toString();
+    // nitro_poster_1 -> nitro-poster-1
+    dockerCommand = dockerCommand.split("_").join("-");
+    encryptedJsonFile = execSync(dockerCommand).toString();
   }
 
   if (encryptedJsonFile.length == 0) {
@@ -147,10 +150,13 @@ async function getProtocolOwnerWallet(l2Network: L2Network, provider: Provider):
   }
 
   let encryptedJson: string;
+  dockerCommand = "docker exec nitro_poster_1 cat " + encryptedJsonFile;
   try {
-    encryptedJson = execSync("docker exec nitro_poster_1 sudo cat " + encryptedJsonFile).toString();
+    encryptedJson = execSync(dockerCommand).toString();
   } catch (e) {
-    encryptedJson = execSync("docker exec nitro-poster-1 sudo cat " + encryptedJsonFile).toString();
+    // nitro_poster_1 -> nitro-poster-1
+    dockerCommand = dockerCommand.split("_").join("-");
+    encryptedJson = execSync(dockerCommand).toString();
   }
 
   return await Wallet.fromEncryptedJson(encryptedJson, "passphrase");
