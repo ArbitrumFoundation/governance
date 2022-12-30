@@ -5,16 +5,19 @@ import { SequencerInbox__factory } from "@arbitrum/sdk/dist/lib/abi/factories/Se
 import { Outbox__factory } from "@arbitrum/sdk/dist/lib/abi/factories/Outbox__factory";
 import { ChallengeManager__factory } from "@arbitrum/sdk/dist/lib/abi/factories/ChallengeManager__factory";
 import { ArbOwner__factory } from "@arbitrum/sdk/dist/lib/abi/factories/ArbOwner__factory";
-
-import { getDeployersAndConfig, getProviders } from "./providerSetup";
+import { envVars, getDeployersAndConfig, getProviders, isLocalDeployment } from "./providerSetup";
 import { assert, assertEquals, getProxyOwner } from "./testUtils";
 import { ProxyAdmin__factory } from "../typechain-types";
 import { Provider } from "@ethersproject/providers";
 import { RollupCore } from "@arbitrum/sdk/dist/lib/abi/RollupCore";
 import { L2Network } from "@arbitrum/sdk";
+import {
+  L1CustomGateway__factory,
+  L1GatewayRouter__factory,
+} from "../token-bridge-contracts/build/types";
 
-const DEPLOYED_CONTRACTS_FILE_NAME = "deployedContracts.json";
 const ARB_OWNER_PRECOMPILE = "0x000000000000000000000000000000000000006b";
+
 /**
  * Verifies ownership of protocol contracts is successfully transferred to DAO
  */
@@ -22,7 +25,7 @@ export const verifyOwnership = async () => {
   const { arbNetwork, novaNetwork } = await getDeployersAndConfig();
   const { ethProvider, arbProvider, novaProvider } = await getProviders();
 
-  const contractAddresses = require("../" + DEPLOYED_CONTRACTS_FILE_NAME);
+  const contractAddresses = require("../" + envVars.deployedContractsLocation);
   const l1Executor = contractAddresses["l1Executor"];
   const l2Executor = contractAddresses["l2Executor"];
   const novaExecutor = contractAddresses["novaUpgradeExecutorProxy"];
@@ -47,9 +50,12 @@ export const verifyOwnership = async () => {
     novaProvider
   );
 
-  console.log("Verify chain owner");
-  await verifyArbOwner(arbProvider, l2Executor);
-  await verifyArbOwner(novaProvider, novaExecutor);
+  // only check arbOwner precompile in production, atm ArbOwner's owner is set to address zero in test node
+  if (!isLocalDeployment()) {
+    console.log("Verify chain owner");
+    await verifyArbOwner(arbProvider, l2Executor);
+    await verifyArbOwner(novaProvider, novaExecutor);
+  }
 };
 
 /**
@@ -190,7 +196,28 @@ async function verifyTokenBridgeOwnership(
     "l1Executor should be l1WethGateway's proxyAdmin's owner"
   );
 
-  //// check owner of L1 token bridge's proxyAdmins is L1 executor
+  //// check owner of L1 gatewayRouter and custom gateway
+  const l1GatewayRouter = L1GatewayRouter__factory.connect(
+    l2Network.tokenBridge.l1GatewayRouter,
+    ethProvider
+  );
+  assertEquals(
+    await l1GatewayRouter.owner(),
+    l1Executor,
+    "l1Executor should be l1GatewayRouter's owner"
+  );
+
+  const l1CustomGateway = L1CustomGateway__factory.connect(
+    l2Network.tokenBridge.l1CustomGateway,
+    ethProvider
+  );
+  assertEquals(
+    await l1CustomGateway.owner(),
+    l1Executor,
+    "l1Executor should be l1GatewayRouter's owner"
+  );
+
+  //// check owner of L2 token bridge's proxyAdmins is L2 executor
 
   const l2GatewayRouterProxyAdmin = ProxyAdmin__factory.connect(
     await getProxyOwner(l2Network.tokenBridge.l2GatewayRouter, l2Provider),
