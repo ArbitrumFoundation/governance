@@ -10,6 +10,8 @@ localNetwork.json
 localNetworkNova.json
 .env
 .envrc
-deployedContracts.json
-./files/local/network.json
-./files/local/novaNetwork.json
+files/local/deployedContracts.json
+files/local/network.json
+files/local/networkNova.json
+files/local/arbTransferAssetsTXs.json
+files/local/novaTransferAssetsTXs.json

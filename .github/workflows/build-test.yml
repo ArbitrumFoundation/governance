@@ -119,7 +119,7 @@ jobs:
         run: yarn execute:ownership:transfer
 
       - name: Verify protocol ownership
-        run: yarn verify:protocol:ownership
+        run: yarn verify:ownership:transfer
   
   test-integration:
     name: Test integration

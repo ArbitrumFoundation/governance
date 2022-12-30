@@ -2,7 +2,6 @@ import { Signer, ContractFactory, constants } from "ethers";
 
 import { L1GatewayRouter__factory } from "@arbitrum/sdk/dist/lib/abi/factories/L1GatewayRouter__factory";
 import { L1ERC20Gateway__factory } from "@arbitrum/sdk/dist/lib/abi/factories/L1ERC20Gateway__factory";
-import { L1CustomGateway__factory } from "@arbitrum/sdk/dist/lib/abi/factories/L1CustomGateway__factory";
 import { L1WethGateway__factory } from "@arbitrum/sdk/dist/lib/abi/factories/L1WethGateway__factory";
 import { L2GatewayRouter__factory } from "@arbitrum/sdk/dist/lib/abi/factories/L2GatewayRouter__factory";
 import { L2ERC20Gateway__factory } from "@arbitrum/sdk/dist/lib/abi/factories/L2ERC20Gateway__factory";
@@ -18,6 +17,7 @@ import { AeWETH__factory } from "@arbitrum/sdk/dist/lib/abi/factories/AeWETH__fa
 import { TestWETH9__factory } from "@arbitrum/sdk/dist/lib/abi/factories/TestWETH9__factory";
 import { Multicall2__factory } from "@arbitrum/sdk/dist/lib/abi/factories/Multicall2__factory";
 import { ArbMulticall2__factory } from "@arbitrum/sdk/dist/lib/abi/factories/ArbMulticall2__factory";
+import { L1CustomGateway__factory } from "../token-bridge-contracts/build/types/factories/L1CustomGateway__factory";
 
 const deployBehindProxy = async <
   T extends ContractFactory & { contractName: string }
@@ -58,12 +58,16 @@ export const deployErc20L1 = async (deployer: Signer) => {
   );
   await standardGateway.deployed();
 
-  const customGateway = await deployBehindProxy(
-    deployer,
-    new L1CustomGateway__factory(),
-    proxyAdmin
+  /// deploy custom gateway from token-bridge-contracts submodule, instead of SDK (until SDK version is bumped)
+  const customGatewayLogic = await new L1CustomGateway__factory(deployer).deploy();
+  await customGatewayLogic.deployed();
+  const customGatewayProxy = await new TransparentUpgradeableProxy__factory(deployer).deploy(
+    customGatewayLogic.address,
+    proxyAdmin.address,
+    "0x"
   );
-  await customGateway.deployed();
+  await customGatewayProxy.deployed();
+  const customGateway = L1CustomGateway__factory.connect(customGatewayProxy.address, deployer);
 
   const wethGateway = await deployBehindProxy(
     deployer,

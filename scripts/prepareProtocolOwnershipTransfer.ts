@@ -6,6 +6,10 @@ import { ethers, PopulatedTransaction } from "ethers";
 import fs from "fs";
 import { L2Network } from "@arbitrum/sdk";
 import { ArbOwner__factory } from "@arbitrum/sdk/dist/lib/abi/factories/ArbOwner__factory";
+import {
+  L1CustomGateway__factory,
+  L1GatewayRouter__factory,
+} from "../token-bridge-contracts/build/types";
 
 const ARB_OWNER_PRECOMPILE = "0x0000000000000000000000000000000000000070";
 
@@ -63,24 +67,40 @@ async function generateAssetTransferTXs(
   l2Executor: string
 ) {
   const l1RollupOwnerTX = await getRollupOwnerTransferTX(l2Network, l1Provider, l1Executor);
+
   // protocol L1 proxy admin
   const l1ProtocolProxyAdminOwnerTX = await getProxyAdminOwnerTransferTX(
     await getProxyOwner(l2Network.ethBridge.inbox, l1Provider),
     l1Provider,
     l1Executor
   );
+
   // L1 token bridge proxy admin
   const l1TokenBridgeProxyAdminOwnerTX = await getProxyAdminOwnerTransferTX(
     await getProxyOwner(l2Network.tokenBridge.l1GatewayRouter, l1Provider),
     l1Provider,
     l1Executor
   );
+
   // L2 token bridge proxy admin
   const l2TokenBridgeProxyAdminOwnerTX = await getProxyAdminOwnerTransferTX(
     await getProxyOwner(l2Network.tokenBridge.l2GatewayRouter, l2Provider),
     l2Provider,
     l2Executor
   );
+
+  // set L1 gateway router owner
+  const l1GatewayRouterOwnerTX = await L1GatewayRouter__factory.connect(
+    l2Network.tokenBridge.l1GatewayRouter,
+    l1Provider
+  ).populateTransaction.setOwner(l1Executor);
+
+  // set L1 custom gateway owner
+  const l1CustomGatewayOwnerTX = await L1CustomGateway__factory.connect(
+    l2Network.tokenBridge.l1CustomGateway,
+    l1Provider
+  ).populateTransaction.setOwner(l1Executor);
+
   // chain owner
   const l2ChainOwnerTxs = await getChainOwnerTransferTXs(l2Provider, l2Executor);
 
@@ -89,6 +109,8 @@ async function generateAssetTransferTXs(
     l1ProtocolProxyAdminOwnerTX: l1ProtocolProxyAdminOwnerTX,
     l1TokenBridgeProxyAdminOwnerTX: l1TokenBridgeProxyAdminOwnerTX,
     l2TokenBridgeProxyAdminOwnerTX: l2TokenBridgeProxyAdminOwnerTX,
+    l1GatewayRouterOwnerTX: l1GatewayRouterOwnerTX,
+    l1CustomGatewayOwnerTX: l1CustomGatewayOwnerTX,
     l2ChainOwnerTxs: l2ChainOwnerTxs,
   };
 }

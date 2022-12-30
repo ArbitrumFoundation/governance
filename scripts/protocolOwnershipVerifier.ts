@@ -5,15 +5,19 @@ import { SequencerInbox__factory } from "@arbitrum/sdk/dist/lib/abi/factories/Se
 import { Outbox__factory } from "@arbitrum/sdk/dist/lib/abi/factories/Outbox__factory";
 import { ChallengeManager__factory } from "@arbitrum/sdk/dist/lib/abi/factories/ChallengeManager__factory";
 import { ArbOwner__factory } from "@arbitrum/sdk/dist/lib/abi/factories/ArbOwner__factory";
-
 import { envVars, getDeployersAndConfig, getProviders, isLocalDeployment } from "./providerSetup";
 import { assert, assertEquals, getProxyOwner } from "./testUtils";
 import { ProxyAdmin__factory } from "../typechain-types";
 import { Provider } from "@ethersproject/providers";
 import { RollupCore } from "@arbitrum/sdk/dist/lib/abi/RollupCore";
 import { L2Network } from "@arbitrum/sdk";
+import {
+  L1CustomGateway__factory,
+  L1GatewayRouter__factory,
+} from "../token-bridge-contracts/build/types";
 
 const ARB_OWNER_PRECOMPILE = "0x000000000000000000000000000000000000006b";
+
 /**
  * Verifies ownership of protocol contracts is successfully transferred to DAO
  */
@@ -46,6 +50,8 @@ export const verifyOwnership = async () => {
     novaProvider
   );
 
+  // only check arbOwner precompile in production, as atm ArbOwner's owner is set to address zero in test node
+  // TODO: update test Nitro node to set ArbOwner's owner, and then include this check
   if (!isLocalDeployment()) {
     console.log("Verify chain owner");
     await verifyArbOwner(arbProvider, l2Executor);
@@ -189,6 +195,27 @@ async function verifyTokenBridgeOwnership(
     await l1WethGatewayProxyAdmin.owner(),
     l1Executor,
     "l1Executor should be l1WethGateway's proxyAdmin's owner"
+  );
+
+  //// check owner of L1 gatewayRouter and custom gateway
+  const l1GatewayRouter = L1GatewayRouter__factory.connect(
+    l2Network.tokenBridge.l1GatewayRouter,
+    ethProvider
+  );
+  assertEquals(
+    await l1GatewayRouter.owner(),
+    l1Executor,
+    "l1Executor should be l1GatewayRouter's owner"
+  );
+
+  const l1CustomGateway = L1CustomGateway__factory.connect(
+    l2Network.tokenBridge.l1CustomGateway,
+    ethProvider
+  );
+  assertEquals(
+    await l1CustomGateway.owner(),
+    l1Executor,
+    "l1Executor should be l1GatewayRouter's owner"
   );
 
   //// check owner of L2 token bridge's proxyAdmins is L2 executor
