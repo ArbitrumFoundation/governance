@@ -86,7 +86,40 @@ Finally run integration tests against local node
 yarn test:integration
 ```
 
-## Deploy governance to local test environment
+## Governance deployer
+
+Arbitrum governance consists of multiple L1, Arbitrum One and Nova contracts. Those contracts are interdependent and they require careful deployment and initialization flow. We have automated all the deployment steps in `governanceDeployer.ts` script. On a high level script does the following:
+- deploy L1, Arb and Nova governance contracts
+- initialize governance contracts 
+- deploy and initialize Arbitrum token
+- move tokens to all stakeholders according to predefined breakdown
+- set up token distributor which enables token claiming to eligible Arbitrum users
+
+There are additional scripts that do the verification of deployed governance, and preparation and verification of protocol ownership transfer to the Arbitrum DAO.  
+  
+In order to successfully deploy governance, various configuration parameters need to be prepared and set. Config parameters are grouped in these files:
+- `deployConfig.json`
+  - contains governance, token and token distribution parameters
+  - list of all parameters can be found in `scripts/deployerConfig.ts`
+- `vestingWalletRecipients.json`
+  - key-value pairs in JSON format where key is account for which vested wallet is going to be created and value is amount of tokens entitled to the account
+- `daoRecipients.json`
+  - key-value pairs in JSON format where key is DAO account and value is amount of tokens entitled to the DAO
+- `claimRecipients.json`
+  - JSON file containing info about Arbitrum users eligible for Arb token claim
+- `.env`, environment vars required to deploy governance:
+  - boolean determining if governance is deployed to test or prod environment
+  - L1, Arb, Nova RPCs
+  - deployer keys
+  - location of config files
+  - location of `deployedContracts.json` which is used to output addresses of deployed contracts and deployment milestones
+  - location of files where unsigned transactions for transfering protocol ownership will be stored
+  - full list of variables can be found in `.env-sample`
+
+Next section shows detailed guide how to deploy governance in the local test environment.
+
+
+### Guide for deploying governance to local test environment
 
 To deploy governance in local env we need to have L1 and Nitro instances up and running (same as in previous section). Start the test node by running following script in `nitro` repo:
 
@@ -121,7 +154,7 @@ One of the prerequisites is to have env vars properly set. When deploying to tes
 cp .env-sample .env
 ```
 
-There's also a set of governance config parameters that need to be properly set prior to deployment:
+There's also a set of governance config parameters that need to be properly set prior to deployment. These parameters are used to initialize Arb token, token distribution and different governance variables. They can be edited in following file:
 ```
 cat files/local/deployConfig.json
 ```
@@ -131,7 +164,7 @@ Compile governance contracts:
 yarn build
 ```
 
-Important! If there were previous deployments in the same test node, make sure to remove the file containing cached info, otherwise it will mess up new deployment:
+During the deployment process deployer will write addresses of deployed contracts to `deployedContracts.json`. Same file is also used by deployer to keep track of deployment milestones. If deployment script fails for any reason during the deployment, it can be re-executed and it will automatically continue from the step where it failed in previous run. In case governance is being deployed from scratch (and there were previous deployments) make sure to remove `deployedContracts.json` file containing cached info and milestones:
 ```
 rm files/local/deployedContracts.json
 ```
@@ -141,12 +174,12 @@ Now everything's ready to start the deployment process. Run the following script
 yarn deploy:governance
 ```
 
-Script deploys and initializes governances contracts. Addresses of deployed contracts are stored in `files/local/deployedContract.json`. Script will also deploy TokenDistributor and set token recipients. Depending on the number of recipients this process could take up to few hours. Once deployment is finished make sure everything is properly deployed:
+Script deploys and initializes governance contracts. Addresses of deployed contracts are stored in `files/local/deployedContract.json`. Script will also deploy TokenDistributor and set token recipients. Depending on the number of recipients this process could take up to few hours. Once deployment is finished make sure everything is properly deployed:
 ```
 yarn verify:governance
 ```
 
-Additionally we shall check tokens were properly distributed to all the parties as intended:
+Additionally we shall check tokens were properly distributed to all the stakeholders as intended:
 ```
 yarn verify:distribution
 ```
@@ -156,14 +189,18 @@ There's another set of tasks required - once governance is deployed ownership of
 yarn prepare:ownership:transfer
 ```
 
-Script outputs 2 JSON files which contain unsigned TXs (`data` and `to` fields) - `files/local/arbTransferAssetsTXs.json` and `files/local/novaTransferAssetsTXs.json`. In production mode these TXs will be signed and executed by protocol owner multisig. In test mode however we can execute them directly by running script:
+Script outputs 2 JSON files which contain unsigned TXs (`data` and `to` fields):
+- `files/local/arbTransferAssetsTXs.json`
+- `files/local/novaTransferAssetsTXs.json`
+
+In production mode these TXs will be signed and executed by protocol owner multisig. In test mode however we can execute them directly by running script:
 ```
 yarn execute:ownership:transfer
 ```
 
 Finally, let's make sure owership of protocol assets has been succsessfully transferred to DAO. Verification script works for both production and testing mode.
 ```
-yarn verify:protocol:ownership
+yarn verify:ownership:transfer
 ```
 
 
