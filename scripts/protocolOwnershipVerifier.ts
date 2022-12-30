@@ -50,8 +50,7 @@ export const verifyOwnership = async () => {
     novaProvider
   );
 
-  // only check arbOwner precompile in production, as atm ArbOwner's owner is set to address zero in test node
-  // TODO: update test Nitro node to set ArbOwner's owner, and then include this check
+  // only check arbOwner precompile in production, atm ArbOwner's owner is set to address zero in test node
   if (!isLocalDeployment()) {
     console.log("Verify chain owner");
     await verifyArbOwner(arbProvider, l2Executor);
