@@ -164,7 +164,7 @@ Compile governance contracts:
 yarn build
 ```
 
-During the deployment process deployer will write addresses of deployed contracts to `deployedContracts.json`. Same file is also used by deployer to keep track of deployment milestones. If deployment script fails for any reason during the deployment, it can be re-executed and it will automatically continue from the step where it failed in previous run. In case governance is being deployed from scratch (and there were previous deployments) make sure to remove `deployedContracts.json` file containing cached info and milestones:
+During the deployment process deployer will write addresses of deployed contracts to `deployedContracts.json`. The same file is also used by deployer to keep track of deployment milestones. If deployment script fails for any reason during the deployment, it can be re-executed and it will automatically continue from the step where it failed in the previous run. In case governance is being deployed from scratch (and there were previous deployments) make sure to remove `deployedContracts.json` file containing cached info and milestones:
 ```
 rm files/local/deployedContracts.json
 ```
