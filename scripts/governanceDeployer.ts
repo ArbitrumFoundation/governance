@@ -1220,7 +1220,7 @@ export function checkConfigTotals(
     .add(daoTotal);
   if (!distributionTotals.eq(totalSupply)) {
     throw new Error(
-      `Unepected distribution total: ${distributionTotals.toString()} ${totalSupply.toString()}`
+      `Unexpected distribution total: ${distributionTotals.toString()} ${totalSupply.toString()}`
     );
   }
 }
