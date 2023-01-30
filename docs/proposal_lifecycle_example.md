@@ -2,7 +2,7 @@
 
 ## Overview
 
-The following describes the steps involved in a _typical_ governance execution; i.e., a governance action on L2 that goes through the permissionless governance process (with no actions performed by the security council.)
+The following describes the steps involved in a _typical_ governance execution; i.e., a governance action on L2 that goes through the permissionless governance process (with no actions performed by the security council).
 
 The execution is initially proposed on layer 2 and takes a _round trip_; i.e., a message is passed down to layer 1 and then another back up to layer 2 where it is ultimately executed. This round-trip exists to enforce the required delay period between a proposal passing and its execution. For rationale, see the Governance Constitution.
 
@@ -37,7 +37,7 @@ contract OneOffUpgradeContract {
 
 ## Forming a proposal
 
-To form a proposal we need to work backwards from the `delegatecall` to the upgrade contract made in the executor. Using the example above we'll work through forming a proposal data, as if it were being executed by the `UpgradeExecutor` on Arbitrum One.
+To form a proposal we need to work backwards from the `delegatecall` to the upgrade contract made in the executor. Using the example above we'll work through forming a proposal's data, as if it were being executed by the `UpgradeExecutor` on Arbitrum One.
 
 ```solidity
 interface IUpgradeExecutor {
@@ -83,7 +83,7 @@ contract ProposalCreatorTest {
         uint minDelay = IL1Timelock(l1TimelockAddr).getMinDelay();
 
         // the data to call the upgrade executor with
-        // it tells the upgrade executor how to call the upgrade contract, and what call data to provide to it
+        // it tells the upgrade executor how to call the upgrade contract, and what calldata to provide to it
         bytes memory upgradeExecutorCallData = abi.encodeWithSelector(IUpgradeExecutor.execute.selector,
             oneOffUpgradeAddr,
             abi.encodeWithSelector(OneOffUpgradeContract.executeUpgrade.selector)
@@ -132,7 +132,7 @@ After the proposal has passed, anyone can send a transaction that calls the `que
 
 ### **3. ArbOne: `ArbitrumTimelock.execute`**
 
-After the timelock delay has passed, anyone can call `execute` on the timelock. Doing so calls the proposal target with the proposal data., which in our case will be the ArbSys, with proposal data as shown in the [Forming a proposal](#forming-a-proposal) section above. Doing so will create an L2->L1 message, which will then need to be executed on L1.
+After the timelock delay has passed, anyone can call `execute` on the timelock. Doing so calls the proposal target with the proposal data, which in our case will be the ArbSys precompile, with proposal data as shown in the [Forming a proposal](#forming-a-proposal) section above. Doing so will create an L2->L1 message, which will then need to be executed on L1.
 
 ### **4. L1: `Outbox.executeTransaction`**
 

@@ -79,6 +79,9 @@ _Comparison Table_
 | Arb One 3% Governor | non-constitutional | only treasury-related proposals |
 | Arb One 5% Governor | constitutional | - |
 
+##### Vote Exclusion
+Token holders have the ability to exclude their votes from the above quorum calculations by delegating to a designated "exclude address," address `0xA4b86`. Delegating to the exclude address prevents tokens that are not expected to participate in governance from "artificially" inflating the required quorum size. For example, the treasury should not use its own tokens to vote on proposals, thus, the treasury's votes are delegated to the exclude address.      
+
 #### Arbitrum One L2 Timelock
 
 Proposals can be scheduled here by the 5% governor, or by a 7-of-12 agreement in the Security Council. This timelock enforces a 3-day delay before the proposal can then be executed by anybody.
