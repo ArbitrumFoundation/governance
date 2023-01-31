@@ -157,7 +157,8 @@ const calculatePoints = (criteria: ReturnType<typeof makeRandomCriteria>) => {
     Math.min(novaPoints + normalPoints, 4)
   );
 
-  return Math.min(points, 15);
+  // points should be in interval [3,15]
+  return Math.min(Math.max(points, 3), 15);
 };
 
 const toPrivKey = (seed: BigNumber) => {
