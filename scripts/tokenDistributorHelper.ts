@@ -5,14 +5,17 @@ import { TokenDistributor } from "../typechain-types";
 import { ArbGasInfo__factory } from "@arbitrum/sdk/dist/lib/abi/factories/ArbGasInfo__factory";
 import { Recipients } from "./testUtils";
 
-export const CLAIM_RECIPIENTS_FILE_NAME = "files/recipients.json";
 const validClaimAmounts: BigNumber[] = [
-  parseEther("3000"),
-  parseEther("4500"),
-  parseEther("6000"),
-  parseEther("9000"),
-  parseEther("10500"),
-  parseEther("12000"),
+  parseEther("1200"),
+  parseEther("1700"),
+  parseEther("2200"),
+  parseEther("3200"),
+  parseEther("3700"),
+  parseEther("4200"),
+  parseEther("6200"),
+  parseEther("6700"),
+  parseEther("7200"),
+  parseEther("10200"),
 ];
 
 /**

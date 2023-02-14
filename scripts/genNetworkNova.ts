@@ -30,7 +30,7 @@ async function main() {
   );
 
   fs.writeFileSync("./files/local/networkNova.json", JSON.stringify({ l1Network, l2Network }, null, 2));
-  console.log("localNetworkNova.json updated");
+  console.log("networkNova.json updated");
 }
 
 const setupNova = async (

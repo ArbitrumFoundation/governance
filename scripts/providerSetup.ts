@@ -49,6 +49,8 @@ export const envVars = {
   daoRecipientsLocation: process.env["DAO_RECIPIENTS_FILE_LOCATION"] as string,
   claimRecipientsLocation: process.env["CLAIM_RECIPIENTS_FILE_LOCATION"] as string,
   deployedContractsLocation: process.env["DEPLOYED_CONTRACTS_FILE_LOCATION"] as string,
+  arbTransferAssetsTXsLocation: process.env["ARB_TXS_FILE_LOCATION"] as string,
+  novaTransferAssetsTXsLocation: process.env["NOVA_TXS_FILE_LOCATION"] as string,
 };
 
 const checkEnvVars = (conf: typeof envVars) => {
@@ -83,6 +85,10 @@ const checkEnvVars = (conf: typeof envVars) => {
 
   if (conf.deployedContractsLocation == undefined)
     throw new Error("Missing deployedContractsLocation in env vars");
+  if (conf.arbTransferAssetsTXsLocation == undefined)
+    throw new Error("Missing arbTransferAssetsTXsLocation in env vars");
+  if (conf.novaTransferAssetsTXsLocation == undefined)
+    throw new Error("Missing novaTransferAssetsTXsLocation in env vars");
 };
 
 export const getSigner = (provider: JsonRpcProvider, key?: string) => {
@@ -208,7 +214,7 @@ export const getDeployersAndConfig = async (): Promise<{
   const vestedRecipients = loadVestedRecipients();
   const claimRecipients = loadClaimRecipients();
 
-  if (envVars.isLocalDeployment !== "false") {
+  if (isLocalDeployment()) {
     // setup local test environment
     const {
       l2Provider,
@@ -368,4 +374,13 @@ export const getDeployerAddresses = async (): Promise<{
 export function isDeployingToNova(): boolean {
   const deployToNova = process.env["DEPLOY_GOVERNANCE_TO_NOVA"] as string;
   return deployToNova === "true";
+}
+
+/**
+ * Governance is deployed to production when 'DEPLOY_TO_LOCAL_ENVIRONMENT' is set to 'false', otherwise it's deployed to local test env.
+ *
+ * @returns
+ */
+export function isLocalDeployment(): boolean {
+  return envVars.isLocalDeployment !== "false";
 }

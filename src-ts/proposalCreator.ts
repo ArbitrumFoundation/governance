@@ -126,7 +126,7 @@ export class RoundTripProposalCreator {
   ) {}
 
   /**
-   * Createa a new proposal
+   * Create a a new proposal
    * @param upgradeAddr The address of the upgrade contract that will be called by an UpgradeExecutor
    * @param upgradeValue Value sent to the upgrade contract
    * @param upgradeData Call data sent to the upgrade contract
