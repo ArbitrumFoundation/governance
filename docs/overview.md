@@ -2,17 +2,17 @@
 
 Arbitrum governance has two main bodies:
 
-- **The DAO** - represented by holders of the Arbitrum token, and votes to pass proposals.
-- **The Security Council** - is made up of a 9 of 12 multisig that can take quick action in case of an emergency.
+- **The DAO** - represented by holders of the $ARB token, and votes to pass proposals.
+- **The Security Council** - is made up of a 9 of 12 multisig that can take quick action in case of an emergency and a 7 of 12 multisig that can take slow action for routine upgrades that bypass the DAO vote.
 
-You can read more about these bodies and their powers in the Arbitrum constitution.
+You can read more about these bodies and their powers in the Arbitrum DAO Constitution.
 
 ## Invariants
 
-- Only passed proposals made through the constitutional governor (the DAO) or a security council can upgrade the system.
-- All proposals, except those done by a 9/12 security council will go through 3 delays: L2 timelock, withdrawal delay, L1 timelock. The 9/12 security council should be able to make an upgrade without any delay.
+- Only passed proposals made through the constitutional governor (the DAO) or a Security Council can upgrade the system.
+- All proposals, except those done by a 9/12 Security Council will go through 3 delays: L2 timelock, withdrawal delay, L1 timelock. The 9/12 Security Council should be able to make an upgrade without any delay.
 - Once a proposal has been passed, there is always time for a user to exit any assets they have on Arbitrum One or Nova before the proposal is executed
-- A proposal cannot be canceled or blocked, except by the security council.
+- A proposal cannot be canceled or blocked, except by the Security Council.
 - Once a proposal has been passed, anyone can ensure its full execution through all stages.
 
 ## Overall configuration
@@ -27,7 +27,7 @@ The diagram also shows the location of governance-related contracts on Arbitrum 
 
 ## Token
 
-Three instances of the Arbitrum token are currently deployed, each on a different network: Arbitrum One, Arbitrum Nova, and Ethereum Mainnet.
+Three instances of the $ARB token are currently deployed, each on a different network: Arbitrum One, Arbitrum Nova, and Ethereum Mainnet.
 
 The total supply of the token is tracked by the Arbitrum One instance of the token, the total supply of the token on other networks is not representative of the actual total supply. The Arbitrum One instance also allows the minting of up to 2% of the total supply once per year.
 
@@ -35,10 +35,10 @@ The total supply of the token is tracked by the Arbitrum One instance of the tok
 
 Governance is responsible for the following assets:
 
-- **Treasury** - a portion of the tokens is allocated to the DAO.
+- **Treasury** - a portion of the tokens allocated to the DAO.
 - **Arb One contracts** - these contracts are deployed on Ethereum Mainnet. Governance holds upgradability rights over these contracts.
 - **Arb Nova contracts** - these contracts are deployed on Ethereum Mainnet. Governance holds upgradability rights over these contracts.
-- **Arb One L2 parameters** - All Arbitrum chains have a chain owner that can set certain parameters. Read more [here](https://github.com/OffchainLabs/nitro/blob/master/precompiles/ArbOwner.go). Governance has control over the chain owner.
+- **Arb One L2 parameters** - All Arbitrum chains have a chain "owner" that can set certain parameters. Read more [here](https://github.com/OffchainLabs/nitro/blob/master/precompiles/ArbOwner.go). Governance has control over the chain owner.
 - **Arb Nova L2 parameters** - same as Arb One L2 parameters.
 - **Governance contracts** - Governance has the ability to upgrade and modify itself.
 
@@ -48,7 +48,7 @@ Governance has the ability to upgrade both Arbitrum One and Arbitrum Nova, which
 
 The exception to this is proposals that are deemed _non-constitutional_. This type of proposal shouldn't affect the behavior of the chain, or should do so in limited well understood ways. At inception the only type of non-constitutional proposal is the spending of treasury funds.
 
-To differentiate between these two types of proposal, Arbitrum governance uses two Governor contracts. A _constitutional_ one which requires 5% of all votable tokens to vote in favor in order to pass, and a _non-constitutional_ one which requires 3% of all tokens to vote in favor in order to pass. The ability to upgrade Arbitrum contracts is held by the 5% governor, so no proposals made from the 3% governor can cause a change to contract code, or to a set of chain owner parameters.
+To differentiate between these two types of proposal, Arbitrum governance uses two Governor contracts. A _constitutional_ one which requires at least 5% of all votable tokens to vote “in favor” and more votable tokens to vote “in favor” than to vote “against” in order to pass, and a _non-constitutional_ one which requires at least 3% of all votable tokens to vote “in favor” and more votable tokens to vote “in favor” than to vote “against” in order to pass. The ability to upgrade Arbitrum contracts is held by the 5% governor, so no proposals made from the 3% governor can cause a change to contract code, or to a set of chain “owner” parameters.
 
 ## Proposal delays
 
@@ -65,12 +65,11 @@ Once the proposal has gone through each of these delays, it is then directed to 
 
 #### Arbitrum One 3% Governor
 
-The _non-constitutional_ governor, proposals made require 3% of all tokens to vote in favor in order to pass. Currently only has the power to spend funds in the treasury.
+The _non-constitutional_ governor, proposals made require at least 3% of all votable tokens to vote “in favor” and more votable tokens to vote "in favor" than to vote "against" in order to pass. Currently only has the power to spend funds in the treasury.
 
 #### Arbitrum One 5% Governor
 
-The _constitutional_ governor, proposals made require 5% of all tokens to vote in favor in order to pass.
-
+The _constitutional_ governor, proposals made require at least 5% of all votable tokens to vote "in favor" and more votable tokens to vote “in favor" than to vote "against" in order to pass.
 <br/>
 
 _Comparison Table_
@@ -104,11 +103,11 @@ The L1 Upgrade Executor is the owner of Arbitrum One and Nova related contracts 
 
 #### Arbitrum One Upgrade Executor
 
-The Arbitrum One Upgrade Executor is the Arbitrum One chain owner, and also has the rights to change settings in and upgrade governance. Only the Arbitrum One Security Council and the L1 Timelock (via a retryable ticket) have the rights to execute proposals via the Arbitrum One Upgrade Executer.
+The Arbitrum One Upgrade Executor is the Arbitrum One chain "owner", and also has the rights to change settings in and upgrade governance. Only the Arbitrum One Security Council and the L1 Timelock (via a retryable ticket) have the rights to execute proposals via the Arbitrum One Upgrade Executer.
 
 #### Arbitrum Nova Upgrade Executor
 
-The Arbitrum Nova Upgrade Executor is the Arbitrum Nova chain owner. Only the Arbitrum Nova Security Council and the L1 Timelock (via a retryable ticket) have the rights to execute proposals via the Arb Nova Upgrade Executer.
+The Arbitrum Nova Upgrade Executor is the Arbitrum Nova chain "owner". Only the Arbitrum Nova Security Council and the L1 Timelock (via a retryable ticket) have the rights to execute proposals via the Arb Nova Upgrade Executer.
 
 <br/>
 
@@ -127,13 +126,13 @@ This means that forming a proposal involves working backwards from the target, w
 
 #### Arbitrum DAO Constitution
 
-The Arbitrum DAO Constitution contract stores the hash of the canonical text of the constitution. 
-To upgrade the constitution, a proposal should be created which calls `ArbitrumDAOConstitution.setConstitutionHash` with the new content hash. The proposal's "description" field should read:
+The Arbitrum DAO Constitution contract stores the hash of the canonical text of the Constitution. 
+To upgrade the Constitution, a proposal should be created which calls `ArbitrumDAOConstitution.setConstitutionHash` with the new content hash. The proposal's "description" field should read:
 
-> Update the constitution hash to be the keccak256 hash of the following text: 
-> "... constitution text etc ..."
+> Update the Constitution hash to be the keccak256 hash of the following text: 
+> "... Constitution text etc ..."
 
-If keccak256 hash of the new constitution text doesn't match the provided hash, the DAO should reject the proposal. 
+If keccak256 hash of the new Constitution text doesn't match the provided hash, the DAO should reject the proposal. 
 
 
 ### Further readings
