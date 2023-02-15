@@ -717,11 +717,13 @@ async function rescindOwnershipOfFactories(
   l1GovernanceFactory: L1GovernanceFactory,
   l2GovernanceFactory: L2GovernanceFactory
 ) {
-  if ((await l1GovernanceFactory.owner()) !== constants.AddressZero) {
+  const deadAddress = "0x000000000000000000000000000000000000dead";
+
+  if ((await l1GovernanceFactory.owner()).toLowerCase() !== deadAddress) {
     await (await l1GovernanceFactory.transferOwnership(constants.AddressZero)).wait();
   }
 
-  if ((await l2GovernanceFactory.owner()) !== constants.AddressZero) {
+  if ((await l2GovernanceFactory.owner()).toLowerCase() !== deadAddress) {
     await (await l2GovernanceFactory.transferOwnership(constants.AddressZero)).wait();
   }
 };

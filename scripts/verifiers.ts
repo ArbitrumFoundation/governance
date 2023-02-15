@@ -40,7 +40,6 @@ import {
 } from "../token-bridge-contracts/build/types";
 import {
   DeployProgressCache,
-  getDeployerAddresses,
   getProviders,
   isDeployingToNova,
   loadClaimRecipients,
@@ -59,6 +58,7 @@ import { Recipients, assert, assertEquals, assertNumbersEquals, getProxyOwner } 
 import { WalletCreatedEvent } from "../typechain-types/src/ArbitrumVestingWalletFactory.sol/ArbitrumVestingWalletsFactory";
 import { TransferEvent } from "../typechain-types/src/Util.sol/IERC20VotesUpgradeable";
 import { OwnershipTransferredEvent } from "../typechain-types/src/L2ArbitrumToken";
+const deadAddress = "0x000000000000000000000000000000000000dead";
 
 dotenv.config();
 
@@ -262,9 +262,9 @@ async function verifyL1GovernanceFactory(
   l1GovernanceFactory: L1GovernanceFactory
 ) {
   assertEquals(
-    await l1GovernanceFactory.owner(),
-    constants.AddressZero,
-    "EthDeployer should be L1GovernanceFactory's owner"
+    (await l1GovernanceFactory.owner()).toLowerCase(),
+    deadAddress,
+    "EthDeployer should be the dead address"
   );
 }
 
@@ -490,9 +490,9 @@ async function verifyL2GovernanceFactory(
 ) {
   //// check ownership
   assertEquals(
-    await l2GovernanceFactory.owner(),
-    constants.AddressZero,
-    "ArbDeployer should be L2GovernanceFactory's owner"
+    (await l2GovernanceFactory.owner()).toLowerCase(),
+    deadAddress,
+    "ArbDeployer should be the dead address"
   );
 
   // check factory has completed job
