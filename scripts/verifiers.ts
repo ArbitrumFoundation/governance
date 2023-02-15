@@ -1,4 +1,4 @@
-import { BigNumber, ethers } from "ethers";
+import { BigNumber, constants, ethers } from "ethers";
 import {
   ArbitrumDAOConstitution,
   ArbitrumDAOConstitution__factory,
@@ -76,7 +76,6 @@ export const verifyDeployment = async () => {
     arbNetwork: arbOneNetwork,
     novaNetwork,
   } = await getProviders();
-  const { ethDeployerAddress, arbDeployerAddress } = await getDeployerAddresses();
 
   const deployedContracts = loadDeployedContracts();
   const l1Contracts = loadL1Contracts(ethProvider, deployedContracts);
@@ -90,7 +89,7 @@ export const verifyDeployment = async () => {
   const claimRecipients = loadClaimRecipients();
 
   console.log("Verify L1 contracts are properly deployed");
-  await verifyL1GovernanceFactory(l1Contracts["l1GovernanceFactory"], ethDeployerAddress);
+  await verifyL1GovernanceFactory(l1Contracts["l1GovernanceFactory"]);
   await verifyL1Token(
     l1Contracts.l1TokenProxy,
     l1Contracts.l1ProxyAdmin,
@@ -136,7 +135,7 @@ export const verifyDeployment = async () => {
     arbProvider,
     deployerConfig
   );
-  await verifyL2GovernanceFactory(arbContracts.l2GovernanceFactory, arbDeployerAddress);
+  await verifyL2GovernanceFactory(arbContracts.l2GovernanceFactory);
   await verifyL2CoreGovernor(
     arbContracts.l2CoreGoverner,
     arbContracts.l2Token,
@@ -260,12 +259,11 @@ export const verifyDeployment = async () => {
  * - factory ownership
  */
 async function verifyL1GovernanceFactory(
-  l1GovernanceFactory: L1GovernanceFactory,
-  ethDeployerAddress: string
+  l1GovernanceFactory: L1GovernanceFactory
 ) {
   assertEquals(
     await l1GovernanceFactory.owner(),
-    ethDeployerAddress,
+    constants.AddressZero,
     "EthDeployer should be L1GovernanceFactory's owner"
   );
 }
@@ -488,13 +486,12 @@ async function verifyL1ReverseGateway(
  * - factory has completed job
  */
 async function verifyL2GovernanceFactory(
-  l2GovernanceFactory: L2GovernanceFactory,
-  arbDeployerAddress: string
+  l2GovernanceFactory: L2GovernanceFactory
 ) {
   //// check ownership
   assertEquals(
     await l2GovernanceFactory.owner(),
-    arbDeployerAddress,
+    constants.AddressZero,
     "ArbDeployer should be L2GovernanceFactory's owner"
   );
 

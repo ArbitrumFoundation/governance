@@ -4,7 +4,7 @@ import { L1CustomGateway__factory } from "@arbitrum/sdk/dist/lib/abi/factories/L
 import { L1GatewayRouter__factory } from "@arbitrum/sdk/dist/lib/abi/factories/L1GatewayRouter__factory";
 import { L2CustomGateway__factory } from "@arbitrum/sdk/dist/lib/abi/factories/L2CustomGateway__factory";
 import { L2GatewayRouter__factory } from "@arbitrum/sdk/dist/lib/abi/factories/L2GatewayRouter__factory";
-import { BigNumber, Contract, ethers, Signer } from "ethers";
+import { BigNumber, constants, Contract, ethers, Signer } from "ethers";
 import { Interface, parseEther } from "ethers/lib/utils";
 import {
   ArbitrumTimelock,
@@ -134,30 +134,32 @@ async function getOrInitDefault<TContract extends Contract>(
  * ///         - fetch and store addresses of deployed contracts
  * /// 11. Set executor roles
  * ///         - call l2GovernanceFactory.deployStep3
- * /// 12. Set executor roles on Nova
+ * /// 12. Rescind factory ownership
+ * ///         - transfer ownership of factories to the zero address
+ * /// 13. Set executor roles on Nova
  * ///         - call novaUpgradeExecutor.initialize
  * ///         - transfer novaProxyAdmin ownership to upgrade executor
- * /// 13. Register token on ArbOne
+ * /// 14. Register token on ArbOne
  * ///         - register L1 token to ArbOne token mapping on reverse gateways
  * ///         - register L1 token to reverse gateway mapping on Arb routers
- * /// 14. Register token on Nova
+ * /// 15. Register token on Nova
  * ///         - register L1 token to Nova token mapping on custom gateways
  * ///         - register L1 token to custom gateway token mapping on Nova routers
- * /// 15. Post deployment L2 tasks - transfer tokens
+ * /// 16. Post deployment L2 tasks - transfer tokens
  * ///         - transfer L2 token ownership to upgradeExecutor
  * ///         - transfer part of tokens to treasury
  * ///         - transfer part of tokens to foundation
  * ///         - transfer part of tokens to team
- * /// 16. Distribute to vested wallets
+ * /// 17. Distribute to vested wallets
  * ///         - create vested wallets
  * ///         - transfer funds to vested wallets
- * /// 16. Distribute to DAOs
+ * /// 18. Distribute to DAOs
  * ///         - send funds to DAOs based on DAO recipients file
- * /// 17. Deploy TokenDistributor
+ * /// 19. Deploy TokenDistributor
  * ///         - deploy TokenDistributor
  * ///         - transfer claimable tokens from arbDeployer to distributor
- * /// 18. Write addresses of deployed contracts to local JSON file
- * /// 19. Init TokenDistributor
+ * /// 20. Write addresses of deployed contracts to local JSON file
+ * /// 21. Init TokenDistributor
  * ///         - set claim recipients (done in batches over ~2h period)
  * ///         - if number of set recipients and total claimable amount match expected values, transfer ownership to executor
  * ///
@@ -262,6 +264,9 @@ export const deployGovernance = async () => {
   // step 3
   console.log("Set executor roles");
   await setExecutorRoles(l1DeployResult, l2GovernanceFactory);
+
+  console.log("Rescind factory ownership")
+  await rescindOwnershipOfFactories(l1GovernanceFactory, l2GovernanceFactory);
 
   if (isDeployingToNova()) {
     console.log("Set executor roles on Nova");
@@ -707,6 +712,19 @@ async function setExecutorRoles(
     deployedContracts.step3Executed = true;
   }
 }
+
+async function rescindOwnershipOfFactories(
+  l1GovernanceFactory: L1GovernanceFactory,
+  l2GovernanceFactory: L2GovernanceFactory
+) {
+  if ((await l1GovernanceFactory.owner()) !== constants.AddressZero) {
+    await (await l1GovernanceFactory.transferOwnership(constants.AddressZero)).wait();
+  }
+
+  if ((await l2GovernanceFactory.owner()) !== constants.AddressZero) {
+    await (await l2GovernanceFactory.transferOwnership(constants.AddressZero)).wait();
+  }
+};
 
 async function setExecutorRolesOnNova(
   l1DeployResult: L1DeployedEventObject,
