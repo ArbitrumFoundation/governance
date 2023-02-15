@@ -38,6 +38,8 @@ const ARBITRUM_NOVA_CHAIN_ID = 42170;
 // in case of local env testing, config is extracted in `testSetup()`
 export const envVars = {
   isLocalDeployment: process.env["DEPLOY_TO_LOCAL_ENVIRONMENT"] as string,
+  isDeployingToNova: process.env["DEPLOY_GOVERNANCE_TO_NOVA"] as string,
+  isDistributingTokens: process.env["DISTRIBUTE_TOKENS"] as string,
   ethRpc: process.env["ETH_URL"] as string,
   arbRpc: process.env["ARB_URL"] as string,
   novaRpc: process.env["NOVA_URL"] as string,
@@ -372,8 +374,7 @@ export const getDeployerAddresses = async (): Promise<{
  * @returns
  */
 export function isDeployingToNova(): boolean {
-  const deployToNova = process.env["DEPLOY_GOVERNANCE_TO_NOVA"] as string;
-  return deployToNova === "true";
+  return envVars.isDeployingToNova === "true";
 }
 
 /**
@@ -383,4 +384,14 @@ export function isDeployingToNova(): boolean {
  */
 export function isLocalDeployment(): boolean {
   return envVars.isLocalDeployment !== "false";
+}
+
+/**
+ * When set to 'true' deployer script will distribute tokens to all the involved parties (vested recipients, DAOs, token distributor) and transfer
+ * token ownership to executor. Otherwise deployer script will skip those steps.
+ *
+ * @returns
+ */
+export function isDistributingTokens(): boolean {
+  return envVars.isDistributingTokens === "true";
 }

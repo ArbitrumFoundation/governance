@@ -47,6 +47,7 @@ import {
   DeployProgressCache,
   getDeployersAndConfig as getDeployersAndConfig,
   isDeployingToNova,
+  isDistributingTokens,
   loadDeployedContracts,
   updateDeployedContracts,
 } from "./providerSetup";
@@ -289,43 +290,45 @@ export const deployGovernance = async () => {
     await registerTokenOnNova(l1Token, _novaToken!.address, ethDeployer, novaDeployer);
   }
 
-  console.log("Post deployment L2 token tasks");
-  await postDeploymentL2TokenTasks(arbDeployer, l2DeployResult, deployerConfig);
+  if (isDistributingTokens()) {
+    console.log("Post deployment L2 token tasks");
+    await postDeploymentL2TokenTasks(arbDeployer, l2DeployResult, deployerConfig);
 
-  console.log("Distribute to vested wallets");
-  await deployAndTransferVestedWallets(
-    arbDeployer,
-    arbDeployer,
-    l2DeployResult.token,
-    vestedRecipients,
-    deployerConfig
-  );
+    console.log("Distribute to vested wallets");
+    await deployAndTransferVestedWallets(
+      arbDeployer,
+      arbDeployer,
+      l2DeployResult.token,
+      vestedRecipients,
+      deployerConfig
+    );
 
-  console.log("Distribute to DAOs");
-  await transferDaoAllocations(arbDeployer, l2DeployResult.token, daoRecipients);
+    console.log("Distribute to DAOs");
+    await transferDaoAllocations(arbDeployer, l2DeployResult.token, daoRecipients);
 
-  // deploy ARB distributor
-  console.log("Deploy TokenDistributor");
-  const tokenDistributor = await deployTokenDistributor(
-    arbDeployer,
-    l2DeployResult,
-    arbDeployer,
-    claimRecipients,
-    deployerConfig
-  );
+    // deploy ARB distributor
+    console.log("Deploy TokenDistributor");
+    const tokenDistributor = await deployTokenDistributor(
+      arbDeployer,
+      l2DeployResult,
+      arbDeployer,
+      claimRecipients,
+      deployerConfig
+    );
 
-  // write addresses before the last step which takes hours
-  console.log("Write deployed contract addresses to deployedContracts.json");
-  updateDeployedContracts(deployedContracts);
+    // write addresses before the last step which takes hours
+    console.log("Write deployed contract addresses to deployedContracts.json");
+    updateDeployedContracts(deployedContracts);
 
-  console.log("Set TokenDistributor recipients");
-  await initTokenDistributor(
-    tokenDistributor,
-    arbDeployer,
-    l2DeployResult.executor,
-    claimRecipients,
-    deployerConfig
-  );
+    console.log("Set TokenDistributor recipients");
+    await initTokenDistributor(
+      tokenDistributor,
+      arbDeployer,
+      l2DeployResult.executor,
+      claimRecipients,
+      deployerConfig
+    );
+  }
 };
 
 async function deployL1LogicContracts(ethDeployer: Signer) {
