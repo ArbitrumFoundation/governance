@@ -262,7 +262,7 @@ async function verifyL1GovernanceFactory(
   l1GovernanceFactory: L1GovernanceFactory
 ) {
   assertEquals(
-    (await l1GovernanceFactory.owner()).toLowerCase(),
+    (await l1GovernanceFactory.owner()),
     deadAddress,
     "EthDeployer should be the dead address"
   );
