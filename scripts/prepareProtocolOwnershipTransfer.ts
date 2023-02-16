@@ -1,4 +1,4 @@
-import { envVars, getDeployersAndConfig, getProviders } from "./providerSetup";
+import { envVars, getDeployersAndConfig, getProviders, isDeployingToNova } from "./providerSetup";
 import { getProxyOwner } from "./testUtils";
 import { ProxyAdmin__factory } from "../typechain-types";
 import { RollupAdminLogic__factory } from "@arbitrum/sdk/dist/lib/abi/factories/RollupAdminLogic__factory";
@@ -25,7 +25,6 @@ export const prepareAssetTransferTXs = async () => {
   const contractAddresses = require("../" + envVars.deployedContractsLocation);
   const l1Executor = contractAddresses["l1Executor"];
   const arbExecutor = contractAddresses["l2Executor"];
-  const novaExecutor = contractAddresses["novaUpgradeExecutorProxy"];
 
   // TXs to transfer ownership of ArbOne assets
   const arbTXs = await generateAssetTransferTXs(
@@ -38,16 +37,19 @@ export const prepareAssetTransferTXs = async () => {
   fs.writeFileSync(envVars.arbTransferAssetsTXsLocation, JSON.stringify(arbTXs));
   console.log("Arb TXs file:", envVars.arbTransferAssetsTXsLocation);
 
-  // TXs to transfer ownership of Nova assets
-  const novaTXs = await generateAssetTransferTXs(
-    novaNetwork,
-    ethProvider,
-    novaProvider,
-    l1Executor,
-    novaExecutor
-  );
-  fs.writeFileSync(envVars.novaTransferAssetsTXsLocation, JSON.stringify(novaTXs));
-  console.log("Nova TXs file:", envVars.novaTransferAssetsTXsLocation);
+  if (isDeployingToNova()) {
+    // TXs to transfer ownership of Nova assets
+    const novaExecutor = contractAddresses["novaUpgradeExecutorProxy"];
+    const novaTXs = await generateAssetTransferTXs(
+      novaNetwork,
+      ethProvider,
+      novaProvider,
+      l1Executor,
+      novaExecutor
+    );
+    fs.writeFileSync(envVars.novaTransferAssetsTXsLocation, JSON.stringify(novaTXs));
+    console.log("Nova TXs file:", envVars.novaTransferAssetsTXsLocation);
+  }
 };
 
 /**
