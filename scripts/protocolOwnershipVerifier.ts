@@ -5,7 +5,13 @@ import { SequencerInbox__factory } from "@arbitrum/sdk/dist/lib/abi/factories/Se
 import { Outbox__factory } from "@arbitrum/sdk/dist/lib/abi/factories/Outbox__factory";
 import { ChallengeManager__factory } from "@arbitrum/sdk/dist/lib/abi/factories/ChallengeManager__factory";
 import { ArbOwner__factory } from "@arbitrum/sdk/dist/lib/abi/factories/ArbOwner__factory";
-import { envVars, getDeployersAndConfig, getProviders, isLocalDeployment } from "./providerSetup";
+import {
+  envVars,
+  getDeployersAndConfig,
+  getProviders,
+  isDeployingToNova,
+  isLocalDeployment,
+} from "./providerSetup";
 import { assert, assertEquals, getProxyOwner } from "./testUtils";
 import { ProxyAdmin__factory } from "../typechain-types";
 import { Provider } from "@ethersproject/providers";
@@ -28,7 +34,6 @@ export const verifyOwnership = async () => {
   const contractAddresses = require("../" + envVars.deployedContractsLocation);
   const l1Executor = contractAddresses["l1Executor"];
   const l2Executor = contractAddresses["l2Executor"];
-  const novaExecutor = contractAddresses["novaUpgradeExecutorProxy"];
 
   console.log("Verify ownership over Arb protocol contracts");
   const arbOneRollup = RollupCore__factory.connect(arbNetwork.ethBridge.rollup, ethProvider);
@@ -37,24 +42,32 @@ export const verifyOwnership = async () => {
   console.log("Verify ownership over Arb token bridge contracts");
   await verifyTokenBridgeOwnership(arbNetwork, l1Executor, l2Executor, ethProvider, arbProvider);
 
-  console.log("Verify ownership over Nova protocol contracts");
-  const novaRollup = RollupCore__factory.connect(novaNetwork.ethBridge.rollup, ethProvider);
-  await verifyProtocolOwnership(novaRollup, l1Executor, ethProvider);
-
-  console.log("Verify ownership over Nova token bridge contracts");
-  await verifyTokenBridgeOwnership(
-    novaNetwork,
-    l1Executor,
-    novaExecutor,
-    ethProvider,
-    novaProvider
-  );
-
-  // only check arbOwner precompile in production, atm ArbOwner's owner is set to address zero in test node
   if (!isLocalDeployment()) {
-    console.log("Verify chain owner");
+    // only check arbOwner precompile in production, atm ArbOwner's owner is set to address zero in test node
+    console.log("Verify Arb chain owner");
     await verifyArbOwner(arbProvider, l2Executor);
-    await verifyArbOwner(novaProvider, novaExecutor);
+  }
+
+  if (isDeployingToNova()) {
+    const novaExecutor = contractAddresses["novaUpgradeExecutorProxy"];
+
+    console.log("Verify ownership over Nova protocol contracts");
+    const novaRollup = RollupCore__factory.connect(novaNetwork.ethBridge.rollup, ethProvider);
+    await verifyProtocolOwnership(novaRollup, l1Executor, ethProvider);
+
+    console.log("Verify ownership over Nova token bridge contracts");
+    await verifyTokenBridgeOwnership(
+      novaNetwork,
+      l1Executor,
+      novaExecutor,
+      ethProvider,
+      novaProvider
+    );
+
+    if (!isLocalDeployment()) {
+      console.log("Verify Nova chain owner");
+      await verifyArbOwner(novaProvider, novaExecutor);
+    }
   }
 };
 
