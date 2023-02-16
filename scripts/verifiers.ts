@@ -43,10 +43,7 @@ import {
   getDeployerAddresses,
   getProviders,
   isDeployingToNova,
-  loadClaimRecipients,
-  loadDaoRecipients,
   loadDeployedContracts,
-  loadVestedRecipients,
 } from "./providerSetup";
 import { Address, L2Network } from "@arbitrum/sdk";
 import { parseEther } from "ethers/lib/utils";
@@ -84,10 +81,6 @@ export const verifyDeployment = async () => {
   const novaContracts = isDeployingToNova()
     ? loadNovaContracts(novaProvider, deployedContracts)
     : undefined;
-
-  const daoRecipients = loadDaoRecipients();
-  const vestedRecipients = loadVestedRecipients();
-  const claimRecipients = loadClaimRecipients();
 
   console.log("Verify L1 contracts are properly deployed");
   await verifyL1GovernanceFactory(l1Contracts["l1GovernanceFactory"], ethDeployerAddress);
@@ -697,7 +690,6 @@ export async function verifyTokenDistribution(
   vestedWalletFactory: ArbitrumVestingWalletsFactory,
   arbProvider: Provider,
   claimRecipients: Recipients,
-  daoRecipients: Recipients,
   vestedRecipients: Recipients,
   deploymentInfo: {
     distributorSetRecipientsStartBlock: number;
@@ -710,6 +702,8 @@ export async function verifyTokenDistribution(
     L2_NUM_OF_TOKENS_FOR_FOUNDATION: string;
     L2_ADDRESS_FOR_TEAM: string;
     L2_NUM_OF_TOKENS_FOR_TEAM: string;
+    L2_ADDRESS_FOR_DAO_RECIPIENTS: string;
+    L2_NUM_OF_TOKENS_FOR_DAO_RECIPIENTS: string;
     L2_CLAIM_PERIOD_START: number;
     GET_LOGS_BLOCK_RANGE: number;
   }
@@ -728,8 +722,8 @@ export async function verifyTokenDistribution(
   );
 
   await verifyVestedWallets(vestedRecipients, vestedWalletFactory, l2Token, arbProvider, config);
-  
-  const initialSupplyRecipient = await getInitialSupplyRecipientAddr(arbProvider, l2Token)
+
+  const initialSupplyRecipient = await getInitialSupplyRecipientAddr(arbProvider, l2Token);
 
   const initSupplyRecipientBalance = await l2Token.balanceOf(initialSupplyRecipient);
   assertNumbersEquals(
@@ -761,8 +755,14 @@ export async function verifyTokenDistribution(
     "Incorrect initial L2Token balance for team"
   );
 
+  const daoBalance = await l2Token.balanceOf(config.L2_ADDRESS_FOR_DAO_RECIPIENTS);
+  assertNumbersEquals(
+    daoBalance,
+    parseEther(config.L2_NUM_OF_TOKENS_FOR_DAO_RECIPIENTS),
+    "Incorrect initial L2Token balance for dao recipients"
+  );
+
   const vestingTotal = Object.values(vestedRecipients).reduce((a, b) => a.add(b));
-  const daoTotal = Object.values(daoRecipients).reduce((a, b) => a.add(b));
 
   assertNumbersEquals(
     arbTreasuryBalance
@@ -770,7 +770,7 @@ export async function verifyTokenDistribution(
       .add(vestingTotal)
       .add(foundationBalance)
       .add(teamBalance)
-      .add(daoTotal),
+      .add(daoBalance),
     await l2Token.totalSupply(),
     "Invalid total distribution"
   );
@@ -1360,7 +1360,10 @@ async function verifyVestedWallets(
   }
 }
 
-export async function getInitialSupplyRecipientAddr(arbProvider: Provider, l2Token: L2ArbitrumToken) {
+export async function getInitialSupplyRecipientAddr(
+  arbProvider: Provider,
+  l2Token: L2ArbitrumToken
+) {
   // find the initial supply recipient - this is the arb deployer
   // use index = 1 because
   // the first transfer is to the contract deployer from 0 address
@@ -1378,7 +1381,7 @@ export async function getInitialSupplyRecipientAddr(arbProvider: Provider, l2Tok
       (l) => l2Token.interface.parseLog(l).args as OwnershipTransferredEvent["args"]
     )[1].newOwner;
 
-    return initialSupplyRecipient;
+  return initialSupplyRecipient;
 }
 
 /**
@@ -1537,6 +1540,43 @@ export function loadArbTokenDistributionContracts(
       arbProvider
     ),
   };
+}
+
+/**
+ * Sanity check token supply totals
+ * @param config
+ */
+export function checkConfigTotals(
+  claimRecipients: Recipients,
+  vestedRecipients: Recipients,
+  config: {
+    L2_TOKEN_INITIAL_SUPPLY: string;
+    L2_NUM_OF_TOKENS_FOR_TREASURY: string;
+    L2_NUM_OF_TOKENS_FOR_FOUNDATION: string;
+    L2_NUM_OF_TOKENS_FOR_TEAM: string;
+    L2_NUM_OF_TOKENS_FOR_DAO_RECIPIENTS: string;
+  }
+) {
+  const totalSupply = parseEther(config.L2_TOKEN_INITIAL_SUPPLY);
+  const treasuryVal = parseEther(config.L2_NUM_OF_TOKENS_FOR_TREASURY);
+  const foundationVal = parseEther(config.L2_NUM_OF_TOKENS_FOR_FOUNDATION);
+  const teamVal = parseEther(config.L2_NUM_OF_TOKENS_FOR_TEAM);
+  const daoVal = parseEther(config.L2_NUM_OF_TOKENS_FOR_DAO_RECIPIENTS);
+
+  const claimtotal = Object.values(claimRecipients).reduce((a, b) => a.add(b));
+  const vestedTotal = Object.values(vestedRecipients).reduce((a, b) => a.add(b));
+
+  const distributionTotals = treasuryVal
+    .add(foundationVal)
+    .add(teamVal)
+    .add(claimtotal)
+    .add(vestedTotal)
+    .add(daoVal);
+  if (!distributionTotals.eq(totalSupply)) {
+    throw new Error(
+      `Unexpected distribution total: ${distributionTotals.toString()} ${totalSupply.toString()}`
+    );
+  }
 }
 
 /**

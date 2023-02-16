@@ -52,6 +52,7 @@ export const envVars = {
   deployedContractsLocation: process.env["DEPLOYED_CONTRACTS_FILE_LOCATION"] as string,
   arbTransferAssetsTXsLocation: process.env["ARB_TXS_FILE_LOCATION"] as string,
   novaTransferAssetsTXsLocation: process.env["NOVA_TXS_FILE_LOCATION"] as string,
+  daoRecipientsEscrowKey: process.env["DAO_RECIPIENTS_KEY"] as string,
 };
 
 const checkEnvVars = (conf: typeof envVars) => {
@@ -97,6 +98,14 @@ export const getSigner = (provider: JsonRpcProvider, key?: string) => {
   if (key) return new Wallet(key).connect(provider);
   else return provider.getSigner(0);
 };
+
+export const getDaoRecipientsEscrowSigner = (provider: JsonRpcProvider) => {
+  if(!envVars.daoRecipientsEscrowKey) {
+    throw new Error("DAO_RECIPIENTS_KEY env var not set");
+  }
+
+  return getSigner(provider, envVars.daoRecipientsEscrowKey);
+}
 
 export const loadDaoRecipients = () => {
   checkEnvVars(envVars);
@@ -166,6 +175,7 @@ export interface DeployProgressCache {
   l2TokenTask2?: boolean;
   l2TokenTask3?: boolean;
   l2TokenTask4?: boolean;
+  l2TokenTask5?: boolean;
   vestedWalletInProgress?: boolean;
   vestedWalletFactory?: string;
   l2TokenDistributor?: string;

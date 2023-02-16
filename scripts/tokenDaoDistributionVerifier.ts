@@ -1,11 +1,10 @@
 import { getProviders, loadDaoRecipients, loadDeployedContracts } from "./providerSetup";
-import { getInitialSupplyRecipientAddr, loadArbContracts, verifyDaoRecipients } from "./verifiers";
+import { loadArbContracts, verifyDaoRecipients } from "./verifiers";
 
 async function main() {
-  const { arbProvider } = await getProviders();
+  const { arbProvider, deployerConfig } = await getProviders();
   const deployedContracts = loadDeployedContracts();
   const arbContracts = loadArbContracts(arbProvider, deployedContracts);
-
   const daoRecipients = loadDaoRecipients();
 
   console.log("Start verification process...");
@@ -14,13 +13,8 @@ async function main() {
     throw new Error("Token not yet deployed");
   }
 
-  const initialSupplyRecipient = await getInitialSupplyRecipientAddr(
-    arbProvider,
-    arbContracts.l2Token
-  );
-
   await verifyDaoRecipients(
-    initialSupplyRecipient,
+    deployerConfig.L2_ADDRESS_FOR_DAO_RECIPIENTS,
     daoRecipients,
     arbContracts.l2Token!,
     arbProvider

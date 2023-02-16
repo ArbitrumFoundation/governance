@@ -184,12 +184,12 @@ Next step is token allocation. Tokens need to be distributed to treasury, founda
 yarn allocate:tokens
 ```
 
-Now we can check tokens were properly distributed to all the stakeholders as intended. If you don't currently have access to the list of tokens for the DAO recipients create a single entry in the recipients file with the address of the deployer and the value of the total amount to be deployed to the DAO recipients.
+Now we can check tokens were properly distributed to all the stakeholders as intended.
 ```
 yarn verify:distribution
 ```
 
-Now distribute tokens to the dao
+Optionally distribute tokens to daos
 ```
 yarn allocate:dao:tokens
 ```
