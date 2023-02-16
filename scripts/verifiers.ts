@@ -490,7 +490,7 @@ async function verifyL2GovernanceFactory(
 ) {
   //// check ownership
   assertEquals(
-    (await l2GovernanceFactory.owner()).toLowerCase(),
+    (await l2GovernanceFactory.owner()),
     deadAddress,
     "ArbDeployer should be the dead address"
   );
