@@ -683,7 +683,6 @@ async function verifyL2UpgradeExecutor(
  * - Token total supply is the same as config
  * - Treasury has correct amount
  * - Vested wallets deployed and received correct amounts
- * - Dao recipients received correct amounts
  * - Airdrop recipients received correct claim amounts
  * - Token distributor received correct amount
  * - Foundation received correct amount
@@ -729,23 +728,8 @@ export async function verifyTokenDistribution(
   );
 
   await verifyVestedWallets(vestedRecipients, vestedWalletFactory, l2Token, arbProvider, config);
-
-  // find the initial supply recipient - this is the arb deployer
-  // use index = 1 because
-  // the first transfer is to the contract deployer from 0 address
-  // the second transfer is to the owner AKA the intiial supply recipient
-  // the third transfer is to the upgrade executor
-  const initialSupplyRecipient = (
-    await arbProvider.getLogs({
-      ...l2Token.filters.OwnershipTransferred(),
-      fromBlock: 0,
-      toBlock: "latest",
-    })
-  )
-    .sort((a, b) => a.blockNumber - b.blockNumber)
-    .map(
-      (l) => l2Token.interface.parseLog(l).args as OwnershipTransferredEvent["args"]
-    )[1].newOwner;
+  
+  const initialSupplyRecipient = await getInitialSupplyRecipientAddr(arbProvider, l2Token)
 
   const initSupplyRecipientBalance = await l2Token.balanceOf(initialSupplyRecipient);
   assertNumbersEquals(
@@ -753,8 +737,6 @@ export async function verifyTokenDistribution(
     BigNumber.from(0),
     "Initial supply recipient still has tokens"
   );
-
-  await verifyDaoRecipients(initialSupplyRecipient, daoRecipients, l2Token, arbProvider);
 
   const recipientTotals = Object.values(claimRecipients).reduce((a, b) => a.add(b));
   const tokenDistributorBalance = await l2Token.balanceOf(l2TokenDistributor.address);
@@ -1378,11 +1360,32 @@ async function verifyVestedWallets(
   }
 }
 
+export async function getInitialSupplyRecipientAddr(arbProvider: Provider, l2Token: L2ArbitrumToken) {
+  // find the initial supply recipient - this is the arb deployer
+  // use index = 1 because
+  // the first transfer is to the contract deployer from 0 address
+  // the second transfer is to the owner AKA the intiial supply recipient
+  // the third transfer is to the upgrade executor
+  const initialSupplyRecipient = (
+    await arbProvider.getLogs({
+      ...l2Token.filters.OwnershipTransferred(),
+      fromBlock: 0,
+      toBlock: "latest",
+    })
+  )
+    .sort((a, b) => a.blockNumber - b.blockNumber)
+    .map(
+      (l) => l2Token.interface.parseLog(l).args as OwnershipTransferredEvent["args"]
+    )[1].newOwner;
+
+    return initialSupplyRecipient;
+}
+
 /**
  * Verify:
  * - All dao recipients recieved a transfer of the correct amount
  */
-async function verifyDaoRecipients(
+export async function verifyDaoRecipients(
   initialSupplyRecipientAddress: string,
   daoRecipients: Recipients,
   l2Token: L2ArbitrumToken,

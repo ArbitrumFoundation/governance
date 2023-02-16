@@ -15,7 +15,6 @@ import {
 } from "./providerSetup";
 import { getRecipientsDataFromContractEvents, setClaimRecipients } from "./tokenDistributorHelper";
 import { deployVestedWallets } from "./vestedWalletsDeployer";
-import { TransferEvent } from "../typechain-types/src/Util.sol/IERC20VotesUpgradeable";
 import { Recipients } from "./testUtils";
 import { StringProps, TypeChainContractFactoryStatic } from "./governanceDeployer";
 
@@ -31,8 +30,6 @@ let deployedContracts: DeployProgressCache = {};
  * /// 16. Distribute to vested wallets
  * ///         - create vested wallets
  * ///         - transfer funds to vested wallets
- * /// 16. Distribute to DAOs
- * ///         - send funds to DAOs based on DAO recipients file
  * /// 17. Deploy TokenDistributor
  * ///         - deploy TokenDistributor
  * ///         - transfer claimable tokens from arbDeployer to distributor
@@ -67,9 +64,6 @@ export const allocateTokens = async () => {
     vestedRecipients,
     deployerConfig
   );
-
-  console.log("Distribute to DAOs");
-  await transferDaoAllocations(arbDeployer, deployedContracts.l2Token!, daoRecipients);
 
   // deploy ARB distributor
   console.log("Deploy TokenDistributor");
@@ -186,43 +180,6 @@ async function deployAndTransferVestedWallets(
     );
     deployedContracts.vestedWalletInProgress = undefined;
     deployedContracts.vestedWalletFactory = vestedWalletFactory.address;
-  }
-}
-
-async function transferDaoAllocations(
-  initialTokenRecipient: Signer,
-  tokenAddress: string,
-  daoRecipients: Recipients
-) {
-  const token = L2ArbitrumToken__factory.connect(tokenAddress, initialTokenRecipient);
-
-  for (const rec of Object.keys(daoRecipients)) {
-    const filter = token.filters["Transfer(address,address,uint256)"](
-      await initialTokenRecipient.getAddress(),
-      rec
-    );
-
-    const logs = await initialTokenRecipient.provider!.getLogs({
-      fromBlock: 0,
-      toBlock: "latest",
-      ...filter,
-    });
-
-    if (logs.length === 0) {
-      // this recipient has not been transferred to yet
-      await (await token.transfer(rec, daoRecipients[rec])).wait();
-    } else if (logs.length === 1) {
-      const { value } = token.interface.parseLog(logs[0]).args as TransferEvent["args"];
-
-      if (!value.eq(daoRecipients[rec])) {
-        throw new Error(
-          `Incorrect value sent to ${rec}:${daoRecipients[rec].toString()}:${value.toString()}`
-        );
-      }
-    } else {
-      console.error(logs);
-      throw new Error(`Too many transfer logs for ${rec}`);
-    }
   }
 }
 
@@ -398,6 +355,7 @@ async function main() {
   try {
     await allocateTokens();
   } finally {
+    
     // write addresses of deployed contracts even when exception is thrown
     console.log("Write deployed contract addresses to deployedContracts.json");
     updateDeployedContracts(deployedContracts);
