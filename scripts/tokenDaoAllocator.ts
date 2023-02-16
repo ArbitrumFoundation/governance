@@ -8,6 +8,7 @@ import {
 import { TransferEvent } from "../typechain-types/src/Util.sol/IERC20VotesUpgradeable";
 import { Recipients, assertEquals, assertNumbersEquals } from "./testUtils";
 import { JsonRpcProvider } from "@ethersproject/providers";
+import { parseEther } from "ethers/lib/utils";
 
 async function transferDaoAllocations(
   daoEscrowSigner: Signer,
@@ -54,7 +55,7 @@ async function main() {
   const daoTotal = Object.values(daoRecipients).reduce((a, b) => a.add(b));
   assertNumbersEquals(
     daoTotal,
-    BigNumber.from(deployerConfig.L2_NUM_OF_TOKENS_FOR_DAO_RECIPIENTS),
+    parseEther(deployerConfig.L2_NUM_OF_TOKENS_FOR_DAO_RECIPIENTS),
     "Unexpected total amount for dao recipients"
   );
 
