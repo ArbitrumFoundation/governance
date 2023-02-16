@@ -1,4 +1,4 @@
-import { envVars, getDeployersAndConfig, getProviders } from "./providerSetup";
+import { envVars, getDeployersAndConfig, getProviders, isDeployingToNova } from "./providerSetup";
 import { Wallet } from "ethers";
 import fs from "fs";
 import { getProxyOwner } from "./testUtils";
@@ -29,7 +29,6 @@ export const executeOwnershipTransfer = async () => {
   const contractAddresses = require("../" + envVars.deployedContractsLocation);
   const l1Executor = contractAddresses["l1Executor"];
   const arbExecutor = contractAddresses["l2Executor"];
-  const novaExecutor = contractAddresses["novaUpgradeExecutorProxy"];
 
   //// Arb transfer
   console.log("Transfer Arb asset's ownership");
@@ -75,48 +74,52 @@ export const executeOwnershipTransfer = async () => {
   }
 
   //// Nova
-  console.log("Transfer Nova asset's ownership");
-  const novaTxs = fetchAssetTransferTXs(envVars.novaTransferAssetsTXsLocation);
+  if (isDeployingToNova()) {
+    const novaExecutor = contractAddresses["novaUpgradeExecutorProxy"];
 
-  if ((await getOwner(novaNetwork.ethBridge.rollup, novaNetwork, ethProvider)) != l1Executor) {
-    console.log("Set new Nova rollup owner");
-    await (await l1ProtocolOwner.sendTransaction(novaTxs["l1RollupOwnerTX"])).wait();
-  }
-  if ((await getOwner(novaNetwork.ethBridge.bridge, novaNetwork, ethProvider)) != l1Executor) {
-    console.log("Set new Nova protocol proxy admin owner");
-    await (await l1ProtocolOwner.sendTransaction(novaTxs["l1ProtocolProxyAdminOwnerTX"])).wait();
-  }
-  if (
-    (await getOwner(novaNetwork.tokenBridge.l1GatewayRouter, novaNetwork, ethProvider)) !=
-    l1Executor
-  ) {
-    console.log("Set new Nova L1 token bridge proxy admin owner");
-    await (await ethDeployer.sendTransaction(novaTxs["l1TokenBridgeProxyAdminOwnerTX"])).wait();
-  }
-  if (
-    (await getOwner(novaNetwork.tokenBridge.l2GatewayRouter, novaNetwork, novaProvider)) !=
-    novaExecutor
-  ) {
-    console.log("Set new Nova L2 token bridge proxy admin owner");
-    await (await novaDeployer.sendTransaction(novaTxs["l2TokenBridgeProxyAdminOwnerTX"])).wait();
-  }
-  if (
-    (await L1GatewayRouter__factory.connect(
-      novaNetwork.tokenBridge.l1GatewayRouter,
-      ethProvider
-    ).owner()) != l1Executor
-  ) {
-    console.log("Set new Nova L1 gateway router owner");
-    await (await ethDeployer.sendTransaction(novaTxs["l1GatewayRouterOwnerTX"])).wait();
-  }
-  if (
-    (await L1CustomGateway__factory.connect(
-      novaNetwork.tokenBridge.l1CustomGateway,
-      ethProvider
-    ).owner()) != l1Executor
-  ) {
-    console.log("Set new Nova L1 custom gateway owner");
-    await (await ethDeployer.sendTransaction(novaTxs["l1CustomGatewayOwnerTX"])).wait();
+    console.log("Transfer Nova asset's ownership");
+    const novaTxs = fetchAssetTransferTXs(envVars.novaTransferAssetsTXsLocation);
+
+    if ((await getOwner(novaNetwork.ethBridge.rollup, novaNetwork, ethProvider)) != l1Executor) {
+      console.log("Set new Nova rollup owner");
+      await (await l1ProtocolOwner.sendTransaction(novaTxs["l1RollupOwnerTX"])).wait();
+    }
+    if ((await getOwner(novaNetwork.ethBridge.bridge, novaNetwork, ethProvider)) != l1Executor) {
+      console.log("Set new Nova protocol proxy admin owner");
+      await (await l1ProtocolOwner.sendTransaction(novaTxs["l1ProtocolProxyAdminOwnerTX"])).wait();
+    }
+    if (
+      (await getOwner(novaNetwork.tokenBridge.l1GatewayRouter, novaNetwork, ethProvider)) !=
+      l1Executor
+    ) {
+      console.log("Set new Nova L1 token bridge proxy admin owner");
+      await (await ethDeployer.sendTransaction(novaTxs["l1TokenBridgeProxyAdminOwnerTX"])).wait();
+    }
+    if (
+      (await getOwner(novaNetwork.tokenBridge.l2GatewayRouter, novaNetwork, novaProvider)) !=
+      novaExecutor
+    ) {
+      console.log("Set new Nova L2 token bridge proxy admin owner");
+      await (await novaDeployer.sendTransaction(novaTxs["l2TokenBridgeProxyAdminOwnerTX"])).wait();
+    }
+    if (
+      (await L1GatewayRouter__factory.connect(
+        novaNetwork.tokenBridge.l1GatewayRouter,
+        ethProvider
+      ).owner()) != l1Executor
+    ) {
+      console.log("Set new Nova L1 gateway router owner");
+      await (await ethDeployer.sendTransaction(novaTxs["l1GatewayRouterOwnerTX"])).wait();
+    }
+    if (
+      (await L1CustomGateway__factory.connect(
+        novaNetwork.tokenBridge.l1CustomGateway,
+        ethProvider
+      ).owner()) != l1Executor
+    ) {
+      console.log("Set new Nova L1 custom gateway owner");
+      await (await ethDeployer.sendTransaction(novaTxs["l1CustomGatewayOwnerTX"])).wait();
+    }
   }
 };
 
@@ -193,15 +196,6 @@ async function printProxyAdmins() {
     ethProvider
   );
 
-  const novaProtocolProxyAdmin = ProxyAdmin__factory.connect(
-    await getProxyOwner(novaNetwork.ethBridge.bridge, ethProvider),
-    ethProvider
-  );
-  const novaRollupProxyAdmin = ProxyAdmin__factory.connect(
-    await getProxyOwner(novaNetwork.ethBridge.rollup, ethProvider),
-    ethProvider
-  );
-
   console.log("--------– PROTOCOL ----------------");
   console.log("\narb rollup", arbNetwork.ethBridge.rollup);
   console.log("arb rollup's proxy admin", arbRollupProxyAdmin.address);
@@ -209,11 +203,22 @@ async function printProxyAdmins() {
   console.log("\narb protocol proxyAdmin", arbProtocolProxyAdmin.address);
   console.log("arb protocol proxyAdmin's owner", await arbProtocolProxyAdmin.owner());
 
-  console.log("\nnova rollup", novaNetwork.ethBridge.rollup);
-  console.log("nova rollup's proxy admin", novaRollupProxyAdmin.address);
+  if (isDeployingToNova()) {
+    const novaProtocolProxyAdmin = ProxyAdmin__factory.connect(
+      await getProxyOwner(novaNetwork.ethBridge.bridge, ethProvider),
+      ethProvider
+    );
+    const novaRollupProxyAdmin = ProxyAdmin__factory.connect(
+      await getProxyOwner(novaNetwork.ethBridge.rollup, ethProvider),
+      ethProvider
+    );
 
-  console.log("\nnova protocol proxyAdmin", novaProtocolProxyAdmin.address);
-  console.log("nova protocol proxyAdmin's owner", await novaProtocolProxyAdmin.owner());
+    console.log("\nnova rollup", novaNetwork.ethBridge.rollup);
+    console.log("nova rollup's proxy admin", novaRollupProxyAdmin.address);
+
+    console.log("\nnova protocol proxyAdmin", novaProtocolProxyAdmin.address);
+    console.log("nova protocol proxyAdmin's owner", await novaProtocolProxyAdmin.owner());
+  }
 
   console.log("\n--------– TOKEN BRIDGE ----------------");
   console.log("\narb l1ProxyAdmin", arbNetwork.tokenBridge.l1ProxyAdmin);
@@ -246,35 +251,37 @@ async function printProxyAdmins() {
     ).owner()
   );
 
-  console.log("\nnova l1ProxyAdmin", novaNetwork.tokenBridge.l1ProxyAdmin);
-  console.log(
-    "nova l1ProxyAdmin's owner",
-    await ProxyAdmin__factory.connect(novaNetwork.tokenBridge.l1ProxyAdmin, ethProvider).owner()
-  );
+  if (isDeployingToNova()) {
+    console.log("\nnova l1ProxyAdmin", novaNetwork.tokenBridge.l1ProxyAdmin);
+    console.log(
+      "nova l1ProxyAdmin's owner",
+      await ProxyAdmin__factory.connect(novaNetwork.tokenBridge.l1ProxyAdmin, ethProvider).owner()
+    );
 
-  console.log("\nnova l2ProxyAdmin", novaNetwork.tokenBridge.l2ProxyAdmin);
-  console.log(
-    "nova l2ProxyAdmin's owner",
-    await ProxyAdmin__factory.connect(novaNetwork.tokenBridge.l2ProxyAdmin, novaProvider).owner()
-  );
+    console.log("\nnova l2ProxyAdmin", novaNetwork.tokenBridge.l2ProxyAdmin);
+    console.log(
+      "nova l2ProxyAdmin's owner",
+      await ProxyAdmin__factory.connect(novaNetwork.tokenBridge.l2ProxyAdmin, novaProvider).owner()
+    );
 
-  console.log("\nova l1GatewayRouter", novaNetwork.tokenBridge.l1GatewayRouter);
-  console.log(
-    "nova l1GatewayRouter's owner",
-    await L1GatewayRouter__factory.connect(
-      novaNetwork.tokenBridge.l1GatewayRouter,
-      ethProvider
-    ).owner()
-  );
+    console.log("\nnova l1GatewayRouter", novaNetwork.tokenBridge.l1GatewayRouter);
+    console.log(
+      "nova l1GatewayRouter's owner",
+      await L1GatewayRouter__factory.connect(
+        novaNetwork.tokenBridge.l1GatewayRouter,
+        ethProvider
+      ).owner()
+    );
 
-  console.log("\nova l1CustomGateway", novaNetwork.tokenBridge.l1CustomGateway);
-  console.log(
-    "nova l1CustomGateway's owner",
-    await L1CustomGateway__factory.connect(
-      novaNetwork.tokenBridge.l1CustomGateway,
-      ethProvider
-    ).owner()
-  );
+    console.log("\nova l1CustomGateway", novaNetwork.tokenBridge.l1CustomGateway);
+    console.log(
+      "nova l1CustomGateway's owner",
+      await L1CustomGateway__factory.connect(
+        novaNetwork.tokenBridge.l1CustomGateway,
+        ethProvider
+      ).owner()
+    );
+  }
 }
 
 async function main() {
