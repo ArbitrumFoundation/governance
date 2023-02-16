@@ -58,7 +58,7 @@ import { Recipients, assert, assertEquals, assertNumbersEquals, getProxyOwner } 
 import { WalletCreatedEvent } from "../typechain-types/src/ArbitrumVestingWalletFactory.sol/ArbitrumVestingWalletsFactory";
 import { TransferEvent } from "../typechain-types/src/Util.sol/IERC20VotesUpgradeable";
 import { OwnershipTransferredEvent } from "../typechain-types/src/L2ArbitrumToken";
-const deadAddress = "0x000000000000000000000000000000000000dead";
+const deadAddress = "0x000000000000000000000000000000000000dEaD";
 
 dotenv.config();
 
