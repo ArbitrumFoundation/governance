@@ -174,12 +174,17 @@ Now everything's ready to start the deployment process. Run the following script
 yarn deploy:governance
 ```
 
-Script deploys and initializes governance contracts. Addresses of deployed contracts are stored in `files/local/deployedContract.json`. Script will also deploy TokenDistributor and set token recipients. Depending on the number of recipients this process could take up to few hours. Once deployment is finished make sure everything is properly deployed:
+Script deploys and initializes governance contracts. Addresses of deployed contracts are stored in `files/local/deployedContract.json`. Once deployment is finished make sure everything is properly deployed:
 ```
 yarn verify:governance
 ```
 
-Additionally we shall check tokens were properly distributed to all the stakeholders as intended:
+Next step is token allocation. Tokens need to be distributed to treasury, foundation, team, vested investor wallets, DAOs. This also includes deploying TokenDistributor and setting token claim recipients. Depending on the number of recipients this process could take up to few hours.
+```
+yarn allocate:tokens
+```
+
+Now we can check tokens were properly distributed to all the stakeholders as intended:
 ```
 yarn verify:distribution
 ```

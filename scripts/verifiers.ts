@@ -162,21 +162,7 @@ export const verifyDeployment = async () => {
     ethProvider,
     deployerConfig
   );
-  await verifyTokenDistribution(
-    arbContracts.l2Token,
-    arbContracts.l2ArbTreasury,
-    arbContracts.l2TokenDistributor,
-    arbContracts.vestedWalletFactory,
-    arbProvider,
-    claimRecipients,
-    daoRecipients,
-    vestedRecipients,
-    {
-      distributorSetRecipientsEndBlock: deployedContracts.distributorSetRecipientsEndBlock!,
-      distributorSetRecipientsStartBlock: deployedContracts.distributorSetRecipientsStartBlock!,
-    },
-    deployerConfig
-  );
+
   await verifyL2TreasuryGovernor(
     arbContracts.l2TreasuryGoverner,
     arbContracts.l2Token,
@@ -206,15 +192,7 @@ export const verifyDeployment = async () => {
     arbContracts.l2ProxyAdmin,
     arbProvider
   );
-  await verifyL2TokenDistributor(
-    arbContracts.l2TokenDistributor,
-    arbContracts.l2Token,
-    arbContracts.l2Executor,
-    arbContracts.l2CoreGoverner,
-    arbProvider,
-    claimRecipients,
-    deployerConfig
-  );
+
   await verifyArbitrumDAOConstitution(
     arbContracts.arbitrumDAOConstitution,
     arbContracts.l2Executor,
@@ -843,11 +821,6 @@ async function verifyL2Token(
     l2ProxyAdmin.address,
     "L2ProxyAdmin should be L2ArbitrumToken's proxy admin"
   );
-  assertEquals(
-    await l2Token.owner(),
-    l2Executor.address,
-    "L2UpgradeExecutor should be L2ArbitrumToken's owner"
-  );
 
   //// check initialization params
   assertEquals(await l2Token.name(), "Arbitrum", "L2Token name should be Arbitrum");
@@ -1050,7 +1023,7 @@ async function verifyL2ArbTreasury(
  * Verify:
  * - initialization params are correctly set
  */
-async function verifyL2TokenDistributor(
+export async function verifyL2TokenDistributor(
   l2TokenDistributor: TokenDistributor,
   l2Token: L2ArbitrumToken,
   l2Executor: UpgradeExecutor,
@@ -1495,12 +1468,8 @@ export function loadArbContracts(arbProvider: Provider, contractAddresses: Deplo
   if (contractAddresses.l2TreasuryGoverner == undefined)
     throw new Error("Missing l2TreasuryGoverner");
   if (contractAddresses.l2ArbTreasury == undefined) throw new Error("Missing l2ArbTreasury");
-  if (contractAddresses.l2TokenDistributor == undefined)
-    throw new Error("Missing l2TokenDistributor");
   if (contractAddresses.l2ReverseCustomGatewayProxy == undefined)
     throw new Error("Missing l2ReverseCustomGatewayProxy");
-  if (contractAddresses.vestedWalletFactory == undefined)
-    throw new Error("Missing vestedWalletFactory");
   if (contractAddresses.arbitrumDAOConstitution == undefined)
     throw new Error("Missing arbitrumDAOConstitution");
 
@@ -1529,20 +1498,39 @@ export function loadArbContracts(arbProvider: Provider, contractAddresses: Deplo
       contractAddresses.l2ArbTreasury,
       arbProvider
     ),
-    l2TokenDistributor: TokenDistributor__factory.connect(
-      contractAddresses.l2TokenDistributor,
-      arbProvider
-    ),
     l2ReverseCustomGatewayProxy: L2ReverseCustomGateway__factory.connect(
       contractAddresses.l2ReverseCustomGatewayProxy,
       arbProvider
     ),
-    vestedWalletFactory: ArbitrumVestingWalletsFactory__factory.connect(
-      contractAddresses.vestedWalletFactory,
-      arbProvider
-    ),
     arbitrumDAOConstitution: ArbitrumDAOConstitution__factory.connect(
       contractAddresses.arbitrumDAOConstitution,
+      arbProvider
+    ),
+  };
+}
+
+/**
+ *
+ * @param arbProvider
+ * @returns
+ */
+export function loadArbTokenDistributionContracts(
+  arbProvider: Provider,
+  contractAddresses: DeployProgressCache
+) {
+  if (contractAddresses.l2TokenDistributor == undefined)
+    throw new Error("Missing l2TokenDistributor");
+  if (contractAddresses.vestedWalletFactory == undefined)
+    throw new Error("Missing vestedWalletFactory");
+
+  return {
+    // load L2 contracts
+    l2TokenDistributor: TokenDistributor__factory.connect(
+      contractAddresses.l2TokenDistributor,
+      arbProvider
+    ),
+    vestedWalletFactory: ArbitrumVestingWalletsFactory__factory.connect(
+      contractAddresses.vestedWalletFactory,
       arbProvider
     ),
   };

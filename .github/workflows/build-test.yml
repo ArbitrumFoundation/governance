@@ -109,6 +109,9 @@ jobs:
       - name: Verify deployment
         run: yarn verify:governance
 
+      - name: Allocate tokens
+        run: yarn allocate:tokens
+
       - name: Verify token distribution
         run: yarn verify:distribution
 

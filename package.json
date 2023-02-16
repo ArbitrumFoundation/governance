@@ -14,6 +14,7 @@
     "gen:recipients": "ts-node ./scripts/genRecipients.ts",
     "deploy:governance": "ts-node ./scripts/governanceDeployer.ts",
     "verify:governance": "ts-node ./scripts/governanceDeploymentVerifier.ts",
+    "allocate:tokens": "ts-node ./scripts/tokenAllocator.ts",
     "verify:distribution": "ts-node ./scripts/tokenDistributionVerifier.ts",
     "prepare:ownership:transfer": "ts-node ./scripts/prepareProtocolOwnershipTransfer.ts",
     "execute:ownership:transfer": "ts-node ./scripts/executeProtocolOwnershipTransfer.ts",

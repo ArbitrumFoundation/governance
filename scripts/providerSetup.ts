@@ -38,6 +38,7 @@ const ARBITRUM_NOVA_CHAIN_ID = 42170;
 // in case of local env testing, config is extracted in `testSetup()`
 export const envVars = {
   isLocalDeployment: process.env["DEPLOY_TO_LOCAL_ENVIRONMENT"] as string,
+  isDeployingToNova: process.env["DEPLOY_GOVERNANCE_TO_NOVA"] as string,
   ethRpc: process.env["ETH_URL"] as string,
   arbRpc: process.env["ARB_URL"] as string,
   novaRpc: process.env["NOVA_URL"] as string,
@@ -372,8 +373,7 @@ export const getDeployerAddresses = async (): Promise<{
  * @returns
  */
 export function isDeployingToNova(): boolean {
-  const deployToNova = process.env["DEPLOY_GOVERNANCE_TO_NOVA"] as string;
-  return deployToNova === "true";
+  return envVars.isDeployingToNova === "true";
 }
 
 /**
