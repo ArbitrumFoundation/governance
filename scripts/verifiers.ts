@@ -43,7 +43,6 @@ import {
   getDeployerAddresses,
   getProviders,
   isDeployingToNova,
-  isDistributingTokens,
   loadClaimRecipients,
   loadDaoRecipients,
   loadDeployedContracts,
@@ -193,35 +192,6 @@ export const verifyDeployment = async () => {
     arbContracts.l2ProxyAdmin,
     arbProvider
   );
-
-  if (isDistributingTokens()) {
-    const distributionContracts = loadArbTokenDistributionContracts(arbProvider, deployedContracts);
-
-    await verifyTokenDistribution(
-      arbContracts.l2Token,
-      arbContracts.l2ArbTreasury,
-      distributionContracts.l2TokenDistributor,
-      distributionContracts.vestedWalletFactory,
-      arbProvider,
-      claimRecipients,
-      daoRecipients,
-      vestedRecipients,
-      {
-        distributorSetRecipientsEndBlock: deployedContracts.distributorSetRecipientsEndBlock!,
-        distributorSetRecipientsStartBlock: deployedContracts.distributorSetRecipientsStartBlock!,
-      },
-      deployerConfig
-    );
-    await verifyL2TokenDistributor(
-      distributionContracts.l2TokenDistributor,
-      arbContracts.l2Token,
-      arbContracts.l2Executor,
-      arbContracts.l2CoreGoverner,
-      arbProvider,
-      claimRecipients,
-      deployerConfig
-    );
-  }
 
   await verifyArbitrumDAOConstitution(
     arbContracts.arbitrumDAOConstitution,
@@ -852,14 +822,6 @@ async function verifyL2Token(
     "L2ProxyAdmin should be L2ArbitrumToken's proxy admin"
   );
 
-  if (isDistributingTokens()) {
-    assertEquals(
-      await l2Token.owner(),
-      l2Executor.address,
-      "L2UpgradeExecutor should be L2ArbitrumToken's owner"
-    );
-  }
-
   //// check initialization params
   assertEquals(await l2Token.name(), "Arbitrum", "L2Token name should be Arbitrum");
   assertEquals(await l2Token.symbol(), "ARB", "L2Token symbol should be ARB");
@@ -1061,7 +1023,7 @@ async function verifyL2ArbTreasury(
  * Verify:
  * - initialization params are correctly set
  */
-async function verifyL2TokenDistributor(
+export async function verifyL2TokenDistributor(
   l2TokenDistributor: TokenDistributor,
   l2Token: L2ArbitrumToken,
   l2Executor: UpgradeExecutor,

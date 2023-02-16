@@ -1,23 +1,19 @@
 import {
   getProviders,
-  isDistributingTokens,
   loadClaimRecipients,
   loadDaoRecipients,
   loadDeployedContracts,
   loadVestedRecipients,
 } from "./providerSetup";
+import { assertEquals } from "./testUtils";
 import {
   loadArbContracts,
   loadArbTokenDistributionContracts,
+  verifyL2TokenDistributor,
   verifyTokenDistribution,
 } from "./verifiers";
 
 async function main() {
-  if (!isDistributingTokens()) {
-    console.log("Token distribution mode not enabled! You can set it in .env file");
-    return;
-  }
-
   const { arbProvider, deployerConfig } = await getProviders();
   const deployedContracts = loadDeployedContracts();
   const arbContracts = loadArbContracts(arbProvider, deployedContracts);
@@ -42,6 +38,22 @@ async function main() {
       distributorSetRecipientsStartBlock: deployedContracts.distributorSetRecipientsStartBlock!,
     },
     deployerConfig
+  );
+
+  await verifyL2TokenDistributor(
+    distributionContracts.l2TokenDistributor,
+    arbContracts.l2Token,
+    arbContracts.l2Executor,
+    arbContracts.l2CoreGoverner,
+    arbProvider,
+    claimRecipients,
+    deployerConfig
+  );
+
+  assertEquals(
+    await arbContracts.l2Token.owner(),
+    arbContracts.l2Executor.address,
+    "L2UpgradeExecutor should be L2ArbitrumToken's owner"
   );
 }
 
