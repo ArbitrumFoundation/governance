@@ -186,7 +186,7 @@ yarn allocate:tokens
 
 Now we can check tokens were properly distributed to all the stakeholders as intended.
 ```
-yarn verify:distribution
+yarn verify:distribution:full
 ```
 
 Optionally distribute tokens to daos

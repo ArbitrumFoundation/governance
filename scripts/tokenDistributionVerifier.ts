@@ -1,4 +1,5 @@
 import {
+  fullTokenVerify,
   getProviders,
   loadClaimRecipients,
   loadDeployedContracts,
@@ -8,7 +9,8 @@ import { assertEquals } from "./testUtils";
 import {
   loadArbContracts,
   loadArbTokenDistributionContracts,
-  verifyL2TokenDistributor,
+  verifyL2TokenDistributorEnd,
+  verifyL2TokenDistributorStart,
   verifyTokenDistribution,
 } from "./verifiers";
 
@@ -21,7 +23,7 @@ async function main() {
   const vestedRecipients = loadVestedRecipients();
   const claimRecipients = loadClaimRecipients();
 
-  console.log("Start verification process...");
+  console.log(`Start ${fullTokenVerify() ? "full" : "partial"} verification process...`);
   await verifyTokenDistribution(
     arbContracts.l2Token!,
     arbContracts.l2ArbTreasury,
@@ -30,14 +32,11 @@ async function main() {
     arbProvider,
     claimRecipients,
     vestedRecipients,
-    {
-      distributorSetRecipientsEndBlock: deployedContracts.distributorSetRecipientsEndBlock!,
-      distributorSetRecipientsStartBlock: deployedContracts.distributorSetRecipientsStartBlock!,
-    },
+
     deployerConfig
   );
 
-  await verifyL2TokenDistributor(
+  await verifyL2TokenDistributorStart(
     distributionContracts.l2TokenDistributor,
     arbContracts.l2Token,
     arbContracts.l2Executor,
@@ -47,11 +46,24 @@ async function main() {
     deployerConfig
   );
 
-  assertEquals(
-    await arbContracts.l2Token.owner(),
-    arbContracts.l2Executor.address,
-    "L2UpgradeExecutor should be L2ArbitrumToken's owner"
-  );
+  if (fullTokenVerify()) {
+    console.log("Verifying token claimants...");
+    await verifyL2TokenDistributorEnd(
+      distributionContracts.l2TokenDistributor,
+      claimRecipients,
+      {
+        distributorSetRecipientsEndBlock: deployedContracts.distributorSetRecipientsEndBlock!,
+        distributorSetRecipientsStartBlock: deployedContracts.distributorSetRecipientsStartBlock!,
+      },
+      deployerConfig
+    );
+
+    assertEquals(
+      await arbContracts.l2Token.owner(),
+      arbContracts.l2Executor.address,
+      "L2UpgradeExecutor should be L2ArbitrumToken's owner"
+    );
+  }
 }
 
 main().then(() => console.log("Verification complete."));
