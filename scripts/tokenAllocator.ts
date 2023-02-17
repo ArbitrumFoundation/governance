@@ -292,14 +292,24 @@ async function initTokenDistributor(
       await arbDeployer.provider!.getBlockNumber();
   }
 
-  // set claim recipients
-  await setClaimRecipients(
-    tokenDistributor,
-    arbDeployer,
-    claimRecipients,
-    config,
-    previousStartBlock
-  );
+  // make sure setClaimRecipients is successfully executed (even in case of intermittent RPC timeout or similar)
+  while (true) {
+    try {
+      // set claim recipients
+      await setClaimRecipients(
+        tokenDistributor,
+        arbDeployer,
+        claimRecipients,
+        config,
+        previousStartBlock
+      );
+      console.log("Recipients successfully set!");
+      break;
+    } catch (err) {
+      console.error("Setting recipients threw exception, retrying after 30sec...", err);
+      await new Promise((resolve) => setTimeout(resolve, 30000));
+    }
+  }
 
   // we store end block when all recipients batches are set
   deployedContracts.distributorSetRecipientsEndBlock = await arbDeployer.provider!.getBlockNumber();
