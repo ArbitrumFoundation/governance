@@ -306,7 +306,8 @@ async function initTokenDistributor(
       console.log("Recipients successfully set!");
       break;
     } catch (err) {
-      console.error("Setting recipients threw exception, retrying...", err);
+      console.error("Setting recipients threw exception, retrying after 30sec...", err);
+      await new Promise((resolve) => setTimeout(resolve, 30000));
     }
   }
 
