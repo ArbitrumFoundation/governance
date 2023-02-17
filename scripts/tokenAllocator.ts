@@ -15,9 +15,8 @@ import {
 } from "./providerSetup";
 import { getRecipientsDataFromContractEvents, setClaimRecipients } from "./tokenDistributorHelper";
 import { deployVestedWallets } from "./vestedWalletsDeployer";
-import { TransferEvent } from "../typechain-types/src/Util.sol/IERC20VotesUpgradeable";
-import { Recipients } from "./testUtils";
-import { StringProps, TypeChainContractFactoryStatic } from "./governanceDeployer";
+import { Recipients, StringProps, TypeChainContractFactoryStatic } from "./testUtils";
+import { checkConfigTotals } from "./verifiers";
 
 // use a global cache
 let deployedContracts: DeployProgressCache = {};
@@ -31,8 +30,6 @@ let deployedContracts: DeployProgressCache = {};
  * /// 16. Distribute to vested wallets
  * ///         - create vested wallets
  * ///         - transfer funds to vested wallets
- * /// 16. Distribute to DAOs
- * ///         - send funds to DAOs based on DAO recipients file
  * /// 17. Deploy TokenDistributor
  * ///         - deploy TokenDistributor
  * ///         - transfer claimable tokens from arbDeployer to distributor
@@ -47,7 +44,7 @@ export const allocateTokens = async () => {
     await getDeployersAndConfig();
 
   // sanity check the token totals before we start the deployment
-  checkConfigTotals(claimRecipients, daoRecipients, vestedRecipients, deployerConfig);
+  checkConfigTotals(claimRecipients, vestedRecipients, deployerConfig);
 
   console.log("Post deployment L2 token tasks");
   await postDeploymentL2TokenTasks(
@@ -67,9 +64,6 @@ export const allocateTokens = async () => {
     vestedRecipients,
     deployerConfig
   );
-
-  console.log("Distribute to DAOs");
-  await transferDaoAllocations(arbDeployer, deployedContracts.l2Token!, daoRecipients);
 
   // deploy ARB distributor
   console.log("Deploy TokenDistributor");
@@ -107,6 +101,8 @@ async function postDeploymentL2TokenTasks(
     L2_NUM_OF_TOKENS_FOR_FOUNDATION: string;
     L2_ADDRESS_FOR_TEAM: string;
     L2_NUM_OF_TOKENS_FOR_TEAM: string;
+    L2_ADDRESS_FOR_DAO_RECIPIENTS: string;
+    L2_NUM_OF_TOKENS_FOR_DAO_RECIPIENTS: string;
   }
 ) {
   const l2Token = L2ArbitrumToken__factory.connect(l2TokenAddress, arbInitialSupplyRecipient);
@@ -150,6 +146,18 @@ async function postDeploymentL2TokenTasks(
 
     deployedContracts.l2TokenTask4 = true;
   }
+
+  if (!deployedContracts.l2TokenTask5) {
+    // transfer tokens from arbDeployer to the dao recipients escrow
+    await (
+      await l2Token.transfer(
+        config.L2_ADDRESS_FOR_DAO_RECIPIENTS,
+        parseEther(config.L2_NUM_OF_TOKENS_FOR_DAO_RECIPIENTS)
+      )
+    ).wait();
+
+    deployedContracts.l2TokenTask5 = true;
+  }
 }
 
 async function deployAndTransferVestedWallets(
@@ -186,43 +194,6 @@ async function deployAndTransferVestedWallets(
     );
     deployedContracts.vestedWalletInProgress = undefined;
     deployedContracts.vestedWalletFactory = vestedWalletFactory.address;
-  }
-}
-
-async function transferDaoAllocations(
-  initialTokenRecipient: Signer,
-  tokenAddress: string,
-  daoRecipients: Recipients
-) {
-  const token = L2ArbitrumToken__factory.connect(tokenAddress, initialTokenRecipient);
-
-  for (const rec of Object.keys(daoRecipients)) {
-    const filter = token.filters["Transfer(address,address,uint256)"](
-      await initialTokenRecipient.getAddress(),
-      rec
-    );
-
-    const logs = await initialTokenRecipient.provider!.getLogs({
-      fromBlock: 0,
-      toBlock: "latest",
-      ...filter,
-    });
-
-    if (logs.length === 0) {
-      // this recipient has not been transferred to yet
-      await (await token.transfer(rec, daoRecipients[rec])).wait();
-    } else if (logs.length === 1) {
-      const { value } = token.interface.parseLog(logs[0]).args as TransferEvent["args"];
-
-      if (!value.eq(daoRecipients[rec])) {
-        throw new Error(
-          `Incorrect value sent to ${rec}:${daoRecipients[rec].toString()}:${value.toString()}`
-        );
-      }
-    } else {
-      console.error(logs);
-      throw new Error(`Too many transfer logs for ${rec}`);
-    }
   }
 }
 
@@ -361,43 +332,6 @@ async function getOrInit<TContract extends Contract>(
     return contract;
   } else {
     return contractFactory.connect(address, deployer);
-  }
-}
-
-/**
- * Sanity check token supply totals
- * @param config
- */
-export function checkConfigTotals(
-  claimRecipients: Recipients,
-  daoRecipients: Recipients,
-  vestedRecipients: Recipients,
-  config: {
-    L2_TOKEN_INITIAL_SUPPLY: string;
-    L2_NUM_OF_TOKENS_FOR_TREASURY: string;
-    L2_NUM_OF_TOKENS_FOR_FOUNDATION: string;
-    L2_NUM_OF_TOKENS_FOR_TEAM: string;
-  }
-) {
-  const totalSupply = parseEther(config.L2_TOKEN_INITIAL_SUPPLY);
-  const treasuryVal = parseEther(config.L2_NUM_OF_TOKENS_FOR_TREASURY);
-  const foundationVal = parseEther(config.L2_NUM_OF_TOKENS_FOR_FOUNDATION);
-  const teamVal = parseEther(config.L2_NUM_OF_TOKENS_FOR_TEAM);
-
-  const claimtotal = Object.values(claimRecipients).reduce((a, b) => a.add(b));
-  const vestedTotal = Object.values(vestedRecipients).reduce((a, b) => a.add(b));
-  const daoTotal = Object.values(daoRecipients).reduce((a, b) => a.add(b));
-
-  const distributionTotals = treasuryVal
-    .add(foundationVal)
-    .add(teamVal)
-    .add(claimtotal)
-    .add(vestedTotal)
-    .add(daoTotal);
-  if (!distributionTotals.eq(totalSupply)) {
-    throw new Error(
-      `Unexpected distribution total: ${distributionTotals.toString()} ${totalSupply.toString()}`
-    );
   }
 }
 

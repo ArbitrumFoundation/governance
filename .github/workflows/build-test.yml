@@ -115,6 +115,12 @@ jobs:
       - name: Verify token distribution
         run: yarn verify:distribution
 
+      - name: Allocate DAO tokens
+        run: yarn allocate:dao:tokens
+
+      - name: Verify DAO token distribution
+        run: yarn verify:dao:distribution
+
       - name: Prepare asset ownership transfer
         run: yarn prepare:ownership:transfer
 

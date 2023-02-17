@@ -1,7 +1,6 @@
 import {
   getProviders,
   loadClaimRecipients,
-  loadDaoRecipients,
   loadDeployedContracts,
   loadVestedRecipients,
 } from "./providerSetup";
@@ -19,7 +18,6 @@ async function main() {
   const arbContracts = loadArbContracts(arbProvider, deployedContracts);
   const distributionContracts = loadArbTokenDistributionContracts(arbProvider, deployedContracts);
 
-  const daoRecipients = loadDaoRecipients();
   const vestedRecipients = loadVestedRecipients();
   const claimRecipients = loadClaimRecipients();
 
@@ -31,7 +29,6 @@ async function main() {
     distributionContracts.vestedWalletFactory,
     arbProvider,
     claimRecipients,
-    daoRecipients,
     vestedRecipients,
     {
       distributorSetRecipientsEndBlock: deployedContracts.distributorSetRecipientsEndBlock!,

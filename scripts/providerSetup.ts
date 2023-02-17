@@ -27,6 +27,7 @@ import { DeployerConfig, loadDeployerConfig } from "./deployerConfig";
 import { getL2Network, L2Network } from "@arbitrum/sdk";
 import { ClaimRecipients, Recipients, loadRecipients, mapPointsToAmounts } from "./testUtils";
 import fs from "fs";
+import { parseEther } from "ethers/lib/utils";
 
 dotenv.config();
 
@@ -52,6 +53,7 @@ export const envVars = {
   deployedContractsLocation: process.env["DEPLOYED_CONTRACTS_FILE_LOCATION"] as string,
   arbTransferAssetsTXsLocation: process.env["ARB_TXS_FILE_LOCATION"] as string,
   novaTransferAssetsTXsLocation: process.env["NOVA_TXS_FILE_LOCATION"] as string,
+  daoRecipientsEscrowKey: process.env["DAO_RECIPIENTS_KEY"] as string,
 };
 
 const checkEnvVars = (conf: typeof envVars) => {
@@ -96,6 +98,14 @@ export const getSigner = (provider: JsonRpcProvider, key?: string) => {
   if (!key && !provider) throw new ArbSdkError("Provide at least one of key or provider.");
   if (key) return new Wallet(key).connect(provider);
   else return provider.getSigner(0);
+};
+
+export const getDaoRecipientsEscrowSigner = (provider: JsonRpcProvider) => {
+  if (!envVars.daoRecipientsEscrowKey) {
+    throw new Error("DAO_RECIPIENTS_KEY env var not set");
+  }
+
+  return getSigner(provider, envVars.daoRecipientsEscrowKey);
 };
 
 export const loadDaoRecipients = () => {
@@ -166,6 +176,7 @@ export interface DeployProgressCache {
   l2TokenTask2?: boolean;
   l2TokenTask3?: boolean;
   l2TokenTask4?: boolean;
+  l2TokenTask5?: boolean;
   vestedWalletInProgress?: boolean;
   vestedWalletFactory?: string;
   l2TokenDistributor?: string;
@@ -256,6 +267,19 @@ export const getDeployersAndConfig = async (): Promise<{
       const novaChainId = (await novaDeployer.provider.getNetwork()).chainId;
       if (novaChainId == ARBITRUM_NOVA_CHAIN_ID) {
         throw new Error("Production chain ID used in test env for Nova");
+      }
+    }
+
+    // make sure the dao recipients key has funds if we're on local
+    if (envVars.daoRecipientsEscrowKey) {
+      const daoEscrow = getDaoRecipientsEscrowSigner(l2Provider);
+      if ((await daoEscrow.getBalance()).eq(0)) {
+        await (
+          await l2Deployer.sendTransaction({
+            to: await daoEscrow.getAddress(),
+            value: parseEther("0.5"),
+          })
+        ).wait();
       }
     }
 

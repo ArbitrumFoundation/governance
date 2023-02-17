@@ -184,9 +184,19 @@ Next step is token allocation. Tokens need to be distributed to treasury, founda
 yarn allocate:tokens
 ```
 
-Now we can check tokens were properly distributed to all the stakeholders as intended:
+Now we can check tokens were properly distributed to all the stakeholders as intended.
 ```
 yarn verify:distribution
+```
+
+Optionally distribute tokens to daos
+```
+yarn allocate:dao:tokens
+```
+
+And verify they were distributed successfully
+```
+yarn verify:dao:distributions
 ```
 
 There's another set of tasks required - once governance is deployed ownership of existing Arb/Nova protocol contracts shall be transferred to the DAO. Running the following script will prepare (unsigned) transactions that need to be executed to fully transfer the ownership:

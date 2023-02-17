@@ -48,22 +48,9 @@ import {
   loadDeployedContracts,
   updateDeployedContracts,
 } from "./providerSetup";
-import { Provider } from "@ethersproject/providers";
-import { Recipients } from "./testUtils";
+import { StringProps, TypeChainContractFactoryStatic } from "./testUtils";
+import { checkConfigTotals } from "./verifiers";
 
-export type TypeChainContractFactory<TContract extends Contract> = {
-  deploy(...args: Array<any>): Promise<TContract>;
-};
-
-export type TypeChainContractFactoryStatic<TContract extends Contract> = {
-  connect(address: string, signerOrProvider: Provider | Signer): TContract;
-  createInterface(): Interface;
-  new (signer: Signer): TypeChainContractFactory<TContract>;
-};
-
-export type StringProps<T> = {
-  [k in keyof T as T[k] extends string | undefined ? k : never]: T[k];
-};
 async function getOrInit<TContract extends Contract>(
   cacheKey: keyof StringProps<DeployProgressCache>,
   deployer: Signer,
@@ -153,12 +140,11 @@ export const deployGovernance = async () => {
     arbNetwork,
     novaNetwork,
     claimRecipients,
-    daoRecipients,
     vestedRecipients,
   } = await getDeployersAndConfig();
 
   // sanity check the token totals before we start the deployment
-  checkConfigTotals(claimRecipients, daoRecipients, vestedRecipients, deployerConfig);
+  checkConfigTotals(claimRecipients, vestedRecipients, deployerConfig);
 
   console.log("Deploy L1 logic contracts");
   const l1UpgradeExecutorLogic = await deployL1LogicContracts(ethDeployer);
@@ -900,43 +886,6 @@ async function registerTokenOnNova(
     }
 
     deployedContracts.registerTokenNova = true;
-  }
-}
-
-/**
- * Sanity check token supply totals
- * @param config
- */
-export function checkConfigTotals(
-  claimRecipients: Recipients,
-  daoRecipients: Recipients,
-  vestedRecipients: Recipients,
-  config: {
-    L2_TOKEN_INITIAL_SUPPLY: string;
-    L2_NUM_OF_TOKENS_FOR_TREASURY: string;
-    L2_NUM_OF_TOKENS_FOR_FOUNDATION: string;
-    L2_NUM_OF_TOKENS_FOR_TEAM: string;
-  }
-) {
-  const totalSupply = parseEther(config.L2_TOKEN_INITIAL_SUPPLY);
-  const treasuryVal = parseEther(config.L2_NUM_OF_TOKENS_FOR_TREASURY);
-  const foundationVal = parseEther(config.L2_NUM_OF_TOKENS_FOR_FOUNDATION);
-  const teamVal = parseEther(config.L2_NUM_OF_TOKENS_FOR_TEAM);
-
-  const claimtotal = Object.values(claimRecipients).reduce((a, b) => a.add(b));
-  const vestedTotal = Object.values(vestedRecipients).reduce((a, b) => a.add(b));
-  const daoTotal = Object.values(daoRecipients).reduce((a, b) => a.add(b));
-
-  const distributionTotals = treasuryVal
-    .add(foundationVal)
-    .add(teamVal)
-    .add(claimtotal)
-    .add(vestedTotal)
-    .add(daoTotal);
-  if (!distributionTotals.eq(totalSupply)) {
-    throw new Error(
-      `Unexpected distribution total: ${distributionTotals.toString()} ${totalSupply.toString()}`
-    );
   }
 }
 
