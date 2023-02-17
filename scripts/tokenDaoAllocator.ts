@@ -50,7 +50,11 @@ async function transferDaoAllocations(
 async function main() {
   console.log("Get deployers and signers");
   const { arbDeployer, daoRecipients, deployerConfig } = await getDeployersAndConfig();
+
   const daoSigner = getDaoRecipientsEscrowSigner(arbDeployer.provider! as JsonRpcProvider);
+  if ((await daoSigner.getBalance()).eq(0)) {
+    throw new Error("Dao escrow account has no eth for gas");
+  }
 
   const daoTotal = Object.values(daoRecipients).reduce((a, b) => a.add(b));
   assertNumbersEquals(

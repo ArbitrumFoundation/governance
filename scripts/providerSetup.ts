@@ -27,6 +27,7 @@ import { DeployerConfig, loadDeployerConfig } from "./deployerConfig";
 import { getL2Network, L2Network } from "@arbitrum/sdk";
 import { ClaimRecipients, Recipients, loadRecipients, mapPointsToAmounts } from "./testUtils";
 import fs from "fs";
+import { parseEther } from "ethers/lib/utils";
 
 dotenv.config();
 
@@ -100,12 +101,12 @@ export const getSigner = (provider: JsonRpcProvider, key?: string) => {
 };
 
 export const getDaoRecipientsEscrowSigner = (provider: JsonRpcProvider) => {
-  if(!envVars.daoRecipientsEscrowKey) {
+  if (!envVars.daoRecipientsEscrowKey) {
     throw new Error("DAO_RECIPIENTS_KEY env var not set");
   }
 
   return getSigner(provider, envVars.daoRecipientsEscrowKey);
-}
+};
 
 export const loadDaoRecipients = () => {
   checkEnvVars(envVars);
@@ -266,6 +267,19 @@ export const getDeployersAndConfig = async (): Promise<{
       const novaChainId = (await novaDeployer.provider.getNetwork()).chainId;
       if (novaChainId == ARBITRUM_NOVA_CHAIN_ID) {
         throw new Error("Production chain ID used in test env for Nova");
+      }
+    }
+
+    // make sure the dao recipients key has funds if we're on local
+    if (envVars.daoRecipientsEscrowKey) {
+      const daoEscrow = getDaoRecipientsEscrowSigner(l2Provider);
+      if ((await daoEscrow.getBalance()).eq(0)) {
+        await (
+          await l2Deployer.sendTransaction({
+            to: await daoEscrow.getAddress(),
+            value: parseEther("0.5"),
+          })
+        ).wait();
       }
     }
 
