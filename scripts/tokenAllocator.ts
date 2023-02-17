@@ -40,11 +40,10 @@ let deployedContracts: DeployProgressCache = {};
  */
 export const allocateTokens = async () => {
   console.log("Get deployers and signers");
-  const { arbDeployer, deployerConfig, claimRecipients, daoRecipients, vestedRecipients } =
-    await getDeployersAndConfig();
+  const { arbDeployer, deployerConfig, claimRecipients } = await getDeployersAndConfig();
 
   // sanity check the token totals before we start the deployment
-  checkConfigTotals(claimRecipients, vestedRecipients, deployerConfig);
+  checkConfigTotals(claimRecipients, deployerConfig);
 
   console.log("Post deployment L2 token tasks");
   await postDeploymentL2TokenTasks(
@@ -52,16 +51,6 @@ export const allocateTokens = async () => {
     deployedContracts.l2Token!,
     deployedContracts.l2Executor!,
     deployedContracts.l2ArbTreasury!,
-    deployerConfig
-  );
-
-  console.log("Distribute to vested wallets");
-
-  await deployAndTransferVestedWallets(
-    arbDeployer,
-    arbDeployer,
-    deployedContracts.l2Token!,
-    vestedRecipients,
     deployerConfig
   );
 
@@ -103,6 +92,8 @@ async function postDeploymentL2TokenTasks(
     L2_NUM_OF_TOKENS_FOR_TEAM: string;
     L2_ADDRESS_FOR_DAO_RECIPIENTS: string;
     L2_NUM_OF_TOKENS_FOR_DAO_RECIPIENTS: string;
+    L2_ADDRESS_FOR_INVESTORS: string;
+    L2_NUM_OF_TOKENS_FOR_INVESTORS: string;
   }
 ) {
   const l2Token = L2ArbitrumToken__factory.connect(l2TokenAddress, arbInitialSupplyRecipient);
@@ -157,6 +148,18 @@ async function postDeploymentL2TokenTasks(
     ).wait();
 
     deployedContracts.l2TokenTask5 = true;
+  }
+
+  if (!deployedContracts.l2TokenTask6) {
+    // transfer tokens from arbDeployer to the investor escrow
+    await (
+      await l2Token.transfer(
+        config.L2_ADDRESS_FOR_INVESTORS,
+        parseEther(config.L2_NUM_OF_TOKENS_FOR_INVESTORS)
+      )
+    ).wait();
+
+    deployedContracts.l2TokenTask6 = true;
   }
 }
 

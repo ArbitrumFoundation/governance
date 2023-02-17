@@ -140,11 +140,10 @@ export const deployGovernance = async () => {
     arbNetwork,
     novaNetwork,
     claimRecipients,
-    vestedRecipients,
   } = await getDeployersAndConfig();
 
   // sanity check the token totals before we start the deployment
-  checkConfigTotals(claimRecipients, vestedRecipients, deployerConfig);
+  checkConfigTotals(claimRecipients, deployerConfig);
 
   console.log("Deploy L1 logic contracts");
   const l1UpgradeExecutorLogic = await deployL1LogicContracts(ethDeployer);
@@ -228,7 +227,7 @@ export const deployGovernance = async () => {
   console.log("Set executor roles");
   await setExecutorRoles(l1DeployResult, l2GovernanceFactory);
 
-  console.log("Rescind factory ownership")
+  console.log("Rescind factory ownership");
   await rescindOwnershipOfFactories(l1GovernanceFactory, l2GovernanceFactory);
 
   if (isDeployingToNova()) {
@@ -651,7 +650,7 @@ async function rescindOwnershipOfFactories(
   if ((await l2GovernanceFactory.owner()) !== deadAddress) {
     await (await l2GovernanceFactory.transferOwnership(deadAddress)).wait();
   }
-};
+}
 
 async function setExecutorRolesOnNova(
   l1DeployResult: L1DeployedEventObject,

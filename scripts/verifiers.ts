@@ -684,10 +684,8 @@ export async function verifyTokenDistribution(
   l2Token: L2ArbitrumToken,
   arbTreasury: FixedDelegateErc20Wallet,
   l2TokenDistributor: TokenDistributor,
-  vestedWalletFactory: ArbitrumVestingWalletsFactory,
   arbProvider: Provider,
   claimRecipients: Recipients,
-  vestedRecipients: Recipients,
   deploymentInfo: {
     distributorSetRecipientsStartBlock: number;
     distributorSetRecipientsEndBlock: number;
@@ -701,6 +699,8 @@ export async function verifyTokenDistribution(
     L2_NUM_OF_TOKENS_FOR_TEAM: string;
     L2_ADDRESS_FOR_DAO_RECIPIENTS: string;
     L2_NUM_OF_TOKENS_FOR_DAO_RECIPIENTS: string;
+    L2_ADDRESS_FOR_INVESTORS: string;
+    L2_NUM_OF_TOKENS_FOR_INVESTORS: string;
     L2_CLAIM_PERIOD_START: number;
     GET_LOGS_BLOCK_RANGE: number;
   }
@@ -717,8 +717,6 @@ export async function verifyTokenDistribution(
     parseEther(config.L2_NUM_OF_TOKENS_FOR_TREASURY),
     "Incorrect initial L2Token balance for ArbTreasury"
   );
-
-  await verifyVestedWallets(vestedRecipients, vestedWalletFactory, l2Token, arbProvider, config);
 
   const initialSupplyRecipient = await getInitialSupplyRecipientAddr(arbProvider, l2Token);
 
@@ -759,12 +757,17 @@ export async function verifyTokenDistribution(
     "Incorrect initial L2Token balance for dao recipients"
   );
 
-  const vestingTotal = Object.values(vestedRecipients).reduce((a, b) => a.add(b));
+  const vestingBalance = await l2Token.balanceOf(config.L2_ADDRESS_FOR_INVESTORS);
+  assertNumbersEquals(
+    vestingBalance,
+    parseEther(config.L2_NUM_OF_TOKENS_FOR_INVESTORS),
+    "Incorrect initial L2Token balance for investors"
+  );
 
   assertNumbersEquals(
     arbTreasuryBalance
       .add(tokenDistributorBalance)
-      .add(vestingTotal)
+      .add(vestingBalance)
       .add(foundationBalance)
       .add(teamBalance)
       .add(daoBalance),
@@ -1545,13 +1548,13 @@ export function loadArbTokenDistributionContracts(
  */
 export function checkConfigTotals(
   claimRecipients: Recipients,
-  vestedRecipients: Recipients,
   config: {
     L2_TOKEN_INITIAL_SUPPLY: string;
     L2_NUM_OF_TOKENS_FOR_TREASURY: string;
     L2_NUM_OF_TOKENS_FOR_FOUNDATION: string;
     L2_NUM_OF_TOKENS_FOR_TEAM: string;
     L2_NUM_OF_TOKENS_FOR_DAO_RECIPIENTS: string;
+    L2_NUM_OF_TOKENS_FOR_INVESTORS: string;
   }
 ) {
   const totalSupply = parseEther(config.L2_TOKEN_INITIAL_SUPPLY);
@@ -1559,15 +1562,15 @@ export function checkConfigTotals(
   const foundationVal = parseEther(config.L2_NUM_OF_TOKENS_FOR_FOUNDATION);
   const teamVal = parseEther(config.L2_NUM_OF_TOKENS_FOR_TEAM);
   const daoVal = parseEther(config.L2_NUM_OF_TOKENS_FOR_DAO_RECIPIENTS);
+  const investorVal = parseEther(config.L2_NUM_OF_TOKENS_FOR_INVESTORS);
 
   const claimtotal = Object.values(claimRecipients).reduce((a, b) => a.add(b));
-  const vestedTotal = Object.values(vestedRecipients).reduce((a, b) => a.add(b));
 
   const distributionTotals = treasuryVal
     .add(foundationVal)
     .add(teamVal)
     .add(claimtotal)
-    .add(vestedTotal)
+    .add(investorVal)
     .add(daoVal);
   if (!distributionTotals.eq(totalSupply)) {
     throw new Error(

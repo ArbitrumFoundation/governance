@@ -1,9 +1,4 @@
-import {
-  getProviders,
-  loadClaimRecipients,
-  loadDeployedContracts,
-  loadVestedRecipients,
-} from "./providerSetup";
+import { getProviders, loadClaimRecipients, loadDeployedContracts } from "./providerSetup";
 import { assertEquals } from "./testUtils";
 import {
   loadArbContracts,
@@ -18,7 +13,6 @@ async function main() {
   const arbContracts = loadArbContracts(arbProvider, deployedContracts);
   const distributionContracts = loadArbTokenDistributionContracts(arbProvider, deployedContracts);
 
-  const vestedRecipients = loadVestedRecipients();
   const claimRecipients = loadClaimRecipients();
 
   console.log("Start verification process...");
@@ -26,10 +20,8 @@ async function main() {
     arbContracts.l2Token!,
     arbContracts.l2ArbTreasury,
     distributionContracts.l2TokenDistributor,
-    distributionContracts.vestedWalletFactory,
     arbProvider,
     claimRecipients,
-    vestedRecipients,
     {
       distributorSetRecipientsEndBlock: deployedContracts.distributorSetRecipientsEndBlock!,
       distributorSetRecipientsStartBlock: deployedContracts.distributorSetRecipientsStartBlock!,

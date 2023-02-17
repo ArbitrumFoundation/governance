@@ -177,6 +177,7 @@ export interface DeployProgressCache {
   l2TokenTask3?: boolean;
   l2TokenTask4?: boolean;
   l2TokenTask5?: boolean;
+  l2TokenTask6?: boolean;
   vestedWalletInProgress?: boolean;
   vestedWalletFactory?: string;
   l2TokenDistributor?: string;
