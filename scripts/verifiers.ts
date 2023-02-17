@@ -1,4 +1,4 @@
-import { BigNumber, ethers } from "ethers";
+import { BigNumber, constants, ethers } from "ethers";
 import {
   ArbitrumDAOConstitution,
   ArbitrumDAOConstitution__factory,
@@ -40,7 +40,6 @@ import {
 } from "../token-bridge-contracts/build/types";
 import {
   DeployProgressCache,
-  getDeployerAddresses,
   getProviders,
   isDeployingToNova,
   loadClaimRecipients,
@@ -59,6 +58,7 @@ import { Recipients, assert, assertEquals, assertNumbersEquals, getProxyOwner } 
 import { WalletCreatedEvent } from "../typechain-types/src/ArbitrumVestingWalletFactory.sol/ArbitrumVestingWalletsFactory";
 import { TransferEvent } from "../typechain-types/src/Util.sol/IERC20VotesUpgradeable";
 import { OwnershipTransferredEvent } from "../typechain-types/src/L2ArbitrumToken";
+const deadAddress = "0x000000000000000000000000000000000000dEaD";
 
 dotenv.config();
 
@@ -76,7 +76,6 @@ export const verifyDeployment = async () => {
     arbNetwork: arbOneNetwork,
     novaNetwork,
   } = await getProviders();
-  const { ethDeployerAddress, arbDeployerAddress } = await getDeployerAddresses();
 
   const deployedContracts = loadDeployedContracts();
   const l1Contracts = loadL1Contracts(ethProvider, deployedContracts);
@@ -90,7 +89,7 @@ export const verifyDeployment = async () => {
   const claimRecipients = loadClaimRecipients();
 
   console.log("Verify L1 contracts are properly deployed");
-  await verifyL1GovernanceFactory(l1Contracts["l1GovernanceFactory"], ethDeployerAddress);
+  await verifyL1GovernanceFactory(l1Contracts["l1GovernanceFactory"]);
   await verifyL1Token(
     l1Contracts.l1TokenProxy,
     l1Contracts.l1ProxyAdmin,
@@ -136,7 +135,7 @@ export const verifyDeployment = async () => {
     arbProvider,
     deployerConfig
   );
-  await verifyL2GovernanceFactory(arbContracts.l2GovernanceFactory, arbDeployerAddress);
+  await verifyL2GovernanceFactory(arbContracts.l2GovernanceFactory);
   await verifyL2CoreGovernor(
     arbContracts.l2CoreGoverner,
     arbContracts.l2Token,
@@ -238,13 +237,12 @@ export const verifyDeployment = async () => {
  * - factory ownership
  */
 async function verifyL1GovernanceFactory(
-  l1GovernanceFactory: L1GovernanceFactory,
-  ethDeployerAddress: string
+  l1GovernanceFactory: L1GovernanceFactory
 ) {
   assertEquals(
-    await l1GovernanceFactory.owner(),
-    ethDeployerAddress,
-    "EthDeployer should be L1GovernanceFactory's owner"
+    (await l1GovernanceFactory.owner()),
+    deadAddress,
+    "EthDeployer should be the dead address"
   );
 }
 
@@ -466,14 +464,13 @@ async function verifyL1ReverseGateway(
  * - factory has completed job
  */
 async function verifyL2GovernanceFactory(
-  l2GovernanceFactory: L2GovernanceFactory,
-  arbDeployerAddress: string
+  l2GovernanceFactory: L2GovernanceFactory
 ) {
   //// check ownership
   assertEquals(
-    await l2GovernanceFactory.owner(),
-    arbDeployerAddress,
-    "ArbDeployer should be L2GovernanceFactory's owner"
+    (await l2GovernanceFactory.owner()),
+    deadAddress,
+    "ArbDeployer should be the dead address"
   );
 
   // check factory has completed job

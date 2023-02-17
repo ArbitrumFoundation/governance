@@ -4,7 +4,7 @@ import { L1CustomGateway__factory } from "@arbitrum/sdk/dist/lib/abi/factories/L
 import { L1GatewayRouter__factory } from "@arbitrum/sdk/dist/lib/abi/factories/L1GatewayRouter__factory";
 import { L2CustomGateway__factory } from "@arbitrum/sdk/dist/lib/abi/factories/L2CustomGateway__factory";
 import { L2GatewayRouter__factory } from "@arbitrum/sdk/dist/lib/abi/factories/L2GatewayRouter__factory";
-import { BigNumber, Contract, ethers, Signer } from "ethers";
+import { BigNumber, constants, Contract, ethers, Signer } from "ethers";
 import { Interface, parseEther } from "ethers/lib/utils";
 import {
   ArbitrumTimelock,
@@ -129,17 +129,18 @@ async function getOrInitDefault<TContract extends Contract>(
  * ///         - fetch and store addresses of deployed contracts
  * /// 11. Set executor roles
  * ///         - call l2GovernanceFactory.deployStep3
- * /// 12. Set executor roles on Nova
+ * /// 12. Rescind factory ownership
+ * ///         - transfer ownership of factories to the zero address
+ * /// 13. Set executor roles on Nova
  * ///         - call novaUpgradeExecutor.initialize
  * ///         - transfer novaProxyAdmin ownership to upgrade executor
- * /// 13. Register token on ArbOne
+ * /// 14. Register token on ArbOne
  * ///         - register L1 token to ArbOne token mapping on reverse gateways
  * ///         - register L1 token to reverse gateway mapping on Arb routers
- * /// 14. Register token on Nova
+ * /// 15. Register token on Nova
  * ///         - register L1 token to Nova token mapping on custom gateways
  * ///         - register L1 token to custom gateway token mapping on Nova routers
  * ///
- *
  * @returns
  */
 export const deployGovernance = async () => {
@@ -240,6 +241,9 @@ export const deployGovernance = async () => {
   // step 3
   console.log("Set executor roles");
   await setExecutorRoles(l1DeployResult, l2GovernanceFactory);
+
+  console.log("Rescind factory ownership")
+  await rescindOwnershipOfFactories(l1GovernanceFactory, l2GovernanceFactory);
 
   if (isDeployingToNova()) {
     console.log("Set executor roles on Nova");
@@ -647,6 +651,21 @@ async function setExecutorRoles(
     deployedContracts.step3Executed = true;
   }
 }
+
+async function rescindOwnershipOfFactories(
+  l1GovernanceFactory: L1GovernanceFactory,
+  l2GovernanceFactory: L2GovernanceFactory
+) {
+  const deadAddress = "0x000000000000000000000000000000000000dEaD";
+
+  if ((await l1GovernanceFactory.owner()) !== deadAddress) {
+    await (await l1GovernanceFactory.transferOwnership(deadAddress)).wait();
+  }
+
+  if ((await l2GovernanceFactory.owner()) !== deadAddress) {
+    await (await l2GovernanceFactory.transferOwnership(deadAddress)).wait();
+  }
+};
 
 async function setExecutorRolesOnNova(
   l1DeployResult: L1DeployedEventObject,
