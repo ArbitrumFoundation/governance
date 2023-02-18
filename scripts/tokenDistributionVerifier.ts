@@ -2,7 +2,7 @@ import { getProviders, loadClaimRecipients, loadDeployedContracts } from "./prov
 import { assertEquals } from "./testUtils";
 import {
   loadArbContracts,
-  loadArbTokenDistributionContracts,
+  loadArbTokenDistributor,
   verifyL2TokenDistributor,
   verifyTokenDistribution,
 } from "./verifiers";
@@ -11,7 +11,7 @@ async function main() {
   const { arbProvider, deployerConfig } = await getProviders();
   const deployedContracts = loadDeployedContracts();
   const arbContracts = loadArbContracts(arbProvider, deployedContracts);
-  const distributionContracts = loadArbTokenDistributionContracts(arbProvider, deployedContracts);
+  const l2TokenDistributor = loadArbTokenDistributor(arbProvider, deployedContracts);
 
   const claimRecipients = loadClaimRecipients();
 
@@ -19,7 +19,7 @@ async function main() {
   await verifyTokenDistribution(
     arbContracts.l2Token!,
     arbContracts.l2ArbTreasury,
-    distributionContracts.l2TokenDistributor,
+    l2TokenDistributor,
     arbProvider,
     claimRecipients,
     {
@@ -30,7 +30,7 @@ async function main() {
   );
 
   await verifyL2TokenDistributor(
-    distributionContracts.l2TokenDistributor,
+    l2TokenDistributor,
     arbContracts.l2Token,
     arbContracts.l2Executor,
     arbContracts.l2CoreGoverner,
