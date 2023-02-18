@@ -229,11 +229,9 @@ export const verifyDeployment = async () => {
  * Verify:
  * - factory ownership
  */
-async function verifyL1GovernanceFactory(
-  l1GovernanceFactory: L1GovernanceFactory
-) {
+async function verifyL1GovernanceFactory(l1GovernanceFactory: L1GovernanceFactory) {
   assertEquals(
-    (await l1GovernanceFactory.owner()),
+    await l1GovernanceFactory.owner(),
     deadAddress,
     "EthDeployer should be the dead address"
   );
@@ -456,12 +454,10 @@ async function verifyL1ReverseGateway(
  * - ownership
  * - factory has completed job
  */
-async function verifyL2GovernanceFactory(
-  l2GovernanceFactory: L2GovernanceFactory
-) {
+async function verifyL2GovernanceFactory(l2GovernanceFactory: L2GovernanceFactory) {
   //// check ownership
   assertEquals(
-    (await l2GovernanceFactory.owner()),
+    await l2GovernanceFactory.owner(),
     deadAddress,
     "ArbDeployer should be the dead address"
   );
@@ -1520,26 +1516,32 @@ export function loadArbContracts(arbProvider: Provider, contractAddresses: Deplo
  * @param arbProvider
  * @returns
  */
-export function loadArbTokenDistributionContracts(
+export function loadArbTokenDistributor(
   arbProvider: Provider,
   contractAddresses: DeployProgressCache
 ) {
   if (contractAddresses.l2TokenDistributor == undefined)
     throw new Error("Missing l2TokenDistributor");
+
+  return TokenDistributor__factory.connect(contractAddresses.l2TokenDistributor, arbProvider);
+}
+
+/**
+ *
+ * @param arbProvider
+ * @returns
+ */
+export function loadVestedWalletFactory(
+  arbProvider: Provider,
+  contractAddresses: DeployProgressCache
+) {
   if (contractAddresses.vestedWalletFactory == undefined)
     throw new Error("Missing vestedWalletFactory");
 
-  return {
-    // load L2 contracts
-    l2TokenDistributor: TokenDistributor__factory.connect(
-      contractAddresses.l2TokenDistributor,
-      arbProvider
-    ),
-    vestedWalletFactory: ArbitrumVestingWalletsFactory__factory.connect(
-      contractAddresses.vestedWalletFactory,
-      arbProvider
-    ),
-  };
+  return ArbitrumVestingWalletsFactory__factory.connect(
+    contractAddresses.vestedWalletFactory,
+    arbProvider
+  );
 }
 
 /**
