@@ -197,8 +197,7 @@ describe("Governor", function () {
     await l2L1MonitoringValueTest(
       l1Signer,
       l2Signer,
-      l1Deployer,
-      l2Deployer,
+      l2Signer,
       l1UpgradeExecutor,
       l1TimelockContract,
       l2GovernorContract
@@ -219,8 +218,7 @@ describe("Governor", function () {
     await l2L1L2MonitoringValueTest(
       l1Signer,
       l2Signer,
-      l1Deployer,
-      l2Deployer,
+      l2Signer,
       l2UpgradeExecutor,
       l1TimelockContract,
       l2GovernorContract
@@ -241,8 +239,7 @@ describe("Governor", function () {
     await l2L1MonitoringTest(
       l1Signer,
       l2Signer,
-      l1Deployer,
-      l2Deployer,
+      l2Signer,
       l1UpgradeExecutor,
       l1TimelockContract,
       l2GovernorContract
@@ -263,8 +260,7 @@ describe("Governor", function () {
     await l2L1L2MonitoringTest(
       l1Signer,
       l2Signer,
-      l1Deployer,
-      l2Deployer,
+      l2Signer,
       l2UpgradeExecutor,
       l1TimelockContract,
       l2GovernorContract

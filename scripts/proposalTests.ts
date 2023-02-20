@@ -1,16 +1,43 @@
+import { JsonRpcProvider } from "@ethersproject/providers";
+import { parseEther } from "ethers/lib/utils";
 import {
   l2L1L2MonitoringTest,
   l2L1L2MonitoringValueTest,
   l2L1MonitoringTest,
   l2L1MonitoringValueTest,
 } from "../test-ts/integration";
-import { getDeployersAndConfig, getProviders, loadDeployedContracts } from "./providerSetup";
+import { L2ArbitrumToken__factory } from "../typechain-types";
+import {
+  getDeployersAndConfig,
+  getProviders,
+  getTeamSigner,
+  loadDeployedContracts,
+} from "./providerSetup";
 import { loadArbContracts, loadL1Contracts } from "./verifiers";
 
 async function main() {
   const { arbProvider, ethProvider } = await getProviders();
   const deployedContracts = loadDeployedContracts();
   const { arbDeployer, ethDeployer } = await getDeployersAndConfig();
+  const teamWallet = getTeamSigner(arbProvider as JsonRpcProvider);
+
+  if ((await teamWallet.getBalance()).eq(0)) {
+    await (
+      await arbDeployer.sendTransaction({
+        to: teamWallet.address,
+        value: parseEther("1"),
+      })
+    ).wait();
+  }
+
+  if (!deployedContracts.l2Token) throw new Error("L2 token not deployed");
+  const l2Token = L2ArbitrumToken__factory.connect(deployedContracts.l2Token!, teamWallet);
+  if (
+    (await l2Token.delegates(teamWallet.address)).toLowerCase() !== teamWallet.address.toLowerCase()
+  ) {
+    console.log("Delegating team wallet to itself");
+    await (await l2Token.delegate(teamWallet.address)).wait();
+  }
 
   const arbContracts = loadArbContracts(arbProvider, deployedContracts);
   const ethContracts = loadL1Contracts(ethProvider, deployedContracts);
@@ -19,8 +46,7 @@ async function main() {
   await l2L1L2MonitoringTest(
     ethDeployer,
     arbDeployer,
-    ethDeployer,
-    arbDeployer,
+    teamWallet,
     arbContracts.l2Executor,
     ethContracts.l1Timelock,
     arbContracts.l2CoreGoverner
@@ -30,8 +56,7 @@ async function main() {
   await l2L1MonitoringTest(
     ethDeployer,
     arbDeployer,
-    ethDeployer,
-    arbDeployer,
+    teamWallet,
     ethContracts.l1Executor,
     ethContracts.l1Timelock,
     arbContracts.l2CoreGoverner
@@ -41,8 +66,7 @@ async function main() {
   await l2L1L2MonitoringValueTest(
     ethDeployer,
     arbDeployer,
-    ethDeployer,
-    arbDeployer,
+    teamWallet,
     arbContracts.l2Executor,
     ethContracts.l1Timelock,
     arbContracts.l2CoreGoverner
@@ -52,8 +76,7 @@ async function main() {
   await l2L1MonitoringValueTest(
     ethDeployer,
     arbDeployer,
-    ethDeployer,
-    arbDeployer,
+    teamWallet,
     ethContracts.l1Executor,
     ethContracts.l1Timelock,
     arbContracts.l2CoreGoverner

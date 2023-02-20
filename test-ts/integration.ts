@@ -1,10 +1,10 @@
 import {
-    Address,
-    L1ToL2MessageStatus,
-    L1TransactionReceipt,
-    L2TransactionReceipt,
-    getL1Network,
-    getL2Network,
+  Address,
+  L1ToL2MessageStatus,
+  L1TransactionReceipt,
+  L2TransactionReceipt,
+  getL1Network,
+  getL2Network,
 } from "@arbitrum/sdk";
 import { ArbSys__factory } from "@arbitrum/sdk/dist/lib/abi/factories/ArbSys__factory";
 import { Inbox__factory } from "@arbitrum/sdk/dist/lib/abi/factories/Inbox__factory";
@@ -17,15 +17,15 @@ import { RoundTripProposalCreator } from "../src-ts/proposalCreator";
 import { GPMEventName, GovernorProposalMonitor } from "../src-ts/proposalMonitor";
 import { RoundTripProposalPipelineFactory } from "../src-ts/proposalStage";
 import {
-    ArbitrumTimelock,
-    L1ArbitrumTimelock,
-    L1ArbitrumTimelock__factory,
-    L2ArbitrumGovernor,
-    L2ArbitrumGovernor__factory,
-    NoteStore__factory,
-    TestUpgrade__factory,
-    UpgradeExecutor,
-    UpgradeExecutor__factory
+  ArbitrumTimelock,
+  L1ArbitrumTimelock,
+  L1ArbitrumTimelock__factory,
+  L2ArbitrumGovernor,
+  L2ArbitrumGovernor__factory,
+  NoteStore__factory,
+  TestUpgrade__factory,
+  UpgradeExecutor,
+  UpgradeExecutor__factory,
 } from "../typechain-types";
 
 const wait = async (ms: number) => new Promise((res) => setTimeout(res, ms));
@@ -243,15 +243,14 @@ const mineBlocksAndWaitForProposalState = async (
 export const l2L1MonitoringValueTest = async (
   l1Signer: Signer,
   l2Signer: Signer,
-  l1Deployer: Signer,
-  l2Deployer: Signer,
+  proposer: Signer,
   l1UpgradeExecutor: UpgradeExecutor,
   l1TimelockContract: L1ArbitrumTimelock,
   l2GovernorContract: L2ArbitrumGovernor
 ) => {
   // give some tokens to the governor contract
-  const noteStore = await new NoteStore__factory(l1Deployer).deploy();
-  const testUpgrade = await new TestUpgrade__factory(l1Deployer).deploy();
+  const noteStore = await new NoteStore__factory(l1Signer).deploy();
+  const testUpgrade = await new TestUpgrade__factory(l1Signer).deploy();
   const note = "0x" + Buffer.from(randomBytes(32)).toString("hex");
   const upgradeValue = parseEther("0.000001");
   const noteId = await noteStore.noteId(
@@ -268,11 +267,11 @@ export const l2L1MonitoringValueTest = async (
   const proposalString = "Prop2.2: Test transfer tokens and value on L1";
   const propCreator = new RoundTripProposalCreator(
     {
-      provider: l1Deployer.provider! as JsonRpcProvider,
+      provider: l1Signer.provider! as JsonRpcProvider,
       timelockAddr: l1TimelockContract.address,
     },
     {
-      provider: l1Deployer.provider! as JsonRpcProvider,
+      provider: l1Signer.provider! as JsonRpcProvider,
       upgradeExecutorAddr: l1UpgradeExecutor.address,
     }
   );
@@ -302,7 +301,7 @@ export const l2L1MonitoringValueTest = async (
 
   // send the proposal
   await (
-    await l2Signer.sendTransaction({
+    await proposer.sendTransaction({
       to: l2GovernorContract.address,
       data: proposal.encode(),
     })
@@ -319,56 +318,59 @@ export const l2L1MonitoringValueTest = async (
   // wait a while then cast a vote
   const l2VotingDelay = await l2GovernorContract.votingDelay();
   await mineBlocksAndWaitForProposalState(
-    l1Deployer,
-    l2Deployer,
+    l1Signer,
+    l2Signer,
     l2GovernorContract,
     proposal.id(),
     l2VotingDelay.toNumber(),
     1
   );
-  await (await l2GovernorContract.connect(l2Signer).castVote(proposal.id(), 1)).wait();
-
-  const mineBlocksUntilComplete = async (completion: Promise<void>) => {
-    return new Promise<void>(async (resolve, reject) => {
-      let mining = true;
-      completion
-        .then(() => {
-          mining = false;
-          resolve();
-        })
-        .catch((a) => {
-          mining = false;
-          reject(a);
-        });
-
-      while (mining) {
-        await mineBlock(l1Signer);
-        await mineBlock(l2Signer);
-        await wait(500);
-      }
-    });
-  };
+  await (await l2GovernorContract.connect(proposer).castVote(proposal.id(), 1)).wait();
 
   const noteBefore = await noteStore.exists(noteId);
   expect(noteBefore, "Note exists before").to.be.false;
 
-  await mineBlocksUntilComplete(trackerEnd);
+  await mineBlocksUntilComplete(l1Signer, l2Signer, trackerEnd);
 
   const noteAfter = await noteStore.exists(noteId);
   expect(noteAfter, "Note exists after").to.be.true;
 };
 
+const mineBlocksUntilComplete = async (
+  l1Signer: Signer,
+  l2Signer: Signer,
+  completion: Promise<void>
+) => {
+  return new Promise<void>(async (resolve, reject) => {
+    let mining = true;
+    completion
+      .then(() => {
+        mining = false;
+        resolve();
+      })
+      .catch((a) => {
+        mining = false;
+        reject(a);
+      });
+
+    while (mining) {
+      await mineBlock(l1Signer);
+      await mineBlock(l2Signer);
+      await wait(500);
+    }
+  });
+};
+
 export const l2L1L2MonitoringValueTest = async (
   l1Signer: Signer,
   l2Signer: Signer,
-  l1Deployer: Signer,
-  l2Deployer: Signer,
+  proposer: Signer,
   l2UpgradeExecutor: UpgradeExecutor,
   l1TimelockContract: L1ArbitrumTimelock,
   l2GovernorContract: L2ArbitrumGovernor
 ) => {
-  const noteStore = await new NoteStore__factory(l1Deployer).deploy();
-  const testUpgrade = await new TestUpgrade__factory(l1Deployer).deploy();
+  const noteStore = await new NoteStore__factory(l2Signer).deploy();
+  const testUpgrade = await new TestUpgrade__factory(l2Signer).deploy();
   const note = "0x" + Buffer.from(randomBytes(32)).toString("hex");
   const upgradeValue = parseEther("0.0000011");
   const noteId = await noteStore.noteId(
@@ -385,11 +387,11 @@ export const l2L1L2MonitoringValueTest = async (
   const proposalString = "Prop6: Test transfer tokens on round trip";
   const propCreator = new RoundTripProposalCreator(
     {
-      provider: l1Deployer.provider! as JsonRpcProvider,
+      provider: l1Signer.provider! as JsonRpcProvider,
       timelockAddr: l1TimelockContract.address,
     },
     {
-      provider: l2Deployer.provider! as JsonRpcProvider,
+      provider: l2Signer.provider! as JsonRpcProvider,
       upgradeExecutorAddr: l2UpgradeExecutor.address,
     }
   );
@@ -419,7 +421,7 @@ export const l2L1L2MonitoringValueTest = async (
 
   // send the proposal
   await (
-    await l2Signer.sendTransaction({
+    await proposer.sendTransaction({
       to: l2GovernorContract.address,
       data: proposal.encode(),
     })
@@ -436,40 +438,19 @@ export const l2L1L2MonitoringValueTest = async (
   // wait a while then cast a vote
   const l2VotingDelay = await l2GovernorContract.votingDelay();
   await mineBlocksAndWaitForProposalState(
-    l1Deployer,
-    l2Deployer,
+    l1Signer,
+    l2Signer,
     l2GovernorContract,
     proposal.id(),
     l2VotingDelay.toNumber(),
     1
   );
-  await (await l2GovernorContract.connect(l2Signer).castVote(proposal.id(), 1)).wait();
-
-  const mineBlocksUntilComplete = async (completion: Promise<void>) => {
-    return new Promise<void>(async (resolve, reject) => {
-      let mining = true;
-      completion
-        .then(() => {
-          mining = false;
-          resolve();
-        })
-        .catch((a) => {
-          mining = false;
-          reject(a);
-        });
-
-      while (mining) {
-        await mineBlock(l1Signer);
-        await mineBlock(l2Signer);
-        await wait(500);
-      }
-    });
-  };
+  await (await l2GovernorContract.connect(proposer).castVote(proposal.id(), 1)).wait();
 
   const noteBefore = await noteStore.exists(noteId);
   expect(noteBefore, "Note exists before").to.be.false;
 
-  await mineBlocksUntilComplete(trackerEnd);
+  await mineBlocksUntilComplete(l1Signer, l2Signer, trackerEnd);
 
   const noteAfter = await noteStore.exists(noteId);
   expect(noteAfter, "Note exists after").to.be.true;
@@ -478,14 +459,13 @@ export const l2L1L2MonitoringValueTest = async (
 export const l2L1MonitoringTest = async (
   l1Signer: Signer,
   l2Signer: Signer,
-  l1Deployer: Signer,
-  l2Deployer: Signer,
+  proposer: Signer,
   l1UpgradeExecutor: UpgradeExecutor,
   l1TimelockContract: L1ArbitrumTimelock,
   l2GovernorContract: L2ArbitrumGovernor
 ) => {
-  const noteStore = await new NoteStore__factory(l1Deployer).deploy();
-  const testUpgrade = await new TestUpgrade__factory(l1Deployer).deploy();
+  const noteStore = await new NoteStore__factory(l1Signer).deploy();
+  const testUpgrade = await new TestUpgrade__factory(l1Signer).deploy();
   const note = "0x" + Buffer.from(randomBytes(32)).toString("hex");
   const upgradeValue = BigNumber.from(0);
   const noteId = await noteStore.noteId(
@@ -502,11 +482,11 @@ export const l2L1MonitoringTest = async (
   const proposalString = "Prop2.1: Test transfer tokens on L1";
   const propCreator = new RoundTripProposalCreator(
     {
-      provider: l1Deployer.provider! as JsonRpcProvider,
+      provider: l1Signer.provider! as JsonRpcProvider,
       timelockAddr: l1TimelockContract.address,
     },
     {
-      provider: l1Deployer.provider! as JsonRpcProvider,
+      provider: l1Signer.provider! as JsonRpcProvider,
       upgradeExecutorAddr: l1UpgradeExecutor.address,
     }
   );
@@ -536,7 +516,7 @@ export const l2L1MonitoringTest = async (
 
   // send the proposal
   await (
-    await l2Signer.sendTransaction({
+    await proposer.sendTransaction({
       to: l2GovernorContract.address,
       data: proposal.encode(),
     })
@@ -545,40 +525,19 @@ export const l2L1MonitoringTest = async (
   // wait a while then cast a vote
   const l2VotingDelay = await l2GovernorContract.votingDelay();
   await mineBlocksAndWaitForProposalState(
-    l1Deployer,
-    l2Deployer,
+    l1Signer,
+    l2Signer,
     l2GovernorContract,
     proposal.id(),
     l2VotingDelay.toNumber(),
     1
   );
-  await (await l2GovernorContract.connect(l2Signer).castVote(proposal.id(), 1)).wait();
-
-  const mineBlocksUntilComplete = async (completion: Promise<void>) => {
-    return new Promise<void>(async (resolve, reject) => {
-      let mining = true;
-      completion
-        .then(() => {
-          mining = false;
-          resolve();
-        })
-        .catch((a) => {
-          mining = false;
-          reject(a);
-        });
-
-      while (mining) {
-        await mineBlock(l1Signer);
-        await mineBlock(l2Signer);
-        await wait(500);
-      }
-    });
-  };
+  await (await l2GovernorContract.connect(proposer).castVote(proposal.id(), 1)).wait();
 
   const noteBefore = await noteStore.exists(noteId);
   expect(noteBefore, "Note exists before").to.be.false;
 
-  await mineBlocksUntilComplete(trackerEnd);
+  await mineBlocksUntilComplete(l1Signer, l2Signer, trackerEnd);
 
   const noteAfter = await noteStore.exists(noteId);
   expect(noteAfter, "Note exists after").to.be.true;
@@ -589,14 +548,13 @@ export const l2L1MonitoringTest = async (
 export const l2L1L2MonitoringTest = async (
   l1Signer: Signer,
   l2Signer: Signer,
-  l1Deployer: Signer,
-  l2Deployer: Signer,
+  proposer: Signer,
   l2UpgradeExecutor: UpgradeExecutor,
   l1TimelockContract: L1ArbitrumTimelock,
   l2GovernorContract: L2ArbitrumGovernor
 ) => {
-  const noteStore = await new NoteStore__factory(l1Deployer).deploy();
-  const testUpgrade = await new TestUpgrade__factory(l1Deployer).deploy();
+  const noteStore = await new NoteStore__factory(l2Signer).deploy();
+  const testUpgrade = await new TestUpgrade__factory(l2Signer).deploy();
   const note = "0x" + Buffer.from(randomBytes(32)).toString("hex");
   const upgradeValue = BigNumber.from(0);
   const noteId = await noteStore.noteId(
@@ -613,11 +571,11 @@ export const l2L1L2MonitoringTest = async (
   const proposalString = "Prop6: Test transfer tokens on round trip";
   const propCreator = new RoundTripProposalCreator(
     {
-      provider: l1Deployer.provider! as JsonRpcProvider,
+      provider: l1Signer.provider! as JsonRpcProvider,
       timelockAddr: l1TimelockContract.address,
     },
     {
-      provider: l2Deployer.provider! as JsonRpcProvider,
+      provider: l2Signer.provider! as JsonRpcProvider,
       upgradeExecutorAddr: l2UpgradeExecutor.address,
     }
   );
@@ -647,7 +605,7 @@ export const l2L1L2MonitoringTest = async (
 
   // send the proposal
   await (
-    await l2Signer.sendTransaction({
+    await proposer.sendTransaction({
       to: l2GovernorContract.address,
       data: proposal.encode(),
     })
@@ -656,40 +614,19 @@ export const l2L1L2MonitoringTest = async (
   // wait a while then cast a vote
   const l2VotingDelay = await l2GovernorContract.votingDelay();
   await mineBlocksAndWaitForProposalState(
-    l1Deployer,
-    l2Deployer,
+    l1Signer,
+    l2Signer,
     l2GovernorContract,
     proposal.id(),
     l2VotingDelay.toNumber(),
     1
   );
-  await (await l2GovernorContract.connect(l2Signer).castVote(proposal.id(), 1)).wait();
-
-  const mineBlocksUntilComplete = async (completion: Promise<void>) => {
-    return new Promise<void>(async (resolve, reject) => {
-      let mining = true;
-      completion
-        .then(() => {
-          mining = false;
-          resolve();
-        })
-        .catch((a) => {
-          mining = false;
-          reject(a);
-        });
-
-      while (mining) {
-        await mineBlock(l1Signer);
-        await mineBlock(l2Signer);
-        await wait(500);
-      }
-    });
-  };
+  await (await l2GovernorContract.connect(proposer).castVote(proposal.id(), 1)).wait();
 
   const noteBefore = await noteStore.exists(noteId);
   expect(noteBefore, "Note exists before").to.be.false;
 
-  await mineBlocksUntilComplete(trackerEnd);
+  await mineBlocksUntilComplete(l1Signer, l2Signer, trackerEnd);
 
   const noteAfter = await noteStore.exists(noteId);
   expect(noteAfter, "Note exists after").to.be.true;

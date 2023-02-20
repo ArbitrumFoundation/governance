@@ -54,6 +54,7 @@ export const envVars = {
   arbTransferAssetsTXsLocation: process.env["ARB_TXS_FILE_LOCATION"] as string,
   novaTransferAssetsTXsLocation: process.env["NOVA_TXS_FILE_LOCATION"] as string,
   daoRecipientsEscrowKey: process.env["DAO_RECIPIENTS_KEY"] as string,
+  teamEscrowKey: process.env["TEAM_KEY"] as string,
   fullTokenVerify: process.env["FULL_TOKEN_VERIFY"] as string,
 };
 
@@ -106,8 +107,16 @@ export const getDaoRecipientsEscrowSigner = (provider: JsonRpcProvider) => {
     throw new Error("DAO_RECIPIENTS_KEY env var not set");
   }
 
-  return getSigner(provider, envVars.daoRecipientsEscrowKey);
+  return new Wallet(envVars.daoRecipientsEscrowKey).connect(provider);
 };
+
+export const getTeamSigner = (provider: JsonRpcProvider) => {
+  if(!envVars.teamEscrowKey) {
+    throw new Error("TEAM_KEY env var not set");
+  }
+
+  return new Wallet(envVars.teamEscrowKey).connect(provider);
+}
 
 export const loadDaoRecipients = () => {
   checkEnvVars(envVars);
