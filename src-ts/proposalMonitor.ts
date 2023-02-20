@@ -38,9 +38,9 @@ export class GovernorProposalMonitor extends EventEmitter {
     super();
   }
 
-  public emit(eventName: GPMEventName.TRACKER_STARTED, args: GPMEvent);
-  public emit(eventName: GPMEventName.TRACKER_ENDED, args: GPMEvent);
-  public emit(eventName: GPMEventName.TRACKER_ERRORED, args: GPMErroredEvent);
+  public emit(eventName: GPMEventName.TRACKER_STARTED, args: GPMEvent): boolean;
+  public emit(eventName: GPMEventName.TRACKER_ENDED, args: GPMEvent): boolean;
+  public emit(eventName: GPMEventName.TRACKER_ERRORED, args: GPMErroredEvent): boolean;
   public override emit(eventName: GPMEventName, args: GPMAllEvent) {
     return super.emit(eventName, args);
   }
@@ -80,7 +80,7 @@ export class GovernorProposalMonitor extends EventEmitter {
           this.governorAddress,
           log.proposalId.toHexString(),
           log.targets[0],
-          log[3][0], // ethers is parsing an array with a single 0 big number as undefined, so we lookup by index
+          (log as any)[3][0], // ethers is parsing an array with a single 0 big number as undefined, so we lookup by index
           log.calldatas[0],
           log.description
         );

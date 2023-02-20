@@ -1,7 +1,4 @@
-import {
-  Address,
-  getL2Network,
-} from "@arbitrum/sdk";
+import { Address, getL2Network } from "@arbitrum/sdk";
 import { ArbitrumProvider } from "@arbitrum/sdk/dist/lib/utils/arbProvider";
 import { JsonRpcProvider } from "@ethersproject/providers";
 import { expect } from "chai";
@@ -16,7 +13,7 @@ import {
   L2ArbitrumToken__factory,
   L2GovernanceFactory__factory,
   ProxyAdmin__factory,
-  UpgradeExecutor__factory
+  UpgradeExecutor__factory,
 } from "../typechain-types";
 import { DeployedEventObject as L1DeployedEventObject } from "../typechain-types/src/L1GovernanceFactory";
 import { DeployedEventObject as L2DeployedEventObject } from "../typechain-types/src/L2GovernanceFactory";
@@ -213,8 +210,11 @@ describe("Governor", function () {
     await fundL1(l1Signer, parseEther("1"));
     await fundL2(l2Signer, parseEther("1"));
 
-    const { l2TokenContract, l1TimelockContract, l2GovernorContract, l2UpgradeExecutor } =
-      await deployGovernance(l1Deployer, l2Deployer, l2Signer);
+    const { l1TimelockContract, l2GovernorContract, l2UpgradeExecutor } = await deployGovernance(
+      l1Deployer,
+      l2Deployer,
+      l2Signer
+    );
 
     await l2L1L2MonitoringValueTest(
       l1Signer,
@@ -222,7 +222,6 @@ describe("Governor", function () {
       l1Deployer,
       l2Deployer,
       l2UpgradeExecutor,
-      l2TokenContract,
       l1TimelockContract,
       l2GovernorContract
     );
@@ -255,15 +254,17 @@ describe("Governor", function () {
     await fundL1(l1Signer, parseEther("1"));
     await fundL2(l2Signer, parseEther("1"));
 
-    const { l2TokenContract, l1TimelockContract, l2GovernorContract, l2UpgradeExecutor } =
-      await deployGovernance(l1Deployer, l2Deployer, l2Signer);
+    const { l1TimelockContract, l2GovernorContract, l2UpgradeExecutor } = await deployGovernance(
+      l1Deployer,
+      l2Deployer,
+      l2Signer
+    );
 
     await l2L1L2MonitoringTest(
       l1Signer,
       l2Signer,
       l1Deployer,
       l2Deployer,
-      l2TokenContract,
       l2UpgradeExecutor,
       l1TimelockContract,
       l2GovernorContract
@@ -296,13 +297,8 @@ describe("Governor", function () {
     await fundL1(l1Signer, parseEther("1"));
     await fundL2(l2Signer, parseEther("1"));
 
-    const {
-      l2TokenContract,
-      l2TimelockContract,
-      l1TimelockContract,
-      l2GovernorContract,
-      l2UpgradeExecutor,
-    } = await deployGovernance(l1Deployer, l2Deployer, l2Signer);
+    const { l2TimelockContract, l1TimelockContract, l2GovernorContract, l2UpgradeExecutor } =
+      await deployGovernance(l1Deployer, l2Deployer, l2Signer);
 
     await l2l1l2Proposal(
       l1Signer,
@@ -312,7 +308,6 @@ describe("Governor", function () {
       l2GovernorContract,
       l1TimelockContract,
       l2TimelockContract,
-      l2TokenContract,
       l2UpgradeExecutor
     );
   }).timeout(360000);

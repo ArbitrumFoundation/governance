@@ -1,28 +1,32 @@
-import { expect } from "chai";
-import { BigNumber, Signer, Wallet, constants } from "ethers";
 import {
-  ArbitrumTimelock,
-  L1ArbitrumTimelock,
-  L1ArbitrumTimelock__factory,
-  L2ArbitrumGovernor,
-  L2ArbitrumGovernor__factory,
-  L2ArbitrumToken,
-  L2ArbitrumToken__factory,
-  ProxyAdmin__factory,
-  TestUpgrade__factory,
-  TransparentUpgradeableProxy__factory,
-  UpgradeExecutor,
-  UpgradeExecutor__factory,
-} from "../typechain-types";
-import { defaultAbiCoder, id, keccak256, parseEther } from "ethers/lib/utils";
-import { RoundTripProposalCreator } from "../src-ts/proposalCreator";
-import { JsonRpcProvider } from "@ethersproject/providers";
-import { RoundTripProposalPipelineFactory } from "../src-ts/proposalStage";
-import { GPMEventName, GovernorProposalMonitor } from "../src-ts/proposalMonitor";
-import { L1ToL2MessageStatus, L1TransactionReceipt, L2TransactionReceipt, getL1Network, getL2Network } from "@arbitrum/sdk";
-import { Inbox__factory } from "@arbitrum/sdk/dist/lib/abi/factories/Inbox__factory";
+    Address,
+    L1ToL2MessageStatus,
+    L1TransactionReceipt,
+    L2TransactionReceipt,
+    getL1Network,
+    getL2Network,
+} from "@arbitrum/sdk";
 import { ArbSys__factory } from "@arbitrum/sdk/dist/lib/abi/factories/ArbSys__factory";
+import { Inbox__factory } from "@arbitrum/sdk/dist/lib/abi/factories/Inbox__factory";
 import { ARB_SYS_ADDRESS } from "@arbitrum/sdk/dist/lib/dataEntities/constants";
+import { JsonRpcProvider } from "@ethersproject/providers";
+import { expect } from "chai";
+import { BigNumber, Signer, constants } from "ethers";
+import { defaultAbiCoder, id, keccak256, parseEther, randomBytes } from "ethers/lib/utils";
+import { RoundTripProposalCreator } from "../src-ts/proposalCreator";
+import { GPMEventName, GovernorProposalMonitor } from "../src-ts/proposalMonitor";
+import { RoundTripProposalPipelineFactory } from "../src-ts/proposalStage";
+import {
+    ArbitrumTimelock,
+    L1ArbitrumTimelock,
+    L1ArbitrumTimelock__factory,
+    L2ArbitrumGovernor,
+    L2ArbitrumGovernor__factory,
+    NoteStore__factory,
+    TestUpgrade__factory,
+    UpgradeExecutor,
+    UpgradeExecutor__factory
+} from "../typechain-types";
 
 const wait = async (ms: number) => new Promise((res) => setTimeout(res, ms));
 
@@ -246,46 +250,19 @@ export const l2L1MonitoringValueTest = async (
   l2GovernorContract: L2ArbitrumGovernor
 ) => {
   // give some tokens to the governor contract
-  const l1UpgraderBalanceStart = 11;
-  const l1TimelockBalanceEnd = 6;
-  const randWalletEnd = l1UpgraderBalanceStart - l1TimelockBalanceEnd;
-  const randWallet = Wallet.createRandom();
-
-  // deploy a dummy token onto L1
-  const erc20Impl = await (await new L2ArbitrumToken__factory(l1Deployer).deploy()).deployed();
-  const proxyAdmin = await (await new ProxyAdmin__factory(l1Deployer).deploy()).deployed();
-  const testErc20 = L2ArbitrumToken__factory.connect(
-    (
-      await (
-        await new TransparentUpgradeableProxy__factory(l1Deployer).deploy(
-          erc20Impl.address,
-          proxyAdmin.address,
-          "0x"
-        )
-      ).deployed()
-    ).address,
-    l1Deployer
+  const noteStore = await new NoteStore__factory(l1Deployer).deploy();
+  const testUpgrade = await new TestUpgrade__factory(l1Deployer).deploy();
+  const note = "0x" + Buffer.from(randomBytes(32)).toString("hex");
+  const upgradeValue = parseEther("0.000001");
+  const noteId = await noteStore.noteId(
+    l1UpgradeExecutor.address,
+    l1TimelockContract.address,
+    note,
+    upgradeValue
   );
-  const addrOne = "0x0000000000000000000000000000000000000001";
-  await (
-    await testErc20.initialize(addrOne, parseEther("2"), await l1Deployer.getAddress())
-  ).wait();
-
-  // send some tokens to the l1 timelock
-  await (await testErc20.transfer(l1UpgradeExecutor.address, l1UpgraderBalanceStart)).wait();
-  expect(
-    (await testErc20.balanceOf(l1UpgradeExecutor.address)).toNumber(),
-    "Upgrader balance start"
-  ).to.eq(l1UpgraderBalanceStart);
-
-  const transferUpgrade = await new TestUpgrade__factory(l1Deployer).deploy();
-  const transferValue = parseEther("0.1");
-  const transferExecution = transferUpgrade.interface.encodeFunctionData("upgradeWithValue", [
-    testErc20.address,
-    randWallet.address,
-    randWalletEnd,
-    randWallet.address,
-    transferValue,
+  const upgradeExecution = testUpgrade.interface.encodeFunctionData("upgradeWithValue", [
+    noteStore.address,
+    note,
   ]);
 
   const proposalString = "Prop2.2: Test transfer tokens and value on L1";
@@ -300,9 +277,9 @@ export const l2L1MonitoringValueTest = async (
     }
   );
   const proposal = await propCreator.create(
-    transferUpgrade.address,
-    transferValue,
-    transferExecution,
+    testUpgrade.address,
+    upgradeValue,
+    upgradeExecution,
     proposalString
   );
 
@@ -335,7 +312,7 @@ export const l2L1MonitoringValueTest = async (
   await (
     await l1Signer.sendTransaction({
       to: l1TimelockContract.address,
-      value: transferValue,
+      value: upgradeValue,
     })
   ).wait();
 
@@ -372,17 +349,13 @@ export const l2L1MonitoringValueTest = async (
     });
   };
 
-  const bal = (await testErc20.balanceOf(randWallet.address)).toNumber();
-  expect(bal).to.eq(0);
-  const ethBal = await randWallet.connect(l1Deployer.provider!).getBalance();
-  expect(ethBal.toNumber(), "Eth bal before").to.eq(0);
+  const noteBefore = await noteStore.exists(noteId);
+  expect(noteBefore, "Note exists before").to.be.false;
 
   await mineBlocksUntilComplete(trackerEnd);
 
-  const balAfter = (await testErc20.balanceOf(randWallet.address)).toNumber();
-  expect(balAfter, "L1 balance after").to.eq(randWalletEnd);
-  const ethBalAfter = await randWallet.connect(l1Deployer.provider!).getBalance();
-  expect(ethBalAfter.toString(), "L1 Eth bal after").to.eq(transferValue.toString());
+  const noteAfter = await noteStore.exists(noteId);
+  expect(noteAfter, "Note exists after").to.be.true;
 };
 
 export const l2L1L2MonitoringValueTest = async (
@@ -391,36 +364,22 @@ export const l2L1L2MonitoringValueTest = async (
   l1Deployer: Signer,
   l2Deployer: Signer,
   l2UpgradeExecutor: UpgradeExecutor,
-  l2TokenContract: L2ArbitrumToken,
   l1TimelockContract: L1ArbitrumTimelock,
   l2GovernorContract: L2ArbitrumGovernor
 ) => {
-  // give some tokens to the governor contract
-  const l2UpgraderBalanceStart = 13;
-  const l2UpgraderBalanceEnd = 3;
-  const randWalletEnd = l2UpgraderBalanceStart - l2UpgraderBalanceEnd;
-  const randWallet = Wallet.createRandom();
-
-  // send some tokens to the forwarder
-  await (
-    await l2TokenContract
-      .connect(l2Signer)
-      .transfer(l2UpgradeExecutor.address, l2UpgraderBalanceStart)
-  ).wait();
-  expect(
-    (await l2TokenContract.balanceOf(l2UpgradeExecutor.address)).toNumber(),
-    "Upgrader balance start"
-  ).to.eq(l2UpgraderBalanceStart);
-
-  // create a proposal for transfering tokens to rand wallet
-  const transferUpgrade = await new TestUpgrade__factory(l2Deployer).deploy();
-  const transferValue = parseEther("0.11");
-  const transferExecution = transferUpgrade.interface.encodeFunctionData("upgradeWithValue", [
-    l2TokenContract.address,
-    randWallet.address,
-    randWalletEnd,
-    randWallet.address,
-    transferValue,
+  const noteStore = await new NoteStore__factory(l1Deployer).deploy();
+  const testUpgrade = await new TestUpgrade__factory(l1Deployer).deploy();
+  const note = "0x" + Buffer.from(randomBytes(32)).toString("hex");
+  const upgradeValue = parseEther("0.0000011");
+  const noteId = await noteStore.noteId(
+    l2UpgradeExecutor.address,
+    new Address(l1TimelockContract.address).applyAlias().value,
+    note,
+    upgradeValue
+  );
+  const transferExecution = testUpgrade.interface.encodeFunctionData("upgradeWithValue", [
+    noteStore.address,
+    note,
   ]);
 
   const proposalString = "Prop6: Test transfer tokens on round trip";
@@ -435,8 +394,8 @@ export const l2L1L2MonitoringValueTest = async (
     }
   );
   const proposal = await propCreator.create(
-    transferUpgrade.address,
-    transferValue,
+    testUpgrade.address,
+    upgradeValue,
     transferExecution,
     proposalString
   );
@@ -470,7 +429,7 @@ export const l2L1L2MonitoringValueTest = async (
   await (
     await l1Signer.sendTransaction({
       to: l1TimelockContract.address,
-      value: transferValue,
+      value: upgradeValue,
     })
   ).wait();
 
@@ -485,10 +444,6 @@ export const l2L1L2MonitoringValueTest = async (
     1
   );
   await (await l2GovernorContract.connect(l2Signer).castVote(proposal.id(), 1)).wait();
-
-  // check the balance is 0 to start
-  const bal = (await l2TokenContract.balanceOf(randWallet.address)).toNumber();
-  expect(bal, "Wallet balance before").to.eq(0);
 
   const mineBlocksUntilComplete = async (completion: Promise<void>) => {
     return new Promise<void>(async (resolve, reject) => {
@@ -511,17 +466,13 @@ export const l2L1L2MonitoringValueTest = async (
     });
   };
 
-  const balanceBefore = await (await l2TokenContract.balanceOf(randWallet.address)).toNumber();
-  expect(balanceBefore, "rand balance before").to.eq(0);
-  const ethBal = await randWallet.connect(l2Deployer.provider!).getBalance();
-  expect(ethBal.toNumber(), "L2 Eth bal before").to.eq(0);
+  const noteBefore = await noteStore.exists(noteId);
+  expect(noteBefore, "Note exists before").to.be.false;
 
   await mineBlocksUntilComplete(trackerEnd);
 
-  const balanceAfter = await (await l2TokenContract.balanceOf(randWallet.address)).toNumber();
-  expect(balanceAfter, "balance after").to.eq(randWalletEnd);
-  const ethBalAfter = await randWallet.connect(l2Deployer.provider!).getBalance();
-  expect(ethBalAfter.toString(), "L2 Eth bal after").to.eq(transferValue.toString());
+  const noteAfter = await noteStore.exists(noteId);
+  expect(noteAfter, "Note exists after").to.be.true;
 };
 
 export const l2L1MonitoringTest = async (
@@ -533,44 +484,19 @@ export const l2L1MonitoringTest = async (
   l1TimelockContract: L1ArbitrumTimelock,
   l2GovernorContract: L2ArbitrumGovernor
 ) => {
-  // give some tokens to the governor contract
-  const l1UpgraderBalanceStart = 11;
-  const l1TimelockBalanceEnd = 6;
-  const randWalletEnd = l1UpgraderBalanceStart - l1TimelockBalanceEnd;
-  const randWallet = Wallet.createRandom();
-
-  // deploy a dummy token onto L1
-  const erc20Impl = await (await new L2ArbitrumToken__factory(l1Deployer).deploy()).deployed();
-  const proxyAdmin = await (await new ProxyAdmin__factory(l1Deployer).deploy()).deployed();
-  const testErc20 = L2ArbitrumToken__factory.connect(
-    (
-      await (
-        await new TransparentUpgradeableProxy__factory(l1Deployer).deploy(
-          erc20Impl.address,
-          proxyAdmin.address,
-          "0x"
-        )
-      ).deployed()
-    ).address,
-    l1Deployer
+  const noteStore = await new NoteStore__factory(l1Deployer).deploy();
+  const testUpgrade = await new TestUpgrade__factory(l1Deployer).deploy();
+  const note = "0x" + Buffer.from(randomBytes(32)).toString("hex");
+  const upgradeValue = BigNumber.from(0);
+  const noteId = await noteStore.noteId(
+    l1UpgradeExecutor.address,
+    l1TimelockContract.address,
+    note,
+    upgradeValue
   );
-  const addrOne = "0x0000000000000000000000000000000000000001";
-  await (
-    await testErc20.initialize(addrOne, parseEther("2"), await l1Deployer.getAddress())
-  ).wait();
-
-  // send some tokens to the l1 timelock
-  await (await testErc20.transfer(l1UpgradeExecutor.address, l1UpgraderBalanceStart)).wait();
-  expect(
-    (await testErc20.balanceOf(l1UpgradeExecutor.address)).toNumber(),
-    "Upgrader balance start"
-  ).to.eq(l1UpgraderBalanceStart);
-
-  const transferUpgrade = await new TestUpgrade__factory(l1Deployer).deploy();
-  const transferExecution = transferUpgrade.interface.encodeFunctionData("upgrade", [
-    testErc20.address,
-    randWallet.address,
-    randWalletEnd,
+  const upgradeExecution = testUpgrade.interface.encodeFunctionData("upgrade", [
+    noteStore.address,
+    note,
   ]);
 
   const proposalString = "Prop2.1: Test transfer tokens on L1";
@@ -585,9 +511,9 @@ export const l2L1MonitoringTest = async (
     }
   );
   const proposal = await propCreator.create(
-    transferUpgrade.address,
+    testUpgrade.address,
     BigNumber.from(0),
-    transferExecution,
+    upgradeExecution,
     proposalString
   );
 
@@ -649,13 +575,13 @@ export const l2L1MonitoringTest = async (
     });
   };
 
-  const bal = (await testErc20.balanceOf(randWallet.address)).toNumber();
-  expect(bal).to.eq(0);
+  const noteBefore = await noteStore.exists(noteId);
+  expect(noteBefore, "Note exists before").to.be.false;
 
   await mineBlocksUntilComplete(trackerEnd);
 
-  const balAfter = (await testErc20.balanceOf(randWallet.address)).toNumber();
-  expect(balAfter, "L1 balance after").to.eq(randWalletEnd);
+  const noteAfter = await noteStore.exists(noteId);
+  expect(noteAfter, "Note exists after").to.be.true;
 
   return true;
 };
@@ -665,34 +591,23 @@ export const l2L1L2MonitoringTest = async (
   l2Signer: Signer,
   l1Deployer: Signer,
   l2Deployer: Signer,
-  l2TokenContract: L2ArbitrumToken,
   l2UpgradeExecutor: UpgradeExecutor,
   l1TimelockContract: L1ArbitrumTimelock,
   l2GovernorContract: L2ArbitrumGovernor
 ) => {
-  // give some tokens to the governor contract
-  const l2UpgraderBalanceStart = 13;
-  const l2UpgraderBalanceEnd = 3;
-  const randWalletEnd = l2UpgraderBalanceStart - l2UpgraderBalanceEnd;
-  const randWallet = Wallet.createRandom();
-
-  // send some tokens to the forwarder
-  await (
-    await l2TokenContract
-      .connect(l2Signer)
-      .transfer(l2UpgradeExecutor.address, l2UpgraderBalanceStart)
-  ).wait();
-  expect(
-    (await l2TokenContract.balanceOf(l2UpgradeExecutor.address)).toNumber(),
-    "Upgrader balance start"
-  ).to.eq(l2UpgraderBalanceStart);
-
-  // create a proposal for transfering tokens to rand wallet
-  const transferUpgrade = await new TestUpgrade__factory(l2Deployer).deploy();
-  const transferExecution = transferUpgrade.interface.encodeFunctionData("upgrade", [
-    l2TokenContract.address,
-    randWallet.address,
-    randWalletEnd,
+  const noteStore = await new NoteStore__factory(l1Deployer).deploy();
+  const testUpgrade = await new TestUpgrade__factory(l1Deployer).deploy();
+  const note = "0x" + Buffer.from(randomBytes(32)).toString("hex");
+  const upgradeValue = BigNumber.from(0);
+  const noteId = await noteStore.noteId(
+    l2UpgradeExecutor.address,
+    new Address(l1TimelockContract.address).applyAlias().value,
+    note,
+    upgradeValue
+  );
+  const upgradeExecution = testUpgrade.interface.encodeFunctionData("upgrade", [
+    noteStore.address,
+    note,
   ]);
 
   const proposalString = "Prop6: Test transfer tokens on round trip";
@@ -707,9 +622,9 @@ export const l2L1L2MonitoringTest = async (
     }
   );
   const proposal = await propCreator.create(
-    transferUpgrade.address,
+    testUpgrade.address,
     BigNumber.from(0),
-    transferExecution,
+    upgradeExecution,
     proposalString
   );
 
@@ -750,10 +665,6 @@ export const l2L1L2MonitoringTest = async (
   );
   await (await l2GovernorContract.connect(l2Signer).castVote(proposal.id(), 1)).wait();
 
-  // check the balance is 0 to start
-  const bal = (await l2TokenContract.balanceOf(randWallet.address)).toNumber();
-  expect(bal, "Wallet balance before").to.eq(0);
-
   const mineBlocksUntilComplete = async (completion: Promise<void>) => {
     return new Promise<void>(async (resolve, reject) => {
       let mining = true;
@@ -775,13 +686,13 @@ export const l2L1L2MonitoringTest = async (
     });
   };
 
-  const balanceBefore = await (await l2TokenContract.balanceOf(randWallet.address)).toNumber();
-  expect(balanceBefore, "rand balance before").to.eq(0);
+  const noteBefore = await noteStore.exists(noteId);
+  expect(noteBefore, "Note exists before").to.be.false;
 
   await mineBlocksUntilComplete(trackerEnd);
 
-  const balanceAfter = await (await l2TokenContract.balanceOf(randWallet.address)).toNumber();
-  expect(balanceAfter, "balance after").to.eq(randWalletEnd);
+  const noteAfter = await noteStore.exists(noteId);
+  expect(noteAfter, "Note exists after").to.be.true;
 };
 
 const execL1Component = async (
@@ -939,50 +850,26 @@ export const l2L1ProposalTest = async (
   l1TimelockContract: L1ArbitrumTimelock,
   l2TimelockContract: ArbitrumTimelock
 ) => {
-  const l1UpgraderBalanceStart = 11;
-  const l1TimelockBalanceEnd = 6;
-  const randWalletEnd = l1UpgraderBalanceStart - l1TimelockBalanceEnd;
-  const randWallet = Wallet.createRandom();
-
-  // deploy a dummy token onto L1
-  const erc20Impl = await (await new L2ArbitrumToken__factory(l1Deployer).deploy()).deployed();
-  const proxyAdmin = await (await new ProxyAdmin__factory(l1Deployer).deploy()).deployed();
-  const testErc20 = L2ArbitrumToken__factory.connect(
-    (
-      await (
-        await new TransparentUpgradeableProxy__factory(l1Deployer).deploy(
-          erc20Impl.address,
-          proxyAdmin.address,
-          "0x"
-        )
-      ).deployed()
-    ).address,
-    l1Deployer
+  const noteStore = await new NoteStore__factory(l1Deployer).deploy();
+  const testUpgrade = await new TestUpgrade__factory(l1Deployer).deploy();
+  const note = "0x" + Buffer.from(randomBytes(32)).toString("hex");
+  const upgradeValue = BigNumber.from(0);
+  const noteId = await noteStore.noteId(
+    l1UpgradeExecutor.address,
+    l1TimelockContract.address,
+    note,
+    upgradeValue
   );
-  const addrOne = "0x0000000000000000000000000000000000000001";
-  await (
-    await testErc20.initialize(addrOne, parseEther("2"), await l1Deployer.getAddress())
-  ).wait();
-
-  // send some tokens to the l1 timelock
-  await (await testErc20.transfer(l1UpgradeExecutor.address, l1UpgraderBalanceStart)).wait();
-  expect(
-    (await testErc20.balanceOf(l1UpgradeExecutor.address)).toNumber(),
-    "Upgrader balance start"
-  ).to.eq(l1UpgraderBalanceStart);
-
-  // create a proposal for transfering tokens to rand wallet
-  const transferUpgrade = await new TestUpgrade__factory(l1Deployer).deploy();
-  const transferExecution = transferUpgrade.interface.encodeFunctionData("upgrade", [
-    testErc20.address,
-    randWallet.address,
-    randWalletEnd,
+  const upgradeExecution = testUpgrade.interface.encodeFunctionData("upgrade", [
+    noteStore.address,
+    note,
   ]);
+
   const proposalString = "Prop2: Test transfer tokens on L1";
   const proposal = new Proposal(
-    transferUpgrade.address,
+    testUpgrade.address,
     BigNumber.from(0),
-    transferExecution,
+    upgradeExecution,
     proposalString,
     {
       arbOneGovernorConfig: {
@@ -1002,10 +889,6 @@ export const l2L1ProposalTest = async (
   );
   const formData = await proposal.formItUp();
 
-  expect((await testErc20.balanceOf(randWallet.address)).toNumber(), "Wallet balance before").to.eq(
-    0
-  );
-
   const proposalSuccess = async () => {
     return true;
   };
@@ -1021,14 +904,14 @@ export const l2L1ProposalTest = async (
   );
 
   const l2Transaction = new L2TransactionReceipt(executionTx);
-  // check the balance is 0 to start
-  const bal = (await testErc20.balanceOf(randWallet.address)).toNumber();
-  expect(bal).to.eq(0);
+
+  const noteBefore = await noteStore.exists(noteId);
+  expect(noteBefore, "Note exists before").to.be.false;
 
   // it should be non zero at the end
   const l1ProposalSuccess = async () => {
-    const balAfter = (await testErc20.balanceOf(randWallet.address)).toNumber();
-    expect(balAfter, "L1 balance after").to.eq(randWalletEnd);
+    const noteAfter = await noteStore.exists(noteId);
+    expect(noteAfter, "Note exists after").to.be.true;
 
     return true;
   };
@@ -1054,40 +937,29 @@ export const l2l1l2Proposal = async (
   l2GovernorContract: L2ArbitrumGovernor,
   l1TimelockContract: L1ArbitrumTimelock,
   l2TimelockContract: ArbitrumTimelock,
-  l2TokenContract: L2ArbitrumToken,
   l2UpgradeExecutor: UpgradeExecutor
 ) => {
-  // give some tokens to the governor contract
-  const l2UpgraderBalanceStart = 13;
-  const l2UpgraderBalanceEnd = 3;
-  const randWalletEnd = l2UpgraderBalanceStart - l2UpgraderBalanceEnd;
-  const randWallet = Wallet.createRandom();
-
-  // send some tokens to the forwarder
-  await (
-    await l2TokenContract
-      .connect(l2Signer)
-      .transfer(l2UpgradeExecutor.address, l2UpgraderBalanceStart)
-  ).wait();
-  expect(
-    (await l2TokenContract.balanceOf(l2UpgradeExecutor.address)).toNumber(),
-    "Upgrader balance start"
-  ).to.eq(l2UpgraderBalanceStart);
-
-  // create a proposal for transfering tokens to rand wallet
-
-  const transferUpgrade = await new TestUpgrade__factory(l2Deployer).deploy();
-  const transferExecution = transferUpgrade.interface.encodeFunctionData("upgrade", [
-    l2TokenContract.address,
-    randWallet.address,
-    randWalletEnd,
+  const noteStore = await new NoteStore__factory(l1Deployer).deploy();
+  const testUpgrade = await new TestUpgrade__factory(l1Deployer).deploy();
+  const note = "0x" + Buffer.from(randomBytes(32)).toString("hex");
+  const upgradeValue = BigNumber.from(0);
+  const noteId = await noteStore.noteId(
+    l2UpgradeExecutor.address,
+    new Address(l1TimelockContract.address).applyAlias().value,
+    note,
+    upgradeValue
+  );
+  const upgradeExecution = testUpgrade.interface.encodeFunctionData("upgrade", [
+    noteStore.address,
+    note,
   ]);
+
   const proposalString = "Prop3: Test transfer tokens on round trip";
   const l2Network = await getL2Network(l2Deployer);
   const proposal = new Proposal(
-    transferUpgrade.address,
+    testUpgrade.address,
     BigNumber.from(0),
-    transferExecution,
+    upgradeExecution,
     proposalString,
     {
       arbOneGovernorConfig: {
@@ -1107,9 +979,6 @@ export const l2l1l2Proposal = async (
   );
   const formData = await proposal.formItUp();
 
-  // check the balance is 0 to start
-  const bal = (await l2TokenContract.balanceOf(randWallet.address)).toNumber();
-  expect(bal, "Wallet balance before").to.eq(0);
   const proposalSuccess = async () => {
     return true;
   };
@@ -1145,8 +1014,9 @@ export const l2l1l2Proposal = async (
     )
   );
 
-  const balanceBefore = await (await l2TokenContract.balanceOf(randWallet.address)).toNumber();
-  expect(balanceBefore, "rand balance before").to.eq(0);
+  const noteBefore = await noteStore.exists(noteId);
+  expect(noteBefore, "Note exists before").to.be.false;
+
   const messages = await l1Rec.getL1ToL2Messages(l2Signer);
   const status = await messages[0].waitForStatus();
 
@@ -1157,6 +1027,6 @@ export const l2l1l2Proposal = async (
   const redeemStatus = await messages[0].waitForStatus();
   expect(redeemStatus.status, "Redeem").to.eq(L1ToL2MessageStatus.REDEEMED);
 
-  const balanceAfter = await (await l2TokenContract.balanceOf(randWallet.address)).toNumber();
-  expect(balanceAfter, "balance after").to.eq(randWalletEnd);
+  const noteAfter = await noteStore.exists(noteId);
+  expect(noteAfter, "Note exists after").to.be.true;
 };
