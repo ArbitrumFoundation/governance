@@ -21,7 +21,6 @@ async function main() {
   const arbProvider = arbDeployer.provider!;
   const ethProvider = ethDeployer.provider!;
   const teamWallet = getTeamSigner(arbProvider as JsonRpcProvider);
-
   const isLocal = isLocalDeployment();
 
   if ((await teamWallet.getBalance()).eq(0)) {
@@ -38,13 +37,13 @@ async function main() {
   if (
     (await l2Token.delegates(teamWallet.address)).toLowerCase() !== teamWallet.address.toLowerCase()
   ) {
-    console.log(teamWallet.address)
+    console.log(teamWallet.address);
     console.log(
       `Delegating team wallet to itself: ${(
         await l2Token.balanceOf(teamWallet.address)
       ).toString()}`
     );
-    await (await l2Token.delegate(teamWallet.address)).wait();
+    await (await l2Token.connect(teamWallet).delegate(teamWallet.address)).wait();
   }
 
   const arbContracts = loadArbContracts(arbProvider, deployedContracts);
