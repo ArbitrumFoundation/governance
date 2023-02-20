@@ -688,10 +688,6 @@ export async function verifyTokenDistribution(
   arbProvider: Provider,
   claimRecipients: Recipients,
   vestedRecipients: Recipients,
-  deploymentInfo: {
-    distributorSetRecipientsStartBlock: number;
-    distributorSetRecipientsEndBlock: number;
-  },
   config: {
     L2_TOKEN_INITIAL_SUPPLY: string;
     L2_NUM_OF_TOKENS_FOR_TREASURY: string;
@@ -731,7 +727,6 @@ export async function verifyTokenDistribution(
 
   const recipientTotals = Object.values(claimRecipients).reduce((a, b) => a.add(b));
   const tokenDistributorBalance = await l2Token.balanceOf(l2TokenDistributor.address);
-  await verifyClaimsSetCorrectly(l2TokenDistributor, claimRecipients, deploymentInfo, config);
   assertNumbersEquals(
     tokenDistributorBalance,
     recipientTotals,
@@ -1002,7 +997,37 @@ async function verifyL2ArbTreasury(
  * Verify:
  * - initialization params are correctly set
  */
-export async function verifyL2TokenDistributor(
+export async function verifyL2TokenDistributorEnd(
+  l2TokenDistributor: TokenDistributor,
+  claimRecipients: Recipients,
+  deploymentInfo: {
+    distributorSetRecipientsStartBlock: number;
+    distributorSetRecipientsEndBlock: number;
+  },
+  config: {
+    L2_SWEEP_RECEIVER: string;
+    L2_CLAIM_PERIOD_START: number;
+    L2_CLAIM_PERIOD_END: number;
+    GET_LOGS_BLOCK_RANGE: number;
+  }
+) {
+  const recipientTotals = Object.values(claimRecipients).reduce((a, b) => a.add(b));
+  // check the claim are set
+  await verifyClaimsSetCorrectly(l2TokenDistributor, claimRecipients, deploymentInfo, config);
+
+  // check the total claimable is correct
+  assertNumbersEquals(
+    await l2TokenDistributor.totalClaimable(),
+    recipientTotals,
+    "Incorrect totalClaimable amount for TokenDistributor"
+  );
+}
+
+/**
+ * Verify:
+ * - initialization params are correctly set
+ */
+export async function verifyL2TokenDistributorStart(
   l2TokenDistributor: TokenDistributor,
   l2Token: L2ArbitrumToken,
   l2Executor: UpgradeExecutor,
@@ -1029,11 +1054,6 @@ export async function verifyL2TokenDistributor(
     await l2Token.balanceOf(l2TokenDistributor.address),
     recipientTotals,
     "Incorrect initial L2Token balance for TokenDistributor"
-  );
-  assertNumbersEquals(
-    await l2TokenDistributor.totalClaimable(),
-    recipientTotals,
-    "Incorrect totalClaimable amount for TokenDistributor"
   );
 
   //// check initialization params
