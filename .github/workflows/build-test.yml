@@ -109,6 +109,9 @@ jobs:
       - name: Verify deployment
         run: yarn verify:governance
 
+      - name: Proposal tests
+        run: yarn test:proposals
+
       - name: Allocate tokens
         run: yarn allocate:tokens
       

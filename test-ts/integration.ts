@@ -385,7 +385,7 @@ export const l2L1MonitoringValueTest = async (
   expect(ethBalAfter.toString(), "L1 Eth bal after").to.eq(transferValue.toString());
 };
 
-export const l1L2L1MonitoringValueTest = async (
+export const l2L1L2MonitoringValueTest = async (
   l1Signer: Signer,
   l2Signer: Signer,
   l1Deployer: Signer,

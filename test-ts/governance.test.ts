@@ -21,8 +21,8 @@ import {
 import { DeployedEventObject as L1DeployedEventObject } from "../typechain-types/src/L1GovernanceFactory";
 import { DeployedEventObject as L2DeployedEventObject } from "../typechain-types/src/L2GovernanceFactory";
 import {
-  l1L2L1MonitoringValueTest,
   l2L1L2MonitoringTest,
+  l2L1L2MonitoringValueTest,
   l2L1MonitoringTest,
   l2L1MonitoringValueTest,
   l2L1ProposalTest,
@@ -216,7 +216,7 @@ describe("Governor", function () {
     const { l2TokenContract, l1TimelockContract, l2GovernorContract, l2UpgradeExecutor } =
       await deployGovernance(l1Deployer, l2Deployer, l2Signer);
 
-    await l1L2L1MonitoringValueTest(
+    await l2L1L2MonitoringValueTest(
       l1Signer,
       l2Signer,
       l1Deployer,
