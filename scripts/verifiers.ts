@@ -1587,14 +1587,15 @@ export function checkConfigTotals(
   const investorVal = parseEther(config.L2_NUM_OF_TOKENS_FOR_INVESTORS);
 
   const claimtotal = Object.values(claimRecipients).reduce((a, b) => a.add(b));
-
+  
   const distributionTotals = treasuryVal
-    .add(foundationVal)
-    .add(teamVal)
-    .add(claimtotal)
-    .add(investorVal)
-    .add(daoVal);
+  .add(foundationVal)
+  .add(teamVal)
+  .add(claimtotal)
+  .add(investorVal)
+  .add(daoVal);
   if (!distributionTotals.eq(totalSupply)) {
+    // note: on local the claim total is 1674700
     throw new Error(
       `Unexpected distribution total: ${distributionTotals.toString()} ${totalSupply.toString()}`
     );

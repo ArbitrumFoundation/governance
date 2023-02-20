@@ -9,18 +9,19 @@ import {
 import { L2ArbitrumToken__factory } from "../typechain-types";
 import {
   getDeployersAndConfig,
-  getProviders,
   getTeamSigner,
   isLocalDeployment,
-  loadDeployedContracts,
+  loadDeployedContracts
 } from "./providerSetup";
 import { loadArbContracts, loadL1Contracts } from "./verifiers";
 
 async function main() {
-  const { arbProvider, ethProvider } = await getProviders();
   const deployedContracts = loadDeployedContracts();
   const { arbDeployer, ethDeployer } = await getDeployersAndConfig();
+  const arbProvider = arbDeployer.provider!;
+  const ethProvider = ethDeployer.provider!;
   const teamWallet = getTeamSigner(arbProvider as JsonRpcProvider);
+
   const isLocal = isLocalDeployment();
 
   if ((await teamWallet.getBalance()).eq(0)) {

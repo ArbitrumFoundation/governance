@@ -111,12 +111,12 @@ export const getDaoRecipientsEscrowSigner = (provider: JsonRpcProvider) => {
 };
 
 export const getTeamSigner = (provider: JsonRpcProvider) => {
-  if(!envVars.teamEscrowKey) {
+  if (!envVars.teamEscrowKey) {
     throw new Error("TEAM_KEY env var not set");
   }
 
   return new Wallet(envVars.teamEscrowKey).connect(provider);
-}
+};
 
 export const loadDaoRecipients = () => {
   checkEnvVars(envVars);
@@ -235,6 +235,8 @@ export const getDeployersAndConfig = async (): Promise<{
     arbDeployerKey: "******",
     ethDeployerKey: "******",
     novaDeployerKey: "******",
+    daoRecipientsEscrowKey: "******",
+    teamEscrowKey: "******",
   });
 
   const daoRecipients = loadDaoRecipients();
@@ -426,8 +428,8 @@ export function isLocalDeployment(): boolean {
 
 /**
  * Set to true to fully verify token distribution, including that all claims are set
- * 
- * @returns 
+ *
+ * @returns
  */
 export function fullTokenVerify(): boolean {
   return envVars.fullTokenVerify !== "false";
