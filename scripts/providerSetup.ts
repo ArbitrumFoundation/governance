@@ -16,7 +16,7 @@
 /* eslint-env node */
 "use strict";
 
-import { JsonRpcProvider, Provider } from "@ethersproject/providers";
+import { JsonRpcProvider, JsonRpcSigner, Provider } from "@ethersproject/providers";
 import { Wallet } from "@ethersproject/wallet";
 import dotenv from "dotenv";
 import { Signer } from "ethers";
@@ -31,9 +31,14 @@ import { parseEther } from "ethers/lib/utils";
 
 dotenv.config();
 
+// mainnet
 const ETH_CHAIN_ID = 1;
 const ARBITRUM_ONE_CHAIN_ID = 42161;
 const ARBITRUM_NOVA_CHAIN_ID = 42170;
+
+// goerli
+const GOERLI_CHAIN_ID = 5;
+const ARBITRUM_GOERLI_CHAIN_ID = 421613;
 
 // dotenv config used in case of deploying to production
 // in case of local env testing, config is extracted in `testSetup()`
@@ -61,12 +66,14 @@ const checkEnvVars = (conf: typeof envVars) => {
   if (conf.isLocalDeployment == undefined) throw new Error("Missing isLocalDeployment in env vars");
   if (conf.ethRpc == undefined) throw new Error("Missing ethRpc in env vars");
   if (conf.arbRpc == undefined) throw new Error("Missing arbRpc in env vars");
-  if (conf.novaRpc == undefined) throw new Error("Missing novaRpc in env vars");
+  if (isDeployingToNova() && conf.novaRpc == undefined)
+    throw new Error("Missing novaRpc in env vars");
   // eth key can sometimes be inferred for local
   if (!conf.isLocalDeployment && conf.ethDeployerKey == undefined)
     throw new Error("Missing ethDeployerKey in env vars");
   if (conf.arbDeployerKey == undefined) throw new Error("Missing arbDeployerKey in env vars");
-  if (conf.novaDeployerKey == undefined) throw new Error("Missing novaDeployerKey in env vars");
+  if (isDeployingToNova() && conf.novaDeployerKey == undefined)
+    throw new Error("Missing novaDeployerKey in env vars");
   if (conf.deployerConfigLocation == undefined)
     throw new Error("Missing deployerConfigLocation in env vars");
   if (!fs.existsSync(conf.deployerConfigLocation))
@@ -207,10 +214,10 @@ export const updateDeployedContracts = (cache: DeployProgressCache) => {
 export const getDeployersAndConfig = async (): Promise<{
   ethDeployer: Signer;
   arbDeployer: Signer;
-  novaDeployer: Signer;
+  novaDeployer: Signer | undefined;
   deployerConfig: DeployerConfig;
   arbNetwork: L2Network;
-  novaNetwork: L2Network;
+  novaNetwork: L2Network | undefined;
   daoRecipients: Recipients;
   vestedRecipients: Recipients;
   claimRecipients: Recipients;
@@ -240,36 +247,42 @@ export const getDeployersAndConfig = async (): Promise<{
       networkFilename: "files/local/network.json",
     });
 
-    const { l2Provider: novaProvider, l2Network: novaNetwork } = await getProvidersAndSetupNetworks(
-      {
-        l1Url: envVars.ethRpc,
-        l2Url: envVars.novaRpc,
-        networkFilename: "files/local/networkNova.json",
-      }
-    );
-
     const l1Deployer = getSigner(l1Provider, envVars.ethDeployerKey);
     const l2Deployer = getSigner(l2Provider, envVars.arbDeployerKey);
-    const novaDeployer = getSigner(novaProvider, envVars.novaDeployerKey);
 
     // check that production chains are not mistakenly used in local env
     if (l1Deployer.provider) {
       const l1ChainId = (await l1Deployer.provider.getNetwork()).chainId;
-      if (l1ChainId == ETH_CHAIN_ID) {
+      if (l1ChainId == ETH_CHAIN_ID || l1ChainId == GOERLI_CHAIN_ID) {
         throw new Error("Production chain ID used in test env for L1");
       }
     }
     if (l2Deployer.provider) {
       const l2ChainId = (await l2Deployer.provider.getNetwork()).chainId;
-      if (l2ChainId == ARBITRUM_ONE_CHAIN_ID) {
+      if (l2ChainId == ARBITRUM_ONE_CHAIN_ID || l2ChainId == ARBITRUM_GOERLI_CHAIN_ID) {
         throw new Error("Production chain ID used in test env for L2");
       }
     }
-    if (novaDeployer.provider) {
-      const novaChainId = (await novaDeployer.provider.getNetwork()).chainId;
-      if (novaChainId == ARBITRUM_NOVA_CHAIN_ID) {
-        throw new Error("Production chain ID used in test env for Nova");
+
+    let _novaNetwork: L2Network | undefined = undefined;
+    let _novaDeployer: Wallet | JsonRpcSigner | undefined = undefined;
+    if (isDeployingToNova()) {
+      const { l2Provider: novaProvider, l2Network: novaNetwork } =
+        await getProvidersAndSetupNetworks({
+          l1Url: envVars.ethRpc,
+          l2Url: envVars.novaRpc,
+          networkFilename: "files/local/networkNova.json",
+        });
+
+      const novaDeployer = getSigner(novaProvider, envVars.novaDeployerKey);
+      if (novaDeployer.provider) {
+        const novaChainId = (await novaDeployer.provider.getNetwork()).chainId;
+        if (novaChainId == ARBITRUM_NOVA_CHAIN_ID) {
+          throw new Error("Production chain ID used in test env for Nova");
+        }
       }
+      _novaNetwork = novaNetwork;
+      _novaDeployer = novaDeployer;
     }
 
     // make sure the dao recipients key has funds if we're on local
@@ -291,10 +304,10 @@ export const getDeployersAndConfig = async (): Promise<{
     return {
       ethDeployer: l1Deployer,
       arbDeployer: l2Deployer,
-      novaDeployer: novaDeployer,
+      novaDeployer: _novaDeployer,
       deployerConfig,
       arbNetwork,
-      novaNetwork,
+      novaNetwork: _novaNetwork,
       daoRecipients,
       vestedRecipients,
       claimRecipients,
@@ -307,15 +320,15 @@ export const getDeployersAndConfig = async (): Promise<{
 
     // check that production chain IDs are used in production mode
     const ethChainId = (await ethProvider.getNetwork()).chainId;
-    if (ethChainId != ETH_CHAIN_ID) {
+    if (ethChainId != ETH_CHAIN_ID && ethChainId != GOERLI_CHAIN_ID) {
       throw new Error("Production chain ID should be used in production mode for L1");
     }
     const arbChainId = (await arbProvider.getNetwork()).chainId;
-    if (arbChainId != ARBITRUM_ONE_CHAIN_ID) {
+    if (arbChainId != ARBITRUM_ONE_CHAIN_ID && arbChainId != ARBITRUM_GOERLI_CHAIN_ID) {
       throw new Error("Production chain ID should be used in production mode for L2");
     }
     const novaChainId = (await novaProvider.getNetwork()).chainId;
-    if (novaChainId != ARBITRUM_NOVA_CHAIN_ID) {
+    if (isDeployingToNova() && novaChainId != ARBITRUM_NOVA_CHAIN_ID) {
       throw new Error("Production chain ID should be used in production mode for Nova");
     }
 
@@ -327,7 +340,11 @@ export const getDeployersAndConfig = async (): Promise<{
     const deployerConfig = await loadDeployerConfig(testDeployerConfigName);
 
     const arbNetwork = await getL2Network(arbProvider);
-    const novaNetwork = await getL2Network(novaProvider);
+
+    let novaNetwork: L2Network | undefined = undefined;
+    if (isDeployingToNova()) {
+      novaNetwork = await getL2Network(novaProvider);
+    }
 
     return {
       ethDeployer,
@@ -354,10 +371,10 @@ export const getDeployersAndConfig = async (): Promise<{
 export const getProviders = async (): Promise<{
   ethProvider: Provider;
   arbProvider: Provider;
-  novaProvider: Provider;
+  novaProvider: Provider | undefined;
   deployerConfig: DeployerConfig;
   arbNetwork: L2Network;
-  novaNetwork: L2Network;
+  novaNetwork: L2Network | undefined;
 }> => {
   const { arbDeployer, deployerConfig, ethDeployer, novaDeployer, arbNetwork, novaNetwork } =
     await getDeployersAndConfig();
@@ -365,7 +382,7 @@ export const getProviders = async (): Promise<{
   return {
     ethProvider: ethDeployer.provider!,
     arbProvider: arbDeployer.provider!,
-    novaProvider: novaDeployer.provider!,
+    novaProvider: isDeployingToNova() ? novaDeployer!.provider! : undefined,
     deployerConfig,
     arbNetwork,
     novaNetwork,
@@ -384,7 +401,7 @@ export const getDeployerAddresses = async (): Promise<{
   const { ethDeployer, arbDeployer, novaDeployer } = await getDeployersAndConfig();
   const ethDeployerAddress = await ethDeployer.getAddress();
   const arbDeployerAddress = await arbDeployer.getAddress();
-  const novaDeployerAddress = await novaDeployer.getAddress();
+  const novaDeployerAddress = isDeployingToNova() ? await novaDeployer!.getAddress() : "";
 
   return {
     ethDeployerAddress,
@@ -413,8 +430,8 @@ export function isLocalDeployment(): boolean {
 
 /**
  * Set to true to fully verify token distribution, including that all claims are set
- * 
- * @returns 
+ *
+ * @returns
  */
 export function fullTokenVerify(): boolean {
   return envVars.fullTokenVerify !== "false";

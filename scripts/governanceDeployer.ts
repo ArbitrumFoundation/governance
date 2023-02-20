@@ -188,17 +188,17 @@ export const deployGovernance = async () => {
   if (isDeployingToNova()) {
     console.log("Deploy UpgradeExecutor to Nova");
     const { novaProxyAdmin, novaUpgradeExecutorProxy } = await deployNovaUpgradeExecutor(
-      novaDeployer
+      novaDeployer!
     );
     _novaProxyAdmin = novaProxyAdmin;
     _novaUpgradeExecutorProxy = novaUpgradeExecutorProxy;
 
     console.log("Deploy token to Nova");
     const novaToken = await deployTokenToNova(
-      novaDeployer,
+      novaDeployer!,
       novaProxyAdmin,
       l1Token,
-      novaNetwork,
+      novaNetwork!,
       deployerConfig
     );
     _novaToken = novaToken;
@@ -236,7 +236,7 @@ export const deployGovernance = async () => {
       l1DeployResult,
       _novaUpgradeExecutorProxy!,
       _novaProxyAdmin!,
-      novaDeployer,
+      novaDeployer!,
       deployerConfig
     );
   }
@@ -253,7 +253,7 @@ export const deployGovernance = async () => {
 
   if (isDeployingToNova()) {
     console.log("Register token on Nova");
-    await registerTokenOnNova(l1Token, _novaToken!.address, ethDeployer, novaDeployer);
+    await registerTokenOnNova(l1Token, _novaToken!.address, ethDeployer, novaDeployer!);
   }
 };
 
@@ -397,7 +397,7 @@ async function deployAndInitL1Token(
   l1GovernanceFactory: L1GovernanceFactory,
   l1ReverseCustomGateway: L1ForceOnlyReverseCustomGateway,
   ethDeployer: Signer,
-  novaNetwork: L2Network
+  novaNetwork: L2Network | undefined
 ) {
   // deploy logic
   const l1TokenLogic = await getOrInitDefault(
@@ -405,6 +405,8 @@ async function deployAndInitL1Token(
     ethDeployer,
     L1ArbitrumToken__factory
   );
+
+  const deadAddress = "0x000000000000000000000000000000000000dEaD";
 
   // deploy proxy
   const l1Token = await getOrInit(
@@ -421,8 +423,8 @@ async function deployAndInitL1Token(
       await (
         await token.initialize(
           l1ReverseCustomGateway.address,
-          novaNetwork.tokenBridge.l1GatewayRouter,
-          novaNetwork.tokenBridge.l1CustomGateway,
+          isDeployingToNova() ? novaNetwork!.tokenBridge.l1GatewayRouter : deadAddress,
+          isDeployingToNova() ? novaNetwork!.tokenBridge.l1CustomGateway : deadAddress,
           // for some intialize fails on a local network without this
           { gasLimit: 300000 }
         )
