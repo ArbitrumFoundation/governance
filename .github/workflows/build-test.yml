@@ -109,9 +109,6 @@ jobs:
       - name: Verify deployment
         run: yarn verify:governance
 
-      - name: Proposal tests
-        run: yarn test:proposals
-
       - name: Allocate tokens
         run: yarn allocate:tokens
       
@@ -126,6 +123,9 @@ jobs:
 
       - name: Verify DAO token distribution
         run: yarn verify:dao:distribution
+
+      - name: Proposal tests
+        run: yarn test:proposals
 
       - name: Prepare asset ownership transfer
         run: yarn prepare:ownership:transfer
