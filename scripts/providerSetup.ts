@@ -25,7 +25,7 @@ import { getProvidersAndSetupNetworks } from "../test-ts/testSetup";
 import path from "path";
 import { DeployerConfig, loadDeployerConfig } from "./deployerConfig";
 import { getL2Network, L2Network } from "@arbitrum/sdk";
-import { ClaimRecipients, Recipients, loadRecipients, mapPointsToAmounts } from "./testUtils";
+import { Recipients, loadRecipients } from "./testUtils";
 import fs from "fs";
 import { parseEther } from "ethers/lib/utils";
 
@@ -126,12 +126,16 @@ export const loadVestedRecipients = () => {
 export const loadClaimRecipients = (): Recipients => {
   checkEnvVars(envVars);
 
-  const tokenRecipientsByPoints = JSON.parse(
+  const tokenRecipientsJSON = JSON.parse(
     fs.readFileSync(path.join(__dirname, "..", envVars.claimRecipientsLocation)).toString()
-  ) as ClaimRecipients;
-  const { tokenRecipients, tokenAmounts } = mapPointsToAmounts(tokenRecipientsByPoints);
+  );
 
-  return Object.fromEntries(tokenRecipients.map((tr, i) => [tr, tokenAmounts[i]]));
+  return Object.fromEntries(
+    Object.keys(tokenRecipientsJSON).map((account) => [
+      account,
+      parseEther(tokenRecipientsJSON[account]["tokens"].toString()),
+    ])
+  );
 };
 
 // store address for every deployed contract
