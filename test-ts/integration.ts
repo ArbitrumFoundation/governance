@@ -231,11 +231,16 @@ const mineBlocksAndWaitForProposalState = async (
   l2GovernorContract: L2ArbitrumGovernor,
   proposalId: string,
   blockCount: number,
-  state: number
+  state: number,
+  mining: boolean
 ) => {
   for (let index = 0; index < blockCount; index++) {
-    await mineBlock(l1Signer);
-    await mineBlock(l2Signer);
+    if(mining) {
+      await mineBlock(l1Signer);
+      await mineBlock(l2Signer);
+    } else {
+      await wait(1000);
+    }
     if ((await l2GovernorContract.state(proposalId)) === state) break;
   }
 };
@@ -246,7 +251,8 @@ export const l2L1MonitoringValueTest = async (
   proposer: Signer,
   l1UpgradeExecutor: UpgradeExecutor,
   l1TimelockContract: L1ArbitrumTimelock,
-  l2GovernorContract: L2ArbitrumGovernor
+  l2GovernorContract: L2ArbitrumGovernor,
+  localMining: boolean = true
 ) => {
   // give some tokens to the governor contract
   const noteStore = await new NoteStore__factory(l1Signer).deploy();
@@ -323,14 +329,15 @@ export const l2L1MonitoringValueTest = async (
     l2GovernorContract,
     proposal.id(),
     l2VotingDelay.toNumber(),
-    1
+    1,
+    localMining
   );
   await (await l2GovernorContract.connect(proposer).castVote(proposal.id(), 1)).wait();
 
   const noteBefore = await noteStore.exists(noteId);
   expect(noteBefore, "Note exists before").to.be.false;
 
-  await mineBlocksUntilComplete(l1Signer, l2Signer, trackerEnd);
+  await mineBlocksUntilComplete(l1Signer, l2Signer, trackerEnd, localMining);
 
   const noteAfter = await noteStore.exists(noteId);
   expect(noteAfter, "Note exists after").to.be.true;
@@ -339,7 +346,8 @@ export const l2L1MonitoringValueTest = async (
 const mineBlocksUntilComplete = async (
   l1Signer: Signer,
   l2Signer: Signer,
-  completion: Promise<void>
+  completion: Promise<void>,
+  shouldActuallyMine: boolean
 ) => {
   return new Promise<void>(async (resolve, reject) => {
     let mining = true;
@@ -354,8 +362,10 @@ const mineBlocksUntilComplete = async (
       });
 
     while (mining) {
-      await mineBlock(l1Signer);
-      await mineBlock(l2Signer);
+      if(shouldActuallyMine) {
+        await mineBlock(l1Signer);
+        await mineBlock(l2Signer);
+      }
       await wait(500);
     }
   });
@@ -367,7 +377,8 @@ export const l2L1L2MonitoringValueTest = async (
   proposer: Signer,
   l2UpgradeExecutor: UpgradeExecutor,
   l1TimelockContract: L1ArbitrumTimelock,
-  l2GovernorContract: L2ArbitrumGovernor
+  l2GovernorContract: L2ArbitrumGovernor,
+  localMining: boolean = true
 ) => {
   const noteStore = await new NoteStore__factory(l2Signer).deploy();
   const testUpgrade = await new TestUpgrade__factory(l2Signer).deploy();
@@ -443,14 +454,15 @@ export const l2L1L2MonitoringValueTest = async (
     l2GovernorContract,
     proposal.id(),
     l2VotingDelay.toNumber(),
-    1
+    1,
+    localMining
   );
   await (await l2GovernorContract.connect(proposer).castVote(proposal.id(), 1)).wait();
 
   const noteBefore = await noteStore.exists(noteId);
   expect(noteBefore, "Note exists before").to.be.false;
 
-  await mineBlocksUntilComplete(l1Signer, l2Signer, trackerEnd);
+  await mineBlocksUntilComplete(l1Signer, l2Signer, trackerEnd, localMining);
 
   const noteAfter = await noteStore.exists(noteId);
   expect(noteAfter, "Note exists after").to.be.true;
@@ -462,7 +474,8 @@ export const l2L1MonitoringTest = async (
   proposer: Signer,
   l1UpgradeExecutor: UpgradeExecutor,
   l1TimelockContract: L1ArbitrumTimelock,
-  l2GovernorContract: L2ArbitrumGovernor
+  l2GovernorContract: L2ArbitrumGovernor,
+  localMining: boolean = true
 ) => {
   const noteStore = await new NoteStore__factory(l1Signer).deploy();
   const testUpgrade = await new TestUpgrade__factory(l1Signer).deploy();
@@ -530,14 +543,15 @@ export const l2L1MonitoringTest = async (
     l2GovernorContract,
     proposal.id(),
     l2VotingDelay.toNumber(),
-    1
+    1,
+    localMining
   );
   await (await l2GovernorContract.connect(proposer).castVote(proposal.id(), 1)).wait();
 
   const noteBefore = await noteStore.exists(noteId);
   expect(noteBefore, "Note exists before").to.be.false;
 
-  await mineBlocksUntilComplete(l1Signer, l2Signer, trackerEnd);
+  await mineBlocksUntilComplete(l1Signer, l2Signer, trackerEnd, localMining);
 
   const noteAfter = await noteStore.exists(noteId);
   expect(noteAfter, "Note exists after").to.be.true;
@@ -551,7 +565,8 @@ export const l2L1L2MonitoringTest = async (
   proposer: Signer,
   l2UpgradeExecutor: UpgradeExecutor,
   l1TimelockContract: L1ArbitrumTimelock,
-  l2GovernorContract: L2ArbitrumGovernor
+  l2GovernorContract: L2ArbitrumGovernor,
+  localMining: boolean = true
 ) => {
   const noteStore = await new NoteStore__factory(l2Signer).deploy();
   const testUpgrade = await new TestUpgrade__factory(l2Signer).deploy();
@@ -619,14 +634,15 @@ export const l2L1L2MonitoringTest = async (
     l2GovernorContract,
     proposal.id(),
     l2VotingDelay.toNumber(),
-    1
+    1,
+    localMining
   );
   await (await l2GovernorContract.connect(proposer).castVote(proposal.id(), 1)).wait();
 
   const noteBefore = await noteStore.exists(noteId);
   expect(noteBefore, "Note exists before").to.be.false;
 
-  await mineBlocksUntilComplete(l1Signer, l2Signer, trackerEnd);
+  await mineBlocksUntilComplete(l1Signer, l2Signer, trackerEnd, localMining);
 
   const noteAfter = await noteStore.exists(noteId);
   expect(noteAfter, "Note exists after").to.be.true;
@@ -720,7 +736,8 @@ const proposeAndExecuteL2 = async (
     l2GovernorContract,
     proposalId,
     l2VotingDelay.toNumber(),
-    1
+    1,
+    true
   );
   // vote on the proposal
   expect(
@@ -739,7 +756,8 @@ const proposeAndExecuteL2 = async (
     l2GovernorContract,
     proposalId,
     l2VotingPeriod,
-    4
+    4,
+    true
   );
 
   // queue the proposal
@@ -757,7 +775,8 @@ const proposeAndExecuteL2 = async (
     l2GovernorContract,
     proposalId,
     l2TimelockDelay,
-    5
+    5,
+    true
   );
 
   const opIdBatch = propFormedNonEmpty.l2Gov.operationId;

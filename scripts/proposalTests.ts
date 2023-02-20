@@ -11,6 +11,7 @@ import {
   getDeployersAndConfig,
   getProviders,
   getTeamSigner,
+  isLocalDeployment,
   loadDeployedContracts,
 } from "./providerSetup";
 import { loadArbContracts, loadL1Contracts } from "./verifiers";
@@ -20,6 +21,7 @@ async function main() {
   const deployedContracts = loadDeployedContracts();
   const { arbDeployer, ethDeployer } = await getDeployersAndConfig();
   const teamWallet = getTeamSigner(arbProvider as JsonRpcProvider);
+  const isLocal = isLocalDeployment();
 
   if ((await teamWallet.getBalance()).eq(0)) {
     await (
@@ -49,7 +51,8 @@ async function main() {
     teamWallet,
     arbContracts.l2Executor,
     ethContracts.l1Timelock,
-    arbContracts.l2CoreGoverner
+    arbContracts.l2CoreGoverner,
+    isLocal
   );
 
   console.log("L2-L1 monitoring tests");
@@ -59,7 +62,8 @@ async function main() {
     teamWallet,
     ethContracts.l1Executor,
     ethContracts.l1Timelock,
-    arbContracts.l2CoreGoverner
+    arbContracts.l2CoreGoverner,
+    isLocal
   );
 
   console.log("L2-L1-L2 monitoring value tests");
@@ -69,7 +73,8 @@ async function main() {
     teamWallet,
     arbContracts.l2Executor,
     ethContracts.l1Timelock,
-    arbContracts.l2CoreGoverner
+    arbContracts.l2CoreGoverner,
+    isLocal
   );
 
   console.log("L2-L1 monitoring value tests");
@@ -79,7 +84,8 @@ async function main() {
     teamWallet,
     ethContracts.l1Executor,
     ethContracts.l1Timelock,
-    arbContracts.l2CoreGoverner
+    arbContracts.l2CoreGoverner,
+    isLocal
   );
 }
 
