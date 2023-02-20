@@ -111,9 +111,12 @@ jobs:
 
       - name: Allocate tokens
         run: yarn allocate:tokens
+      
+      - name: Verify token distribution partial
+        run: yarn verify:distribution:partial
 
-      - name: Verify token distribution
-        run: yarn verify:distribution
+      - name: Verify token distribution full
+        run: yarn verify:distribution:full
 
       - name: Allocate DAO tokens
         run: yarn allocate:dao:tokens

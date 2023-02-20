@@ -54,6 +54,7 @@ export const envVars = {
   arbTransferAssetsTXsLocation: process.env["ARB_TXS_FILE_LOCATION"] as string,
   novaTransferAssetsTXsLocation: process.env["NOVA_TXS_FILE_LOCATION"] as string,
   daoRecipientsEscrowKey: process.env["DAO_RECIPIENTS_KEY"] as string,
+  fullTokenVerify: process.env["FULL_TOKEN_VERIFY"] as string,
 };
 
 const checkEnvVars = (conf: typeof envVars) => {
@@ -408,4 +409,13 @@ export function isDeployingToNova(): boolean {
  */
 export function isLocalDeployment(): boolean {
   return envVars.isLocalDeployment !== "false";
+}
+
+/**
+ * Set to true to fully verify token distribution, including that all claims are set
+ * 
+ * @returns 
+ */
+export function fullTokenVerify(): boolean {
+  return envVars.fullTokenVerify !== "false";
 }
