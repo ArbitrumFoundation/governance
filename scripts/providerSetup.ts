@@ -51,8 +51,10 @@ export const envVars = {
   daoRecipientsLocation: process.env["DAO_RECIPIENTS_FILE_LOCATION"] as string,
   claimRecipientsLocation: process.env["CLAIM_RECIPIENTS_FILE_LOCATION"] as string,
   deployedContractsLocation: process.env["DEPLOYED_CONTRACTS_FILE_LOCATION"] as string,
-  arbTransferAssetsTXsLocation: process.env["ARB_TXS_FILE_LOCATION"] as string,
-  novaTransferAssetsTXsLocation: process.env["NOVA_TXS_FILE_LOCATION"] as string,
+  l1ArbTransferAssetsTXsLocation: process.env["ARB_L1_TXS_FILE_LOCATION"] as string,
+  arbTransferAssetsTXsLocation: process.env["ARB_L2_TXS_FILE_LOCATION"] as string,
+  l1NovaTransferAssetsTXsLocation: process.env["NOVA_L1_TXS_FILE_LOCATION"] as string,
+  novaTransferAssetsTXsLocation: process.env["NOVA_L2_TXS_FILE_LOCATION"] as string,
   daoRecipientsEscrowKey: process.env["DAO_RECIPIENTS_KEY"] as string,
   fullTokenVerify: process.env["FULL_TOKEN_VERIFY"] as string,
 };
@@ -413,8 +415,8 @@ export function isLocalDeployment(): boolean {
 
 /**
  * Set to true to fully verify token distribution, including that all claims are set
- * 
- * @returns 
+ *
+ * @returns
  */
 export function fullTokenVerify(): boolean {
   return envVars.fullTokenVerify !== "false";
