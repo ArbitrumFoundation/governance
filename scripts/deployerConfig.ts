@@ -103,13 +103,21 @@ export interface DeployerConfig {
    */
   L2_NUM_OF_TOKENS_FOR_TEAM: string;
   /**
-   * Team address
+   * Dao recipients address
    */
   L2_ADDRESS_FOR_DAO_RECIPIENTS: string;
   /**
-   * Num of tokens to be sent to team
+   * Num of tokens to be sent to dao recipients
    */
   L2_NUM_OF_TOKENS_FOR_DAO_RECIPIENTS: string;
+  /**
+   * Investors escrow address
+   */
+  L2_ADDRESS_FOR_INVESTORS: string;
+  /**
+   * Num of tokens to be sent to investors
+   */
+  L2_NUM_OF_TOKENS_FOR_INVESTORS: string;
   /**
    * Receiver of the airdrop leftovers
    */

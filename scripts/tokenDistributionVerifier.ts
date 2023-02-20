@@ -3,41 +3,36 @@ import {
   getProviders,
   loadClaimRecipients,
   loadDeployedContracts,
-  loadVestedRecipients,
 } from "./providerSetup";
 import { assertEquals } from "./testUtils";
 import {
   loadArbContracts,
-  loadArbTokenDistributionContracts,
   verifyL2TokenDistributorEnd,
-  verifyL2TokenDistributorStart,
   verifyTokenDistribution,
+  loadArbTokenDistributor,
+  verifyL2TokenDistributorStart,
 } from "./verifiers";
 
 async function main() {
   const { arbProvider, deployerConfig } = await getProviders();
   const deployedContracts = loadDeployedContracts();
   const arbContracts = loadArbContracts(arbProvider, deployedContracts);
-  const distributionContracts = loadArbTokenDistributionContracts(arbProvider, deployedContracts);
+  const l2TokenDistributor = loadArbTokenDistributor(arbProvider, deployedContracts);
 
-  const vestedRecipients = loadVestedRecipients();
   const claimRecipients = loadClaimRecipients();
 
   console.log(`Start ${fullTokenVerify() ? "full" : "partial"} verification process...`);
   await verifyTokenDistribution(
     arbContracts.l2Token!,
     arbContracts.l2ArbTreasury,
-    distributionContracts.l2TokenDistributor,
-    distributionContracts.vestedWalletFactory,
+    l2TokenDistributor,
     arbProvider,
     claimRecipients,
-    vestedRecipients,
-
     deployerConfig
   );
 
   await verifyL2TokenDistributorStart(
-    distributionContracts.l2TokenDistributor,
+    l2TokenDistributor,
     arbContracts.l2Token,
     arbContracts.l2Executor,
     arbContracts.l2CoreGoverner,
@@ -49,7 +44,7 @@ async function main() {
   if (fullTokenVerify()) {
     console.log("Verifying token claimants...");
     await verifyL2TokenDistributorEnd(
-      distributionContracts.l2TokenDistributor,
+      l2TokenDistributor,
       claimRecipients,
       {
         distributorSetRecipientsEndBlock: deployedContracts.distributorSetRecipientsEndBlock!,
