@@ -11,7 +11,7 @@ import {
   getDeployersAndConfig,
   getTeamSigner,
   isLocalDeployment,
-  loadDeployedContracts
+  loadDeployedContracts,
 } from "./providerSetup";
 import { loadArbContracts, loadL1Contracts } from "./verifiers";
 
@@ -38,7 +38,11 @@ async function main() {
   if (
     (await l2Token.delegates(teamWallet.address)).toLowerCase() !== teamWallet.address.toLowerCase()
   ) {
-    console.log("Delegating team wallet to itself");
+    console.log(
+      `Delegating team wallet to itself: ${(
+        await l2Token.balanceOf(teamWallet.address)
+      ).toString()}`
+    );
     await (await l2Token.delegate(teamWallet.address)).wait();
   }
 
