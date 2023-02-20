@@ -38,6 +38,7 @@ async function main() {
   if (
     (await l2Token.delegates(teamWallet.address)).toLowerCase() !== teamWallet.address.toLowerCase()
   ) {
+    console.log(teamWallet.address)
     console.log(
       `Delegating team wallet to itself: ${(
         await l2Token.balanceOf(teamWallet.address)
