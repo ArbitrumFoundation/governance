@@ -44,6 +44,8 @@ async function main() {
       ).toString()}`
     );
     await (await l2Token.connect(teamWallet).delegate(teamWallet.address)).wait();
+    console.log("bal before", (await l2Token.balanceOf(teamWallet.address)).toString());
+    console.log("bal after", await l2Token.delegates(teamWallet.address), teamWallet.address);
   }
 
   const arbContracts = loadArbContracts(arbProvider, deployedContracts);

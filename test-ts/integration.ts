@@ -25,7 +25,7 @@ import {
   NoteStore__factory,
   TestUpgrade__factory,
   UpgradeExecutor,
-  UpgradeExecutor__factory,
+  UpgradeExecutor__factory
 } from "../typechain-types";
 
 const wait = async (ms: number) => new Promise((res) => setTimeout(res, ms));
