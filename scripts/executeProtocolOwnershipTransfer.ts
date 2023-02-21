@@ -1,4 +1,10 @@
-import { envVars, getDeployersAndConfig, getProviders, isDeployingToNova } from "./providerSetup";
+import {
+  envVars,
+  getDeployersAndConfig,
+  getProviders,
+  isDeployingToNova,
+  isLocalDeployment,
+} from "./providerSetup";
 import { ethers, Wallet } from "ethers";
 import fs from "fs";
 import { getProxyOwner } from "./testUtils";
@@ -10,7 +16,7 @@ import {
   L1CustomGateway__factory,
   L1GatewayRouter__factory,
 } from "../token-bridge-contracts/build/types";
-import { GnosisBatch } from "./prepareProtocolOwnershipTransfer";
+import { ARB_OWNER_PRECOMPILE, GnosisBatch } from "./prepareProtocolOwnershipTransfer";
 
 /**
  * Load and execute all prepared TXs to transfer ownership of Arb and Nova assets.
@@ -43,7 +49,7 @@ export const executeOwnershipTransfer = async () => {
   const arbTxs = fetchTXs(envVars.arbTransferAssetsTXsLocation);
   console.log("Transfer Arb assets ownership on L2");
   for (let i = 0; i < arbTxs.length; i++) {
-    if (arbTxs[i].to == "0x0000000000000000000000000000000000000070") {
+    if (arbTxs[i].to == ARB_OWNER_PRECOMPILE) {
       // can't simulate arb chain ownership transfer in local network because chain owner is zero address
       continue;
     }
@@ -63,7 +69,7 @@ export const executeOwnershipTransfer = async () => {
     const novaTxs = fetchTXs(envVars.novaTransferAssetsTXsLocation);
     console.log("Transfer Nova assets ownership on L2");
     for (let i = 0; i < novaTxs.length; i++) {
-      if (novaTxs[i].to == "0x0000000000000000000000000000000000000070") {
+      if (novaTxs[i].to == ARB_OWNER_PRECOMPILE) {
         // can't simulate arb chain ownership transfer in local network because chain owner is zero address
         continue;
       }
@@ -234,6 +240,11 @@ async function printProxyAdmins() {
 }
 
 async function main() {
+  if (!isLocalDeployment()) {
+    console.log("This is a test script for local network testing");
+    return;
+  }
+
   await printProxyAdmins();
   await executeOwnershipTransfer();
 }

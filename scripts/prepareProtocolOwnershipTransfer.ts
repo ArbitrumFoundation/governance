@@ -11,7 +11,8 @@ import {
 } from "../token-bridge-contracts/build/types";
 import { Provider } from "@ethersproject/providers";
 
-const ARB_OWNER_PRECOMPILE = "0x0000000000000000000000000000000000000070";
+export const ARB_OWNER_PRECOMPILE = "0x0000000000000000000000000000000000000070";
+export const ARB_OWNER_PUBLIC_PRECOMPILE = "0x000000000000000000000000000000000000006b";
 
 export type GnosisTX = {
   to: string;
@@ -150,23 +151,6 @@ function getGnosisBatch(chainId: number, txs: GnosisTX[]): GnosisBatch {
 }
 
 /**
- * Get TXs in Gnosis Safe's JSON format
- *
- * @param chainId
- * @param txs
- * @returns
- */
-function getGnosisBatch(chainId: number, txs: GnosisTX[]): GnosisBatch {
-  return {
-    chainId: chainId.toString(),
-    meta: {
-      checksum: "",
-    },
-    transactions: txs,
-  };
-}
-
-/**
  * Generate data for ownership transfer TXs
  *
  * @returns
@@ -239,11 +223,9 @@ async function getChainOwnerTransferTXs(
   provider: ethers.providers.Provider,
   l2Executor: string
 ): Promise<GnosisTX[]> {
-  const ownerPrecompile = ArbOwner__factory.connect(ARB_OWNER_PRECOMPILE, provider);
-
   let txs: GnosisTX[] = [];
   txs.push({
-    to: ownerPrecompile.address,
+    to: ARB_OWNER_PRECOMPILE,
     value: "0",
     data: "",
     contractMethod: {
@@ -262,6 +244,7 @@ async function getChainOwnerTransferTXs(
     },
   });
 
+  const ownerPrecompile = ArbOwner__factory.connect(ARB_OWNER_PUBLIC_PRECOMPILE, provider);
   const oldOwners = await ownerPrecompile.getAllChainOwners();
   for (let oldOwner of oldOwners) {
     // make sure new owner, l2Executor, is not accidentally removed

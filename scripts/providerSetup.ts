@@ -108,10 +108,22 @@ const checkEnvVars = (conf: typeof envVars) => {
 
   if (conf.deployedContractsLocation == undefined)
     throw new Error("Missing deployedContractsLocation in env vars");
+
+  if (conf.l1ArbProtocolTransferTXsLocation == undefined)
+    throw new Error("Missing l1ArbProtocolTransferTXsLocation in env vars");
+  if (conf.l1ArbTokenBridgeTransferTXsLocation == undefined)
+    throw new Error("Missing l1ArbTokenBridgeTransferTXsLocation in env vars");
   if (conf.arbTransferAssetsTXsLocation == undefined)
     throw new Error("Missing arbTransferAssetsTXsLocation in env vars");
-  if (conf.novaTransferAssetsTXsLocation == undefined)
-    throw new Error("Missing novaTransferAssetsTXsLocation in env vars");
+
+  if (isDeployingToNova()) {
+    if (conf.l1NovaProtocolTransferTXsLocation == undefined)
+      throw new Error("Missing l1NovaProtocolTransferTXsLocation in env vars");
+    if (conf.l1NovaTokenBridgeTransferTXsLocation == undefined)
+      throw new Error("Missing l1NovaTokenBridgeTransferTXsLocation in env vars");
+    if (conf.novaTransferAssetsTXsLocation == undefined)
+      throw new Error("Missing novaTransferAssetsTXsLocation in env vars");
+  }
 };
 
 export const getSigner = (provider: JsonRpcProvider, key?: string) => {
