@@ -21,6 +21,7 @@ import {
 import { CallScheduledEvent } from "../typechain-types/src/ArbitrumTimelock";
 import { Inbox__factory } from "@arbitrum/sdk/dist/lib/abi/factories/Inbox__factory";
 import { wait } from "./utils";
+import { EventEmitter } from "events";
 
 /**
  * An execution stage of a proposal. Each stage can be executed, and results in a transaction receipt.
@@ -53,12 +54,7 @@ export interface ProposalStage {
  * Error with additional proposal information
  */
 class ProposalStageError extends Error {
-  constructor(
-    message: string,
-    identifier: string,
-    stageName: string,
-    inner?: Error
-  );
+  constructor(message: string, identifier: string, stageName: string, inner?: Error);
   constructor(
     message: string,
     public readonly identifier: string,
@@ -136,10 +132,7 @@ export class GovernorQueueStage implements ProposalStage {
   }
 
   public async status(): Promise<ProposalStageStatus> {
-    const gov = L2ArbitrumGovernor__factory.connect(
-      this.governorAddress,
-      this.signer
-    );
+    const gov = L2ArbitrumGovernor__factory.connect(this.governorAddress, this.signer);
 
     const state = (await gov.state(this.proposalId)) as GovernorTimelockStatus;
 
@@ -162,32 +155,18 @@ export class GovernorQueueStage implements ProposalStage {
   }
 
   public async execute(): Promise<void> {
-    const gov = L2ArbitrumGovernor__factory.connect(
-      this.governorAddress,
-      this.signer
-    );
+    const gov = L2ArbitrumGovernor__factory.connect(this.governorAddress, this.signer);
 
     await (
-      await gov.functions.queue(
-        [this.target],
-        [this.value],
-        [this.callData],
-        id(this.description)
-      )
+      await gov.functions.queue([this.target], [this.value], [this.callData], id(this.description))
     ).wait();
   }
 
   public async getExecuteReceipt(): Promise<TransactionReceipt> {
-    const gov = L2ArbitrumGovernor__factory.connect(
-      this.governorAddress,
-      this.signer
-    );
+    const gov = L2ArbitrumGovernor__factory.connect(this.governorAddress, this.signer);
 
     const timelockAddress = await gov.timelock();
-    const timelock = ArbitrumTimelock__factory.connect(
-      timelockAddress,
-      this.signer
-    );
+    const timelock = ArbitrumTimelock__factory.connect(timelockAddress, this.signer);
     const opId = await timelock.hashOperationBatch(
       [this.target],
       [this.value],
@@ -204,11 +183,7 @@ export class GovernorQueueStage implements ProposalStage {
       ...callScheduledFilter,
     });
     if (logs.length !== 1) {
-      throw new ProposalStageError(
-        "Log length not 1",
-        this.identifier,
-        this.name
-      );
+      throw new ProposalStageError("Log length not 1", this.identifier, this.name);
     }
 
     return this.signer.provider!.getTransactionReceipt(logs[0].transactionHash);
@@ -237,10 +212,7 @@ export class L2TimelockExecutionStage implements ProposalStage {
   private operationBatchId: string = "";
   private async getHashOperationBatch() {
     if (!this.operationBatchId) {
-      const timelock = ArbitrumTimelock__factory.connect(
-        this.timelockAddress,
-        this.signer
-      );
+      const timelock = ArbitrumTimelock__factory.connect(this.timelockAddress, this.signer);
 
       this.operationBatchId = await timelock.hashOperationBatch(
         [this.target],
@@ -254,10 +226,7 @@ export class L2TimelockExecutionStage implements ProposalStage {
   }
 
   public async status(): Promise<ProposalStageStatus> {
-    const timelock = ArbitrumTimelock__factory.connect(
-      this.timelockAddress,
-      this.signer
-    );
+    const timelock = ArbitrumTimelock__factory.connect(this.timelockAddress, this.signer);
 
     const operationId = await this.getHashOperationBatch();
 
@@ -282,10 +251,7 @@ export class L2TimelockExecutionStage implements ProposalStage {
   }
 
   public async execute(): Promise<void> {
-    const timelock = ArbitrumTimelock__factory.connect(
-      this.timelockAddress,
-      this.signer
-    );
+    const timelock = ArbitrumTimelock__factory.connect(this.timelockAddress, this.signer);
 
     const tx = await timelock.functions.executeBatch(
       [this.target],
@@ -299,10 +265,7 @@ export class L2TimelockExecutionStage implements ProposalStage {
   }
 
   public async getExecuteReceipt(): Promise<TransactionReceipt> {
-    const timelock = ArbitrumTimelock__factory.connect(
-      this.timelockAddress,
-      this.signer
-    );
+    const timelock = ArbitrumTimelock__factory.connect(this.timelockAddress, this.signer);
     const operationId = await this.getHashOperationBatch();
     const callExecutedFilter = timelock.filters.CallExecuted(operationId);
     const logs = await this.signer.provider!.getLogs({
@@ -312,16 +275,10 @@ export class L2TimelockExecutionStage implements ProposalStage {
     });
 
     if (logs.length !== 1) {
-      throw new ProposalStageError(
-        `Logs length not 1: ${logs.length}`,
-        this.identifier,
-        this.name
-      );
+      throw new ProposalStageError(`Logs length not 1: ${logs.length}`, this.identifier, this.name);
     }
 
-    return await this.signer.provider!.getTransactionReceipt(
-      logs[0].transactionHash
-    );
+    return await this.signer.provider!.getTransactionReceipt(logs[0].transactionHash);
   }
 }
 
@@ -384,8 +341,7 @@ export class L1OutboxStage implements ProposalStage {
     const l2Receipt = new L2TransactionReceipt(this.l2ExecutionReceipt);
 
     // we know this is a post nitro event
-    const events =
-      (await l2Receipt.getL2ToL1Events()) as EventArgs<NitroL2ToL1TransactionEvent>[];
+    const events = (await l2Receipt.getL2ToL1Events()) as EventArgs<NitroL2ToL1TransactionEvent>[];
     if (events.length !== 1) {
       throw new ProposalStageError(
         `Events length not 1: ${events.length}`,
@@ -396,10 +352,7 @@ export class L1OutboxStage implements ProposalStage {
     const event = events[0];
 
     const l2Network = await getL2Network(this.l2Provider);
-    const outbox = Outbox__factory.connect(
-      l2Network.ethBridge.outbox,
-      this.l1Signer.provider!
-    );
+    const outbox = Outbox__factory.connect(l2Network.ethBridge.outbox, this.l1Signer.provider!);
     const outboxTxFilter = outbox.filters.OutBoxTransactionExecuted(
       // the to needs to be decoded, how do we do that?
       // we can look at the l2 to l1 tx
@@ -415,8 +368,7 @@ export class L1OutboxStage implements ProposalStage {
 
     const outboxEvents = allEvents.filter((e) =>
       (
-        outbox.interface.parseLog(e)
-          .args as OutBoxTransactionExecutedEvent["args"]
+        outbox.interface.parseLog(e).args as OutBoxTransactionExecutedEvent["args"]
       ).transactionIndex.eq(event.position)
     );
 
@@ -428,9 +380,7 @@ export class L1OutboxStage implements ProposalStage {
       );
     }
 
-    return this.l1Signer.provider!.getTransactionReceipt(
-      outboxEvents[0].transactionHash
-    );
+    return this.l1Signer.provider!.getTransactionReceipt(outboxEvents[0].transactionHash);
   }
 }
 
@@ -469,14 +419,10 @@ export class L1TimelockExecutionStage implements ProposalStage {
     const iL1ArbTimelock = L1ArbitrumTimelock__factory.createInterface();
     const callScheduledLog = await this.getCallScheduledLog();
     const operationId = (
-      iL1ArbTimelock.parseLog(callScheduledLog)
-        .args as CallScheduledEvent["args"]
+      iL1ArbTimelock.parseLog(callScheduledLog).args as CallScheduledEvent["args"]
     ).id;
     const timelockAddress = callScheduledLog.address;
-    const timelock = L1ArbitrumTimelock__factory.connect(
-      timelockAddress,
-      this.l1Signer
-    );
+    const timelock = L1ArbitrumTimelock__factory.connect(timelockAddress, this.l1Signer);
 
     // operation was cancelled if it doesn't exist
     const exists = await timelock.isOperation(operationId);
@@ -504,16 +450,11 @@ export class L1TimelockExecutionStage implements ProposalStage {
     const callScheduledArgs = iL1ArbTimelock.parseLog(callScheduledLog)
       .args as CallScheduledEvent["args"];
     const timelockAddress = callScheduledLog.address;
-    const timelock = L1ArbitrumTimelock__factory.connect(
-      timelockAddress,
-      this.l1Signer
-    );
+    const timelock = L1ArbitrumTimelock__factory.connect(timelockAddress, this.l1Signer);
 
     const retryableMagic = await timelock.RETRYABLE_TICKET_MAGIC();
     let value = callScheduledArgs.value;
-    if (
-      callScheduledArgs.target.toLowerCase() === retryableMagic.toLowerCase()
-    ) {
+    if (callScheduledArgs.target.toLowerCase() === retryableMagic.toLowerCase()) {
       const parsedData = defaultAbiCoder.decode(
         ["address", "address", "uint256", "uint256", "uint256", "bytes"],
         callScheduledArgs.data
@@ -524,19 +465,13 @@ export class L1TimelockExecutionStage implements ProposalStage {
       const innerMaxFeePerGas = parsedData[4] as BigNumber;
       const innerData = parsedData[5] as string;
 
-      const inbox = Inbox__factory.connect(
-        inboxAddress,
-        this.l1Signer.provider!
+      const inbox = Inbox__factory.connect(inboxAddress, this.l1Signer.provider!);
+      const submissionFee = await inbox.callStatic.calculateRetryableSubmissionFee(
+        hexDataLength(innerData),
+        0
       );
-      const submissionFee =
-        await inbox.callStatic.calculateRetryableSubmissionFee(
-          hexDataLength(innerData),
-          0
-        );
 
-      const timelockBalance = await this.l1Signer.provider!.getBalance(
-        timelockAddress
-      );
+      const timelockBalance = await this.l1Signer.provider!.getBalance(timelockAddress);
       if (timelockBalance.lt(innerValue)) {
         throw new ProposalStageError(
           `Timelock does not contain enough balance to cover l2 value: ${timelockBalance.toString()} : ${innerValue.toString()}`,
@@ -568,14 +503,10 @@ export class L1TimelockExecutionStage implements ProposalStage {
     const iL1ArbTimelock = L1ArbitrumTimelock__factory.createInterface();
     const callScheduledLog = await this.getCallScheduledLog();
     const operationId = (
-      iL1ArbTimelock.parseLog(callScheduledLog)
-        .args as CallScheduledEvent["args"]
+      iL1ArbTimelock.parseLog(callScheduledLog).args as CallScheduledEvent["args"]
     ).id;
     const timelockAddress = callScheduledLog.address;
-    const timelock = L1ArbitrumTimelock__factory.connect(
-      timelockAddress,
-      this.l1Signer
-    );
+    const timelock = L1ArbitrumTimelock__factory.connect(timelockAddress, this.l1Signer);
 
     const callExecutedFilter = timelock.filters.CallExecuted(operationId);
     const logs = await this.l1Signer.provider!.getLogs({
@@ -592,9 +523,7 @@ export class L1TimelockExecutionStage implements ProposalStage {
       );
     }
 
-    return await this.l1Signer.provider!.getTransactionReceipt(
-      logs[0].transactionHash
-    );
+    return await this.l1Signer.provider!.getTransactionReceipt(logs[0].transactionHash);
   }
 }
 
@@ -635,17 +564,9 @@ export class RetryableExecutionStage implements ProposalStage {
 
     switch (msgStatus) {
       case L1ToL2MessageStatus.CREATION_FAILED:
-        throw new ProposalStageError(
-          "Retryable creation failed",
-          this.identifier,
-          this.name
-        );
+        throw new ProposalStageError("Retryable creation failed", this.identifier, this.name);
       case L1ToL2MessageStatus.EXPIRED:
-        throw new ProposalStageError(
-          "Retryable ticket expired",
-          this.identifier,
-          this.name
-        );
+        throw new ProposalStageError("Retryable ticket expired", this.identifier, this.name);
       case L1ToL2MessageStatus.FUNDS_DEPOSITED_ON_L2:
         return ProposalStageStatus.READY;
       case L1ToL2MessageStatus.NOT_YET_CREATED:
@@ -682,11 +603,7 @@ export class RetryableExecutionStage implements ProposalStage {
  * A proposal stage pipeline. Describes the different stages a proposal must go through,
  * and links them together in an ordered pipeline.
  */
-export type ProposalStagePipeline = AsyncGenerator<
-  ProposalStage,
-  void,
-  unknown
->;
+export type ProposalStagePipeline = AsyncGenerator<ProposalStage, void, unknown>;
 
 export interface ProposalStagePipelineFactory {
   createPipeline(
@@ -705,9 +622,7 @@ export interface ProposalStagePipelineFactory {
  * executed directly on L1, or send in a retryable ticket to either Arb One or Nova
  * to be executed.
  **/
-export class RoundTripProposalPipelineFactory
-  implements ProposalStagePipelineFactory
-{
+export class RoundTripProposalPipelineFactory implements ProposalStagePipelineFactory {
   constructor(
     readonly arbOneSigner: Signer,
     readonly l1Signer: Signer,
@@ -748,8 +663,7 @@ export class RoundTripProposalPipelineFactory
       );
       yield l2TimelockExecute;
 
-      const l2TimelockExecuteReceipt =
-        await l2TimelockExecute.getExecuteReceipt();
+      const l2TimelockExecuteReceipt = await l2TimelockExecute.getExecuteReceipt();
       const l1OutboxExecute = new L1OutboxStage(
         l2TimelockExecuteReceipt,
         this.l1Signer,
@@ -765,16 +679,13 @@ export class RoundTripProposalPipelineFactory
       );
       yield l1TimelockExecute;
 
-      const l1TimelockExecuteReceipt =
-        await l1TimelockExecute.getExecuteReceipt();
+      const l1TimelockExecuteReceipt = await l1TimelockExecute.getExecuteReceipt();
       const l1txReceipt = new L1TransactionReceipt(l1TimelockExecuteReceipt);
 
       const l1ToL2Events = await l1txReceipt.getMessageEvents();
       if (l1ToL2Events.length > 0) {
         if (l1ToL2Events.length > 1) {
-          throw new Error(
-            `More than 1 l1 to l2 events: ${l1ToL2Events.length}`
-          );
+          throw new Error(`More than 1 l1 to l2 events: ${l1ToL2Events.length}`);
         }
         const inbox = l1ToL2Events[0].bridgeMessageEvent.inbox.toLowerCase();
         // find the relevant inbox
@@ -782,15 +693,9 @@ export class RoundTripProposalPipelineFactory
         const novaNetwork = await getL2Network(this.novaSigner);
 
         if (arbOneNetwork.ethBridge.inbox.toLowerCase() === inbox) {
-          yield new RetryableExecutionStage(
-            this.arbOneSigner,
-            l1TimelockExecuteReceipt
-          );
+          yield new RetryableExecutionStage(this.arbOneSigner, l1TimelockExecuteReceipt);
         } else if (novaNetwork.ethBridge.inbox.toLowerCase() === inbox) {
-          yield new RetryableExecutionStage(
-            this.novaSigner,
-            l1TimelockExecuteReceipt
-          );
+          yield new RetryableExecutionStage(this.novaSigner, l1TimelockExecuteReceipt);
         } else throw new Error(`Inbox doesn't match any networks: ${inbox}`);
       }
     } catch (err) {
@@ -808,21 +713,52 @@ export class RoundTripProposalPipelineFactory
 /**
  * Follows a specific proposal, tracking it through its different stages
  * Executes each stage when it reaches READY, and exits upon observing a TERMINATED stage
+ * Emits a "status" event when a new stage begins, or the status of a stage changes
  */
-export class ProposalStageTracker {
+export class ProposalStageTracker extends EventEmitter {
   constructor(
     private readonly pipeline: ProposalStagePipeline,
     public readonly pollingIntervalMs: number
-  ) {}
+  ) {
+    super();
+  }
+
+  public override emit(
+    eventName: "status",
+    args: {
+      status: ProposalStageStatus;
+      stage: string;
+      identifier: string;
+    }
+  ) {
+    return super.emit(eventName, args);
+  }
+
+  public override on(
+    eventName: "status",
+    listener: (args: { status: ProposalStageStatus; stage: string; identifier: string }) => void
+  ) {
+    return super.on(eventName, listener);
+  }
 
   public async run() {
     for await (const stage of this.pipeline) {
       let polling = true;
       let consecutiveErrors = 0;
+      let currentStatus: ProposalStageStatus | undefined = undefined;
 
       while (polling) {
         try {
           const status = await stage.status();
+          if (currentStatus !== status) {
+            // emit an event if the status changes
+            this.emit("status", {
+              status,
+              stage: stage.name,
+              identifier: stage.identifier,
+            });
+            currentStatus = status;
+          }
           switch (status) {
             case ProposalStageStatus.TERMINATED:
               // end of the road
@@ -861,12 +797,7 @@ export class ProposalStageTracker {
           consecutiveErrors++;
           const error = err as Error;
           if (consecutiveErrors > 5) {
-            throw new ProposalStageError(
-              "Consecutive error",
-              stage.identifier,
-              stage.name,
-              error
-            );
+            throw new ProposalStageError("Consecutive error", stage.identifier, stage.name, error);
           }
 
           await wait(this.pollingIntervalMs);

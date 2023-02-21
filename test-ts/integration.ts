@@ -14,8 +14,13 @@ import { expect } from "chai";
 import { BigNumber, Signer, constants } from "ethers";
 import { defaultAbiCoder, id, keccak256, parseEther, randomBytes } from "ethers/lib/utils";
 import { RoundTripProposalCreator } from "../src-ts/proposalCreator";
-import { GPMEventName, GovernorProposalMonitor } from "../src-ts/proposalMonitor";
-import { RoundTripProposalPipelineFactory } from "../src-ts/proposalStage";
+import {
+  GPMAllEvent,
+  GPMEventName,
+  GPMStatusEvent,
+  GovernorProposalMonitor,
+} from "../src-ts/proposalMonitor";
+import { ProposalStageStatus, RoundTripProposalPipelineFactory } from "../src-ts/proposalStage";
 import {
   ArbitrumTimelock,
   L1ArbitrumTimelock,
@@ -25,7 +30,7 @@ import {
   NoteStore__factory,
   TestUpgrade__factory,
   UpgradeExecutor,
-  UpgradeExecutor__factory
+  UpgradeExecutor__factory,
 } from "../typechain-types";
 
 const wait = async (ms: number) => new Promise((res) => setTimeout(res, ms));
@@ -235,7 +240,7 @@ const mineBlocksAndWaitForProposalState = async (
   mining: boolean
 ) => {
   for (let index = 0; index < blockCount; index++) {
-    if(mining) {
+    if (mining) {
       await mineBlock(l1Signer);
       await mineBlock(l2Signer);
     } else {
@@ -298,11 +303,21 @@ export const l2L1MonitoringValueTest = async (
     await l2Signer.provider!.getBlockNumber(),
     pipelineFactory
   );
+  proposalMonitor.on(GPMEventName.TRACKER_STATUS, (e: GPMStatusEvent) => {
+    console.log(
+      `Gov:${e.governorAddress}, Prop:${e.proposalId}, Stage:${e.stage}, Status:${
+        ProposalStageStatus[e.status]
+      }`
+    );
+  });
   proposalMonitor.start().catch((e) => console.error(e));
   proposalMonitor.on(GPMEventName.TRACKER_ERRORED, (e) => console.error(e));
 
   const trackerEnd = new Promise<void>((resolve) =>
-    proposalMonitor.once(GPMEventName.TRACKER_ENDED, resolve)
+    proposalMonitor.once(GPMEventName.TRACKER_ENDED, (e: GPMAllEvent) => {
+      proposalMonitor.stop();
+      resolve();
+    })
   );
 
   // send the proposal
@@ -362,7 +377,7 @@ const mineBlocksUntilComplete = async (
       });
 
     while (mining) {
-      if(shouldActuallyMine) {
+      if (shouldActuallyMine) {
         await mineBlock(l1Signer);
         await mineBlock(l2Signer);
       }
@@ -423,11 +438,21 @@ export const l2L1L2MonitoringValueTest = async (
     await l2Signer.provider!.getBlockNumber(),
     pipelineFactory
   );
+  proposalMonitor.on(GPMEventName.TRACKER_STATUS, (e: GPMStatusEvent) => {
+    console.log(
+      `Gov:${e.governorAddress}, Prop:${e.proposalId}, Stage:${e.stage}, Status:${
+        ProposalStageStatus[e.status]
+      }`
+    );
+  });
   proposalMonitor.start().catch((e) => console.error(e));
   proposalMonitor.on(GPMEventName.TRACKER_ERRORED, (e) => console.error(e));
 
   const trackerEnd = new Promise<void>((resolve) =>
-    proposalMonitor.once(GPMEventName.TRACKER_ENDED, resolve)
+    proposalMonitor.once(GPMEventName.TRACKER_ENDED, (e: GPMAllEvent) => {
+      proposalMonitor.stop();
+      resolve();
+    })
   );
 
   // send the proposal
@@ -520,11 +545,21 @@ export const l2L1MonitoringTest = async (
     await l2Signer.provider!.getBlockNumber(),
     pipelineFactory
   );
+  proposalMonitor.on(GPMEventName.TRACKER_STATUS, (e: GPMStatusEvent) => {
+    console.log(
+      `Gov:${e.governorAddress}, Prop:${e.proposalId}, Stage:${e.stage}, Status:${
+        ProposalStageStatus[e.status]
+      }`
+    );
+  });
   proposalMonitor.start().catch((e) => console.error(e));
   proposalMonitor.on(GPMEventName.TRACKER_ERRORED, (e) => console.error(e));
 
   const trackerEnd = new Promise<void>((resolve) =>
-    proposalMonitor.once(GPMEventName.TRACKER_ENDED, resolve)
+    proposalMonitor.once(GPMEventName.TRACKER_ENDED, (e: GPMAllEvent) => {
+      proposalMonitor.stop();
+      resolve();
+    })
   );
 
   // send the proposal
@@ -611,11 +646,22 @@ export const l2L1L2MonitoringTest = async (
     await l2Signer.provider!.getBlockNumber(),
     pipelineFactory
   );
+  proposalMonitor.on(GPMEventName.TRACKER_STATUS, (e: GPMStatusEvent) => {
+    console.log(
+      `Gov:${e.governorAddress}, Prop:${e.proposalId}, Stage:${e.stage}, Status:${
+        ProposalStageStatus[e.status]
+      }`
+    );
+  });
+
   proposalMonitor.start().catch((e) => console.error(e));
   proposalMonitor.on(GPMEventName.TRACKER_ERRORED, (e) => console.error(e));
 
   const trackerEnd = new Promise<void>((resolve) =>
-    proposalMonitor.once(GPMEventName.TRACKER_ENDED, resolve)
+    proposalMonitor.once(GPMEventName.TRACKER_ENDED, (e: GPMAllEvent) => {
+      proposalMonitor.stop();
+      resolve();
+    })
   );
 
   // send the proposal

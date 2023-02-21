@@ -4,6 +4,7 @@ import { ProposalCreatedEventObject } from "../typechain-types/src/L2ArbitrumGov
 import { wait } from "./utils";
 import {
   ProposalStagePipelineFactory,
+  ProposalStageStatus,
   ProposalStageTracker,
 } from "./proposalStage";
 import { EventEmitter } from "events";
@@ -12,6 +13,10 @@ export enum GPMEventName {
   TRACKER_STARTED = "TRACKER_STARTED",
   TRACKER_ENDED = "TRACKER_ENDED",
   TRACKER_ERRORED = "TRACKER_ERRORED",
+  /**
+   * The stage being tracked has changed, or has changed status
+   */
+  TRACKER_STATUS = "TRACKED_STATUS",
 }
 export interface GPMEvent {
   governorAddress: string;
@@ -19,6 +24,11 @@ export interface GPMEvent {
 }
 export interface GPMErroredEvent extends GPMEvent {
   error: Error;
+}
+export interface GPMStatusEvent extends GPMEvent {
+  status: ProposalStageStatus;
+  stage: string;
+  identifier: string;
 }
 export type GPMAllEvent = GPMEvent | GPMErroredEvent;
 
@@ -41,15 +51,23 @@ export class GovernorProposalMonitor extends EventEmitter {
   public emit(eventName: GPMEventName.TRACKER_STARTED, args: GPMEvent): boolean;
   public emit(eventName: GPMEventName.TRACKER_ENDED, args: GPMEvent): boolean;
   public emit(eventName: GPMEventName.TRACKER_ERRORED, args: GPMErroredEvent): boolean;
+  public emit(eventName: GPMEventName.TRACKER_STATUS, args: GPMStatusEvent): boolean;
   public override emit(eventName: GPMEventName, args: GPMAllEvent) {
     return super.emit(eventName, args);
   }
 
+  private polling = false;
+
   public async start() {
+    if (this.polling === true) {
+      throw new Error("Proposal monitor already started");
+    }
+    this.polling = true;
+
     let blockThen = this.startBlockNumber;
     await wait(this.pollingIntervalMs);
 
-    while (true) {
+    while (this.polling) {
       const blockNow = Math.max(
         (await this.governorProvider.getBlockNumber()) - this.blockLag,
         blockThen
@@ -70,11 +88,7 @@ export class GovernorProposalMonitor extends EventEmitter {
           toBlock: blockNow - 1,
           ...proposalCreatedFilter,
         })
-      ).map(
-        (l) =>
-          governor.interface.parseLog(l)
-            .args as unknown as ProposalCreatedEventObject
-      );
+      ).map((l) => governor.interface.parseLog(l).args as unknown as ProposalCreatedEventObject);
       for (const log of logs) {
         const gen = this.pipelineFactory.createPipeline(
           this.governorAddress,
@@ -85,9 +99,13 @@ export class GovernorProposalMonitor extends EventEmitter {
           log.description
         );
 
-        const propStageTracker = new ProposalStageTracker(
-          gen,
-          this.pollingIntervalMs
+        const propStageTracker = new ProposalStageTracker(gen, this.pollingIntervalMs);
+        propStageTracker.on("status", (args) =>
+          this.emit(GPMEventName.TRACKER_STATUS, {
+            governorAddress: this.governorAddress,
+            proposalId: log.proposalId.toHexString(),
+            ...args,
+          })
         );
 
         this.emit(GPMEventName.TRACKER_STARTED, {
@@ -118,5 +136,12 @@ export class GovernorProposalMonitor extends EventEmitter {
       await wait(this.pollingIntervalMs);
       blockThen = blockNow;
     }
+  }
+
+  public async stop() {
+    if (this.polling === false) {
+      throw new Error("Proposal monitor not already started");
+    }
+    this.polling = false;
   }
 }
