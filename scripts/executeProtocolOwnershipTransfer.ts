@@ -16,7 +16,9 @@ import {
   L1CustomGateway__factory,
   L1GatewayRouter__factory,
 } from "../token-bridge-contracts/build/types";
-import { ARB_OWNER_PRECOMPILE, GnosisBatch } from "./prepareProtocolOwnershipTransfer";
+import { GnosisBatch } from "./prepareProtocolOwnershipTransfer";
+
+export const ARB_OWNER_PRECOMPILE = "0x0000000000000000000000000000000000000070";
 
 /**
  * Load and execute all prepared TXs to transfer ownership of Arb and Nova assets.
@@ -32,21 +34,21 @@ export const executeOwnershipTransfer = async () => {
   );
 
   //// Arb
-  const l1ArbProtocolTxs = fetchTXs(envVars.l1ArbProtocolTransferTXsLocation);
+  const l1ArbProtocolTxs = buildTXs(envVars.l1ArbProtocolTransferTXsLocation);
   console.log("Transfer Arb protocol ownership on L1");
   for (let i = 0; i < l1ArbProtocolTxs.length; i++) {
     console.log("Execute ", l1ArbProtocolTxs[i].data, l1ArbProtocolTxs[i].to);
     await (await l1ProtocolOwner.sendTransaction(l1ArbProtocolTxs[i])).wait();
   }
 
-  const l1ArbTokenBridgeTxs = fetchTXs(envVars.l1ArbTokenBridgeTransferTXsLocation);
+  const l1ArbTokenBridgeTxs = buildTXs(envVars.l1ArbTokenBridgeTransferTXsLocation);
   console.log("Transfer Arb token bridge ownership on L1");
   for (let i = 0; i < l1ArbTokenBridgeTxs.length; i++) {
     console.log("Execute ", l1ArbTokenBridgeTxs[i].data, l1ArbTokenBridgeTxs[i].to);
     await (await ethDeployer.sendTransaction(l1ArbTokenBridgeTxs[i])).wait();
   }
 
-  const arbTxs = fetchTXs(envVars.arbTransferAssetsTXsLocation);
+  const arbTxs = buildTXs(envVars.arbTransferAssetsTXsLocation);
   console.log("Transfer Arb assets ownership on L2");
   for (let i = 0; i < arbTxs.length; i++) {
     if (arbTxs[i].to == ARB_OWNER_PRECOMPILE) {
@@ -59,14 +61,14 @@ export const executeOwnershipTransfer = async () => {
 
   //// Nova
   if (isDeployingToNova()) {
-    const l1NovaTokenBridgeTxs = fetchTXs(envVars.l1NovaTokenBridgeTransferTXsLocation);
+    const l1NovaTokenBridgeTxs = buildTXs(envVars.l1NovaTokenBridgeTransferTXsLocation);
     console.log("Transfer Nova token bridge ownership on L1");
     for (let i = 0; i < l1NovaTokenBridgeTxs.length; i++) {
       console.log("Execute ", l1NovaTokenBridgeTxs[i].data, l1NovaTokenBridgeTxs[i].to);
       await (await ethDeployer.sendTransaction(l1NovaTokenBridgeTxs[i])).wait();
     }
 
-    const novaTxs = fetchTXs(envVars.novaTransferAssetsTXsLocation);
+    const novaTxs = buildTXs(envVars.novaTransferAssetsTXsLocation);
     console.log("Transfer Nova assets ownership on L2");
     for (let i = 0; i < novaTxs.length; i++) {
       if (novaTxs[i].to == ARB_OWNER_PRECOMPILE) {
@@ -85,7 +87,7 @@ export const executeOwnershipTransfer = async () => {
  * @param fileName
  * @returns
  */
-function fetchTXs(fileName: string): { data: string; to: string }[] {
+function buildTXs(fileName: string): { data: string; to: string }[] {
   let ownershipTransferTXs: GnosisBatch = JSON.parse(fs.readFileSync(fileName).toString());
   let txs = ownershipTransferTXs["transactions"];
   let txsToExecute: { data: string; to: string }[] = new Array();
@@ -96,9 +98,10 @@ function fetchTXs(fileName: string): { data: string; to: string }[] {
       `function ${functionName}(${tx["contractMethod"]["inputs"][0]["type"]} ${tx["contractMethod"]["inputs"][0]["name"]})`,
     ];
     let iface = new ethers.utils.Interface(ABI);
+    let functionInput = Object.values(tx["contractInputsValues"])[0];
     txsToExecute.push({
       to: tx.to,
-      data: iface.encodeFunctionData(functionName, [tx["contractInputsValues"]["value"]]),
+      data: iface.encodeFunctionData(functionName, [functionInput]),
     });
   });
 

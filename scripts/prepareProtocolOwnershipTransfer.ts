@@ -253,7 +253,7 @@ async function getChainOwnerTransferTXs(
     }
 
     txs.push({
-      to: ownerPrecompile.address,
+      to: ARB_OWNER_PRECOMPILE,
       value: "0",
       data: "",
       contractMethod: {
