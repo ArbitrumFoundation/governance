@@ -11,7 +11,7 @@
         "name": "transferOwnership",
         "payable": false
       },
-      "contractInputsValues": { "value": "0x8847c0009E644C24980E84f03325Be7e5F5b8529" }
+      "contractInputsValues": { "newOwner": "0x8847c0009E644C24980E84f03325Be7e5F5b8529" }
     },
     {
       "to": "0xE72ba9418b5f2Ce0A6a40501Fe77c6839Aa37333",
@@ -22,10 +22,10 @@
         "name": "transferOwnership",
         "payable": false
       },
-      "contractInputsValues": { "value": "0x8847c0009E644C24980E84f03325Be7e5F5b8529" }
+      "contractInputsValues": { "newOwner": "0x8847c0009E644C24980E84f03325Be7e5F5b8529" }
     },
     {
-      "to": "0x000000000000000000000000000000000000006b",
+      "to": "0x0000000000000000000000000000000000000070",
       "value": "0",
       "data": "",
       "contractMethod": {
@@ -33,7 +33,7 @@
         "name": "addChainOwner",
         "payable": false
       },
-      "contractInputsValues": { "value": "0x8847c0009E644C24980E84f03325Be7e5F5b8529" }
+      "contractInputsValues": { "newOwner": "0x8847c0009E644C24980E84f03325Be7e5F5b8529" }
     },
     {
       "to": "0x000000000000000000000000000000000000006b",
@@ -44,7 +44,7 @@
         "name": "removeChainOwner",
         "payable": false
       },
-      "contractInputsValues": { "value": "0xD345e41aE2cb00311956aA7109fC801Ae8c81a52" }
+      "contractInputsValues": { "ownerToRemove": "0xD345e41aE2cb00311956aA7109fC801Ae8c81a52" }
     },
     {
       "to": "0x000000000000000000000000000000000000006b",
@@ -55,7 +55,7 @@
         "name": "removeChainOwner",
         "payable": false
       },
-      "contractInputsValues": { "value": "0x98e4dB7e07e584F89A2F6043E7b7C89DC27769eD" }
+      "contractInputsValues": { "ownerToRemove": "0x98e4dB7e07e584F89A2F6043E7b7C89DC27769eD" }
     }
   ]
 }

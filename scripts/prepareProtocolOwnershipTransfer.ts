@@ -28,7 +28,7 @@ export type GnosisTX = {
     payable: boolean;
   };
   contractInputsValues: {
-    value: string;
+    [value: string]: string;
   };
 };
 
@@ -240,7 +240,7 @@ async function getChainOwnerTransferTXs(
       payable: false,
     },
     contractInputsValues: {
-      value: l2Executor,
+      newOwner: l2Executor,
     },
   });
 
@@ -268,7 +268,7 @@ async function getChainOwnerTransferTXs(
         payable: false,
       },
       contractInputsValues: {
-        value: oldOwner,
+        ownerToRemove: oldOwner,
       },
     });
   }
@@ -299,7 +299,7 @@ async function generateRollupSetOwnerTX(
       payable: false,
     },
     contractInputsValues: {
-      value: l1Executor,
+      newOwner: l1Executor,
     },
   };
 }
@@ -327,7 +327,7 @@ async function generateRouterSetOwnerTX(
       payable: false,
     },
     contractInputsValues: {
-      value: l1Executor,
+      newOwner: l1Executor,
     },
   };
 }
@@ -355,7 +355,7 @@ async function generateCustomGatewaySetOwnerTX(
       payable: false,
     },
     contractInputsValues: {
-      value: l1Executor,
+      newOwner: l1Executor,
     },
   };
 }
@@ -383,7 +383,7 @@ async function generateProxyAdminTransferOwnershipTX(
       payable: false,
     },
     contractInputsValues: {
-      value: executorAddress,
+      newOwner: executorAddress,
     },
   };
 }
@@ -419,7 +419,7 @@ async function generateBeaconTransferOwnershipTX(
       payable: false,
     },
     contractInputsValues: {
-      value: executorAddress,
+      newOwner: executorAddress,
     },
   };
 }

@@ -11,7 +11,7 @@
         "name": "setOwner",
         "payable": false
       },
-      "contractInputsValues": { "value": "0x01ae5E448C71e1A7DCE0C00DF427209360A079D9" }
+      "contractInputsValues": { "newOwner": "0x01ae5E448C71e1A7DCE0C00DF427209360A079D9" }
     },
     {
       "to": "0x4e845AcF190e4b36f8E6057be87E8715BEe7C56b",
@@ -22,7 +22,7 @@
         "name": "transferOwnership",
         "payable": false
       },
-      "contractInputsValues": { "value": "0x01ae5E448C71e1A7DCE0C00DF427209360A079D9" }
+      "contractInputsValues": { "newOwner": "0x01ae5E448C71e1A7DCE0C00DF427209360A079D9" }
     }
   ]
 }
