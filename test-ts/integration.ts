@@ -36,7 +36,7 @@ import {
 
 const wait = async (ms: number) => new Promise((res) => setTimeout(res, ms));
 
-const mineBlock = async (signer: Signer) => {
+export const mineBlock = async (signer: Signer) => {
   await (await signer.sendTransaction({ to: await signer.getAddress(), value: 0 })).wait();
 };
 
@@ -667,20 +667,24 @@ export const l2L1L2MonitoringTest = async (
   );
 
   // send the proposal
+  const proposerAddress = await proposer.getAddress();
   console.log(
     "just here",
     await l2TokenContract.delegates(await proposer.getAddress()),
-    await l2TokenContract.balanceOf(await proposer.getAddress()).toString(),
+    (await l2TokenContract.balanceOf(await proposer.getAddress())).toString(),
     await l2GovernorContract.token(),
     l2TokenContract.address,
     (await l2GovernorContract.proposalThreshold()).toString(),
     (
-      await l2GovernorContract.getVotes(
-        await proposer.getAddress(),
-        await proposer.provider!.getBlockNumber()
-      )
-    ).toString()
+      await l2GovernorContract.getVotes(proposerAddress, await proposer.provider!.getBlockNumber())
+    ).toString(),
+    await l2TokenContract.getVotes(proposerAddress),
+    await l2TokenContract.getPastVotes(
+      proposerAddress,
+      await l2GovernorContract.provider!.getBlockNumber()
+    )
   );
+
   await (
     await proposer.sendTransaction({
       to: l2GovernorContract.address,

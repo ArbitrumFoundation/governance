@@ -1,10 +1,12 @@
 import { JsonRpcProvider } from "@ethersproject/providers";
 import { parseEther } from "ethers/lib/utils";
+import { wait } from "../src-ts/utils";
 import {
   l2L1L2MonitoringTest,
   l2L1L2MonitoringValueTest,
   l2L1MonitoringTest,
   l2L1MonitoringValueTest,
+  mineBlock,
 } from "../test-ts/integration";
 import { L2ArbitrumToken__factory } from "../typechain-types";
 import {
@@ -46,6 +48,16 @@ async function main() {
     await (await l2Token.connect(teamWallet).delegate(teamWallet.address)).wait();
     console.log("bal before", (await l2Token.balanceOf(teamWallet.address)).toString());
     console.log("bal after", await l2Token.delegates(teamWallet.address), teamWallet.address);
+  }
+
+  // wait at least one block has passed so that balance checkpoints are in the past
+  const currentBlock = await arbProvider.getBlockNumber();
+  while ((await arbProvider.getBlockNumber()) - currentBlock < 2) {
+    if (isLocal) {
+      await mineBlock(ethDeployer);
+      await mineBlock(arbDeployer);
+      await wait(1000);
+    }
   }
 
   const arbContracts = loadArbContracts(arbProvider, deployedContracts);
