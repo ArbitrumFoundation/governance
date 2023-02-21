@@ -27,6 +27,7 @@ import {
   L1ArbitrumTimelock__factory,
   L2ArbitrumGovernor,
   L2ArbitrumGovernor__factory,
+  L2ArbitrumToken,
   NoteStore__factory,
   TestUpgrade__factory,
   UpgradeExecutor,
@@ -601,6 +602,7 @@ export const l2L1L2MonitoringTest = async (
   l2UpgradeExecutor: UpgradeExecutor,
   l1TimelockContract: L1ArbitrumTimelock,
   l2GovernorContract: L2ArbitrumGovernor,
+  l2TokenContract: L2ArbitrumToken,
   localMining: boolean = true
 ) => {
   const noteStore = await new NoteStore__factory(l2Signer).deploy();
@@ -665,6 +667,13 @@ export const l2L1L2MonitoringTest = async (
   );
 
   // send the proposal
+  console.log(
+    "just here",
+    await l2TokenContract.delegates(await proposer.getAddress()),
+    await l2TokenContract.balanceOf((await proposer.getAddress()).toString()),
+    await l2GovernorContract.token(),
+    l2TokenContract.address
+  );
   await (
     await proposer.sendTransaction({
       to: l2GovernorContract.address,

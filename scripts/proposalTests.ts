@@ -59,6 +59,7 @@ async function main() {
     arbContracts.l2Executor,
     ethContracts.l1Timelock,
     arbContracts.l2CoreGoverner,
+    arbContracts.l2Token,
     isLocal
   );
 
