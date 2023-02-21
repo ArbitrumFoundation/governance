@@ -1,15 +1,12 @@
 import { BigNumber, Wallet } from "ethers";
-import {
-  formatBytes32String,
-  hexlify,
-  keccak256,
-  zeroPad,
-} from "ethers/lib/utils";
+import { formatBytes32String, hexlify, keccak256, zeroPad } from "ethers/lib/utils";
 import * as fs from "fs";
+import { pointToTokenAmount } from "./testUtils";
 
 // example
 // "0x4fbede53b59d1a2ab85f785ad76e1dcd66a1546a": {
 //     "points": 15,
+//     "tokens": 10200,
 //     "meets_criteria_2_1": 1,
 //     "meets_criteria_2_2_a": 1,
 //     "meets_criteria_2_2_b": 1,
@@ -69,11 +66,7 @@ const makeRandomCriteria = () => {
     // set random and dependent items
     let currentVal = criteria[criteriaIndex] || zeroOrOne();
 
-    for (
-      let dependency = 0;
-      dependency < baseCriteria[getCriteriaIndex(index)];
-      dependency++
-    ) {
+    for (let dependency = 0; dependency < baseCriteria[getCriteriaIndex(index)]; dependency++) {
       pointsSoFar += currentVal;
       criteria[criteriaIndex + dependency] = currentVal;
 
@@ -165,11 +158,7 @@ const toPrivKey = (seed: BigNumber) => {
   return keccak256(hexlify(zeroPad(seed.toHexString(), 32)));
 };
 
-const run = (
-  hardcodedAddress: string[],
-  randomCount: number,
-  outputLocation: string
-) => {
+const run = (hardcodedAddress: string[], randomCount: number, outputLocation: string) => {
   let recipients: { [key: string]: any } = {};
 
   for (const addr of hardcodedAddress) {
@@ -186,6 +175,7 @@ const run = (
   for (let index = 0; index < randomCount; index++) {
     const c = makeRandomCriteria();
     const p = calculatePoints(c);
+    const t = pointToTokenAmount(p);
 
     const privKey = toPrivKey(privKeyNum);
     const wall = new Wallet(privKey);
@@ -193,6 +183,7 @@ const run = (
 
     recipients[addr] = {
       points: p,
+      tokens: t,
       ...c,
       privKey,
     };
@@ -206,4 +197,4 @@ const run = (
 };
 
 const myAddresses: string[] = [];
-run(myAddresses, 300000, "testRecipients.json");
+run(myAddresses, 706, "testRecipients.json");

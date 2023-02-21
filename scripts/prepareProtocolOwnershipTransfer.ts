@@ -93,16 +93,16 @@ export const prepareAssetTransferTXs = async () => {
     // TXs to transfer ownership of Nova assets
     const novaExecutor = contractAddresses["novaUpgradeExecutorProxy"];
     const { l1ProtocolOwnerTXs, l1TokenBridgeOwnerTXs, l2TXs } = await generateAssetTransferTXs(
-      novaNetwork,
+      novaNetwork!,
       ethProvider,
-      novaProvider,
+      novaProvider!,
       l1Executor,
       novaExecutor
     );
 
     // transfer protocol
     const l1NovaProtocolBatch: GnosisBatch = getGnosisBatch(
-      novaNetwork.partnerChainID,
+      novaNetwork!.partnerChainID,
       l1ProtocolOwnerTXs
     );
     fs.writeFileSync(
@@ -113,7 +113,7 @@ export const prepareAssetTransferTXs = async () => {
 
     // transfer token bridge
     const l1NovaTokenBridgeBatch: GnosisBatch = getGnosisBatch(
-      novaNetwork.partnerChainID,
+      novaNetwork!.partnerChainID,
       l1TokenBridgeOwnerTXs
     );
     fs.writeFileSync(
@@ -126,7 +126,7 @@ export const prepareAssetTransferTXs = async () => {
     );
 
     // transfer L2
-    const novaAssetsBatch: GnosisBatch = getGnosisBatch(novaNetwork.chainID, l2TXs);
+    const novaAssetsBatch: GnosisBatch = getGnosisBatch(novaNetwork!.chainID, l2TXs);
     fs.writeFileSync(envVars.novaTransferAssetsTXsLocation, JSON.stringify(novaAssetsBatch));
     console.log("Nova L2 TXs file:", envVars.novaTransferAssetsTXsLocation);
   }
@@ -150,11 +150,24 @@ function getGnosisBatch(chainId: number, txs: GnosisTX[]): GnosisBatch {
 }
 
 /**
- * Generate data for 4 ownership transfer TXs:
- * - rollup
- * - protocol L1 proxy admin
- * - token bridge L1 proxy admin
- * - token bridge L2 proxy admin
+ * Get TXs in Gnosis Safe's JSON format
+ *
+ * @param chainId
+ * @param txs
+ * @returns
+ */
+function getGnosisBatch(chainId: number, txs: GnosisTX[]): GnosisBatch {
+  return {
+    chainId: chainId.toString(),
+    meta: {
+      checksum: "",
+    },
+    transactions: txs,
+  };
+}
+
+/**
+ * Generate data for ownership transfer TXs
  *
  * @returns
  */

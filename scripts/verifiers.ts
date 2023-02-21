@@ -78,7 +78,7 @@ export const verifyDeployment = async () => {
   const l1Contracts = loadL1Contracts(ethProvider, deployedContracts);
   const arbContracts = loadArbContracts(arbProvider, deployedContracts);
   const novaContracts = isDeployingToNova()
-    ? loadNovaContracts(novaProvider, deployedContracts)
+    ? loadNovaContracts(novaProvider!, deployedContracts)
     : undefined;
 
   console.log("Verify L1 contracts are properly deployed");
@@ -206,16 +206,16 @@ export const verifyDeployment = async () => {
       novaContracts!.novaUpgradeExecutorProxy,
       l1Contracts.l1Timelock,
       novaContracts!.novaProxyAdmin,
-      novaProvider,
+      novaProvider!,
       deployerConfig
     );
     await verifyNovaToken(
       novaContracts!.novaTokenProxy,
       l1Contracts.l1TokenProxy,
       novaContracts!.novaProxyAdmin,
-      novaProvider,
+      novaProvider!,
       ethProvider,
-      novaNetwork,
+      novaNetwork!,
       deployerConfig
     );
     await verifyNovaProxyAdmin(
@@ -247,7 +247,7 @@ async function verifyL1Token(
   l1ProxyAdmin: ProxyAdmin,
   l1ReverseCustomGateway: L1ForceOnlyReverseCustomGateway,
   ethProvider: Provider,
-  novaNetwork: L2Network
+  novaNetwork: L2Network | undefined
 ) {
   //// check proxy admin
   assertEquals(
@@ -255,6 +255,8 @@ async function verifyL1Token(
     l1ProxyAdmin.address,
     "L1ProxyAdmin should be L1ArbitrumToken's proxy admin"
   );
+
+  const deadAddress = "0x000000000000000000000000000000000000dEaD";
 
   //// check initialization params are correctly set
   assertEquals(await l1Token.name(), "Arbitrum", "Incorrect token name set for L1Token");
@@ -266,12 +268,12 @@ async function verifyL1Token(
   );
   assertEquals(
     await l1Token.novaGateway(),
-    novaNetwork.tokenBridge.l1CustomGateway,
+    isDeployingToNova() ? novaNetwork!.tokenBridge.l1CustomGateway : deadAddress,
     "Incorrect Nova gateway set on L1Token"
   );
   assertEquals(
     await l1Token.novaRouter(),
-    novaNetwork.tokenBridge.l1GatewayRouter,
+    isDeployingToNova() ? novaNetwork!.tokenBridge.l1GatewayRouter : deadAddress,
     "Incorrect Nova router set on L1Token"
   );
 }

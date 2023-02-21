@@ -55,21 +55,21 @@ export const verifyOwnership = async () => {
     const novaExecutor = contractAddresses["novaUpgradeExecutorProxy"];
 
     console.log("Verify ownership over Nova protocol contracts");
-    const novaRollup = RollupCore__factory.connect(novaNetwork.ethBridge.rollup, ethProvider);
+    const novaRollup = RollupCore__factory.connect(novaNetwork!.ethBridge.rollup, ethProvider);
     await verifyProtocolOwnership(novaRollup, l1Executor, ethProvider);
 
     console.log("Verify ownership over Nova token bridge contracts");
     await verifyTokenBridgeOwnership(
-      novaNetwork,
+      novaNetwork!,
       l1Executor,
       novaExecutor,
       ethProvider,
-      novaProvider
+      novaProvider!
     );
 
     if (!isLocalDeployment()) {
       console.log("Verify Nova chain owner");
-      await verifyArbOwner(novaProvider, novaExecutor);
+      await verifyArbOwner(novaProvider!, novaExecutor);
     }
   }
 };
