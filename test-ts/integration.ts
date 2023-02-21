@@ -27,11 +27,10 @@ import {
   L1ArbitrumTimelock__factory,
   L2ArbitrumGovernor,
   L2ArbitrumGovernor__factory,
-  L2ArbitrumToken,
   NoteStore__factory,
   TestUpgrade__factory,
   UpgradeExecutor,
-  UpgradeExecutor__factory,
+  UpgradeExecutor__factory
 } from "../typechain-types";
 
 const wait = async (ms: number) => new Promise((res) => setTimeout(res, ms));
@@ -602,7 +601,6 @@ export const l2L1L2MonitoringTest = async (
   l2UpgradeExecutor: UpgradeExecutor,
   l1TimelockContract: L1ArbitrumTimelock,
   l2GovernorContract: L2ArbitrumGovernor,
-  l2TokenContract: L2ArbitrumToken,
   localMining: boolean = true
 ) => {
   const noteStore = await new NoteStore__factory(l2Signer).deploy();
@@ -667,24 +665,6 @@ export const l2L1L2MonitoringTest = async (
   );
 
   // send the proposal
-  const proposerAddress = await proposer.getAddress();
-  console.log(
-    "just here",
-    await l2TokenContract.delegates(await proposer.getAddress()),
-    (await l2TokenContract.balanceOf(await proposer.getAddress())).toString(),
-    await l2GovernorContract.token(),
-    l2TokenContract.address,
-    (await l2GovernorContract.proposalThreshold()).toString(),
-    (
-      await l2GovernorContract.getVotes(proposerAddress, await proposer.provider!.getBlockNumber())
-    ).toString(),
-    await l2TokenContract.getVotes(proposerAddress),
-    await l2TokenContract.getPastVotes(
-      proposerAddress,
-      await l2GovernorContract.provider!.getBlockNumber()
-    )
-  );
-
   await (
     await proposer.sendTransaction({
       to: l2GovernorContract.address,

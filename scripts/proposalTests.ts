@@ -39,15 +39,7 @@ async function main() {
   if (
     (await l2Token.delegates(teamWallet.address)).toLowerCase() !== teamWallet.address.toLowerCase()
   ) {
-    console.log(teamWallet.address);
-    console.log(
-      `Delegating team wallet to itself: ${(
-        await l2Token.balanceOf(teamWallet.address)
-      ).toString()}`
-    );
     await (await l2Token.connect(teamWallet).delegate(teamWallet.address)).wait();
-    console.log("bal before", (await l2Token.balanceOf(teamWallet.address)).toString());
-    console.log("bal after", await l2Token.delegates(teamWallet.address), teamWallet.address);
   }
 
   // wait at least one block has passed so that balance checkpoints are in the past
@@ -71,7 +63,6 @@ async function main() {
     arbContracts.l2Executor,
     ethContracts.l1Timelock,
     arbContracts.l2CoreGoverner,
-    arbContracts.l2Token,
     isLocal
   );
 
