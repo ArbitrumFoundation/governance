@@ -1,5 +1,5 @@
 import { envVars, getDeployersAndConfig, getProviders, isDeployingToNova } from "./providerSetup";
-import { Wallet } from "ethers";
+import { ethers, Wallet } from "ethers";
 import fs from "fs";
 import { getProxyOwner } from "./testUtils";
 import { ProxyAdmin__factory } from "../typechain-types";
@@ -10,148 +10,101 @@ import {
   L1CustomGateway__factory,
   L1GatewayRouter__factory,
 } from "../token-bridge-contracts/build/types";
+import { GnosisBatch } from "./prepareProtocolOwnershipTransfer";
 
 /**
  * Load and execute all prepared TXs to transfer ownership of Arb and Nova assets.
  * To be used in local env only.
  */
 export const executeOwnershipTransfer = async () => {
-  const { ethDeployer, arbDeployer, novaDeployer, arbNetwork, novaNetwork } =
-    await getDeployersAndConfig();
-  const { ethProvider, arbProvider, novaProvider } = await getProviders();
+  const { ethDeployer, arbDeployer, novaDeployer, arbNetwork } = await getDeployersAndConfig();
+  const { ethProvider } = await getProviders();
 
   // fetch protocol owner wallet from local test env
   const l1ProtocolOwner = (await getProtocolOwnerWallet(arbNetwork, ethProvider)).connect(
     ethProvider
   );
 
-  // get executor addresses
-  const contractAddresses = require("../" + envVars.deployedContractsLocation);
-  const l1Executor = contractAddresses["l1Executor"];
-  const arbExecutor = contractAddresses["l2Executor"];
+  //// Arb
+  const l1ArbProtocolTxs = fetchTXs(envVars.l1ArbProtocolTransferTXsLocation);
+  console.log("Transfer Arb protocol ownership on L1");
+  for (let i = 0; i < l1ArbProtocolTxs.length; i++) {
+    console.log("Execute ", l1ArbProtocolTxs[i].data, l1ArbProtocolTxs[i].to);
+    await (await l1ProtocolOwner.sendTransaction(l1ArbProtocolTxs[i])).wait();
+  }
 
-  //// Arb transfer
-  console.log("Transfer Arb asset's ownership");
-  const arbTxs = fetchAssetTransferTXs(envVars.arbTransferAssetsTXsLocation);
+  const l1ArbTokenBridgeTxs = fetchTXs(envVars.l1ArbTokenBridgeTransferTXsLocation);
+  console.log("Transfer Arb token bridge ownership on L1");
+  for (let i = 0; i < l1ArbTokenBridgeTxs.length; i++) {
+    console.log("Execute ", l1ArbTokenBridgeTxs[i].data, l1ArbTokenBridgeTxs[i].to);
+    await (await ethDeployer.sendTransaction(l1ArbTokenBridgeTxs[i])).wait();
+  }
 
-  if ((await getOwner(arbNetwork.ethBridge.rollup, arbNetwork, ethProvider)) != l1Executor) {
-    console.log("Set new Arb rollup owner");
-    await (await l1ProtocolOwner.sendTransaction(arbTxs["l1RollupOwnerTX"])).wait();
-  }
-  if ((await getOwner(arbNetwork.ethBridge.bridge, arbNetwork, ethProvider)) != l1Executor) {
-    console.log("Set new Arb protocol proxy admin owner");
-    await (await l1ProtocolOwner.sendTransaction(arbTxs["l1ProtocolProxyAdminOwnerTX"])).wait();
-  }
-  if (
-    (await getOwner(arbNetwork.tokenBridge.l1GatewayRouter, arbNetwork, ethProvider)) != l1Executor
-  ) {
-    console.log("Set new Arb L1 token bridge's proxy admin's owner");
-    await (await ethDeployer.sendTransaction(arbTxs["l1TokenBridgeProxyAdminOwnerTX"])).wait();
-  }
-  if (
-    (await getOwner(arbNetwork.tokenBridge.l2GatewayRouter, arbNetwork, arbProvider)) != arbExecutor
-  ) {
-    console.log("Set new Arb L2 token bridge proxy admin owner");
-    await (await arbDeployer.sendTransaction(arbTxs["l2TokenBridgeProxyAdminOwnerTX"])).wait();
-  }
-  if (
-    (await L1GatewayRouter__factory.connect(
-      arbNetwork.tokenBridge.l1GatewayRouter,
-      ethProvider
-    ).owner()) != l1Executor
-  ) {
-    console.log("Set new Arb L1 gateway router owner");
-    await (await ethDeployer.sendTransaction(arbTxs["l1GatewayRouterOwnerTX"])).wait();
-  }
-  if (
-    (await L1CustomGateway__factory.connect(
-      arbNetwork.tokenBridge.l1CustomGateway,
-      ethProvider
-    ).owner()) != l1Executor
-  ) {
-    console.log("Set new Arb L1 custom gateway owner");
-    await (await ethDeployer.sendTransaction(arbTxs["l1CustomGatewayOwnerTX"])).wait();
+  const arbTxs = fetchTXs(envVars.arbTransferAssetsTXsLocation);
+  console.log("Transfer Arb assets ownership on L2");
+  for (let i = 0; i < arbTxs.length; i++) {
+    if (arbTxs[i].to == "0x0000000000000000000000000000000000000070") {
+      // can't simulate arb chain ownership transfer in local network because chain owner is zero address
+      continue;
+    }
+    console.log("Execute ", arbTxs[i].data, arbTxs[i].to);
+    await (await arbDeployer.sendTransaction(arbTxs[i])).wait();
   }
 
   //// Nova
   if (isDeployingToNova()) {
-    const novaExecutor = contractAddresses["novaUpgradeExecutorProxy"];
+    const l1NovaProtocolTxs = fetchTXs(envVars.l1NovaProtocolTransferTXsLocation);
+    console.log("Transfer Nova protocol ownership on L1");
+    for (let i = 0; i < l1NovaProtocolTxs.length; i++) {
+      console.log("Execute ", l1NovaProtocolTxs[i].data, l1NovaProtocolTxs[i].to);
+      await (await l1ProtocolOwner.sendTransaction(l1NovaProtocolTxs[i])).wait();
+    }
 
-    console.log("Transfer Nova asset's ownership");
-    const novaTxs = fetchAssetTransferTXs(envVars.novaTransferAssetsTXsLocation);
+    const l1NovaTokenBridgeTxs = fetchTXs(envVars.l1NovaTokenBridgeTransferTXsLocation);
+    console.log("Transfer Nova token bridge ownership on L1");
+    for (let i = 0; i < l1NovaTokenBridgeTxs.length; i++) {
+      console.log("Execute ", l1NovaTokenBridgeTxs[i].data, l1NovaTokenBridgeTxs[i].to);
+      await (await ethDeployer.sendTransaction(l1NovaTokenBridgeTxs[i])).wait();
+    }
 
-    if ((await getOwner(novaNetwork.ethBridge.rollup, novaNetwork, ethProvider)) != l1Executor) {
-      console.log("Set new Nova rollup owner");
-      await (await l1ProtocolOwner.sendTransaction(novaTxs["l1RollupOwnerTX"])).wait();
-    }
-    if ((await getOwner(novaNetwork.ethBridge.bridge, novaNetwork, ethProvider)) != l1Executor) {
-      console.log("Set new Nova protocol proxy admin owner");
-      await (await l1ProtocolOwner.sendTransaction(novaTxs["l1ProtocolProxyAdminOwnerTX"])).wait();
-    }
-    if (
-      (await getOwner(novaNetwork.tokenBridge.l1GatewayRouter, novaNetwork, ethProvider)) !=
-      l1Executor
-    ) {
-      console.log("Set new Nova L1 token bridge proxy admin owner");
-      await (await ethDeployer.sendTransaction(novaTxs["l1TokenBridgeProxyAdminOwnerTX"])).wait();
-    }
-    if (
-      (await getOwner(novaNetwork.tokenBridge.l2GatewayRouter, novaNetwork, novaProvider)) !=
-      novaExecutor
-    ) {
-      console.log("Set new Nova L2 token bridge proxy admin owner");
-      await (await novaDeployer.sendTransaction(novaTxs["l2TokenBridgeProxyAdminOwnerTX"])).wait();
-    }
-    if (
-      (await L1GatewayRouter__factory.connect(
-        novaNetwork.tokenBridge.l1GatewayRouter,
-        ethProvider
-      ).owner()) != l1Executor
-    ) {
-      console.log("Set new Nova L1 gateway router owner");
-      await (await ethDeployer.sendTransaction(novaTxs["l1GatewayRouterOwnerTX"])).wait();
-    }
-    if (
-      (await L1CustomGateway__factory.connect(
-        novaNetwork.tokenBridge.l1CustomGateway,
-        ethProvider
-      ).owner()) != l1Executor
-    ) {
-      console.log("Set new Nova L1 custom gateway owner");
-      await (await ethDeployer.sendTransaction(novaTxs["l1CustomGatewayOwnerTX"])).wait();
+    const novaTxs = fetchTXs(envVars.novaTransferAssetsTXsLocation);
+    console.log("Transfer Nova assets ownership on L2");
+    for (let i = 0; i < novaTxs.length; i++) {
+      if (novaTxs[i].to == "0x0000000000000000000000000000000000000070") {
+        // can't simulate arb chain ownership transfer in local network because chain owner is zero address
+        continue;
+      }
+      console.log("Execute ", novaTxs[i].data, novaTxs[i].to);
+      await (await novaDeployer.sendTransaction(novaTxs[i])).wait();
     }
   }
 };
 
-async function getOwner(
-  contractAddress: string,
-  l2Network: L2Network,
-  provider: Provider
-): Promise<string> {
-  if (contractAddress == l2Network.ethBridge.rollup) {
-    return await getProxyOwner(l2Network.ethBridge.rollup, provider);
-  }
-
-  const proxyAdmin = ProxyAdmin__factory.connect(
-    await getProxyOwner(contractAddress, provider),
-    provider
-  );
-
-  return await proxyAdmin.owner();
-}
-
 /**
- * Load prepared TXs from JSON file
+ * Parse JSON with list of TXs and construct calldata for executing TXs
+ *
  * @param fileName
  * @returns
  */
-export const fetchAssetTransferTXs = (fileName: string) => {
-  let ownershipTransferTXs: { [key: string]: { data: string; to: string } } = JSON.parse(
-    fs.readFileSync(fileName).toString()
-  );
+function fetchTXs(fileName: string): { data: string; to: string }[] {
+  let ownershipTransferTXs: GnosisBatch = JSON.parse(fs.readFileSync(fileName).toString());
+  let txs = ownershipTransferTXs["transactions"];
+  let txsToExecute: { data: string; to: string }[] = new Array();
 
-  return ownershipTransferTXs;
-};
+  txs.forEach((tx) => {
+    const functionName = tx["contractMethod"]["name"];
+    let ABI = [
+      `function ${functionName}(${tx["contractMethod"]["inputs"][0]["type"]} ${tx["contractMethod"]["inputs"][0]["name"]})`,
+    ];
+    let iface = new ethers.utils.Interface(ABI);
+    txsToExecute.push({
+      to: tx.to,
+      data: iface.encodeFunctionData(functionName, [tx["contractInputsValues"]["value"]]),
+    });
+  });
+
+  return txsToExecute;
+}
 
 /**
  * Fetch protocol owner wallet from local test envirnoment container
@@ -273,7 +226,7 @@ async function printProxyAdmins() {
       ).owner()
     );
 
-    console.log("\nova l1CustomGateway", novaNetwork.tokenBridge.l1CustomGateway);
+    console.log("\nnova l1CustomGateway", novaNetwork.tokenBridge.l1CustomGateway);
     console.log(
       "nova l1CustomGateway's owner",
       await L1CustomGateway__factory.connect(

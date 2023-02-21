@@ -1,15 +1,9 @@
 import { envVars, getDeployersAndConfig, getProviders, isDeployingToNova } from "./providerSetup";
 import { getProxyOwner } from "./testUtils";
-import { ProxyAdmin__factory } from "../typechain-types";
-import { RollupAdminLogic__factory } from "@arbitrum/sdk/dist/lib/abi/factories/RollupAdminLogic__factory";
-import { ethers, PopulatedTransaction } from "ethers";
+import { ethers } from "ethers";
 import fs from "fs";
 import { L2Network } from "@arbitrum/sdk";
 import { ArbOwner__factory } from "@arbitrum/sdk/dist/lib/abi/factories/ArbOwner__factory";
-import {
-  L1CustomGateway__factory,
-  L1GatewayRouter__factory,
-} from "../token-bridge-contracts/build/types";
 
 const ARB_OWNER_PRECOMPILE = "0x0000000000000000000000000000000000000070";
 
@@ -53,7 +47,7 @@ export const prepareAssetTransferTXs = async () => {
   const arbExecutor = contractAddresses["l2Executor"];
 
   // TXs to transfer ownership of ArbOne assets
-  const { l1TXs, l2TXs } = await generateAssetTransferTXs(
+  const { l1ProtocolOwnerTXs, l1TokenBridgeOwnerTXs, l2TXs } = await generateAssetTransferTXs(
     arbNetwork,
     ethProvider,
     arbProvider,
@@ -61,30 +55,73 @@ export const prepareAssetTransferTXs = async () => {
     arbExecutor
   );
 
-  const l1ArbAssetsTransfer: GnosisBatch = getGnosisBatch(arbNetwork.partnerChainID, l1TXs);
-  fs.writeFileSync(envVars.l1ArbTransferAssetsTXsLocation, JSON.stringify(l1ArbAssetsTransfer));
-  console.log("Nova L1 TXs file:", envVars.l1ArbTransferAssetsTXsLocation);
+  // transfer protocol
+  const l1ArbProtocolBatch: GnosisBatch = getGnosisBatch(
+    arbNetwork.partnerChainID,
+    l1ProtocolOwnerTXs
+  );
+  fs.writeFileSync(envVars.l1ArbProtocolTransferTXsLocation, JSON.stringify(l1ArbProtocolBatch));
+  console.log("Arb L1 protocol transfer TXs file:", envVars.l1ArbProtocolTransferTXsLocation);
 
-  const arbAssetsTransfer: GnosisBatch = getGnosisBatch(arbNetwork.chainID, l2TXs);
-  fs.writeFileSync(envVars.arbTransferAssetsTXsLocation, JSON.stringify(arbAssetsTransfer));
-  console.log("Nova L1 TXs file:", envVars.arbTransferAssetsTXsLocation);
+  // transfer token bridge
+  const l1ArbTokenBridgeBatch: GnosisBatch = getGnosisBatch(
+    arbNetwork.partnerChainID,
+    l1TokenBridgeOwnerTXs
+  );
+  fs.writeFileSync(
+    envVars.l1ArbTokenBridgeTransferTXsLocation,
+    JSON.stringify(l1ArbTokenBridgeBatch)
+  );
+  console.log(
+    "Arb L1 token bridge transfer TXs file:",
+    envVars.l1ArbTokenBridgeTransferTXsLocation
+  );
 
+  // transfer L2
+  const arbAssetsBatch: GnosisBatch = getGnosisBatch(arbNetwork.chainID, l2TXs);
+  fs.writeFileSync(envVars.arbTransferAssetsTXsLocation, JSON.stringify(arbAssetsBatch));
+  console.log("Arb L2 TXs file:", envVars.arbTransferAssetsTXsLocation);
+
+  ///// Nova
   if (isDeployingToNova()) {
     // TXs to transfer ownership of Nova assets
     const novaExecutor = contractAddresses["novaUpgradeExecutorProxy"];
-    const { l1TXs, l2TXs } = await generateAssetTransferTXs(
+    const { l1ProtocolOwnerTXs, l1TokenBridgeOwnerTXs, l2TXs } = await generateAssetTransferTXs(
       novaNetwork,
       ethProvider,
       novaProvider,
       l1Executor,
       novaExecutor
     );
-    const l1NovaAssetsTransfer: GnosisBatch = getGnosisBatch(novaNetwork.partnerChainID, l1TXs);
-    fs.writeFileSync(envVars.l1NovaTransferAssetsTXsLocation, JSON.stringify(l1NovaAssetsTransfer));
-    console.log("Nova L1 TXs file:", envVars.l1NovaTransferAssetsTXsLocation);
 
-    const novaAssetsTransfer: GnosisBatch = getGnosisBatch(novaNetwork.chainID, l2TXs);
-    fs.writeFileSync(envVars.novaTransferAssetsTXsLocation, JSON.stringify(novaAssetsTransfer));
+    // transfer protocol
+    const l1NovaProtocolBatch: GnosisBatch = getGnosisBatch(
+      novaNetwork.partnerChainID,
+      l1ProtocolOwnerTXs
+    );
+    fs.writeFileSync(
+      envVars.l1NovaProtocolTransferTXsLocation,
+      JSON.stringify(l1NovaProtocolBatch)
+    );
+    console.log("Nova L1 protocol transfer TXs file:", envVars.l1NovaProtocolTransferTXsLocation);
+
+    // transfer token bridge
+    const l1NovaTokenBridgeBatch: GnosisBatch = getGnosisBatch(
+      novaNetwork.partnerChainID,
+      l1TokenBridgeOwnerTXs
+    );
+    fs.writeFileSync(
+      envVars.l1NovaTokenBridgeTransferTXsLocation,
+      JSON.stringify(l1NovaTokenBridgeBatch)
+    );
+    console.log(
+      "Nova L1 token bridge transfer TXs file:",
+      envVars.l1NovaTokenBridgeTransferTXsLocation
+    );
+
+    // transfer L2
+    const novaAssetsBatch: GnosisBatch = getGnosisBatch(novaNetwork.chainID, l2TXs);
+    fs.writeFileSync(envVars.novaTransferAssetsTXsLocation, JSON.stringify(novaAssetsBatch));
     console.log("Nova L2 TXs file:", envVars.novaTransferAssetsTXsLocation);
   }
 };
@@ -122,23 +159,28 @@ async function generateAssetTransferTXs(
   l1Executor: string,
   l2Executor: string
 ) {
-  /// L1
-  let l1TXs: GnosisTX[] = new Array();
-  l1TXs.push(await generateRollupSetOwnerTX(l2Network.ethBridge.rollup, l1Executor));
-  l1TXs.push(
+  /// L1 protocol owner TXs
+  let l1ProtocolOwnerTXs: GnosisTX[] = new Array();
+  l1ProtocolOwnerTXs.push(await generateRollupSetOwnerTX(l2Network.ethBridge.rollup, l1Executor));
+  l1ProtocolOwnerTXs.push(
     await generateProxyAdminTransferOwnershipTX(
       await getProxyOwner(l2Network.ethBridge.inbox, l1Provider),
       l1Executor
     )
   );
-  l1TXs.push(
+
+  /// L1 token bridge owner TXs
+  let l1TokenBridgeOwnerTXs: GnosisTX[] = new Array();
+  l1TokenBridgeOwnerTXs.push(
     await generateProxyAdminTransferOwnershipTX(
       await getProxyOwner(l2Network.tokenBridge.l1GatewayRouter, l1Provider),
       l1Executor
     )
   );
-  l1TXs.push(await generateRouterSetOwnerTX(l2Network.tokenBridge.l1GatewayRouter, l1Executor));
-  l1TXs.push(
+  l1TokenBridgeOwnerTXs.push(
+    await generateRouterSetOwnerTX(l2Network.tokenBridge.l1GatewayRouter, l1Executor)
+  );
+  l1TokenBridgeOwnerTXs.push(
     await generateCustomGatewaySetOwnerTX(l2Network.tokenBridge.l1CustomGateway, l1Executor)
   );
 
@@ -153,7 +195,8 @@ async function generateAssetTransferTXs(
   l2TXs.push(...(await getChainOwnerTransferTXs(l2Provider, l2Executor)));
 
   return {
-    l1TXs,
+    l1ProtocolOwnerTXs,
+    l1TokenBridgeOwnerTXs,
     l2TXs,
   };
 }
