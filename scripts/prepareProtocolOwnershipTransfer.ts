@@ -4,6 +4,12 @@ import { ethers } from "ethers";
 import fs from "fs";
 import { L2Network } from "@arbitrum/sdk";
 import { ArbOwner__factory } from "@arbitrum/sdk/dist/lib/abi/factories/ArbOwner__factory";
+import {
+  BeaconProxyFactory__factory,
+  L2ERC20Gateway__factory,
+  UpgradeableBeacon__factory,
+} from "../token-bridge-contracts/build/types";
+import { Provider } from "@ethersproject/providers";
 
 const ARB_OWNER_PRECOMPILE = "0x0000000000000000000000000000000000000070";
 
@@ -192,6 +198,13 @@ async function generateAssetTransferTXs(
       l2Executor
     )
   );
+  l2TXs.push(
+    await generateBeaconTransferOwnershipTX(
+      l2Network.tokenBridge.l2ERC20Gateway,
+      l2Executor,
+      l2Provider
+    )
+  );
   l2TXs.push(...(await getChainOwnerTransferTXs(l2Provider, l2Executor)));
 
   return {
@@ -360,6 +373,42 @@ async function generateProxyAdminTransferOwnershipTX(
 ): Promise<Promise<GnosisTX>> {
   return {
     to: proxyAdminAddress,
+    value: "0",
+    data: "",
+    contractMethod: {
+      inputs: [
+        {
+          internalType: "address",
+          name: "newOwner",
+          type: "address",
+        },
+      ],
+      name: "transferOwnership",
+      payable: false,
+    },
+    contractInputsValues: {
+      value: executorAddress,
+    },
+  };
+}
+
+/**
+ * Set beacon's owner
+ */
+async function generateBeaconTransferOwnershipTX(
+  l2ERC20GatewayAddress: string,
+  executorAddress: string,
+  l2Provider: Provider
+): Promise<Promise<GnosisTX>> {
+  const l2Erc20Gw = L2ERC20Gateway__factory.connect(l2ERC20GatewayAddress, l2Provider);
+  const beaconProxyFactory = BeaconProxyFactory__factory.connect(
+    await l2Erc20Gw.beaconProxyFactory(),
+    l2Provider
+  );
+  const beacon = UpgradeableBeacon__factory.connect(await beaconProxyFactory.beacon(), l2Provider);
+
+  return {
+    to: beacon.address,
     value: "0",
     data: "",
     contractMethod: {
