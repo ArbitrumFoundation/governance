@@ -1,1 +1,39 @@
-{"chainId":"1337","meta":{"checksum":""},"transactions":[{"to":"0x841118047F42754332d0Ad4db8a2893761dD7F5d","value":"0","data":"","contractMethod":{"inputs":[{"internalType":"address","name":"newOwner","type":"address"}],"name":"transferOwnership","payable":false},"contractInputsValues":{"newOwner":"0x01ae5E448C71e1A7DCE0C00DF427209360A079D9"}},{"to":"0x8e1308925a26cb5cF400afb402d67B3523473379","value":"0","data":"","contractMethod":{"inputs":[{"internalType":"address","name":"newOwner","type":"address"}],"name":"setOwner","payable":false},"contractInputsValues":{"newOwner":"0x01ae5E448C71e1A7DCE0C00DF427209360A079D9"}},{"to":"0x79b994D378518EAe46917Aa19F05cE6545fAAc26","value":"0","data":"","contractMethod":{"inputs":[{"internalType":"address","name":"newOwner","type":"address"}],"name":"setOwner","payable":false},"contractInputsValues":{"newOwner":"0x01ae5E448C71e1A7DCE0C00DF427209360A079D9"}}]}
+{
+  "chainId": "1337",
+  "meta": { "checksum": "" },
+  "transactions": [
+    {
+      "to": "0x841118047F42754332d0Ad4db8a2893761dD7F5d",
+      "value": "0",
+      "data": "",
+      "contractMethod": {
+        "inputs": [{ "internalType": "address", "name": "newOwner", "type": "address" }],
+        "name": "transferOwnership",
+        "payable": false
+      },
+      "contractInputsValues": { "newOwner": "0x01ae5E448C71e1A7DCE0C00DF427209360A079D9" }
+    },
+    {
+      "to": "0x8e1308925a26cb5cF400afb402d67B3523473379",
+      "value": "0",
+      "data": "",
+      "contractMethod": {
+        "inputs": [{ "internalType": "address", "name": "newOwner", "type": "address" }],
+        "name": "setOwner",
+        "payable": false
+      },
+      "contractInputsValues": { "newOwner": "0x01ae5E448C71e1A7DCE0C00DF427209360A079D9" }
+    },
+    {
+      "to": "0x79b994D378518EAe46917Aa19F05cE6545fAAc26",
+      "value": "0",
+      "data": "",
+      "contractMethod": {
+        "inputs": [{ "internalType": "address", "name": "newOwner", "type": "address" }],
+        "name": "setOwner",
+        "payable": false
+      },
+      "contractInputsValues": { "newOwner": "0x01ae5E448C71e1A7DCE0C00DF427209360A079D9" }
+    }
+  ]
+}

@@ -1,1 +1,61 @@
-{"chainId":"421613","meta":{"checksum":""},"transactions":[{"to":"0xeC377B42712608B0356CC54Da81B2be1A4982bAb","value":"0","data":"","contractMethod":{"inputs":[{"internalType":"address","name":"newOwner","type":"address"}],"name":"transferOwnership","payable":false},"contractInputsValues":{"newOwner":"0x8847c0009E644C24980E84f03325Be7e5F5b8529"}},{"to":"0xC0EaEeeb3Bb716ef3e49c2db0331e5bCaAb88865","value":"0","data":"","contractMethod":{"inputs":[{"internalType":"address","name":"newOwner","type":"address"}],"name":"transferOwnership","payable":false},"contractInputsValues":{"newOwner":"0x8847c0009E644C24980E84f03325Be7e5F5b8529"}},{"to":"0x0000000000000000000000000000000000000070","value":"0","data":"","contractMethod":{"inputs":[{"internalType":"address","name":"newOwner","type":"address"}],"name":"addChainOwner","payable":false},"contractInputsValues":{"newOwner":"0x8847c0009E644C24980E84f03325Be7e5F5b8529"}},{"to":"0x0000000000000000000000000000000000000070","value":"0","data":"","contractMethod":{"inputs":[{"internalType":"address","name":"ownerToRemove","type":"address"}],"name":"removeChainOwner","payable":false},"contractInputsValues":{"ownerToRemove":"0xc3f86bB81E32295D29C288fFb4828936538cF326"}},{"to":"0x0000000000000000000000000000000000000070","value":"0","data":"","contractMethod":{"inputs":[{"internalType":"address","name":"ownerToRemove","type":"address"}],"name":"removeChainOwner","payable":false},"contractInputsValues":{"ownerToRemove":"0xC8efDB677aFEB775Ce1617dd976B56B3a6e95bba"}}]}
+{
+  "chainId": "421613",
+  "meta": { "checksum": "" },
+  "transactions": [
+    {
+      "to": "0xeC377B42712608B0356CC54Da81B2be1A4982bAb",
+      "value": "0",
+      "data": "",
+      "contractMethod": {
+        "inputs": [{ "internalType": "address", "name": "newOwner", "type": "address" }],
+        "name": "transferOwnership",
+        "payable": false
+      },
+      "contractInputsValues": { "newOwner": "0x8847c0009E644C24980E84f03325Be7e5F5b8529" }
+    },
+    {
+      "to": "0xC0EaEeeb3Bb716ef3e49c2db0331e5bCaAb88865",
+      "value": "0",
+      "data": "",
+      "contractMethod": {
+        "inputs": [{ "internalType": "address", "name": "newOwner", "type": "address" }],
+        "name": "transferOwnership",
+        "payable": false
+      },
+      "contractInputsValues": { "newOwner": "0x8847c0009E644C24980E84f03325Be7e5F5b8529" }
+    },
+    {
+      "to": "0x0000000000000000000000000000000000000070",
+      "value": "0",
+      "data": "",
+      "contractMethod": {
+        "inputs": [{ "internalType": "address", "name": "newOwner", "type": "address" }],
+        "name": "addChainOwner",
+        "payable": false
+      },
+      "contractInputsValues": { "newOwner": "0x8847c0009E644C24980E84f03325Be7e5F5b8529" }
+    },
+    {
+      "to": "0x0000000000000000000000000000000000000070",
+      "value": "0",
+      "data": "",
+      "contractMethod": {
+        "inputs": [{ "internalType": "address", "name": "ownerToRemove", "type": "address" }],
+        "name": "removeChainOwner",
+        "payable": false
+      },
+      "contractInputsValues": { "ownerToRemove": "0xc3f86bB81E32295D29C288fFb4828936538cF326" }
+    },
+    {
+      "to": "0x0000000000000000000000000000000000000070",
+      "value": "0",
+      "data": "",
+      "contractMethod": {
+        "inputs": [{ "internalType": "address", "name": "ownerToRemove", "type": "address" }],
+        "name": "removeChainOwner",
+        "payable": false
+      },
+      "contractInputsValues": { "ownerToRemove": "0xC8efDB677aFEB775Ce1617dd976B56B3a6e95bba" }
+    }
+  ]
+}
