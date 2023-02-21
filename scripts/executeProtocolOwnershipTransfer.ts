@@ -53,13 +53,6 @@ export const executeOwnershipTransfer = async () => {
 
   //// Nova
   if (isDeployingToNova()) {
-    const l1NovaProtocolTxs = fetchTXs(envVars.l1NovaProtocolTransferTXsLocation);
-    console.log("Transfer Nova protocol ownership on L1");
-    for (let i = 0; i < l1NovaProtocolTxs.length; i++) {
-      console.log("Execute ", l1NovaProtocolTxs[i].data, l1NovaProtocolTxs[i].to);
-      await (await l1ProtocolOwner.sendTransaction(l1NovaProtocolTxs[i])).wait();
-    }
-
     const l1NovaTokenBridgeTxs = fetchTXs(envVars.l1NovaTokenBridgeTransferTXsLocation);
     console.log("Transfer Nova token bridge ownership on L1");
     for (let i = 0; i < l1NovaTokenBridgeTxs.length; i++) {
