@@ -670,9 +670,16 @@ export const l2L1L2MonitoringTest = async (
   console.log(
     "just here",
     await l2TokenContract.delegates(await proposer.getAddress()),
-    await l2TokenContract.balanceOf((await proposer.getAddress()).toString()),
+    await l2TokenContract.balanceOf(await proposer.getAddress()).toString(),
     await l2GovernorContract.token(),
-    l2TokenContract.address
+    l2TokenContract.address,
+    (await l2GovernorContract.proposalThreshold()).toString(),
+    (
+      await l2GovernorContract.getVotes(
+        await proposer.getAddress(),
+        await proposer.provider!.getBlockNumber()
+      )
+    ).toString()
   );
   await (
     await proposer.sendTransaction({
