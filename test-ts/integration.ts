@@ -941,8 +941,8 @@ export const l2l1l2Proposal = async (
   l2TimelockContract: ArbitrumTimelock,
   l2UpgradeExecutor: UpgradeExecutor
 ) => {
-  const noteStore = await new NoteStore__factory(l1Deployer).deploy();
-  const testUpgrade = await new TestUpgrade__factory(l1Deployer).deploy();
+  const noteStore = await new NoteStore__factory(l2Deployer).deploy();
+  const testUpgrade = await new TestUpgrade__factory(l2Deployer).deploy();
   const note = "0x" + Buffer.from(randomBytes(32)).toString("hex");
   const upgradeValue = BigNumber.from(0);
   const noteId = await noteStore.noteId(
