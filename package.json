@@ -24,6 +24,7 @@
     "verify:ownership:transfer": "ts-node ./scripts/protocolOwnershipVerifier.ts",
     "verify:contracts:etherscan": "ts-node ./scripts/verifyContractsCode.ts",
     "test:integration": "hardhat test",
+    "test:proposals": "ts-node ./scripts/proposalTests.ts",
     "format:sol": "forge fmt"
   },
   "devDependencies": {
