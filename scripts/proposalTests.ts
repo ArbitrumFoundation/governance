@@ -96,7 +96,7 @@ async function main() {
 
   // wait a little for the proposal to actually be made and the votes cast
   // on goerli the voting delay is 2 blocks, so we should have cast the vote after 60 sec
-  await wait(5000);
+  await wait(60000);
 
   console.log("L2-L1 monitoring tests");
   const test2 = l2L1MonitoringTest(
@@ -109,7 +109,7 @@ async function main() {
     isLocal
   );
 
-  await wait(5000);
+  await wait(60000);
 
   console.log("L2-L1-L2 monitoring value tests");
   const test3 = l2L1L2MonitoringValueTest(
@@ -122,7 +122,7 @@ async function main() {
     isLocal
   );
 
-  await wait(5000);
+  await wait(60000);
 
   console.log("L2-L1 monitoring value tests");
   const test4 = l2L1MonitoringValueTest(
