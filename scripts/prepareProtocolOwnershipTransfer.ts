@@ -41,9 +41,9 @@ export const prepareAssetTransferTXs = async () => {
     // TXs to transfer ownership of Nova assets
     const novaExecutor = contractAddresses["novaUpgradeExecutorProxy"];
     const novaTXs = await generateAssetTransferTXs(
-      novaNetwork,
+      novaNetwork!,
       ethProvider,
-      novaProvider,
+      novaProvider!,
       l1Executor,
       novaExecutor
     );
