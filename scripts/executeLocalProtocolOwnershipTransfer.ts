@@ -88,21 +88,30 @@ export const executeOwnershipTransfer = async () => {
  * @returns
  */
 function buildTXs(fileName: string): { data: string; to: string }[] {
-  let ownershipTransferTXs: GnosisBatch = JSON.parse(fs.readFileSync(fileName).toString());
-  let txs = ownershipTransferTXs["transactions"];
-  let txsToExecute: { data: string; to: string }[] = new Array();
+  const ownershipTransferTXs: GnosisBatch = JSON.parse(fs.readFileSync(fileName).toString());
+  const txs = ownershipTransferTXs["transactions"];
 
-  txs.forEach((tx) => {
+  // construct calldata for every TX
+  const txsToExecute = txs.map((tx) => {
     const functionName = tx["contractMethod"]["name"];
-    let ABI = [
-      `function ${functionName}(${tx["contractMethod"]["inputs"][0]["type"]} ${tx["contractMethod"]["inputs"][0]["name"]})`,
+    const functionInputs = tx["contractMethod"]["inputs"];
+    if (functionInputs.length !== 1) {
+      throw new Error("There should be only 1 function input");
+    }
+    const functionInputValues = Object.values(tx["contractInputsValues"]);
+    if (functionInputValues.length !== 1) {
+      throw new Error("There should be only 1 function input value");
+    }
+
+    const ABI = [
+      `function ${functionName}(${functionInputs[0]["type"]} ${functionInputs[0]["name"]})`,
     ];
-    let iface = new ethers.utils.Interface(ABI);
-    let functionInput = Object.values(tx["contractInputsValues"])[0];
-    txsToExecute.push({
+    const iface = new ethers.utils.Interface(ABI);
+    const functionInput = Object.values(functionInputValues)[0];
+    return {
       to: tx.to,
       data: iface.encodeFunctionData(functionName, [functionInput]),
-    });
+    };
   });
 
   return txsToExecute;
