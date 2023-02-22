@@ -136,6 +136,8 @@ async function main() {
   );
 
   await Promise.all([test1, test2, test3, test4]);
+
+  await wait(1000);
 }
 
 main().then(() => console.log("Tests complete."));
