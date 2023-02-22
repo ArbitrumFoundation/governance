@@ -13,6 +13,7 @@
     "gen:nova:network": "ts-node ./scripts/genNetworkNova.ts",
     "gen:recipients": "ts-node ./scripts/genRecipients.ts",
     "deploy:governance": "ts-node ./scripts/governanceDeployer.ts",
+    "deploy:note-store": "ts-node ./scripts/deployNoteStore.ts",
     "verify:governance": "ts-node ./scripts/governanceDeploymentVerifier.ts",
     "allocate:tokens": "ts-node ./scripts/tokenAllocator.ts",
     "allocate:dao:tokens": "ts-node ./scripts/tokenDaoAllocator.ts",
