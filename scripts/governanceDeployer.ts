@@ -644,7 +644,6 @@ async function rescindOwnershipOfFactories(
   l2GovernanceFactory: L2GovernanceFactory
 ) {
   const deadAddress = "0x000000000000000000000000000000000000dEaD";
-
   if ((await l1GovernanceFactory.owner()) !== deadAddress) {
     await (await l1GovernanceFactory.transferOwnership(deadAddress)).wait();
   }

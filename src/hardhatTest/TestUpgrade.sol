@@ -3,23 +3,48 @@ pragma solidity 0.8.16;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-contract TestUpgrade {
-    function upgrade(IERC20 token, address to, uint256 amount) public {
-        require(token.transfer(to, amount), "UPGRADE1: Failed transfer");
+contract NoteStore {
+    event NoteAdded(
+        bytes32 id,
+        address indexed sender,
+        address indexed author,
+        bytes32 indexed note,
+        uint256 val
+    );
+
+    struct Note {
+        address sender;
+        address author;
+        bytes32 note;
+        uint256 val;
     }
 
-    function upgradeWithValue(
-        IERC20 token,
-        address to,
-        uint256 amount,
-        address payable valueReceiver,
-        uint256 value
-    ) public payable {
-        require(token.transfer(to, amount), "UPGRADE2: Failed transfer");
+    mapping(bytes32 => Note) public notes;
 
-        require(msg.value == value, "Value not supplied");
-        require(address(this).balance == value, "Value not in contract");
+    function noteId(address sender, address author, bytes32 note, uint256 val) public pure returns(bytes32) {
+        return keccak256(abi.encodePacked(sender, author, note, val));
+    }
 
-        valueReceiver.transfer(value);
+    function add(address author, bytes32 note) public payable {
+        bytes32 id = noteId(msg.sender, author, note, msg.value);
+        require(!exists(id), "Note already added");
+
+        notes[id] = Note({sender: msg.sender, author: author, note: note, val: msg.value});
+
+        emit NoteAdded(id, msg.sender, author, note, msg.value);
+    }
+
+    function exists(bytes32 id) public view returns(bool) {
+        return notes[id].sender != address(0);
+    } 
+}
+
+contract TestUpgrade {
+    function upgrade(NoteStore noteStore, bytes32 note) public {
+        noteStore.add(msg.sender, note);
+    }
+
+    function upgradeWithValue(NoteStore noteStore, bytes32 note) public payable {
+        noteStore.add{value: msg.value}(msg.sender, note);
     }
 }
