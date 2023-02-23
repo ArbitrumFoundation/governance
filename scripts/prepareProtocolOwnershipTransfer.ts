@@ -1,17 +1,44 @@
 import { envVars, getDeployersAndConfig, getProviders, isDeployingToNova } from "./providerSetup";
 import { getProxyOwner } from "./testUtils";
-import { ProxyAdmin__factory } from "../typechain-types";
-import { RollupAdminLogic__factory } from "@arbitrum/sdk/dist/lib/abi/factories/RollupAdminLogic__factory";
-import { ethers, PopulatedTransaction } from "ethers";
+import { ethers } from "ethers";
 import fs from "fs";
 import { L2Network } from "@arbitrum/sdk";
 import { ArbOwner__factory } from "@arbitrum/sdk/dist/lib/abi/factories/ArbOwner__factory";
 import {
-  L1CustomGateway__factory,
-  L1GatewayRouter__factory,
+  BeaconProxyFactory__factory,
+  L2ERC20Gateway__factory,
+  UpgradeableBeacon__factory,
 } from "../token-bridge-contracts/build/types";
+import { Provider } from "@ethersproject/providers";
 
-const ARB_OWNER_PRECOMPILE = "0x0000000000000000000000000000000000000070";
+export const ARB_OWNER_PRECOMPILE = "0x0000000000000000000000000000000000000070";
+export const ARB_OWNER_PUBLIC_PRECOMPILE = "0x000000000000000000000000000000000000006b";
+
+export type GnosisTX = {
+  to: string;
+  value: string;
+  data: string;
+  contractMethod: {
+    inputs: {
+      internalType: string;
+      name: string;
+      type: string;
+    }[];
+    name: string;
+    payable: boolean;
+  };
+  contractInputsValues: {
+    [value: string]: string;
+  };
+};
+
+export type GnosisBatch = {
+  chainId: string;
+  meta: {
+    checksum: string;
+  };
+  transactions: GnosisTX[];
+};
 
 /**
  * Generate calldata for all the TXs needed to transfer asset ownership to DAO.
@@ -27,37 +54,104 @@ export const prepareAssetTransferTXs = async () => {
   const arbExecutor = contractAddresses["l2Executor"];
 
   // TXs to transfer ownership of ArbOne assets
-  const arbTXs = await generateAssetTransferTXs(
+  const { l1ProtocolOwnerTXs, l1TokenBridgeOwnerTXs, l2TXs } = await generateAssetTransferTXs(
     arbNetwork,
     ethProvider,
     arbProvider,
     l1Executor,
     arbExecutor
   );
-  fs.writeFileSync(envVars.arbTransferAssetsTXsLocation, JSON.stringify(arbTXs));
-  console.log("Arb TXs file:", envVars.arbTransferAssetsTXsLocation);
 
+  // transfer protocol
+  const l1ArbProtocolBatch: GnosisBatch = getGnosisBatch(
+    arbNetwork.partnerChainID,
+    l1ProtocolOwnerTXs
+  );
+  fs.writeFileSync(envVars.l1ArbProtocolTransferTXsLocation, JSON.stringify(l1ArbProtocolBatch));
+  console.log("Arb L1 protocol transfer TXs file:", envVars.l1ArbProtocolTransferTXsLocation);
+
+  // transfer token bridge
+  const l1ArbTokenBridgeBatch: GnosisBatch = getGnosisBatch(
+    arbNetwork.partnerChainID,
+    l1TokenBridgeOwnerTXs
+  );
+  fs.writeFileSync(
+    envVars.l1ArbTokenBridgeTransferTXsLocation,
+    JSON.stringify(l1ArbTokenBridgeBatch)
+  );
+  console.log(
+    "Arb L1 token bridge transfer TXs file:",
+    envVars.l1ArbTokenBridgeTransferTXsLocation
+  );
+
+  // transfer L2
+  const arbAssetsBatch: GnosisBatch = getGnosisBatch(arbNetwork.chainID, l2TXs);
+  fs.writeFileSync(envVars.arbTransferAssetsTXsLocation, JSON.stringify(arbAssetsBatch));
+  console.log("Arb L2 TXs file:", envVars.arbTransferAssetsTXsLocation);
+
+  ///// Nova
   if (isDeployingToNova()) {
     // TXs to transfer ownership of Nova assets
     const novaExecutor = contractAddresses["novaUpgradeExecutorProxy"];
-    const novaTXs = await generateAssetTransferTXs(
+    const { l1ProtocolOwnerTXs, l1TokenBridgeOwnerTXs, l2TXs } = await generateAssetTransferTXs(
       novaNetwork!,
       ethProvider,
       novaProvider!,
       l1Executor,
       novaExecutor
     );
-    fs.writeFileSync(envVars.novaTransferAssetsTXsLocation, JSON.stringify(novaTXs));
-    console.log("Nova TXs file:", envVars.novaTransferAssetsTXsLocation);
+
+    // transfer protocol
+    const l1NovaProtocolBatch: GnosisBatch = getGnosisBatch(
+      novaNetwork!.partnerChainID,
+      l1ProtocolOwnerTXs
+    );
+    fs.writeFileSync(
+      envVars.l1NovaProtocolTransferTXsLocation,
+      JSON.stringify(l1NovaProtocolBatch)
+    );
+    console.log("Nova L1 protocol transfer TXs file:", envVars.l1NovaProtocolTransferTXsLocation);
+
+    // transfer token bridge
+    const l1NovaTokenBridgeBatch: GnosisBatch = getGnosisBatch(
+      novaNetwork!.partnerChainID,
+      l1TokenBridgeOwnerTXs
+    );
+    fs.writeFileSync(
+      envVars.l1NovaTokenBridgeTransferTXsLocation,
+      JSON.stringify(l1NovaTokenBridgeBatch)
+    );
+    console.log(
+      "Nova L1 token bridge transfer TXs file:",
+      envVars.l1NovaTokenBridgeTransferTXsLocation
+    );
+
+    // transfer L2
+    const novaAssetsBatch: GnosisBatch = getGnosisBatch(novaNetwork!.chainID, l2TXs);
+    fs.writeFileSync(envVars.novaTransferAssetsTXsLocation, JSON.stringify(novaAssetsBatch));
+    console.log("Nova L2 TXs file:", envVars.novaTransferAssetsTXsLocation);
   }
 };
 
 /**
- * Generate data for 4 ownership transfer TXs:
- * - rollup
- * - protocol L1 proxy admin
- * - token bridge L1 proxy admin
- * - token bridge L2 proxy admin
+ * Get TXs in Gnosis Safe's JSON format
+ *
+ * @param chainId
+ * @param txs
+ * @returns
+ */
+function getGnosisBatch(chainId: number, txs: GnosisTX[]): GnosisBatch {
+  return {
+    chainId: chainId.toString(),
+    meta: {
+      checksum: "",
+    },
+    transactions: txs,
+  };
+}
+
+/**
+ * Generate data for ownership transfer TXs
  *
  * @returns
  */
@@ -68,52 +162,52 @@ async function generateAssetTransferTXs(
   l1Executor: string,
   l2Executor: string
 ) {
-  const l1RollupOwnerTX = await getRollupOwnerTransferTX(l2Network, l1Provider, l1Executor);
-
-  // protocol L1 proxy admin
-  const l1ProtocolProxyAdminOwnerTX = await getProxyAdminOwnerTransferTX(
-    await getProxyOwner(l2Network.ethBridge.inbox, l1Provider),
-    l1Provider,
-    l1Executor
+  /// L1 protocol owner TXs
+  let l1ProtocolOwnerTXs: GnosisTX[] = new Array();
+  l1ProtocolOwnerTXs.push(await generateRollupSetOwnerTX(l2Network.ethBridge.rollup, l1Executor));
+  l1ProtocolOwnerTXs.push(
+    await generateProxyAdminTransferOwnershipTX(
+      await getProxyOwner(l2Network.ethBridge.inbox, l1Provider),
+      l1Executor
+    )
   );
 
-  // L1 token bridge proxy admin
-  const l1TokenBridgeProxyAdminOwnerTX = await getProxyAdminOwnerTransferTX(
-    await getProxyOwner(l2Network.tokenBridge.l1GatewayRouter, l1Provider),
-    l1Provider,
-    l1Executor
+  /// L1 token bridge owner TXs
+  let l1TokenBridgeOwnerTXs: GnosisTX[] = new Array();
+  l1TokenBridgeOwnerTXs.push(
+    await generateProxyAdminTransferOwnershipTX(
+      await getProxyOwner(l2Network.tokenBridge.l1GatewayRouter, l1Provider),
+      l1Executor
+    )
+  );
+  l1TokenBridgeOwnerTXs.push(
+    await generateRouterSetOwnerTX(l2Network.tokenBridge.l1GatewayRouter, l1Executor)
+  );
+  l1TokenBridgeOwnerTXs.push(
+    await generateCustomGatewaySetOwnerTX(l2Network.tokenBridge.l1CustomGateway, l1Executor)
   );
 
-  // L2 token bridge proxy admin
-  const l2TokenBridgeProxyAdminOwnerTX = await getProxyAdminOwnerTransferTX(
-    await getProxyOwner(l2Network.tokenBridge.l2GatewayRouter, l2Provider),
-    l2Provider,
-    l2Executor
+  /// L2
+  let l2TXs: GnosisTX[] = new Array();
+  l2TXs.push(
+    await generateProxyAdminTransferOwnershipTX(
+      await getProxyOwner(l2Network.tokenBridge.l2GatewayRouter, l2Provider),
+      l2Executor
+    )
   );
-
-  // set L1 gateway router owner
-  const l1GatewayRouterOwnerTX = await L1GatewayRouter__factory.connect(
-    l2Network.tokenBridge.l1GatewayRouter,
-    l1Provider
-  ).populateTransaction.setOwner(l1Executor);
-
-  // set L1 custom gateway owner
-  const l1CustomGatewayOwnerTX = await L1CustomGateway__factory.connect(
-    l2Network.tokenBridge.l1CustomGateway,
-    l1Provider
-  ).populateTransaction.setOwner(l1Executor);
-
-  // chain owner
-  const l2ChainOwnerTxs = await getChainOwnerTransferTXs(l2Provider, l2Executor);
+  l2TXs.push(
+    await generateBeaconTransferOwnershipTX(
+      l2Network.tokenBridge.l2ERC20Gateway,
+      l2Executor,
+      l2Provider
+    )
+  );
+  l2TXs.push(...(await getChainOwnerTransferTXs(l2Provider, l2Executor)));
 
   return {
-    l1RollupOwnerTX: l1RollupOwnerTX,
-    l1ProtocolProxyAdminOwnerTX: l1ProtocolProxyAdminOwnerTX,
-    l1TokenBridgeProxyAdminOwnerTX: l1TokenBridgeProxyAdminOwnerTX,
-    l2TokenBridgeProxyAdminOwnerTX: l2TokenBridgeProxyAdminOwnerTX,
-    l1GatewayRouterOwnerTX: l1GatewayRouterOwnerTX,
-    l1CustomGatewayOwnerTX: l1CustomGatewayOwnerTX,
-    l2ChainOwnerTxs: l2ChainOwnerTxs,
+    l1ProtocolOwnerTXs,
+    l1TokenBridgeOwnerTXs,
+    l2TXs,
   };
 }
 
@@ -125,19 +219,58 @@ async function generateAssetTransferTXs(
  * @param l2Executor
  * @returns
  */
-async function getChainOwnerTransferTXs(provider: ethers.providers.Provider, l2Executor: string) {
-  const ownerPrecompile = ArbOwner__factory.connect(ARB_OWNER_PRECOMPILE, provider);
+async function getChainOwnerTransferTXs(
+  provider: ethers.providers.Provider,
+  l2Executor: string
+): Promise<GnosisTX[]> {
+  let txs: GnosisTX[] = [];
+  txs.push({
+    to: ARB_OWNER_PRECOMPILE,
+    value: "0",
+    data: "",
+    contractMethod: {
+      inputs: [
+        {
+          internalType: "address",
+          name: "newOwner",
+          type: "address",
+        },
+      ],
+      name: "addChainOwner",
+      payable: false,
+    },
+    contractInputsValues: {
+      newOwner: l2Executor,
+    },
+  });
+
+  const ownerPrecompile = ArbOwner__factory.connect(ARB_OWNER_PUBLIC_PRECOMPILE, provider);
   const oldOwners = await ownerPrecompile.getAllChainOwners();
-
-  let txs: PopulatedTransaction[] = [];
-  txs.push(await ownerPrecompile.populateTransaction.addChainOwner(l2Executor));
-
   for (let oldOwner of oldOwners) {
     // make sure new owner, l2Executor, is not accidentally removed
     if (oldOwner == l2Executor) {
       continue;
     }
-    txs.push(await ownerPrecompile.populateTransaction.removeChainOwner(oldOwner));
+
+    txs.push({
+      to: ARB_OWNER_PRECOMPILE,
+      value: "0",
+      data: "",
+      contractMethod: {
+        inputs: [
+          {
+            internalType: "address",
+            name: "ownerToRemove",
+            type: "address",
+          },
+        ],
+        name: "removeChainOwner",
+        payable: false,
+      },
+      contractInputsValues: {
+        ownerToRemove: oldOwner,
+      },
+    });
   }
 
   return txs;
@@ -146,29 +279,149 @@ async function getChainOwnerTransferTXs(provider: ethers.providers.Provider, l2E
 /**
  * Set rollup's owner
  */
-async function getRollupOwnerTransferTX(
-  l2Network: L2Network,
-  ethProvider: ethers.providers.Provider,
+async function generateRollupSetOwnerTX(
+  rollupAddress: string,
   l1Executor: string
-): Promise<PopulatedTransaction> {
-  const rollup = RollupAdminLogic__factory.connect(l2Network.ethBridge.rollup, ethProvider);
-  const setRollupOwnerTX = await rollup.populateTransaction.setOwner(l1Executor);
+): Promise<GnosisTX> {
+  return {
+    to: rollupAddress,
+    value: "0",
+    data: "",
+    contractMethod: {
+      inputs: [
+        {
+          internalType: "address",
+          name: "newOwner",
+          type: "address",
+        },
+      ],
+      name: "setOwner",
+      payable: false,
+    },
+    contractInputsValues: {
+      newOwner: l1Executor,
+    },
+  };
+}
 
-  return setRollupOwnerTX;
+/**
+ * Set router's owner
+ */
+async function generateRouterSetOwnerTX(
+  gatewayRouterAddress: string,
+  l1Executor: string
+): Promise<GnosisTX> {
+  return {
+    to: gatewayRouterAddress,
+    value: "0",
+    data: "",
+    contractMethod: {
+      inputs: [
+        {
+          internalType: "address",
+          name: "newOwner",
+          type: "address",
+        },
+      ],
+      name: "setOwner",
+      payable: false,
+    },
+    contractInputsValues: {
+      newOwner: l1Executor,
+    },
+  };
+}
+
+/**
+ * Set custom gateways's owner
+ */
+async function generateCustomGatewaySetOwnerTX(
+  l1CustomGatewayAddress: string,
+  l1Executor: string
+): Promise<GnosisTX> {
+  return {
+    to: l1CustomGatewayAddress,
+    value: "0",
+    data: "",
+    contractMethod: {
+      inputs: [
+        {
+          internalType: "address",
+          name: "newOwner",
+          type: "address",
+        },
+      ],
+      name: "setOwner",
+      payable: false,
+    },
+    contractInputsValues: {
+      newOwner: l1Executor,
+    },
+  };
 }
 
 /**
  * Set proxy admin's owner
  */
-async function getProxyAdminOwnerTransferTX(
+async function generateProxyAdminTransferOwnershipTX(
   proxyAdminAddress: string,
-  provider: ethers.providers.Provider,
   executorAddress: string
-): Promise<PopulatedTransaction> {
-  const proxyAdmin = ProxyAdmin__factory.connect(proxyAdminAddress, provider);
-  const proxyAdminOwnerTX = await proxyAdmin.populateTransaction.transferOwnership(executorAddress);
+): Promise<Promise<GnosisTX>> {
+  return {
+    to: proxyAdminAddress,
+    value: "0",
+    data: "",
+    contractMethod: {
+      inputs: [
+        {
+          internalType: "address",
+          name: "newOwner",
+          type: "address",
+        },
+      ],
+      name: "transferOwnership",
+      payable: false,
+    },
+    contractInputsValues: {
+      newOwner: executorAddress,
+    },
+  };
+}
 
-  return proxyAdminOwnerTX;
+/**
+ * Set beacon's owner
+ */
+async function generateBeaconTransferOwnershipTX(
+  l2ERC20GatewayAddress: string,
+  executorAddress: string,
+  l2Provider: Provider
+): Promise<Promise<GnosisTX>> {
+  const l2Erc20Gw = L2ERC20Gateway__factory.connect(l2ERC20GatewayAddress, l2Provider);
+  const beaconProxyFactory = BeaconProxyFactory__factory.connect(
+    await l2Erc20Gw.beaconProxyFactory(),
+    l2Provider
+  );
+  const beacon = UpgradeableBeacon__factory.connect(await beaconProxyFactory.beacon(), l2Provider);
+
+  return {
+    to: beacon.address,
+    value: "0",
+    data: "",
+    contractMethod: {
+      inputs: [
+        {
+          internalType: "address",
+          name: "newOwner",
+          type: "address",
+        },
+      ],
+      name: "transferOwnership",
+      payable: false,
+    },
+    contractInputsValues: {
+      newOwner: executorAddress,
+    },
+  };
 }
 
 async function main() {
