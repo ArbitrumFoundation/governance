@@ -8,11 +8,11 @@ import "forge-std/console.sol";
 import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 
 contract L1GovernanceFactoryTest is Test {
-    address l2Timelock = address(10001);
-    address bridge = address(10002);
-    address factoryOwner = address(10003);
-    address l1SecurityCouncil = address(10004);
-    address someRando = address(10005);
+    address l2Timelock = address(10_001);
+    address bridge = address(10_002);
+    address factoryOwner = address(10_003);
+    address l1SecurityCouncil = address(10_004);
+    address someRando = address(10_005);
     uint256 minDelay = 42;
     UpgradeExecutor upgradeExecutorLogic = new UpgradeExecutor();
 
@@ -77,5 +77,50 @@ contract L1GovernanceFactoryTest is Test {
         );
 
         vm.stopPrank();
+    }
+
+    function deployAndInit()
+        internal
+        returns (L1GovernanceFactory, L1ArbitrumTimelock, UpgradeExecutor)
+    {
+        vm.prank(factoryOwner);
+        L1GovernanceFactory l1GovernanceFactory = new L1GovernanceFactory();
+        InboxMock inbox = new InboxMock(bridge);
+
+        vm.startPrank(factoryOwner);
+        (L1ArbitrumTimelock timelock,, UpgradeExecutor executor) = l1GovernanceFactory.deployStep2(
+            address(upgradeExecutorLogic), minDelay, address(inbox), l2Timelock, l1SecurityCouncil
+        );
+        vm.stopPrank();
+
+        return (l1GovernanceFactory, timelock, executor);
+    }
+
+    function testSetMinDelayRevertsForCoreAddress() external {
+        (, L1ArbitrumTimelock coreTimelock,) = deployAndInit();
+
+        uint256 oldMinDelay = coreTimelock.getMinDelay();
+
+        bytes32 adminRole = coreTimelock.TIMELOCK_ADMIN_ROLE();
+        vm.prank(address(coreTimelock));
+        vm.expectRevert(
+            abi.encodePacked(
+                "AccessControl: account ",
+                StringsUpgradeable.toHexString(uint160(address(coreTimelock)), 20),
+                " is missing role ",
+                StringsUpgradeable.toHexString(uint256(adminRole), 32)
+            )
+        );
+        coreTimelock.updateDelay(oldMinDelay + 1);
+    }
+
+    function testSetMinDelay() external {
+        (, L1ArbitrumTimelock coreTimelock, UpgradeExecutor executor) = deployAndInit();
+
+        uint256 oldMinDelay = coreTimelock.getMinDelay();
+
+        vm.prank(address(executor));
+        coreTimelock.updateDelay(oldMinDelay + 1);
+        assertEq(coreTimelock.getMinDelay(), oldMinDelay + 1, "Min delay not updated");
     }
 }

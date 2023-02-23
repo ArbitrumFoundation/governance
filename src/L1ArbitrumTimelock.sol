@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.16;
 
-import "@openzeppelin/contracts-upgradeable/governance/TimelockControllerUpgradeable.sol";
 import "@arbitrum/nitro-contracts/src/bridge/IInbox.sol";
 import "./L1ArbitrumMessenger.sol";
+import "./ArbitrumTimelock.sol";
 
 interface IInboxSubmissionFee {
     function calculateRetryableSubmissionFee(uint256 dataLength, uint256 baseFee)
@@ -14,7 +14,7 @@ interface IInboxSubmissionFee {
 
 /// @title L1 timelock for executing propsals on L1 or forwarding them back to L2
 /// @dev   Only accepts proposals from a counterparty L2 timelock
-contract L1ArbitrumTimelock is TimelockControllerUpgradeable, L1ArbitrumMessenger {
+contract L1ArbitrumTimelock is ArbitrumTimelock, L1ArbitrumMessenger {
     /// @notice The magic address to be used when a retryable ticket is to be created
     /// @dev When the target of an proposal is this magic value then the proposal
     ///      will be formed into a retryable ticket and posted to an inbox provided in
@@ -51,7 +51,7 @@ contract L1ArbitrumTimelock is TimelockControllerUpgradeable, L1ArbitrumMessenge
         // this timelock doesnt accept any proposers since they wont pass the
         // onlyCounterpartTimelock check
         address[] memory proposers;
-        __TimelockController_init(minDelay, proposers, executors);
+        __ArbitrumTimelock_init(minDelay, proposers, executors);
 
         governanceChainInbox = _governanceChainInbox;
         l2Timelock = _l2Timelock;
@@ -86,16 +86,16 @@ contract L1ArbitrumTimelock is TimelockControllerUpgradeable, L1ArbitrumMessenge
     ///         chain in the same order that they are executed in this timelock. Do not use
     ///         the predecessor field to preserve ordering in these situations.
     /// @dev Adds the restriction that only the counterparty timelock can call this func
-    /// @param predecessor  Do not use predecessor to preserve ordering for proposals that make cross 
+    /// @param predecessor  Do not use predecessor to preserve ordering for proposals that make cross
     ///                     chain calls, since those calls are executed async it and do not preserve order themselves.
     function scheduleBatch(
         address[] calldata targets,
         uint256[] calldata values,
         bytes[] calldata payloads,
-        bytes32 predecessor, 
+        bytes32 predecessor,
         bytes32 salt,
         uint256 delay
-    ) public virtual override (TimelockControllerUpgradeable) onlyCounterpartTimelock {
+    ) public virtual override(TimelockControllerUpgradeable) onlyCounterpartTimelock {
         TimelockControllerUpgradeable.scheduleBatch(
             targets, values, payloads, predecessor, salt, delay
         );
@@ -103,7 +103,7 @@ contract L1ArbitrumTimelock is TimelockControllerUpgradeable, L1ArbitrumMessenge
 
     /// @inheritdoc TimelockControllerUpgradeable
     /// @dev Adds the restriction that only the counterparty timelock can call this func
-    /// @param predecessor  Do not use predecessor to preserve ordering for proposals that make cross 
+    /// @param predecessor  Do not use predecessor to preserve ordering for proposals that make cross
     ///                     chain calls, since those calls are executed async it and do not preserve order themselves.
     function schedule(
         address target,
@@ -112,7 +112,7 @@ contract L1ArbitrumTimelock is TimelockControllerUpgradeable, L1ArbitrumMessenge
         bytes32 predecessor,
         bytes32 salt,
         uint256 delay
-    ) public virtual override (TimelockControllerUpgradeable) onlyCounterpartTimelock {
+    ) public virtual override(TimelockControllerUpgradeable) onlyCounterpartTimelock {
         TimelockControllerUpgradeable.schedule(target, value, data, predecessor, salt, delay);
     }
 
@@ -177,9 +177,9 @@ contract L1ArbitrumTimelock is TimelockControllerUpgradeable, L1ArbitrumMessenge
                 l2Calldata
             );
         } else {
-            if(data.length != 0) {
+            if (data.length != 0) {
                 // check the target has code if data was supplied
-                // this is a bit more important than normal here since if the magic is improperly 
+                // this is a bit more important than normal here since if the magic is improperly
                 // specified in the proposal then we'll end up in this code block
                 // generally though, all proposals with data that specify a target with no code should
                 // be voted against

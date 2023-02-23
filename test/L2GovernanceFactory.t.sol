@@ -378,16 +378,15 @@ contract L2GovernanceFactoryTest is Test {
 
     function testRoles() public {
         (
-            L2ArbitrumToken token,
+            ,
             L2ArbitrumGovernor coreGov,
             ArbitrumTimelock coreTimelock,
             L2ArbitrumGovernor treasuryGov,
             ArbitrumTimelock treasuryTimelock,
-            FixedDelegateErc20Wallet arbTreasury,
-            ProxyAdmin proxyAdmin,
+            ,
+            ,
             UpgradeExecutor executor,
             L2GovernanceFactory l2GovernanceFactory,
-            ArbitrumDAOConstitution arbitrumDAOConstitution
         ) = deploy();
         assertTrue(
             coreTimelock.hasRole(coreTimelock.PROPOSER_ROLE(), address(coreGov)),
@@ -474,7 +473,7 @@ contract L2GovernanceFactoryTest is Test {
         vm.prank(l2InitialSupplyRecipient);
         l2ArbitrumGovernor.castVote(propId, 1);
 
-        (uint256 a, uint256 b, uint256 c) = l2ArbitrumGovernor.proposalVotes(propId);
+        l2ArbitrumGovernor.proposalVotes(propId);
 
         uint256 propDeadline = l2ArbitrumGovernor.proposalDeadline(propId);
 
@@ -497,5 +496,33 @@ contract L2GovernanceFactoryTest is Test {
         vm.stopPrank();
 
         assertEq(timelock.isOperation(opHash), false, "Operation removed");
+    }
+
+    function testSetMinDelayRevertsForCoreAddress() external {
+        (,, ArbitrumTimelock coreTimelock,,,,,,,) = deploy();
+
+        uint256 minDelay = coreTimelock.getMinDelay();
+
+        bytes32 adminRole = coreTimelock.TIMELOCK_ADMIN_ROLE();
+        vm.prank(address(coreTimelock));
+        vm.expectRevert(
+            abi.encodePacked(
+                "AccessControl: account ",
+                StringsUpgradeable.toHexString(uint160(address(coreTimelock)), 20),
+                " is missing role ",
+                StringsUpgradeable.toHexString(uint256(adminRole), 32)
+            )
+        );
+        coreTimelock.updateDelay(minDelay + 1);
+    }
+
+    function testSetMinDelay() external {
+        (,, ArbitrumTimelock coreTimelock,,,,, UpgradeExecutor executor,,) = deploy();
+
+        uint256 minDelay = coreTimelock.getMinDelay();
+
+        vm.prank(address(executor));
+        coreTimelock.updateDelay(minDelay + 1);
+        assertEq(coreTimelock.getMinDelay(), minDelay + 1, "Min delay not updated");
     }
 }

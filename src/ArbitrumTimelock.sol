@@ -8,13 +8,15 @@ import "@openzeppelin/contracts-upgradeable/governance/TimelockControllerUpgrade
 ///         can make cross chain calls and those calls are async, it is not guaranteed that they will
 //          be executed cross chain in the same order that they are executed in this timelock. Do not use
 ///         the predecessor field to preserve ordering in these situations.
-/// @dev    This contract adds no other functionality to the TimelockControllerUpgradeable
-///         other than the ability to initialize it. TimelockControllerUpgradeable has no
-///         public methods for this
+/// @dev    This contract adds the ability to initialize TimelockControllerUpgradeable, and also has custom
+///         logic for setting the min delay.
 contract ArbitrumTimelock is TimelockControllerUpgradeable {
     constructor() {
         _disableInitializers();
     }
+
+    // named differently to the private _minDelay on the base to avoid confusion
+    uint256 _arbMinDelay;
 
     /// @notice Initialise the timelock
     /// @param minDelay The minimum amount of delay enforced by this timelock
@@ -24,6 +26,54 @@ contract ArbitrumTimelock is TimelockControllerUpgradeable {
         external
         initializer
     {
+        __ArbitrumTimelock_init(minDelay, proposers, executors);
+    }
+
+    function __ArbitrumTimelock_init(
+        uint256 minDelay,
+        address[] memory proposers,
+        address[] memory executors
+    ) internal onlyInitializing {
         __TimelockController_init(minDelay, proposers, executors);
+        _arbMinDelay = minDelay;
+    }
+
+    /**
+     * @dev Changes the minimum timelock duration for future operations.
+     *
+     * Emits a {MinDelayChange} event.
+     *
+     * Requirements:
+     *
+     * - the caller must have the TIMELOCK_ADMIN_ROLE role.
+     *
+     * This function is override to preserve the invariants that all changes to the system
+     * must do a round trip, and must be executed from an UpgradeExecutor. The overriden function
+     * only allows delay to be set by address(this). This is done by creating a proposal that has
+     * address(this) as its target, and call updateDelay upon execution. This would mean that a
+     * proposal could set the delay directly on the timelock, without originating from an UpgradeExecutor.
+     * Here we override the the function and only allow it to be set by the timelock admin
+     * which is expected to be the UpgradeExecutor to avoid the above scenario.
+     *
+     * It should be noted that although the avoided scenario does break the invariants we wish to
+     * maintain, it doesn't pose a security risk as the proposal would still have to go through one timelock to change
+     * the delay, and then future proposals would still need to go through the other timelocks.
+     * So upon seeing the proposal to change the timelock users would still need to intiate their exits
+     * before the timelock duration has passed, which is the same requirement we have for proposals
+     * that properly do round trips.
+     */
+    function updateDelay(uint256 newDelay)
+        external
+        virtual
+        override
+        onlyRole(TIMELOCK_ADMIN_ROLE)
+    {
+        emit MinDelayChange(_arbMinDelay, newDelay);
+        _arbMinDelay = newDelay;
+    }
+
+    /// @inheritdoc TimelockControllerUpgradeable
+    function getMinDelay() public view virtual override returns (uint256 duration) {
+        return _arbMinDelay;
     }
 }
