@@ -15,6 +15,3 @@ files/local/network.json
 files/local/networkNova.json
 files/local/arbTransferAssetsTXs.json
 files/local/novaTransferAssetsTXs.json
-files/local/asset-transfer/
-files/goerli/asset-transfer/
-files/mainnet/asset-transfer/
