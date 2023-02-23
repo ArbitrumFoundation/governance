@@ -16,6 +16,18 @@ import {
   loadDeployedContracts,
 } from "./providerSetup";
 import { loadArbContracts, loadL1Contracts } from "./verifiers";
+import { Signer, Wallet } from "ethers";
+
+const createAndFundWallet = async (funder: Signer) => {
+  const randWallet = Wallet.createRandom().connect(funder.provider!);
+  await (
+    await funder.sendTransaction({
+      to: randWallet.address,
+      value: parseEther("0.1"),
+    })
+  ).wait();
+  return randWallet;
+};
 
 async function main() {
   const deployedContracts = loadDeployedContracts();
@@ -55,21 +67,41 @@ async function main() {
   const arbContracts = loadArbContracts(arbProvider, deployedContracts);
   const ethContracts = loadL1Contracts(ethProvider, deployedContracts);
 
+  // create some random accounts to do the testing on, we do this so because we want
+  // to run the tests in parallel, but dont want them to get mixed up nonces by trying
+  // to send at the same time. So instead we run the tests with different keys
+
+  const l1Wallet1 = await createAndFundWallet(ethDeployer);
+  const l2Wallet1 = await createAndFundWallet(arbDeployer);
+
+  const l1Wallet2 = await createAndFundWallet(ethDeployer);
+  const l2Wallet2 = await createAndFundWallet(arbDeployer);
+
+  const l1Wallet3 = await createAndFundWallet(ethDeployer);
+  const l2Wallet3 = await createAndFundWallet(arbDeployer);
+
+  const l1Wallet4 = await createAndFundWallet(ethDeployer);
+  const l2Wallet4 = await createAndFundWallet(arbDeployer);
+
   console.log("L2-L1-L2 monitoring tests");
-  await l2L1L2MonitoringTest(
-    ethDeployer,
-    arbDeployer,
+  const test1 = l2L1L2MonitoringTest(
+    l1Wallet1,
+    l2Wallet1,
     teamWallet,
     arbContracts.l2Executor,
     ethContracts.l1Timelock,
     arbContracts.l2CoreGoverner,
     isLocal
   );
+
+  // wait a little for the proposal to actually be made and the votes cast
+  // on goerli the voting delay is 2 blocks, so we should have cast the vote after 60 sec
+  await wait(60000);
 
   console.log("L2-L1 monitoring tests");
-  await l2L1MonitoringTest(
-    ethDeployer,
-    arbDeployer,
+  const test2 = l2L1MonitoringTest(
+    l1Wallet2,
+    l2Wallet2,
     teamWallet,
     ethContracts.l1Executor,
     ethContracts.l1Timelock,
@@ -77,10 +109,12 @@ async function main() {
     isLocal
   );
 
+  await wait(60000);
+
   console.log("L2-L1-L2 monitoring value tests");
-  await l2L1L2MonitoringValueTest(
-    ethDeployer,
-    arbDeployer,
+  const test3 = l2L1L2MonitoringValueTest(
+    l1Wallet3,
+    l2Wallet3,
     teamWallet,
     arbContracts.l2Executor,
     ethContracts.l1Timelock,
@@ -88,16 +122,22 @@ async function main() {
     isLocal
   );
 
+  await wait(60000);
+
   console.log("L2-L1 monitoring value tests");
-  await l2L1MonitoringValueTest(
-    ethDeployer,
-    arbDeployer,
+  const test4 = l2L1MonitoringValueTest(
+    l1Wallet4,
+    l2Wallet4,
     teamWallet,
     ethContracts.l1Executor,
     ethContracts.l1Timelock,
     arbContracts.l2CoreGoverner,
     isLocal
   );
+
+  await Promise.all([test1, test2, test3, test4]);
+
+  await wait(1000);
 }
 
 main().then(() => console.log("Tests complete."));
