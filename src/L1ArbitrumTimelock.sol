@@ -14,6 +14,9 @@ interface IInboxSubmissionFee {
 
 /// @title L1 timelock for executing propsals on L1 or forwarding them back to L2
 /// @dev   Only accepts proposals from a counterparty L2 timelock
+///        If ever upgrading to a later version of TimelockControllerUpgradeable be sure to check that
+///        no new behaviour has been given to the PROPOSER role, as this is assigned to the bridge
+///        and any new behaviour should be overriden to also include the 'onlyCounterpartTimelock' modifier check
 contract L1ArbitrumTimelock is TimelockControllerUpgradeable, L1ArbitrumMessenger {
     /// @notice The magic address to be used when a retryable ticket is to be created
     /// @dev When the target of an proposal is this magic value then the proposal
