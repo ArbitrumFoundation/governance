@@ -18,7 +18,7 @@ contract L2ArbitrumGovernorTest is Test {
     uint256 votingPeriod = 6;
     uint256 votingDelay = 9;
     address excludeListMember = address(339);
-    uint256 quorumNumerator = 5;
+    uint256 quorumNumerator = 500;
     uint256 proposalThreshold = 1;
     uint64 initialVoteExtension = 5;
 
@@ -165,9 +165,9 @@ contract L2ArbitrumGovernorTest is Test {
         l2ArbitrumGovernor.relay(
             address(l2ArbitrumGovernor),
             0,
-            abi.encodeWithSelector(l2ArbitrumGovernor.updateQuorumNumerator.selector, 4)
+            abi.encodeWithSelector(l2ArbitrumGovernor.updateQuorumNumerator.selector, 400)
         );
-        assertEq(l2ArbitrumGovernor.quorumNumerator(), 4, "Quorum num");
+        assertEq(l2ArbitrumGovernor.quorumNumerator(), 400, "Quorum num");
 
         l2ArbitrumGovernor.relay(
             address(l2ArbitrumGovernor),
@@ -194,7 +194,7 @@ contract L2ArbitrumGovernorTest is Test {
         l2ArbitrumGovernor.setVotingPeriod(2);
 
         vm.expectRevert("Governor: onlyGovernance");
-        l2ArbitrumGovernor.updateQuorumNumerator(4);
+        l2ArbitrumGovernor.updateQuorumNumerator(400);
 
         vm.expectRevert("Governor: onlyGovernance");
         l2ArbitrumGovernor.updateTimelock(TimelockControllerUpgradeable(payable(address(137))));
@@ -203,7 +203,7 @@ contract L2ArbitrumGovernorTest is Test {
         l2ArbitrumGovernor.relay(
             address(l2ArbitrumGovernor),
             0,
-            abi.encodeWithSelector(l2ArbitrumGovernor.updateQuorumNumerator.selector, 4)
+            abi.encodeWithSelector(l2ArbitrumGovernor.updateQuorumNumerator.selector, 400)
         );
 
         vm.stopPrank();
