@@ -92,7 +92,7 @@ contract L2ArbitrumGovernorTest is Test {
         );
         assertEq(
             l2ArbitrumGovernor.quorum(2),
-            ((initialTokenSupply + 200) * quorumNumerator) / 100,
+            ((initialTokenSupply + 200) * quorumNumerator) / 10000,
             "Mint should be reflected in quorum"
         );
     }
@@ -120,7 +120,7 @@ contract L2ArbitrumGovernorTest is Test {
         );
         assertEq(
             l2ArbitrumGovernor.quorum(3),
-            (initialTokenSupply * quorumNumerator) / 100,
+            (initialTokenSupply * quorumNumerator) / 10000,
             "votes at exlcude-address member shouldn't affect quorum"
         );
     }
