@@ -16,7 +16,12 @@ contract ArbitrumTimelock is TimelockControllerUpgradeable {
     }
 
     // named differently to the private _minDelay on the base to avoid confusion
-    uint256 _arbMinDelay;
+    uint256 private _arbMinDelay;
+    
+    /// @dev This empty reserved space is put in place to allow future versions to add new
+    ///      variables without shifting down storage in the inheritance chain.
+    ///      See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
+    uint256[49] private __gap;
 
     /// @notice Initialise the timelock
     /// @param minDelay The minimum amount of delay enforced by this timelock
@@ -34,6 +39,10 @@ contract ArbitrumTimelock is TimelockControllerUpgradeable {
         address[] memory proposers,
         address[] memory executors
     ) internal onlyInitializing {
+        // although we're passing minDelay into the TimelockController_init the state variable that it
+        // sets will not be used since we override getMinDelay below. Given that we could pass in a 0
+        // here to be clear that this param isn't used, however __TimelockController_init also emits the 
+        // MinDelayChange event so it's useful to keep the same value there as we are setting here
         __TimelockController_init(minDelay, proposers, executors);
         _arbMinDelay = minDelay;
     }
