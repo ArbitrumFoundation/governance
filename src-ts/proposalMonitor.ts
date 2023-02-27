@@ -133,7 +133,6 @@ export class GovernorProposalMonitor extends EventEmitter {
           ...proposalCreatedFilter,
         })
       ).map((l) => governor.interface.parseLog(l).args as unknown as ProposalCreatedEventObject);
-      if(logs.length != 0) console.log(`Creating ${logs.length} pipelines: ${blockNow}:${blockNow - 1}`);
       for (const log of logs) {
         await this.monitorSingleProposal(log);
       }
