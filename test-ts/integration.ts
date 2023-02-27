@@ -36,6 +36,7 @@ import {
 const wait = async (ms: number) => new Promise((res) => setTimeout(res, ms));
 
 export const mineBlock = async (signer: Signer) => {
+  console.log(`Mining block for ${await signer.getAddress()}:${(await signer.provider!.getNetwork()).chainId}`)
   await (await signer.sendTransaction({ to: await signer.getAddress(), value: 0 })).wait();
 };
 
