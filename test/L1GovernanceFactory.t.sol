@@ -8,11 +8,11 @@ import "forge-std/console.sol";
 import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 
 contract L1GovernanceFactoryTest is Test {
-    address l2Timelock = address(10001);
-    address bridge = address(10002);
-    address factoryOwner = address(10003);
-    address l1SecurityCouncil = address(10004);
-    address someRando = address(10005);
+    address l2Timelock = address(10_001);
+    address bridge = address(10_002);
+    address factoryOwner = address(10_003);
+    address l1SecurityCouncil = address(10_004);
+    address someRando = address(10_005);
     uint256 minDelay = 42;
     UpgradeExecutor upgradeExecutorLogic = new UpgradeExecutor();
 
