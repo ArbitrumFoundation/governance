@@ -58,6 +58,50 @@ export class GovernorProposalMonitor extends EventEmitter {
 
   private polling = false;
 
+  public async monitorSingleProposal(log: ProposalCreatedEventObject) {
+    const gen = this.pipelineFactory.createPipeline(
+      this.governorAddress,
+      log.proposalId.toHexString(),
+      log.targets[0],
+      (log as any)[3][0], // ethers is parsing an array with a single 0 big number as undefined, so we lookup by index
+      log.calldatas[0],
+      log.description
+    );
+
+    const propStageTracker = new ProposalStageTracker(gen, this.pollingIntervalMs);
+    propStageTracker.on("status", (args) =>
+      this.emit(GPMEventName.TRACKER_STATUS, {
+        governorAddress: this.governorAddress,
+        proposalId: log.proposalId.toHexString(),
+        ...args,
+      })
+    );
+
+    this.emit(GPMEventName.TRACKER_STARTED, {
+      governorAddress: this.governorAddress,
+      proposalId: log.proposalId.toHexString(),
+    });
+
+    propStageTracker
+      .run()
+      .then(() => {
+        this.emit(GPMEventName.TRACKER_ENDED, {
+          governorAddress: this.governorAddress,
+          proposalId: log.proposalId.toHexString(),
+        });
+      })
+      .catch((e) => {
+        // an error in the runner shouldn't halt the whole monitor,
+        // as doing so would halt other successful runners. Emit the info
+        // to be handled elsewhere
+        this.emit(GPMEventName.TRACKER_ERRORED, {
+          governorAddress: this.governorAddress,
+          proposalId: log.proposalId.toHexString(),
+          error: e,
+        });
+      });
+  }
+
   public async start() {
     if (this.polling === true) {
       throw new Error("Proposal monitor already started");
@@ -89,48 +133,9 @@ export class GovernorProposalMonitor extends EventEmitter {
           ...proposalCreatedFilter,
         })
       ).map((l) => governor.interface.parseLog(l).args as unknown as ProposalCreatedEventObject);
+      if(logs.length != 0) console.log(`Creating ${logs.length} pipelines: ${blockNow}:${blockNow - 1}`);
       for (const log of logs) {
-        const gen = this.pipelineFactory.createPipeline(
-          this.governorAddress,
-          log.proposalId.toHexString(),
-          log.targets[0],
-          (log as any)[3][0], // ethers is parsing an array with a single 0 big number as undefined, so we lookup by index
-          log.calldatas[0],
-          log.description
-        );
-
-        const propStageTracker = new ProposalStageTracker(gen, this.pollingIntervalMs);
-        propStageTracker.on("status", (args) =>
-          this.emit(GPMEventName.TRACKER_STATUS, {
-            governorAddress: this.governorAddress,
-            proposalId: log.proposalId.toHexString(),
-            ...args,
-          })
-        );
-
-        this.emit(GPMEventName.TRACKER_STARTED, {
-          governorAddress: this.governorAddress,
-          proposalId: log.proposalId.toHexString(),
-        });
-
-        propStageTracker
-          .run()
-          .then(() => {
-            this.emit(GPMEventName.TRACKER_ENDED, {
-              governorAddress: this.governorAddress,
-              proposalId: log.proposalId.toHexString(),
-            });
-          })
-          .catch((e) => {
-            // an error in the runner shouldn't halt the whole monitor,
-            // as doing so would halt other successful runners. Emit the info
-            // to be handled elsewhere
-            this.emit(GPMEventName.TRACKER_ERRORED, {
-              governorAddress: this.governorAddress,
-              proposalId: log.proposalId.toHexString(),
-              error: e,
-            });
-          });
+        await this.monitorSingleProposal(log);
       }
 
       await wait(this.pollingIntervalMs);

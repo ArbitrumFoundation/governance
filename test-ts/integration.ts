@@ -30,8 +30,9 @@ import {
   NoteStore__factory,
   TestUpgrade__factory,
   UpgradeExecutor,
-  UpgradeExecutor__factory
+  UpgradeExecutor__factory,
 } from "../typechain-types";
+import { ProposalCreatedEventObject } from "../typechain-types/src/L2ArbitrumGovernor";
 
 const wait = async (ms: number) => new Promise((res) => setTimeout(res, ms));
 
@@ -310,23 +311,27 @@ export const l2L1MonitoringValueTest = async (
       }`
     );
   });
-  proposalMonitor.start().catch((e) => console.error(e));
+
   proposalMonitor.on(GPMEventName.TRACKER_ERRORED, (e) => console.error(e));
 
   const trackerEnd = new Promise<void>((resolve) =>
     proposalMonitor.once(GPMEventName.TRACKER_ENDED, (e: GPMAllEvent) => {
-      proposalMonitor.stop();
       resolve();
     })
   );
 
   // send the proposal
-  await (
+  const receipt = await (
     await proposer.sendTransaction({
       to: l2GovernorContract.address,
       data: proposal.encode(),
     })
   ).wait();
+
+  await proposalMonitor.monitorSingleProposal(
+    l2GovernorContract.interface.parseLog(receipt.logs[0])
+      .args as unknown as ProposalCreatedEventObject
+  );
 
   // put the l2 value in the l1 timelock
   await (
@@ -445,23 +450,26 @@ export const l2L1L2MonitoringValueTest = async (
       }`
     );
   });
-  proposalMonitor.start().catch((e) => console.error(e));
   proposalMonitor.on(GPMEventName.TRACKER_ERRORED, (e) => console.error(e));
 
   const trackerEnd = new Promise<void>((resolve) =>
     proposalMonitor.once(GPMEventName.TRACKER_ENDED, (e: GPMAllEvent) => {
-      proposalMonitor.stop();
       resolve();
     })
   );
 
   // send the proposal
-  await (
+  const receipt = await (
     await proposer.sendTransaction({
       to: l2GovernorContract.address,
       data: proposal.encode(),
     })
   ).wait();
+
+  await proposalMonitor.monitorSingleProposal(
+    l2GovernorContract.interface.parseLog(receipt.logs[0])
+      .args as unknown as ProposalCreatedEventObject
+  );
 
   // put the l2 value in the l1 timelock
   await (
@@ -552,23 +560,26 @@ export const l2L1MonitoringTest = async (
       }`
     );
   });
-  proposalMonitor.start().catch((e) => console.error(e));
   proposalMonitor.on(GPMEventName.TRACKER_ERRORED, (e) => console.error(e));
 
   const trackerEnd = new Promise<void>((resolve) =>
     proposalMonitor.once(GPMEventName.TRACKER_ENDED, (e: GPMAllEvent) => {
-      proposalMonitor.stop();
       resolve();
     })
   );
 
   // send the proposal
-  await (
+  const receipt = await (
     await proposer.sendTransaction({
       to: l2GovernorContract.address,
       data: proposal.encode(),
     })
   ).wait();
+
+  await proposalMonitor.monitorSingleProposal(
+    l2GovernorContract.interface.parseLog(receipt.logs[0])
+      .args as unknown as ProposalCreatedEventObject
+  );
 
   // wait a while then cast a vote
   const l2VotingDelay = await l2GovernorContract.votingDelay();
@@ -654,23 +665,26 @@ export const l2L1L2MonitoringTest = async (
     );
   });
 
-  proposalMonitor.start().catch((e) => console.error(e));
   proposalMonitor.on(GPMEventName.TRACKER_ERRORED, (e) => console.error(e));
 
   const trackerEnd = new Promise<void>((resolve) =>
     proposalMonitor.once(GPMEventName.TRACKER_ENDED, (e: GPMAllEvent) => {
-      proposalMonitor.stop();
       resolve();
     })
   );
 
   // send the proposal
-  await (
+  const receipt = await (
     await proposer.sendTransaction({
       to: l2GovernorContract.address,
       data: proposal.encode(),
     })
   ).wait();
+
+  await proposalMonitor.monitorSingleProposal(
+    l2GovernorContract.interface.parseLog(receipt.logs[0])
+      .args as unknown as ProposalCreatedEventObject
+  );
 
   // wait a while then cast a vote
   const l2VotingDelay = await l2GovernorContract.votingDelay();
