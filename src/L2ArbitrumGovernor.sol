@@ -115,7 +115,7 @@ contract L2ArbitrumGovernor is
     function _executor()
         internal
         view
-        override (GovernorTimelockControlUpgradeable, GovernorUpgradeable)
+        override(GovernorTimelockControlUpgradeable, GovernorUpgradeable)
         returns (address)
     {
         return address(this);
@@ -123,19 +123,30 @@ contract L2ArbitrumGovernor is
 
     /// @notice Get "circulating" votes supply; i.e., total minus excluded vote exclude address.
     function getPastCirculatingSupply(uint256 blockNumber) public view virtual returns (uint256) {
-        return token.getPastTotalSupply(blockNumber)
-            - token.getPastVotes(EXCLUDE_ADDRESS, blockNumber);
+        return
+            token.getPastTotalSupply(blockNumber) - token.getPastVotes(EXCLUDE_ADDRESS, blockNumber);
     }
 
     /// @notice Calculates the quorum size, excludes token delegated to the exclude address
     function quorum(uint256 blockNumber)
         public
         view
-        override (IGovernorUpgradeable, GovernorVotesQuorumFractionUpgradeable)
+        override(IGovernorUpgradeable, GovernorVotesQuorumFractionUpgradeable)
         returns (uint256)
     {
         return (getPastCirculatingSupply(blockNumber) * quorumNumerator(blockNumber))
             / quorumDenominator();
+    }
+
+    /// @inheritdoc GovernorVotesQuorumFractionUpgradeable
+    function quorumDenominator()
+        public
+        pure
+        override(GovernorVotesQuorumFractionUpgradeable)
+        returns (uint256)
+    {
+        // update to 10k to allow for higher precision
+        return 10_000;
     }
 
     // Overrides:
@@ -144,7 +155,7 @@ contract L2ArbitrumGovernor is
     function proposalThreshold()
         public
         view
-        override (GovernorSettingsUpgradeable, GovernorUpgradeable)
+        override(GovernorSettingsUpgradeable, GovernorUpgradeable)
         returns (uint256)
     {
         return GovernorSettingsUpgradeable.proposalThreshold();
@@ -153,7 +164,7 @@ contract L2ArbitrumGovernor is
     function state(uint256 proposalId)
         public
         view
-        override (GovernorUpgradeable, GovernorTimelockControlUpgradeable)
+        override(GovernorUpgradeable, GovernorTimelockControlUpgradeable)
         returns (ProposalState)
     {
         return GovernorTimelockControlUpgradeable.state(proposalId);
@@ -167,7 +178,7 @@ contract L2ArbitrumGovernor is
         bytes memory params
     )
         internal
-        override (GovernorUpgradeable, GovernorPreventLateQuorumUpgradeable)
+        override(GovernorUpgradeable, GovernorPreventLateQuorumUpgradeable)
         returns (uint256)
     {
         return GovernorPreventLateQuorumUpgradeable._castVote(
@@ -178,7 +189,7 @@ contract L2ArbitrumGovernor is
     function proposalDeadline(uint256 proposalId)
         public
         view
-        override (IGovernorUpgradeable, GovernorUpgradeable, GovernorPreventLateQuorumUpgradeable)
+        override(IGovernorUpgradeable, GovernorUpgradeable, GovernorPreventLateQuorumUpgradeable)
         returns (uint256)
     {
         return GovernorPreventLateQuorumUpgradeable.proposalDeadline(proposalId);
@@ -190,7 +201,7 @@ contract L2ArbitrumGovernor is
         uint256[] memory values,
         bytes[] memory calldatas,
         bytes32 descriptionHash
-    ) internal override (GovernorUpgradeable, GovernorTimelockControlUpgradeable) {
+    ) internal override(GovernorUpgradeable, GovernorTimelockControlUpgradeable) {
         GovernorTimelockControlUpgradeable._execute(
             proposalId, targets, values, calldatas, descriptionHash
         );
@@ -203,18 +214,17 @@ contract L2ArbitrumGovernor is
         bytes32 descriptionHash
     )
         internal
-        override (GovernorUpgradeable, GovernorTimelockControlUpgradeable)
+        override(GovernorUpgradeable, GovernorTimelockControlUpgradeable)
         returns (uint256)
     {
-        return GovernorTimelockControlUpgradeable._cancel(
-            targets, values, calldatas, descriptionHash
-        );
+        return
+            GovernorTimelockControlUpgradeable._cancel(targets, values, calldatas, descriptionHash);
     }
 
     function supportsInterface(bytes4 interfaceId)
         public
         view
-        override (GovernorUpgradeable, GovernorTimelockControlUpgradeable)
+        override(GovernorUpgradeable, GovernorTimelockControlUpgradeable)
         returns (bool)
     {
         return GovernorTimelockControlUpgradeable.supportsInterface(interfaceId);
