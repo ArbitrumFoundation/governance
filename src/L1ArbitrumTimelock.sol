@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.16;
 
-import "@openzeppelin/contracts-upgradeable/governance/TimelockControllerUpgradeable.sol";
 import "@arbitrum/nitro-contracts/src/bridge/IInbox.sol";
 import "./L1ArbitrumMessenger.sol";
+import "./ArbitrumTimelock.sol";
 
 interface IInboxSubmissionFee {
     function calculateRetryableSubmissionFee(uint256 dataLength, uint256 baseFee)
@@ -17,7 +17,7 @@ interface IInboxSubmissionFee {
 ///        If ever upgrading to a later version of TimelockControllerUpgradeable be sure to check that
 ///        no new behaviour has been given to the PROPOSER role, as this is assigned to the bridge
 ///        and any new behaviour should be overriden to also include the 'onlyCounterpartTimelock' modifier check
-contract L1ArbitrumTimelock is TimelockControllerUpgradeable, L1ArbitrumMessenger {
+contract L1ArbitrumTimelock is ArbitrumTimelock, L1ArbitrumMessenger {
     /// @notice The magic address to be used when a retryable ticket is to be created
     /// @dev When the target of an proposal is this magic value then the proposal
     ///      will be formed into a retryable ticket and posted to an inbox provided in
@@ -54,7 +54,7 @@ contract L1ArbitrumTimelock is TimelockControllerUpgradeable, L1ArbitrumMessenge
         // this timelock doesnt accept any proposers since they wont pass the
         // onlyCounterpartTimelock check
         address[] memory proposers;
-        __TimelockController_init(minDelay, proposers, executors);
+        __ArbitrumTimelock_init(minDelay, proposers, executors);
 
         governanceChainInbox = _governanceChainInbox;
         l2Timelock = _l2Timelock;
