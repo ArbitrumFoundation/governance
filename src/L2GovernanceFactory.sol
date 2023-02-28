@@ -120,7 +120,7 @@ contract L2GovernanceFactory is Ownable {
     address public treasuryLogic;
 
     // upExecutor and l2EmergencySecurityCouncil are only intialized after deployStep1
-    address public upExecutor; 
+    address public upExecutor;
     address public l2EmergencySecurityCouncil; // 9/12 security council
 
     Step public step;
@@ -257,7 +257,7 @@ contract L2GovernanceFactory is Ownable {
             dc.proxyAdmin,
             dc.executor,
             dc.arbitrumDAOConstitution
-            );
+        );
 
         step = Step.Three;
         return (dc, dtc);
