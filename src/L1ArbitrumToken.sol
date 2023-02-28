@@ -104,7 +104,7 @@ contract L1ArbitrumToken is
     /// @notice Allow the Arb One bridge to mint tokens
     function bridgeMint(address account, uint256 amount)
         public
-        override (INovaArbOneReverseToken)
+        override(INovaArbOneReverseToken)
         onlyArbOneGateway
     {
         _mint(account, amount);
@@ -113,7 +113,7 @@ contract L1ArbitrumToken is
     /// @notice Allow the Arb One bridge to burn tokens
     function bridgeBurn(address account, uint256 amount)
         public
-        override (INovaArbOneReverseToken)
+        override(INovaArbOneReverseToken)
         onlyArbOneGateway
     {
         _burn(account, amount);
@@ -150,7 +150,7 @@ contract L1ArbitrumToken is
     function balanceOf(address account)
         public
         view
-        override (ERC20Upgradeable, INovaArbOneReverseToken, IERC20Upgradeable)
+        override(ERC20Upgradeable, INovaArbOneReverseToken, IERC20Upgradeable)
         returns (uint256 amount)
     {
         return ERC20Upgradeable.balanceOf(account);
@@ -158,7 +158,7 @@ contract L1ArbitrumToken is
 
     function transferFrom(address sender, address recipient, uint256 amount)
         public
-        override (ERC20Upgradeable, INovaArbOneReverseToken, IERC20Upgradeable)
+        override(ERC20Upgradeable, INovaArbOneReverseToken, IERC20Upgradeable)
         returns (bool)
     {
         return ERC20Upgradeable.transferFrom(sender, recipient, amount);

@@ -21,7 +21,11 @@ contract NoteStore {
 
     mapping(bytes32 => Note) public notes;
 
-    function noteId(address sender, address author, bytes32 note, uint256 val) public pure returns(bytes32) {
+    function noteId(address sender, address author, bytes32 note, uint256 val)
+        public
+        pure
+        returns (bytes32)
+    {
         return keccak256(abi.encodePacked(sender, author, note, val));
     }
 
@@ -34,9 +38,9 @@ contract NoteStore {
         emit NoteAdded(id, msg.sender, author, note, msg.value);
     }
 
-    function exists(bytes32 id) public view returns(bool) {
+    function exists(bytes32 id) public view returns (bool) {
         return notes[id].sender != address(0);
-    } 
+    }
 }
 
 contract TestUpgrade {
