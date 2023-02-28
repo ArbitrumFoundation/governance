@@ -56,8 +56,20 @@ export const envVars = {
   daoRecipientsLocation: process.env["DAO_RECIPIENTS_FILE_LOCATION"] as string,
   claimRecipientsLocation: process.env["CLAIM_RECIPIENTS_FILE_LOCATION"] as string,
   deployedContractsLocation: process.env["DEPLOYED_CONTRACTS_FILE_LOCATION"] as string,
-  arbTransferAssetsTXsLocation: process.env["ARB_TXS_FILE_LOCATION"] as string,
-  novaTransferAssetsTXsLocation: process.env["NOVA_TXS_FILE_LOCATION"] as string,
+  l1ArbProtocolTransferTXsLocation: process.env[
+    "ARB_L1_PROTOCOL_TRANSFER_TXS_FILE_LOCATION"
+  ] as string,
+  l1ArbTokenBridgeTransferTXsLocation: process.env[
+    "ARB_L1_TOKEN_BRIDGE_TRANSFER_TXS_FILE_LOCATION"
+  ] as string,
+  arbTransferAssetsTXsLocation: process.env["ARB_L2_TXS_FILE_LOCATION"] as string,
+  l1NovaProtocolTransferTXsLocation: process.env[
+    "NOVA_L1_PROTOCOL_TRANSFER_TXS_FILE_LOCATION"
+  ] as string,
+  l1NovaTokenBridgeTransferTXsLocation: process.env[
+    "NOVA_L1_TOKEN_BRIDGE_TRANSFER_TXS_FILE_LOCATION"
+  ] as string,
+  novaTransferAssetsTXsLocation: process.env["NOVA_L2_TXS_FILE_LOCATION"] as string,
   daoRecipientsEscrowKey: process.env["DAO_RECIPIENTS_KEY"] as string,
   teamEscrowKey: process.env["TEAM_KEY"] as string,
   fullTokenVerify: process.env["FULL_TOKEN_VERIFY"] as string,
@@ -97,10 +109,22 @@ const checkEnvVars = (conf: typeof envVars) => {
 
   if (conf.deployedContractsLocation == undefined)
     throw new Error("Missing deployedContractsLocation in env vars");
+
+  if (conf.l1ArbProtocolTransferTXsLocation == undefined)
+    throw new Error("Missing l1ArbProtocolTransferTXsLocation in env vars");
+  if (conf.l1ArbTokenBridgeTransferTXsLocation == undefined)
+    throw new Error("Missing l1ArbTokenBridgeTransferTXsLocation in env vars");
   if (conf.arbTransferAssetsTXsLocation == undefined)
     throw new Error("Missing arbTransferAssetsTXsLocation in env vars");
-  if (conf.novaTransferAssetsTXsLocation == undefined)
-    throw new Error("Missing novaTransferAssetsTXsLocation in env vars");
+
+  if (isDeployingToNova()) {
+    if (conf.l1NovaProtocolTransferTXsLocation == undefined)
+      throw new Error("Missing l1NovaProtocolTransferTXsLocation in env vars");
+    if (conf.l1NovaTokenBridgeTransferTXsLocation == undefined)
+      throw new Error("Missing l1NovaTokenBridgeTransferTXsLocation in env vars");
+    if (conf.novaTransferAssetsTXsLocation == undefined)
+      throw new Error("Missing novaTransferAssetsTXsLocation in env vars");
+  }
 };
 
 export const getSigner = (provider: JsonRpcProvider, key?: string) => {

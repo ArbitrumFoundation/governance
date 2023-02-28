@@ -21,7 +21,7 @@
     "verify:distribution:full": "ts-node ./scripts/tokenDistributionVerifier.ts",
     "verify:dao:distribution": "ts-node ./scripts/tokenDaoDistributionVerifier.ts",
     "prepare:ownership:transfer": "ts-node ./scripts/prepareProtocolOwnershipTransfer.ts",
-    "execute:ownership:transfer": "ts-node ./scripts/executeProtocolOwnershipTransfer.ts",
+    "execute:ownership:transfer": "ts-node ./scripts/executeLocalProtocolOwnershipTransfer.ts",
     "verify:ownership:transfer": "ts-node ./scripts/protocolOwnershipVerifier.ts",
     "verify:contracts:etherscan": "ts-node ./scripts/verifyContractsCode.ts",
     "test:integration": "hardhat test",

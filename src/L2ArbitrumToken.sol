@@ -86,21 +86,21 @@ contract L2ArbitrumToken is
 
     function _afterTokenTransfer(address from, address to, uint256 amount)
         internal
-        override (ERC20Upgradeable, ERC20VotesUpgradeable)
+        override(ERC20Upgradeable, ERC20VotesUpgradeable)
     {
         super._afterTokenTransfer(from, to, amount);
     }
 
     function _mint(address to, uint256 amount)
         internal
-        override (ERC20Upgradeable, ERC20VotesUpgradeable)
+        override(ERC20Upgradeable, ERC20VotesUpgradeable)
     {
         super._mint(to, amount);
     }
 
     function _burn(address account, uint256 amount)
         internal
-        override (ERC20Upgradeable, ERC20VotesUpgradeable)
+        override(ERC20Upgradeable, ERC20VotesUpgradeable)
     {
         super._burn(account, amount);
     }

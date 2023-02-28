@@ -18,8 +18,11 @@ import { Provider } from "@ethersproject/providers";
 import { RollupCore } from "@arbitrum/sdk/dist/lib/abi/RollupCore";
 import { L2Network } from "@arbitrum/sdk";
 import {
+  BeaconProxyFactory__factory,
   L1CustomGateway__factory,
   L1GatewayRouter__factory,
+  L2ERC20Gateway__factory,
+  UpgradeableBeacon__factory,
 } from "../token-bridge-contracts/build/types";
 
 const ARB_OWNER_PRECOMPILE = "0x000000000000000000000000000000000000006b";
@@ -271,6 +274,18 @@ async function verifyTokenBridgeOwnership(
     l2Executor,
     "l2Executor should be l2WethGateway's proxyAdmin's owner"
   );
+
+  //// check Upgradeable Beacon's owner is L2 executor
+  const l2Erc20Gw = L2ERC20Gateway__factory.connect(
+    l2Network.tokenBridge.l2ERC20Gateway,
+    l2Provider
+  );
+  const beaconProxyFactory = BeaconProxyFactory__factory.connect(
+    await l2Erc20Gw.beaconProxyFactory(),
+    l2Provider
+  );
+  const beacon = UpgradeableBeacon__factory.connect(await beaconProxyFactory.beacon(), l2Provider);
+  assertEquals(await beacon.owner(), l2Executor, "l2Executor should be beacon's owner");
 }
 
 /**

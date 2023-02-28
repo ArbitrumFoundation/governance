@@ -17,8 +17,8 @@ struct DeployCoreParams {
     uint256 _l2TokenInitialSupply;
     uint256 _votingPeriod;
     uint256 _votingDelay;
-    uint256 _coreQuorumThreshold;
-    uint256 _treasuryQuorumThreshold;
+    uint256 _coreQuorumThreshold; // 10k denominator
+    uint256 _treasuryQuorumThreshold; // 10k denominator
     uint256 _proposalThreshold;
     uint64 _minPeriodAfterQuorum;
     address _l2NonEmergencySecurityCouncil; // 7/12 security council
@@ -119,6 +119,7 @@ contract L2GovernanceFactory is Ownable {
     address public treasuryTimelockLogic;
     address public treasuryLogic;
 
+    // upExecutor and l2EmergencySecurityCouncil are only intialized after deployStep1
     address public upExecutor;
     address public l2EmergencySecurityCouncil; // 9/12 security council
 
@@ -256,7 +257,7 @@ contract L2GovernanceFactory is Ownable {
             dc.proxyAdmin,
             dc.executor,
             dc.arbitrumDAOConstitution
-            );
+        );
 
         step = Step.Three;
         return (dc, dtc);
