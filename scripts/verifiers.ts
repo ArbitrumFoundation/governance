@@ -1000,6 +1000,7 @@ async function verifyL2ArbTreasury(
  */
 export async function verifyL2TokenDistributorEnd(
   l2TokenDistributor: TokenDistributor,
+  l2Executor: UpgradeExecutor,
   claimRecipients: Recipients,
   deploymentInfo: {
     distributorSetRecipientsStartBlock: number;
@@ -1022,6 +1023,13 @@ export async function verifyL2TokenDistributorEnd(
     recipientTotals,
     "Incorrect totalClaimable amount for TokenDistributor"
   );
+
+  //// check ownership
+  assertEquals(
+    await l2TokenDistributor.owner(),
+    l2Executor.address,
+    "L2UpgradeExecutor should be L2 TokenDistributor's owner"
+  );
 }
 
 /**
@@ -1031,7 +1039,6 @@ export async function verifyL2TokenDistributorEnd(
 export async function verifyL2TokenDistributorStart(
   l2TokenDistributor: TokenDistributor,
   l2Token: L2ArbitrumToken,
-  l2Executor: UpgradeExecutor,
   l2CoreGovernor: L2ArbitrumGovernor,
   arbProvider: Provider,
   claimRecipients: Recipients,
@@ -1042,13 +1049,6 @@ export async function verifyL2TokenDistributorStart(
     GET_LOGS_BLOCK_RANGE: number;
   }
 ) {
-  //// check ownership
-  assertEquals(
-    await l2TokenDistributor.owner(),
-    l2Executor.address,
-    "L2UpgradeExecutor should be L2 TokenDistributor's owner"
-  );
-
   //// check token balances
   const recipientTotals = Object.values(claimRecipients).reduce((a, b) => a.add(b));
   assertNumbersEquals(

@@ -1,7 +1,8 @@
 import { JsonRpcProvider } from "@ethersproject/providers";
 import { Wallet } from "ethers";
-import { NoteStore__factory, TestUpgrade__factory } from "../typechain-types";
 import { randomBytes } from "ethers/lib/utils";
+import { NoteStore__factory, TestUpgrade__factory } from "../typechain-types";
+import { ContractVerifier } from "./contractVerifier";
 
 async function main() {
   const deployRpc = process.env["DEPLOY_RPC"] as string;
@@ -14,6 +15,11 @@ async function main() {
     throw new Error("Env var 'DEPLOY_KEY' not set");
   }
   const wallet = new Wallet(deployKey).connect(rpc);
+
+  const apiKey = process.env["VERIFY_API_KEY"] as string;
+  if (apiKey == undefined) {
+    throw new Error("Env var 'VERIFY_API_KEY' not set");
+  }
 
   const noteStore = await new NoteStore__factory(wallet).deploy();
   await noteStore.deployed();
@@ -38,6 +44,10 @@ async function main() {
       2
     )
   );
+
+  const verifier = new ContractVerifier((await rpc.getNetwork()).chainId, apiKey, {});
+  await verifier.verifyWithAddress("noteStore", noteStore.address);
+  await verifier.verifyWithAddress("testUpgrade", testUpgrade.address);
 }
 
 main().then(() => console.log("Done."));

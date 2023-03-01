@@ -34,7 +34,6 @@ async function main() {
   await verifyL2TokenDistributorStart(
     l2TokenDistributor,
     arbContracts.l2Token,
-    arbContracts.l2Executor,
     arbContracts.l2CoreGoverner,
     arbProvider,
     claimRecipients,
@@ -45,6 +44,7 @@ async function main() {
     console.log("Verifying token claimants...");
     await verifyL2TokenDistributorEnd(
       l2TokenDistributor,
+      arbContracts.l2Executor,
       claimRecipients,
       {
         distributorSetRecipientsEndBlock: deployedContracts.distributorSetRecipientsEndBlock!,
