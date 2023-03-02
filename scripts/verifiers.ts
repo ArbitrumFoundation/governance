@@ -565,8 +565,8 @@ async function verifyL2CoreGovernor(
   config: {
     L2_VOTING_DELAY: number;
     L2_VOTING_PERIOD: number;
-    L2_PROPOSAL_TRESHOLD: number;
-    L2_CORE_QUORUM_TRESHOLD: number;
+    L2_PROPOSAL_THRESHOLD: number;
+    L2_CORE_QUORUM_THRESHOLD: number;
     L2_MIN_PERIOD_AFTER_QUORUM: number;
   }
 ) {
@@ -600,7 +600,7 @@ async function verifyL2CoreGovernor(
   );
   assertNumbersEquals(
     await l2CoreGovernor.proposalThreshold(),
-    BigNumber.from(config.L2_PROPOSAL_TRESHOLD),
+    BigNumber.from(config.L2_PROPOSAL_THRESHOLD),
     "Incorrect proposal threshold set for L2 core governor"
   );
   assertEquals(
@@ -615,7 +615,7 @@ async function verifyL2CoreGovernor(
   );
   assertNumbersEquals(
     await l2CoreGovernor["quorumNumerator()"](),
-    BigNumber.from(config.L2_CORE_QUORUM_TRESHOLD),
+    BigNumber.from(config.L2_CORE_QUORUM_THRESHOLD),
     "Incorrect quorum treshold set for L2 core governor"
   );
   assertNumbersEquals(
@@ -843,8 +843,8 @@ async function verifyL2TreasuryGovernor(
   config: {
     L2_VOTING_DELAY: number;
     L2_VOTING_PERIOD: number;
-    L2_PROPOSAL_TRESHOLD: number;
-    L2_TREASURY_QUORUM_TRESHOLD: number;
+    L2_PROPOSAL_THRESHOLD: number;
+    L2_TREASURY_QUORUM_THRESHOLD: number;
     L2_MIN_PERIOD_AFTER_QUORUM: number;
   }
 ) {
@@ -878,7 +878,7 @@ async function verifyL2TreasuryGovernor(
   );
   assertNumbersEquals(
     await l2TreasuryGoverner.proposalThreshold(),
-    BigNumber.from(config.L2_PROPOSAL_TRESHOLD),
+    BigNumber.from(config.L2_PROPOSAL_THRESHOLD),
     "Incorrect proposal threshold set for L2 treasury governor"
   );
   assertEquals(
@@ -888,7 +888,7 @@ async function verifyL2TreasuryGovernor(
   );
   assertNumbersEquals(
     await l2TreasuryGoverner["quorumNumerator()"](),
-    BigNumber.from(config.L2_TREASURY_QUORUM_TRESHOLD),
+    BigNumber.from(config.L2_TREASURY_QUORUM_THRESHOLD),
     "Incorrect quorum treshold set for L2 treasury governor"
   );
   assertNumbersEquals(

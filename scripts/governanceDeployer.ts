@@ -524,9 +524,9 @@ async function initL2Governance(
     L2_TIMELOCK_DELAY: number;
     L2_TOKEN_INITIAL_SUPPLY: string;
     L2_7_OF_12_SECURITY_COUNCIL: string;
-    L2_CORE_QUORUM_TRESHOLD: number;
-    L2_TREASURY_QUORUM_TRESHOLD: number;
-    L2_PROPOSAL_TRESHOLD: number;
+    L2_CORE_QUORUM_THRESHOLD: number;
+    L2_TREASURY_QUORUM_THRESHOLD: number;
+    L2_PROPOSAL_THRESHOLD: number;
     L2_VOTING_DELAY: number;
     L2_VOTING_PERIOD: number;
     L2_MIN_PERIOD_AFTER_QUORUM: number;
@@ -544,10 +544,10 @@ async function initL2Governance(
         _l2MinTimelockDelay: config.L2_TIMELOCK_DELAY,
         _l2TokenInitialSupply: parseEther(config.L2_TOKEN_INITIAL_SUPPLY),
         _l2NonEmergencySecurityCouncil: config.L2_7_OF_12_SECURITY_COUNCIL,
-        _coreQuorumThreshold: config.L2_CORE_QUORUM_TRESHOLD,
+        _coreQuorumThreshold: config.L2_CORE_QUORUM_THRESHOLD,
         _l1Token: l1TokenAddress,
-        _treasuryQuorumThreshold: config.L2_TREASURY_QUORUM_TRESHOLD,
-        _proposalThreshold: config.L2_PROPOSAL_TRESHOLD,
+        _treasuryQuorumThreshold: config.L2_TREASURY_QUORUM_THRESHOLD,
+        _proposalThreshold: config.L2_PROPOSAL_THRESHOLD,
         _votingDelay: config.L2_VOTING_DELAY,
         _votingPeriod: config.L2_VOTING_PERIOD,
         _minPeriodAfterQuorum: config.L2_MIN_PERIOD_AFTER_QUORUM,

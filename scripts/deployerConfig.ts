@@ -34,15 +34,15 @@ export interface DeployerConfig {
   /**
    * Proportion of the circulating supply required to reach a quorum
    */
-  L2_CORE_QUORUM_TRESHOLD: number;
+  L2_CORE_QUORUM_THRESHOLD: number;
   /**
    * Proportion of the circulating supply required to reach a quorum
    */
-  L2_TREASURY_QUORUM_TRESHOLD: number;
+  L2_TREASURY_QUORUM_THRESHOLD: number;
   /**
    * The number of votes required in order for a voter to become a proposer
    */
-  L2_PROPOSAL_TRESHOLD: number;
+  L2_PROPOSAL_THRESHOLD: number;
   /**
    * Delay (in number of blocks) since the proposal is submitted until voting power is fixed and voting starts
    */
