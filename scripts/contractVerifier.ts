@@ -82,7 +82,7 @@ export class ContractVerifier {
     // avoid rate limiting
     await new Promise((resolve) => setTimeout(resolve, 1000));
 
-    const sourceFile = this.contractToSource[name];
+    const sourceFile = this.contractToSource[name as keyof typeof this.contractToSource];
 
     let command = this.verifyCommand;
     if (constructorArgs) {
