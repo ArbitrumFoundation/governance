@@ -92,7 +92,7 @@ jobs:
 
       - name: Copy .env
         run: |
-          cp ./.env-sample ./.env
+          cp ./files/local/.env-sample ./.env
       
       - name: Compile contracts
         run: yarn build
@@ -162,7 +162,7 @@ jobs:
 
       - name: Copy .env
         run: |
-          cp ./.env-sample ./.env
+          cp ./files/local/.env-sample ./.env
 
       - name: Compile contracts
         run: yarn build
