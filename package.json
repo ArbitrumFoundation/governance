@@ -51,7 +51,7 @@
     "typescript": "^4.8.4"
   },
   "dependencies": {
-    "@arbitrum/nitro-contracts": "1.0.0-beta.8",
+    "@arbitrum/nitro-contracts": "1.0.1",
     "@arbitrum/token-bridge-contracts": "1.0.0-beta.0",
     "@openzeppelin/contracts": "4.7.3",
     "@openzeppelin/contracts-upgradeable": "4.7.3",

@@ -24,11 +24,11 @@ contract UpgradeMe {
 }
 ```
 
-We deploy a one-time use contract which will (eventually) execute the operation. Note that this contract will be executed via a `delegatecall`, and thus should not access any local state:
+We deploy an Action contract which will (eventually) execute the operation. Note that this contract will be executed via a `delegatecall`, and thus should not access any local state:
 
 ```solidity
-contract OneOffUpgradeContract {
-    function executeUpgrade() external {
+contract MyAction {
+    function perform() external {
         address upgradeMe = address(456);
         UpgradeMe(upgradeMe).setVersion("2");
     }
@@ -86,7 +86,7 @@ contract ProposalCreatorTest {
         // it tells the upgrade executor how to call the upgrade contract, and what calldata to provide to it
         bytes memory upgradeExecutorCallData = abi.encodeWithSelector(IUpgradeExecutor.execute.selector,
             oneOffUpgradeAddr,
-            abi.encodeWithSelector(OneOffUpgradeContract.executeUpgrade.selector)
+            abi.encodeWithSelector(MyAction.perform.selector)
         );
 
         // the data provided to call the l1 timelock with
@@ -144,7 +144,7 @@ After the L2 timelock delay has elapsed, anyone can call the `execute` function 
 
 ### **6. ArbOne: `UpgradeExecutor.execute`**
 
-Once the retryable ticket has been created, anyone can redeem it, which will call the `execute` function on the upgrade executor. As we've seen above, the upgrade executor will take the data provided and use it to `delegatecall` an upgrade contract to execute the upgrade. In our example, this would be the `OneOffUpgradeContract.executeUpgrade` function.
+Once the retryable ticket has been created, anyone can redeem it, which will call the `execute` function on the upgrade executor. As we've seen above, the upgrade executor will take the data provided and use it to `delegatecall` an upgrade contract to execute the upgrade. In our example, this would be the `MyAction.perform` function.
 
 ## Alternative Paths
 
