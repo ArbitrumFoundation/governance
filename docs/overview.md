@@ -109,6 +109,13 @@ The Arbitrum One Upgrade Executor is the Arbitrum One chain "owner", and also ha
 
 The Arbitrum Nova Upgrade Executor is the Arbitrum Nova chain "owner". Only the Arbitrum Nova Security Council and the L1 Timelock (via a retryable ticket) have the rights to execute proposals via the Arb Nova Upgrade Executer.
 
+#### Future DAO-Governed Chains
+
+When a [new L2 chain is authorized by the DAO](https://docs.arbitrum.foundation/new-arb-chains), the following steps should be carried out for the new chain to become DAO-governed:
+1. Deploy a new UpgradeExecutor contract and a new Security Council on the new L2 chain.
+1. Initialize the new L2 UpgradeExectutor with the L1 Timelock's aliased addressed and the new Security Council as its executors.
+1. Transfer ownership of the new chain's L2 contracts to new chain's L2 UpgradeExecutor, and transfer ownership of the new chain's L1 contracts to L1 Upgrade Executor. 
+
 <br/>
 
 _Comparison Table_
@@ -134,6 +141,9 @@ To upgrade the Constitution, a proposal should be created which calls `ArbitrumD
 
 If keccak256 hash of the new Constitution text doesn't match the provided hash, the DAO should reject the proposal. 
 
+
+## Proposal Cancellation 
+Both governor contracts have the affordance to cancel proposals scheduled in the L2 Timelock. The Security Council can likewise cancel proposals [via calling L2ArbitrumGovernor.relay](src/gov-action-contracts/governance/CancelTimelockOperation.sol). Note that although the core-governor Security Council has the affordance to cancel proposals in the L2 timelock via calling `cancel` directly, for clarity and consistency, it should use the aforementioned `relay` method. 
 
 ### Further readings
 
