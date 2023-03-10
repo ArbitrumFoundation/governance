@@ -114,7 +114,17 @@ The Arbitrum Nova Upgrade Executor is the Arbitrum Nova chain "owner". Only the 
 When a [new L2 chain is authorized by the DAO](https://docs.arbitrum.foundation/new-arb-chains), the following steps should be carried out for the new chain to become DAO-governed:
 1. Deploy a new UpgradeExecutor contract and a new Security Council on the new L2 chain.
 1. Initialize the new L2 UpgradeExectutor with the L1 Timelock's aliased addressed and the new Security Council as its executors.
-1. Transfer ownership of the new chain's L2 contracts to new chain's L2 UpgradeExecutor, and transfer ownership of the new chain's L1 contracts to L1 Upgrade Executor. 
+1. Ownership transfer: for a chain deployed whose contract deployment mirrors that of Arbitrum One and Arbitrum Nova (i.e, [Nitro](https://github.com/OffchainLabs/nitro) core contracts and [token bridge contracts](https://github.com/OffchainLabs/token-bridge-contracts)), the following ownership transfer should take place:
+     - The L1 Upgrade Executor should be granted the following affordances:
+        - L1 core contract Proxy Admin owner
+        - L1 token bridge Proxy Admin owner
+        - Rollup Admin owner
+        - L1 Gateway Router owner 
+        - L1 Arb Custom Gateway Owner
+    - The new L2 Upgrade Executor should be granted the following affordances:
+        - L2 token bridge Proxy Admin Owner 
+        - Chain Owner
+        - Standard Arb-ERC20 Beacon Proxy owner 
 
 <br/>
 
