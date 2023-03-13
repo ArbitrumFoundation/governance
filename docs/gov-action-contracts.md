@@ -1,1 +1,1 @@
-See [governance action contracts docs](../src/gov-actions/README.md)
+See [governance action contracts docs](../src/gov-action-contracts/README.md)
