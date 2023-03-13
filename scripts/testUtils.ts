@@ -69,7 +69,7 @@ export async function getProxyOwner(contractAddress: string, provider: Provider)
   return ethers.utils.getAddress(formatAddress);
 }
 
-export type Recipients = { readonly [key: string]: BigNumber };
+export type Recipients = { [key: string]: BigNumber };
 
 export const loadRecipients = (fileLocation: string): Recipients => {
   const fileContents = fs.readFileSync(fileLocation).toString();

@@ -57,8 +57,10 @@ export async function setClaimRecipients(
   const l1GasPriceLimit = BigNumber.from(config.BASE_L1_GAS_PRICE_LIMIT);
   const arbGasInfo = ArbGasInfo__factory.connect(ARB_GAS_INFO, arbDeployer);
 
-  const tokenRecipients = Object.keys(claimRecipients);
-  const tokenAmounts = Object.values(claimRecipients);
+  // first sort by value to improve compression
+  const sortedRecipients = sortRecipientsByValue(claimRecipients);
+  const tokenRecipients = Object.keys(sortedRecipients);
+  const tokenAmounts = Object.values(sortedRecipients);
 
   let canClaimEventsEmitted = 0;
   for (
@@ -211,4 +213,20 @@ export function isClaimAmountValid(amount: BigNumber) {
  */
 export function isAmountsBatchValid(amounts: BigNumber[]) {
   return amounts.every((elem) => isClaimAmountValid(elem));
+}
+
+export function sortRecipientsByValue(recipients: Recipients) {
+  const pairs = Object.entries(recipients);
+  const compareBigNumbers = (a: [string, BigNumber], b: [string, BigNumber]): number => {
+    return a[1].sub(b[1]).div(BigNumber.from(10).pow(18)).toNumber();
+  };
+
+  pairs.sort(compareBigNumbers);
+
+  const sortedRecipients: Recipients = pairs.reduce((obj: Recipients, [key, value]) => {
+    obj[key] = value;
+    return obj;
+  }, {});
+
+  return sortedRecipients;
 }
