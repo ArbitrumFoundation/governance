@@ -3,7 +3,6 @@ import { Wallet } from "ethers";
 import { randomBytes } from "ethers/lib/utils";
 import { NoteStore__factory, TestUpgrade__factory } from "../typechain-types";
 import { ContractVerifier } from "./contractVerifier";
-import { envVars } from "./providerSetup";
 
 async function main() {
   const deployRpc = process.env["DEPLOY_RPC"] as string;
