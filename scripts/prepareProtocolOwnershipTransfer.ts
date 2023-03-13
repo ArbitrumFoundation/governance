@@ -67,7 +67,10 @@ export const prepareAssetTransferTXs = async () => {
     arbNetwork.partnerChainID,
     l1ProtocolOwnerTXs
   );
-  fs.writeFileSync(envVars.l1ArbProtocolTransferTXsLocation, JSON.stringify(l1ArbProtocolBatch));
+  fs.writeFileSync(
+    envVars.l1ArbProtocolTransferTXsLocation,
+    JSON.stringify(l1ArbProtocolBatch, null, 2)
+  );
   console.log("Arb L1 protocol transfer TXs file:", envVars.l1ArbProtocolTransferTXsLocation);
 
   // transfer token bridge
@@ -77,7 +80,7 @@ export const prepareAssetTransferTXs = async () => {
   );
   fs.writeFileSync(
     envVars.l1ArbTokenBridgeTransferTXsLocation,
-    JSON.stringify(l1ArbTokenBridgeBatch)
+    JSON.stringify(l1ArbTokenBridgeBatch, null, 2)
   );
   console.log(
     "Arb L1 token bridge transfer TXs file:",
@@ -86,7 +89,7 @@ export const prepareAssetTransferTXs = async () => {
 
   // transfer L2
   const arbAssetsBatch: GnosisBatch = getGnosisBatch(arbNetwork.chainID, l2TXs);
-  fs.writeFileSync(envVars.arbTransferAssetsTXsLocation, JSON.stringify(arbAssetsBatch));
+  fs.writeFileSync(envVars.arbTransferAssetsTXsLocation, JSON.stringify(arbAssetsBatch, null, 2));
   console.log("Arb L2 TXs file:", envVars.arbTransferAssetsTXsLocation);
 
   ///// Nova
@@ -108,7 +111,7 @@ export const prepareAssetTransferTXs = async () => {
     );
     fs.writeFileSync(
       envVars.l1NovaProtocolTransferTXsLocation,
-      JSON.stringify(l1NovaProtocolBatch)
+      JSON.stringify(l1NovaProtocolBatch, null, 2)
     );
     console.log("Nova L1 protocol transfer TXs file:", envVars.l1NovaProtocolTransferTXsLocation);
 
@@ -119,7 +122,7 @@ export const prepareAssetTransferTXs = async () => {
     );
     fs.writeFileSync(
       envVars.l1NovaTokenBridgeTransferTXsLocation,
-      JSON.stringify(l1NovaTokenBridgeBatch)
+      JSON.stringify(l1NovaTokenBridgeBatch, null, 2)
     );
     console.log(
       "Nova L1 token bridge transfer TXs file:",
@@ -128,7 +131,10 @@ export const prepareAssetTransferTXs = async () => {
 
     // transfer L2
     const novaAssetsBatch: GnosisBatch = getGnosisBatch(novaNetwork!.chainID, l2TXs);
-    fs.writeFileSync(envVars.novaTransferAssetsTXsLocation, JSON.stringify(novaAssetsBatch));
+    fs.writeFileSync(
+      envVars.novaTransferAssetsTXsLocation,
+      JSON.stringify(novaAssetsBatch, null, 2)
+    );
     console.log("Nova L2 TXs file:", envVars.novaTransferAssetsTXsLocation);
   }
 };

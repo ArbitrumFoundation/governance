@@ -61,7 +61,7 @@ aceb02d8a616   ethereum/client-go:stable   "geth --keystore /ke…"   About an h
 
 Set the env variables (you can use the ones from .env-sample)
 ```
-cp .env-sample .env
+cp files/local/.env-sample .env
 ```
 
 Install dependencies
@@ -196,7 +196,7 @@ yarn allocate:dao:tokens
 
 And verify they were distributed successfully
 ```
-yarn verify:dao:distributions
+yarn verify:dao:distribution
 ```
 
 There's another set of tasks required - once governance is deployed ownership of existing Arb/Nova protocol contracts shall be transferred to the DAO. Running the following script will prepare (unsigned) transactions that need to be executed to fully transfer the ownership:
@@ -204,9 +204,13 @@ There's another set of tasks required - once governance is deployed ownership of
 yarn prepare:ownership:transfer
 ```
 
-Script outputs 2 JSON files which contain unsigned TXs (`data` and `to` fields):
-- `files/local/arbTransferAssetsTXs.json`
-- `files/local/novaTransferAssetsTXs.json`
+Script outputs 6 JSON files which contain unsigned TXs in a format that can be inported to Gnosis Safe UI:
+- `./files/local/l1ArbProtocolTransferTXs.json`
+- `./files/local/l1ArbTokenBridgeTransferTXs.json`
+- `./files/local/arbTransferAssetsTXs.json`
+- `./files/local/l1NovaProtocolTransferTXs.json`
+- `./files/local/l1NovaTokenBridgeTransferTXs.json`
+- `./files/local/novaTransferAssetsTXs.json`
 
 In production mode these TXs will be signed and executed by protocol owner multisig. In test mode however we can execute them directly by running script:
 ```

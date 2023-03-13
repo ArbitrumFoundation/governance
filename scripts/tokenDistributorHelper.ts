@@ -153,6 +153,13 @@ export async function getRecipientsDataFromContractEvents(
     GET_LOGS_BLOCK_RANGE: number;
   }
 ): Promise<{ [key: string]: BigNumber }> {
+  console.log(
+    "Collecting CanClaim events from block",
+    startBlock.toString(),
+    "to block",
+    endBlock.toString()
+  );
+
   let recipientData: { [key: string]: BigNumber } = {};
   const canClaimFilter = tokenDistributor.filters.CanClaim();
 
@@ -174,6 +181,7 @@ export async function getRecipientsDataFromContractEvents(
     currentBlock = currentBlock + blocksToSearch + 1;
   }
 
+  console.log("Done, found", Object.keys(recipientData).length, "recipients");
   return recipientData;
 }
 
