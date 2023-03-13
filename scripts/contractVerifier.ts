@@ -45,6 +45,7 @@ export class ContractVerifier {
     novaTokenProxy: this.TUP,
     l2CoreGoverner: this.TUP,
     l2CoreTimelock: this.TUP,
+    l2TreasuryTimelock: this.TUP,
     l2Executor: this.TUP,
     l2ProxyAdmin: this.PROXY_ADMIN,
     l2Token: this.TUP,
@@ -175,6 +176,13 @@ export class ContractVerifier {
         [this.deployedContracts.l2GovernorLogic!, this.deployedContracts.l2ProxyAdmin!, "0x"]
       )
     );
+    await this.verify(
+      "l2TreasuryTimelock",
+      abi.encode(
+        ["address", "address", "bytes"],
+        [this.deployedContracts.l2TimelockLogic!, this.deployedContracts.l2ProxyAdmin!, "0x"]
+      )
+    );
     this.verify(
       "l2ArbTreasury",
       abi.encode(
@@ -193,7 +201,7 @@ export class ContractVerifier {
         ["address", "address", "address", "uint256", "uint256", "address"],
         [
           this.deployedContracts.l2Token!,
-          config.L2_SWEEP_RECEIVER,
+          this.deployedContracts.l2TreasuryTimelock!,
           arbDeployer,
           config.L2_CLAIM_PERIOD_START,
           config.L2_CLAIM_PERIOD_END,

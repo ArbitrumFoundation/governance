@@ -35,6 +35,7 @@ async function main() {
     l2TokenDistributor,
     arbContracts.l2Token,
     arbContracts.l2CoreGoverner,
+    arbContracts.l2TreasuryGoverner,
     arbProvider,
     claimRecipients,
     deployerConfig

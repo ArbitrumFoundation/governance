@@ -55,11 +55,15 @@ export const allocateTokens = async () => {
   );
 
   // deploy ARB distributor
+  if(!deployedContracts.l2TreasuryTimelock) {
+    throw new Error("Treasury timelock not deployed");
+  }
   console.log("Deploy TokenDistributor");
   const tokenDistributor = await deployTokenDistributor(
     arbDeployer,
     deployedContracts.l2Token!,
     deployedContracts.l2CoreGoverner!,
+    deployedContracts.l2TreasuryTimelock!,
     arbDeployer,
     claimRecipients,
     deployerConfig
@@ -204,10 +208,10 @@ async function deployTokenDistributor(
   arbDeployer: Signer,
   l2TokenAddress: string,
   l2CoreGovernerAddress: string,
+  l2SweepReceiverAddress: string,
   arbInitialSupplyRecipient: Signer,
   claimRecipients: Recipients,
   config: {
-    L2_SWEEP_RECEIVER: string;
     L2_CLAIM_PERIOD_START: number;
     L2_CLAIM_PERIOD_END: number;
   }
@@ -225,7 +229,7 @@ async function deployTokenDistributor(
     async () => {
       return await new TokenDistributor__factory(arbDeployer).deploy(
         l2TokenAddress,
-        config.L2_SWEEP_RECEIVER,
+        l2SweepReceiverAddress,
         await arbDeployer.getAddress(),
         config.L2_CLAIM_PERIOD_START,
         config.L2_CLAIM_PERIOD_END,
