@@ -37,7 +37,7 @@ async function main() {
   const teamWallet = getTeamSigner(arbProvider as JsonRpcProvider);
   const isLocal = isLocalDeployment();
 
-  if ((await teamWallet.getBalance()).eq(0)) {
+  if ((await teamWallet.getBalance()).lt(parseEther("0.5"))) {
     await (
       await arbDeployer.sendTransaction({
         to: teamWallet.address,
@@ -60,8 +60,8 @@ async function main() {
     if (isLocal) {
       await mineBlock(ethDeployer);
       await mineBlock(arbDeployer);
-      await wait(1000);
     }
+    await wait(1000);
   }
 
   const arbContracts = loadArbContracts(arbProvider, deployedContracts);
