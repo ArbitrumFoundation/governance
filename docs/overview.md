@@ -109,6 +109,23 @@ The Arbitrum One Upgrade Executor is the Arbitrum One chain "owner", and also ha
 
 The Arbitrum Nova Upgrade Executor is the Arbitrum Nova chain "owner". Only the Arbitrum Nova Security Council and the L1 Timelock (via a retryable ticket) have the rights to execute proposals via the Arb Nova Upgrade Executer.
 
+#### Future DAO-Governed Chains
+
+When a [new L2 chain is authorized by the DAO](https://docs.arbitrum.foundation/new-arb-chains), the following steps should be carried out for the new chain to become DAO-governed:
+1. Deploy a new UpgradeExecutor contract and a new Security Council on the new L2 chain.
+1. Initialize the new L2 UpgradeExectutor with the L1 Timelock's aliased addressed and the new Security Council as its executors.
+1. Ownership transfer: for a chain deployed whose contract deployment mirrors that of Arbitrum One and Arbitrum Nova (i.e, [Nitro](https://github.com/OffchainLabs/nitro) core contracts and [token bridge contracts](https://github.com/OffchainLabs/token-bridge-contracts)), the following ownership transfer should take place:
+     - The L1 Upgrade Executor should be granted the following affordances:
+        - L1 core contract Proxy Admin owner
+        - L1 token bridge Proxy Admin owner
+        - Rollup Admin owner
+        - L1 Gateway Router owner 
+        - L1 Arb Custom Gateway Owner
+    - The new L2 Upgrade Executor should be granted the following affordances:
+        - L2 token bridge Proxy Admin Owner 
+        - Chain Owner
+        - Standard Arb-ERC20 Beacon Proxy owner 
+
 <br/>
 
 _Comparison Table_
@@ -134,6 +151,9 @@ To upgrade the Constitution, a proposal should be created which calls `ArbitrumD
 
 If keccak256 hash of the new Constitution text doesn't match the provided hash, the DAO should reject the proposal. 
 
+
+## Proposal Cancellation 
+Both governor contracts have the affordance to cancel proposals scheduled in the L2 Timelock. The Security Council can likewise cancel proposals [via calling L2ArbitrumGovernor.relay](src/gov-action-contracts/governance/CancelTimelockOperation.sol). Note that although the core-governor Security Council has the affordance to cancel proposals in the L2 timelock via calling `cancel` directly, for clarity and consistency, it should use the aforementioned `relay` method. 
 
 ### Further readings
 
