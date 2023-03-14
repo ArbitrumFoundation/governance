@@ -57,10 +57,9 @@ export async function setClaimRecipients(
   const l1GasPriceLimit = BigNumber.from(config.BASE_L1_GAS_PRICE_LIMIT);
   const arbGasInfo = ArbGasInfo__factory.connect(ARB_GAS_INFO, arbDeployer);
 
-  // first sort by value to improve compression
-  const sortedRecipients = sortRecipientsByValue(claimRecipients);
-  const tokenRecipients = Object.keys(sortedRecipients);
-  const tokenAmounts = Object.values(sortedRecipients);
+  // sort by value
+  const { tokenRecipients, tokenAmounts } = getRecipientsAndAmountsSortedByAmounts(claimRecipients);
+  verifyOrdering(claimRecipients, tokenRecipients, tokenAmounts);
 
   let canClaimEventsEmitted = 0;
   for (
@@ -215,18 +214,64 @@ export function isAmountsBatchValid(amounts: BigNumber[]) {
   return amounts.every((elem) => isClaimAmountValid(elem));
 }
 
-export function sortRecipientsByValue(recipients: Recipients) {
+/**
+ * Sort recipients-amounts pairs by amounts and return them as 2 arrays
+ *
+ * @param recipients
+ * @returns
+ */
+function getRecipientsAndAmountsSortedByAmounts(recipients: Recipients): {
+  tokenRecipients: string[];
+  tokenAmounts: BigNumber[];
+} {
+  // recipient - amount pairs
   const pairs = Object.entries(recipients);
-  const compareBigNumbers = (a: [string, BigNumber], b: [string, BigNumber]): number => {
-    return a[1].sub(b[1]).div(BigNumber.from(10).pow(18)).toNumber();
+
+  const compareByAmount = (a: [string, BigNumber], b: [string, BigNumber]): number => {
+    const amountA: BigNumber = a[1];
+    const amountB: BigNumber = b[1];
+
+    if (amountA.gt(amountB)) {
+      return 1;
+    }
+    if (amountA.lt(amountB)) {
+      return -1;
+    }
+    return 0;
   };
 
-  pairs.sort(compareBigNumbers);
+  pairs.sort(compareByAmount);
 
-  const sortedRecipients: Recipients = pairs.reduce((obj: Recipients, [key, value]) => {
-    obj[key] = value;
-    return obj;
-  }, {});
+  const tokenRecipients: string[] = pairs.map((tuple) => tuple[0]);
+  const tokenAmounts: BigNumber[] = pairs.map((tuple) => tuple[1]);
 
-  return sortedRecipients;
+  return { tokenRecipients, tokenAmounts };
+}
+
+/**
+ * Check that amounts are sorted and that recipient to amount mapping is preserved.
+ * Throw error if an issue is found.
+ *
+ * @param claimRecipients
+ * @param tokenRecipients
+ * @param tokenAmounts
+ */
+function verifyOrdering(
+  claimRecipients: Recipients,
+  tokenRecipients: string[],
+  tokenAmounts: BigNumber[]
+) {
+  for (let i = 0; i < tokenAmounts.length - 1; i++) {
+    const amount = tokenAmounts[i];
+    if (amount.gt(tokenAmounts[i + 1])) {
+      throw new Error("Token amounts are exepected to be ordered");
+    }
+
+    const recipient = tokenRecipients[i];
+    if (claimRecipients[recipient] !== amount) {
+      throw new Error(
+        `Mismatch between token ${recipient} recipient and token amount ${amount.toString()}`
+      );
+    }
+  }
 }
