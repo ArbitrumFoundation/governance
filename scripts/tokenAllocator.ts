@@ -352,4 +352,11 @@ async function main() {
   console.log("Allocation finished!");
 }
 
+process.on('SIGINT', function() {
+  console.log("Detected interrupt")
+  console.log("Write deployed contract addresses to deployedContracts.json");
+  updateDeployedContracts(deployedContracts);
+  process.exit();
+});
+
 main().then(() => console.log("Done."));
