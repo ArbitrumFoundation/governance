@@ -35,7 +35,7 @@ contract OutboxActionsTest is Test, ActionTestBase {
             add.BridgeAddOutboxesAction.perform.selector, [address(12_345_678)]
         );
         vm.prank(executor0);
-        vm.expectRevert("UpgradeExecutor: inner delegate call failed");
+        vm.expectRevert("UpgradeExecutor: inner delegate call failed without reason");
         ue.execute(address(action), data);
     }
 
