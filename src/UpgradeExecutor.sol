@@ -3,7 +3,6 @@ pragma solidity 0.8.16;
 
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/utils/Address.sol";
 
 /// @title  A root contract from which it execute upgrades
 /// @notice Does not contain upgrade logic itself, only the means to call upgrade contracts and execute them
@@ -11,8 +10,6 @@ import "@openzeppelin/contracts/utils/Address.sol";
 ///         and for these actions to interact. However because we are delegatecalling into these upgrade
 ///         contracts, it's important that these upgrade contract do not touch or modify contract state.
 contract UpgradeExecutor is Initializable, AccessControlUpgradeable, ReentrancyGuard {
-    using Address for address;
-
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
     bytes32 public constant EXECUTOR_ROLE = keccak256("EXECUTOR_ROLE");
 
@@ -50,10 +47,20 @@ contract UpgradeExecutor is Initializable, AccessControlUpgradeable, ReentrancyG
         onlyRole(EXECUTOR_ROLE)
         nonReentrant
     {
-        // OZ Address library check if the address is a contract and bubble up inner revert reason
-        address(upgrade).functionDelegateCall(
-            upgradeCallData, "UpgradeExecutor: inner delegate call failed"
-        );
+        uint256 size = upgrade.code.length;
+        require(size > 0, "UpgradeExecutor: upgrade target must be contract");
+        (bool success, bytes memory returndata) = address(upgrade).delegatecall(upgradeCallData);
+        if (!success) {
+            if (returndata.length > 0) {
+                // solhint-disable-next-line no-inline-assembly
+                assembly {
+                    let returndata_size := mload(returndata)
+                    revert(add(32, returndata), returndata_size)
+                }
+            } else {
+                revert("UpgradeExecutor: inner delegate call failed");
+            }
+        }
 
         emit UpgradeExecuted(upgrade, msg.value, upgradeCallData);
     }
