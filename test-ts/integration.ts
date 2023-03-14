@@ -237,11 +237,10 @@ const mineBlocksAndWaitForProposalState = async (
   l2Signer: Signer,
   l2GovernorContract: L2ArbitrumGovernor,
   proposalId: string,
-  blockCount: number,
   state: number,
   mining: boolean
 ) => {
-  for (let index = 0; index < blockCount; index++) {
+  while(true) {
     if (mining) {
       await mineBlock(l1Signer);
       await mineBlock(l2Signer);
@@ -343,13 +342,11 @@ export const l2L1MonitoringValueTest = async (
   ).wait();
 
   // wait a while then cast a vote
-  const l2VotingDelay = await l2GovernorContract.votingDelay();
   await mineBlocksAndWaitForProposalState(
     l1Signer,
     l2Signer,
     l2GovernorContract,
     proposal.id(),
-    l2VotingDelay.toNumber(),
     1,
     localMining
   );
@@ -481,13 +478,11 @@ export const l2L1L2MonitoringValueTest = async (
   ).wait();
 
   // wait a while then cast a vote
-  const l2VotingDelay = await l2GovernorContract.votingDelay();
   await mineBlocksAndWaitForProposalState(
     l1Signer,
     l2Signer,
     l2GovernorContract,
     proposal.id(),
-    l2VotingDelay.toNumber(),
     1,
     localMining
   );
@@ -583,13 +578,11 @@ export const l2L1MonitoringTest = async (
   );
 
   // wait a while then cast a vote
-  const l2VotingDelay = await l2GovernorContract.votingDelay();
   await mineBlocksAndWaitForProposalState(
     l1Signer,
     l2Signer,
     l2GovernorContract,
     proposal.id(),
-    l2VotingDelay.toNumber(),
     1,
     localMining
   );
@@ -688,13 +681,11 @@ export const l2L1L2MonitoringTest = async (
   );
 
   // wait a while then cast a vote
-  const l2VotingDelay = await l2GovernorContract.votingDelay();
   await mineBlocksAndWaitForProposalState(
     l1Signer,
     l2Signer,
     l2GovernorContract,
     proposal.id(),
-    l2VotingDelay.toNumber(),
     1,
     localMining
   );
@@ -790,13 +781,11 @@ const proposeAndExecuteL2 = async (
   const proposalVotes = await l2GovernorContract.proposalVotes(proposalId);
   expect(proposalVotes, "Proposal exists").to.not.be.undefined;
 
-  const l2VotingDelay = await l2GovernorContract.votingDelay();
   await mineBlocksAndWaitForProposalState(
     l1Deployer,
     l2Deployer,
     l2GovernorContract,
     proposalId,
-    l2VotingDelay.toNumber(),
     1,
     true
   );
@@ -810,13 +799,11 @@ const proposeAndExecuteL2 = async (
     .to.be.true;
 
   // wait for proposal to be in success state
-  const l2VotingPeriod = (await l2GovernorContract.votingPeriod()).toNumber();
   await mineBlocksAndWaitForProposalState(
     l1Deployer,
     l2Deployer,
     l2GovernorContract,
     proposalId,
-    l2VotingPeriod,
     4,
     true
   );
@@ -829,13 +816,11 @@ const proposeAndExecuteL2 = async (
     })
   ).wait();
 
-  const l2TimelockDelay = (await l2TimelockContract.getMinDelay()).toNumber();
   await mineBlocksAndWaitForProposalState(
     l1Deployer,
     l2Deployer,
     l2GovernorContract,
     proposalId,
-    l2TimelockDelay,
     5,
     true
   );
