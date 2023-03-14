@@ -49,8 +49,18 @@ contract UpgradeExecutor is Initializable, AccessControlUpgradeable, ReentrancyG
     {
         uint256 size = upgrade.code.length;
         require(size > 0, "UpgradeExecutor: upgrade target must be contract");
-        (bool success,) = address(upgrade).delegatecall(upgradeCallData);
-        require(success, "UpgradeExecutor: inner delegate call failed");
+        (bool success, bytes memory returndata) = address(upgrade).delegatecall(upgradeCallData);
+        if (!success) {
+            if (returndata.length > 0) {
+                // solhint-disable-next-line no-inline-assembly
+                assembly {
+                    let returndata_size := mload(returndata)
+                    revert(add(32, returndata), returndata_size)
+                }
+            } else {
+                revert("UpgradeExecutor: inner delegate call failed");
+            }
+        }
 
         emit UpgradeExecuted(upgrade, msg.value, upgradeCallData);
     }
