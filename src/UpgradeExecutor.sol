@@ -3,7 +3,6 @@ pragma solidity 0.8.16;
 
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-
 import "@openzeppelin/contracts/utils/Address.sol";
 
 /// @title  A root contract from which it execute upgrades
@@ -52,7 +51,9 @@ contract UpgradeExecutor is Initializable, AccessControlUpgradeable, ReentrancyG
         nonReentrant
     {
         // OZ Address library check if the address is a contract and bubble up inner revert reason
-        address(upgrade).functionDelegateCall(upgradeCallData, "UpgradeExecutor: inner delegate call failed");
+        address(upgrade).functionDelegateCall(
+            upgradeCallData, "UpgradeExecutor: inner delegate call failed"
+        );
 
         emit UpgradeExecuted(upgrade, msg.value, upgradeCallData);
     }
