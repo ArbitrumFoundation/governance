@@ -3,6 +3,7 @@ import { Wallet } from "ethers";
 import { randomBytes } from "ethers/lib/utils";
 import { NoteStore__factory, TestUpgrade__factory } from "../typechain-types";
 import { ContractVerifier } from "./contractVerifier";
+import { isLocalDeployment } from "./providerSetup";
 
 async function main() {
   const deployRpc = process.env["DEPLOY_RPC"] as string;
@@ -45,7 +46,8 @@ async function main() {
     )
   );
 
-  if((process.env["DEPLOY_TO_LOCAL_ENVIRONMENT"] as string) !== "true") {
+  
+  if(!isLocalDeployment()) {
     // only verify if we're not deploying to local 
     const verifier = new ContractVerifier((await rpc.getNetwork()).chainId, apiKey, {});
     await verifier.verifyWithAddress("noteStore", noteStore.address);
