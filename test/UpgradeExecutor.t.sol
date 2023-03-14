@@ -87,7 +87,7 @@ contract UpgradeExecutorTest is Test {
         bytes memory data;
 
         vm.prank(executor0);
-        vm.expectRevert("UpgradeExecutor: upgrade target must be contract");
+        vm.expectRevert("Address: delegate call to non-contract");
         ue.execute(address(111), data);
     }
 
