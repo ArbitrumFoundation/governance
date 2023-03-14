@@ -34,7 +34,7 @@ contract SequencerActionsTest is Test, ActionTestBase {
         bytes memory callData =
             abi.encodeWithSelector(add.AddSequencerAction.perform.selector, newSequencer);
         vm.prank(executor0);
-        vm.expectRevert("UpgradeExecutor: inner delegate call failed");
+        vm.expectRevert("SequencerActionLib sequencer param cannot be address(0)");
         ue.execute(address(addAction), callData);
     }
 }
