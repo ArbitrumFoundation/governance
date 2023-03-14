@@ -58,7 +58,7 @@ contract UpgradeExecutor is Initializable, AccessControlUpgradeable, ReentrancyG
                     revert(add(32, returndata), returndata_size)
                 }
             } else {
-                revert("UpgradeExecutor: inner delegate call failed");
+                revert("UpgradeExecutor: inner delegate call failed without reason");
             }
         }
 
