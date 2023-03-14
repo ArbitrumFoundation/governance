@@ -1007,7 +1007,6 @@ export async function verifyL2TokenDistributorEnd(
     distributorSetRecipientsEndBlock: number;
   },
   config: {
-    L2_SWEEP_RECEIVER: string;
     L2_CLAIM_PERIOD_START: number;
     L2_CLAIM_PERIOD_END: number;
     GET_LOGS_BLOCK_RANGE: number;
@@ -1040,10 +1039,10 @@ export async function verifyL2TokenDistributorStart(
   l2TokenDistributor: TokenDistributor,
   l2Token: L2ArbitrumToken,
   l2CoreGovernor: L2ArbitrumGovernor,
+  l2TreasuryGovernor: L2ArbitrumGovernor,
   arbProvider: Provider,
   claimRecipients: Recipients,
   config: {
-    L2_SWEEP_RECEIVER: string;
     L2_CLAIM_PERIOD_START: number;
     L2_CLAIM_PERIOD_END: number;
     GET_LOGS_BLOCK_RANGE: number;
@@ -1065,7 +1064,7 @@ export async function verifyL2TokenDistributorStart(
   );
   assertEquals(
     await l2TokenDistributor.sweepReceiver(),
-    config.L2_SWEEP_RECEIVER,
+    await l2TreasuryGovernor.timelock(),
     "Incorrect sweep receiver set for TokenDistributor"
   );
   assertNumbersEquals(

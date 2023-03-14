@@ -206,6 +206,7 @@ export interface DeployProgressCache {
   l2Token?: string;
   l2TreasuryGoverner?: string;
   l2ArbTreasury?: string;
+  l2TreasuryTimelock?: string;
   arbitrumDAOConstitution?: string;
   l1Executor?: string;
   l1ProxyAdmin?: string;

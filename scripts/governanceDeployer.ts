@@ -563,6 +563,11 @@ async function initL2Governance(
       (e) => e.topics[0] === l2GovernanceFactory.interface.getEventTopic("Deployed")
     )[0].args as unknown as L2DeployedEventObject;
 
+    const treasuryTimelock = await L2ArbitrumGovernor__factory.connect(
+      l2DeployResult.treasuryGoverner,
+      arbDeployer.provider!
+    ).timelock();
+
     // store addresses
     deployedContracts.l2CoreGoverner = l2DeployResult.coreGoverner;
     deployedContracts.l2CoreTimelock = l2DeployResult.coreTimelock;
@@ -572,6 +577,7 @@ async function initL2Governance(
     deployedContracts.l2TreasuryGoverner = l2DeployResult.treasuryGoverner;
     deployedContracts.l2ArbTreasury = l2DeployResult.arbTreasury;
     deployedContracts.arbitrumDAOConstitution = l2DeployResult.arbitrumDAOConstitution;
+    deployedContracts.l2TreasuryTimelock = treasuryTimelock;
   }
   return {
     token: deployedContracts.l2Token!,
