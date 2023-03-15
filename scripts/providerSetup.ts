@@ -92,15 +92,17 @@ const checkEnvVars = (conf: typeof envVars) => {
   if (!fs.existsSync(conf.deployerConfigLocation))
     throw new Error(`Missing file at ${conf.deployerConfigLocation}`);
 
-  if (conf.vestedRecipientsLocation == undefined)
-    throw new Error("Missing vestedRecipientsLocation in env vars");
-  if (!fs.existsSync(conf.vestedRecipientsLocation))
-    throw new Error(`Missing file at ${conf.vestedRecipientsLocation}`);
+  if (isLocalDeployment()) {
+    if (conf.vestedRecipientsLocation == undefined)
+      throw new Error("Missing vestedRecipientsLocation in env vars");
+    if (!fs.existsSync(conf.vestedRecipientsLocation))
+      throw new Error(`Missing file at ${conf.vestedRecipientsLocation}`);
 
-  if (conf.daoRecipientsLocation == undefined)
-    throw new Error("Missing daoRecipientsLocation in env vars");
-  if (!fs.existsSync(conf.daoRecipientsLocation))
-    throw new Error(`Missing file at ${conf.daoRecipientsLocation}`);
+    if (conf.daoRecipientsLocation == undefined)
+      throw new Error("Missing daoRecipientsLocation in env vars");
+    if (!fs.existsSync(conf.daoRecipientsLocation))
+      throw new Error(`Missing file at ${conf.daoRecipientsLocation}`);
+  }
 
   if (conf.claimRecipientsLocation == undefined)
     throw new Error("Missing claimRecipientsLocation in env vars");
@@ -256,8 +258,6 @@ export const getDeployersAndConfig = async (): Promise<{
   deployerConfig: DeployerConfig;
   arbNetwork: L2Network;
   novaNetwork: L2Network | undefined;
-  daoRecipients: Recipients;
-  vestedRecipients: Recipients;
   claimRecipients: Recipients;
 }> => {
   // make sure we were able to load the env vars
@@ -271,8 +271,6 @@ export const getDeployersAndConfig = async (): Promise<{
     teamEscrowKey: "******",
   });
 
-  const daoRecipients = loadDaoRecipients();
-  const vestedRecipients = loadVestedRecipients();
   const claimRecipients = loadClaimRecipients();
 
   if (isLocalDeployment()) {
