@@ -3,6 +3,7 @@ import { L2ArbitrumToken__factory } from "../typechain-types";
 import {
   getDaoRecipientsEscrowSigner,
   getDeployersAndConfig as getDeployersAndConfig,
+  loadDaoRecipients,
   loadDeployedContracts,
 } from "./providerSetup";
 import { TransferEvent } from "../typechain-types/src/Util.sol/IERC20VotesUpgradeable";
@@ -49,7 +50,8 @@ async function transferDaoAllocations(
 
 async function main() {
   console.log("Get deployers and signers");
-  const { arbDeployer, daoRecipients, deployerConfig } = await getDeployersAndConfig();
+  const { arbDeployer, deployerConfig } = await getDeployersAndConfig();
+  const daoRecipients = loadDaoRecipients();
 
   const daoSigner = getDaoRecipientsEscrowSigner(arbDeployer.provider! as JsonRpcProvider);
   if ((await daoSigner.getBalance()).eq(0)) {
