@@ -346,8 +346,6 @@ export const getDeployersAndConfig = async (): Promise<{
       deployerConfig,
       arbNetwork,
       novaNetwork: _novaNetwork,
-      daoRecipients,
-      vestedRecipients,
       claimRecipients,
     };
   } else {
@@ -391,8 +389,6 @@ export const getDeployersAndConfig = async (): Promise<{
       deployerConfig,
       arbNetwork,
       novaNetwork,
-      daoRecipients,
-      vestedRecipients,
       claimRecipients,
     };
   }
