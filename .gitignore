@@ -15,3 +15,7 @@ files/local/network.json
 files/local/networkNova.json
 files/local/arbTransferAssetsTXs.json
 files/local/novaTransferAssetsTXs.json
+files/local/l1ArbProtocolTransferTXs.json
+files/local/l1ArbTokenBridgeTransferTXs.json
+files/local/l1NovaProtocolTransferTXs.json
+files/local/l1NovaTokenBridgeTransferTXs.json
