@@ -24,6 +24,7 @@
     "execute:ownership:transfer": "ts-node ./scripts/executeLocalProtocolOwnershipTransfer.ts",
     "verify:ownership:transfer": "ts-node ./scripts/protocolOwnershipVerifier.ts",
     "verify:contracts:etherscan": "ts-node ./scripts/verifyContractsCode.ts",
+    "hash-constitution": "ts-node ./scripts/hashConstitution.ts",
     "test:integration": "hardhat test",
     "test:proposals": "ts-node ./scripts/proposalTests.ts",
     "format:sol": "forge fmt"
