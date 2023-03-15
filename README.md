@@ -66,6 +66,11 @@ Set the env variables (you can use the ones from .env-sample)
 cp files/local/.env-sample .env
 ```
 
+Set Submodules
+```
+git submodule update --init
+```
+
 Install dependencies
 ```
 yarn
