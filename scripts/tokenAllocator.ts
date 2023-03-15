@@ -260,6 +260,7 @@ async function initTokenDistributor(
     BASE_L2_GAS_PRICE_LIMIT: number;
     BASE_L1_GAS_PRICE_LIMIT: number;
     GET_LOGS_BLOCK_RANGE: number;
+    SLEEP_TIME_BETWEEN_RECIPIENT_BATCHES_IN_MS: number;
   }
 ) {
   // we store start block when recipient batches are being set

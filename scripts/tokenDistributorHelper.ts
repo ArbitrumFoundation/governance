@@ -34,6 +34,7 @@ export async function setClaimRecipients(
     BASE_L2_GAS_PRICE_LIMIT: number;
     BASE_L1_GAS_PRICE_LIMIT: number;
     GET_LOGS_BLOCK_RANGE: number;
+    SLEEP_TIME_BETWEEN_RECIPIENT_BATCHES_IN_MS: number;
   },
   previousStartBlock?: number
 ): Promise<number> {
@@ -75,8 +76,10 @@ export async function setClaimRecipients(
     );
     await waitForAcceptableGasPrice(l1GasPriceLimit, true, () => arbGasInfo.getL1BaseFeeEstimate());
 
-    // generally sleep 2 seconds to keep TX fees from going up, and to avoid filling all the blockspace
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    // sleep for a certain period to keep TX fees from going up and to avoid filling all the blockspace
+    await new Promise((resolve) =>
+      setTimeout(resolve, config.SLEEP_TIME_BETWEEN_RECIPIENT_BATCHES_IN_MS)
+    );
 
     const recipientsBatch: string[] = tokenRecipients.slice(i, i + config.RECIPIENTS_BATCH_SIZE);
     const amountsBatch: BigNumber[] = tokenAmounts.slice(i, i + config.RECIPIENTS_BATCH_SIZE);

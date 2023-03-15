@@ -142,6 +142,10 @@ export interface DeployerConfig {
    * Block range for eth_getLogs calls
    */
   GET_LOGS_BLOCK_RANGE: number;
+  /**
+   * Sleep period between consecutive recipient batch posting in ms
+   */
+  SLEEP_TIME_BETWEEN_RECIPIENT_BATCHES_IN_MS: number;
 }
 
 export const loadDeployerConfig = async (fileLocation: string) => {
