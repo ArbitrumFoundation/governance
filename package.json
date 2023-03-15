@@ -4,7 +4,7 @@
   "main": "index.js",
   "repository": "git@github.com:OffchainLabs/governance.git",
   "author": "Offchain Labs",
-  "license": "MIT",
+  "license": "Apache 2.0",
   "scripts": {
     "build": "yarn build:governance && yarn build:token-bridge-types",
     "build:governance": "hardhat compile",
