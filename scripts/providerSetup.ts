@@ -92,18 +92,6 @@ const checkEnvVars = (conf: typeof envVars) => {
   if (!fs.existsSync(conf.deployerConfigLocation))
     throw new Error(`Missing file at ${conf.deployerConfigLocation}`);
 
-  if (isLocalDeployment()) {
-    if (conf.vestedRecipientsLocation == undefined)
-      throw new Error("Missing vestedRecipientsLocation in env vars");
-    if (!fs.existsSync(conf.vestedRecipientsLocation))
-      throw new Error(`Missing file at ${conf.vestedRecipientsLocation}`);
-
-    if (conf.daoRecipientsLocation == undefined)
-      throw new Error("Missing daoRecipientsLocation in env vars");
-    if (!fs.existsSync(conf.daoRecipientsLocation))
-      throw new Error(`Missing file at ${conf.daoRecipientsLocation}`);
-  }
-
   if (conf.claimRecipientsLocation == undefined)
     throw new Error("Missing claimRecipientsLocation in env vars");
   if (!fs.existsSync(conf.claimRecipientsLocation))
