@@ -100,37 +100,37 @@ export type ClaimRecipients = { [addr: string]: { points: number } };
 export function pointToTokenAmount(point: number): number {
   switch (point) {
     case 3: {
-      return 1200;
+      return 1250;
     }
     case 4: {
-      return 1700;
+      return 1750;
     }
     case 5: {
-      return 2200;
+      return 2250;
     }
     case 6: {
-      return 3200;
+      return 3250;
     }
     case 7: {
-      return 3700;
+      return 3750;
     }
     case 8: {
-      return 4200;
+      return 4000;
     }
     case 9: {
-      return 6200;
+      return 6250;
     }
     case 10: {
-      return 6700;
+      return 6750;
     }
     case 11: {
-      return 7200;
+      return 7250;
     }
     case 12:
     case 13:
     case 14:
     case 15: {
-      return 10200;
+      return 10250;
     }
 
     default: {

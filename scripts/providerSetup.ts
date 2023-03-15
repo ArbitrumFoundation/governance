@@ -162,7 +162,7 @@ export const loadClaimRecipients = (): Recipients => {
 
   return Object.fromEntries(
     Object.keys(tokenRecipientsJSON).map((account) => [
-      account,
+      account.toLowerCase(),
       parseEther(tokenRecipientsJSON[account]["tokens"].toString()),
     ])
   );
