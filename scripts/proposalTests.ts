@@ -71,17 +71,53 @@ async function main() {
   // to run the tests in parallel, but dont want them to get mixed up nonces by trying
   // to send at the same time. So instead we run the tests with different keys
 
+  console.log("Sending funds to local wallets 1")
   const l1Wallet1 = await createAndFundWallet(ethDeployer);
   const l2Wallet1 = await createAndFundWallet(arbDeployer);
+  let localMining: { l1Signer: Signer; l2Signer: Signer } | undefined = undefined;
 
+  if (isLocal) {
+    localMining = {
+      l1Signer: await createAndFundWallet(ethDeployer),
+      l2Signer: await createAndFundWallet(arbDeployer),
+    };
+  }
+
+  console.log("Sending funds to local wallets 2")
   const l1Wallet2 = await createAndFundWallet(ethDeployer);
   const l2Wallet2 = await createAndFundWallet(arbDeployer);
 
+  let localMining2: { l1Signer: Signer; l2Signer: Signer } | undefined = undefined;
+  if (isLocal) {
+    localMining2 = {
+      l1Signer: await createAndFundWallet(ethDeployer),
+      l2Signer: await createAndFundWallet(arbDeployer),
+    };
+  }
+
+  console.log("Sending funds to local wallets 3")
   const l1Wallet3 = await createAndFundWallet(ethDeployer);
   const l2Wallet3 = await createAndFundWallet(arbDeployer);
 
+  let localMining3: { l1Signer: Signer; l2Signer: Signer } | undefined = undefined;
+  if (isLocal) {
+    localMining3 = {
+      l1Signer: await createAndFundWallet(ethDeployer),
+      l2Signer: await createAndFundWallet(arbDeployer),
+    };
+  }
+
+  console.log("Sending funds to local wallets 4")
   const l1Wallet4 = await createAndFundWallet(ethDeployer);
   const l2Wallet4 = await createAndFundWallet(arbDeployer);
+
+  let localMining4: { l1Signer: Signer; l2Signer: Signer } | undefined = undefined;
+  if (isLocal) {
+    localMining4 = {
+      l1Signer: await createAndFundWallet(ethDeployer),
+      l2Signer: await createAndFundWallet(arbDeployer),
+    };
+  }
 
   console.log("L2-L1-L2 monitoring tests");
   const test1 = l2L1L2MonitoringTest(
@@ -91,7 +127,7 @@ async function main() {
     arbContracts.l2Executor,
     ethContracts.l1Timelock,
     arbContracts.l2CoreGoverner,
-    isLocal
+    localMining
   );
 
   // wait a little for the proposal to actually be made and the votes cast
@@ -106,7 +142,7 @@ async function main() {
     ethContracts.l1Executor,
     ethContracts.l1Timelock,
     arbContracts.l2CoreGoverner,
-    isLocal
+    localMining2
   );
 
   await wait(60000);
@@ -119,7 +155,7 @@ async function main() {
     arbContracts.l2Executor,
     ethContracts.l1Timelock,
     arbContracts.l2CoreGoverner,
-    isLocal
+    localMining3
   );
 
   await wait(60000);
@@ -132,7 +168,7 @@ async function main() {
     ethContracts.l1Executor,
     ethContracts.l1Timelock,
     arbContracts.l2CoreGoverner,
-    isLocal
+    localMining4
   );
 
   await Promise.all([test1, test2, test3, test4]);

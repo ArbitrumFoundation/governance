@@ -1,6 +1,6 @@
 import { Address, getL2Network } from "@arbitrum/sdk";
 import { ArbitrumProvider } from "@arbitrum/sdk/dist/lib/utils/arbProvider";
-import { JsonRpcProvider } from "@ethersproject/providers";
+import { JsonRpcProvider, Provider } from "@ethersproject/providers";
 import { expect } from "chai";
 import { Signer, Wallet, constants } from "ethers";
 import { parseEther } from "ethers/lib/utils";
@@ -34,6 +34,19 @@ const mineBlock = async (signer: Signer) => {
 };
 
 describe("Governor", function () {
+  const randomFundedWallets = async (l1Provider: Provider, l2Provider: Provider) => {
+    const seed = Wallet.createRandom();
+    const l1Signer = seed.connect(l1Provider);
+
+    const seed2 = Wallet.createRandom();
+    const l2Signer = seed2.connect(l2Provider);
+
+    await fundL1(l1Signer, parseEther("1"));
+    await fundL2(l2Signer, parseEther("1"));
+
+    return { l1Signer, l2Signer };
+  };
+
   const deployGovernance = async (l1Deployer: Signer, l2Deployer: Signer, l2Signer: Signer) => {
     const initialSupply = parseEther("1");
     const l1TimeLockDelay = 5;
@@ -187,6 +200,7 @@ describe("Governor", function () {
     const { l1Signer, l2Signer, l1Deployer, l2Deployer } = await testSetup();
     await fundL1(l1Signer, parseEther("1"));
     await fundL2(l2Signer, parseEther("1"));
+    const localMiners = await randomFundedWallets(l1Deployer.provider!, l2Deployer.provider!);
 
     const { l1TimelockContract, l2GovernorContract, l1UpgradeExecutor } = await deployGovernance(
       l1Deployer,
@@ -200,7 +214,8 @@ describe("Governor", function () {
       l2Signer,
       l1UpgradeExecutor,
       l1TimelockContract,
-      l2GovernorContract
+      l2GovernorContract,
+      localMiners
     );
   }).timeout(360000);
 
@@ -208,6 +223,7 @@ describe("Governor", function () {
     const { l1Signer, l2Signer, l1Deployer, l2Deployer } = await testSetup();
     await fundL1(l1Signer, parseEther("1"));
     await fundL2(l2Signer, parseEther("1"));
+    const localMiners = await randomFundedWallets(l1Deployer.provider!, l2Deployer.provider!);
 
     const { l1TimelockContract, l2GovernorContract, l2UpgradeExecutor } = await deployGovernance(
       l1Deployer,
@@ -221,7 +237,8 @@ describe("Governor", function () {
       l2Signer,
       l2UpgradeExecutor,
       l1TimelockContract,
-      l2GovernorContract
+      l2GovernorContract,
+      localMiners
     );
   }).timeout(360000);
 
@@ -229,6 +246,7 @@ describe("Governor", function () {
     const { l1Signer, l2Signer, l1Deployer, l2Deployer } = await testSetup();
     await fundL1(l1Signer, parseEther("1"));
     await fundL2(l2Signer, parseEther("1"));
+    const localMiners = await randomFundedWallets(l1Deployer.provider!, l2Deployer.provider!);
 
     const { l1TimelockContract, l2GovernorContract, l1UpgradeExecutor } = await deployGovernance(
       l1Deployer,
@@ -242,7 +260,8 @@ describe("Governor", function () {
       l2Signer,
       l1UpgradeExecutor,
       l1TimelockContract,
-      l2GovernorContract
+      l2GovernorContract,
+      localMiners
     );
   }).timeout(360000);
 
@@ -250,6 +269,7 @@ describe("Governor", function () {
     const { l1Signer, l2Signer, l1Deployer, l2Deployer } = await testSetup();
     await fundL1(l1Signer, parseEther("1"));
     await fundL2(l2Signer, parseEther("1"));
+    const localMiners = await randomFundedWallets(l1Deployer.provider!, l2Deployer.provider!);
 
     const { l1TimelockContract, l2GovernorContract, l2UpgradeExecutor } = await deployGovernance(
       l1Deployer,
@@ -263,7 +283,8 @@ describe("Governor", function () {
       l2Signer,
       l2UpgradeExecutor,
       l1TimelockContract,
-      l2GovernorContract
+      l2GovernorContract,
+      localMiners
     );
   }).timeout(360000);
 
@@ -284,7 +305,7 @@ describe("Governor", function () {
       l1UpgradeExecutor,
       l2GovernorContract,
       l1TimelockContract,
-      l2TimelockContract
+      l2TimelockContract,
     );
   }).timeout(360000);
 
