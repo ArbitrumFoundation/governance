@@ -1,5 +1,5 @@
-import { BigNumber, Wallet } from "ethers";
-import { formatBytes32String, hexlify, keccak256, zeroPad } from "ethers/lib/utils";
+import { BigNumber, utils, Wallet } from "ethers";
+import { formatBytes32String, HDNode, hexlify, keccak256, zeroPad } from "ethers/lib/utils";
 import * as fs from "fs";
 import { pointToTokenAmount } from "./testUtils";
 
@@ -171,14 +171,21 @@ const run = (hardcodedAddress: string[], randomCount: number, outputLocation: st
     };
   }
 
+  const randomMnemonic = utils.entropyToMnemonic(utils.randomBytes(32));
+  const node = HDNode.fromMnemonic(randomMnemonic);
+
+  console.log(randomMnemonic);
+
+  const pathPrefix = "m/44'/60'/0'/0/";
   let privKeyNum = BigNumber.from(0);
   for (let index = 0; index < randomCount; index++) {
     const c = makeRandomCriteria();
     const p = calculatePoints(c);
     const t = pointToTokenAmount(p);
 
-    const privKey = toPrivKey(privKeyNum);
-    const wall = new Wallet(privKey);
+    const path = pathPrefix + index.toString();
+    const wall = new Wallet(node.derivePath(path));
+    const privKey = wall.privateKey;
     const addr = wall.address;
 
     recipients[addr] = {
@@ -197,4 +204,4 @@ const run = (hardcodedAddress: string[], randomCount: number, outputLocation: st
 };
 
 const myAddresses: string[] = [];
-run(myAddresses, 706, "testRecipients.json");
+run(myAddresses, 1007, "testRecipients.json");
