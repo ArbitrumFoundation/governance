@@ -1,7 +1,11 @@
 import { JsonRpcProvider } from "@ethersproject/providers";
 import { Wallet } from "ethers";
 import { randomBytes } from "ethers/lib/utils";
-import { NoteStore__factory, TestUpgrade__factory } from "../typechain-types";
+import {
+  NoteStore__factory,
+  TestUpgrade__factory,
+  UpgradeExecutor__factory,
+} from "../typechain-types";
 import { ContractVerifier } from "./contractVerifier";
 import { isLocalDeployment } from "./providerSetup";
 
@@ -33,6 +37,9 @@ async function main() {
     testNote,
   ]);
 
+  const iUExec = UpgradeExecutor__factory.createInterface();
+  const uExecData = iUExec.encodeFunctionData("execute", [testUpgrade.address, upgradeData]);
+
   console.log(
     JSON.stringify(
       {
@@ -40,15 +47,15 @@ async function main() {
         testUpgradeAddr: testUpgrade.address,
         testNote: testNote,
         upgradeData: upgradeData,
+        executorData: uExecData,
       },
       null,
       2
     )
   );
 
-  
-  if(!isLocalDeployment()) {
-    // only verify if we're not deploying to local 
+  if (!isLocalDeployment()) {
+    // only verify if we're not deploying to local
     const verifier = new ContractVerifier((await rpc.getNetwork()).chainId, apiKey, {});
     await verifier.verifyWithAddress("noteStore", noteStore.address);
     await verifier.verifyWithAddress("testUpgrade", testUpgrade.address);
