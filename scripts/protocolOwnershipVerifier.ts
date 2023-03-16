@@ -81,9 +81,10 @@ export const verifyOwnership = async () => {
 async function verifyArbOwner(provider: Provider, l2Executor: string) {
   const ownerPrecompile = ArbOwner__factory.connect(ARB_OWNER_PRECOMPILE, provider);
 
+  assert(await ownerPrecompile.isChainOwner(l2Executor), "L2Executor should be the chain owner");
+
   const owners: string[] = await ownerPrecompile.getAllChainOwners();
   assert(owners.length == 1, "There should be only 1 chain owner");
-  assert(owners[0] == l2Executor, "L2Executor should be the chain owner");
 }
 
 /**
