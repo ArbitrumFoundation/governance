@@ -24,7 +24,7 @@ contract OutboxActionsTest is Test, ActionTestBase {
         bytes memory data =
             abi.encodeWithSelector(add.BridgeAddOutboxesAction.perform.selector, outboxesToAdd);
         vm.prank(executor0);
-        vm.expectRevert("UpgradeExecutor: inner delegate call failed");
+        vm.expectRevert("BridgeAddOutboxesAction: outbox already allowed");
         ue.execute(address(action), data);
     }
 
@@ -35,7 +35,7 @@ contract OutboxActionsTest is Test, ActionTestBase {
             add.BridgeAddOutboxesAction.perform.selector, [address(12_345_678)]
         );
         vm.prank(executor0);
-        vm.expectRevert("UpgradeExecutor: inner delegate call failed");
+        vm.expectRevert("UpgradeExecutor: inner delegate call failed without reason");
         ue.execute(address(action), data);
     }
 
