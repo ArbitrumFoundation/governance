@@ -736,7 +736,8 @@ export async function verifyTokenDistribution(
     "Incorrect initial L2Token balance for foundation"
   );
 
-  const teamBalance = await l2Token.balanceOf(config.L2_ADDRESS_FOR_TEAM);
+  // we sent 120 tokens for testing
+  const teamBalance = (await l2Token.balanceOf(config.L2_ADDRESS_FOR_TEAM)).add(parseEther("120"));
   assertNumbersEquals(
     teamBalance,
     parseEther(config.L2_NUM_OF_TOKENS_FOR_TEAM),
