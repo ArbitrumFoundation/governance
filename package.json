@@ -1,5 +1,5 @@
 {
-  "name": "governance",
+  "name": "@arbitrum/governance",
   "version": "1.0.0",
   "main": "index.js",
   "repository": "git@github.com:OffchainLabs/governance.git",
