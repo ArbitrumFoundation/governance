@@ -7,7 +7,7 @@ Arbitrum governance has two main bodies:
 - **The DAO** - represented by holders of the $ARB token, and votes to pass proposals.
 - **The Security Council** - is made up of a 9 of 12 multisig that can take quick action in case of an emergency and a 7 of 12 multisig that can take slow action for routine upgrades that bypass the DAO vote.
 
-You can read more about these bodies and their powers in the Arbitrum DAO Constitution.
+You can read more about these bodies and their powers in the [Arbitrum DAO Constitution](https://docs.arbitrum.foundation/dao-constitution).
 
 ## Invariants
 
