@@ -1,5 +1,7 @@
 # Arbitrum Governance
 
+> See here for alternative [high level overview](https://docs.arbitrum.foundation/concepts/lifecycle-anatomy-aip-proposal) 
+
 Arbitrum governance has two main bodies:
 
 - **The DAO** - represented by holders of the $ARB token, and votes to pass proposals.
@@ -14,22 +16,6 @@ You can read more about these bodies and their powers in the Arbitrum DAO Consti
 - Once a proposal has been passed, there is always time for a user to exit any assets they have on Arbitrum One or Nova before the proposal is executed
 - A proposal cannot be canceled or blocked, except by the Security Council.
 - Once a proposal has been passed, anyone can ensure its full execution through all stages.
-
-## Overall configuration
-
-Below is a diagram of the overall configuration of the Arbitrum governance contracts, along with a brief explanation of each component.
-
-![Diagram of the overall contract configuration](./roundtrip-governance.png "Diagram of the overall contract configuration") .
-
-Executing a passed proposal takes a number of transactions; when a new transaction is required these are represented by a stick figure. Round objects in the diagram above represent contracts that already exist in the Arbitrum system. These are not introduced by governance, but instead are either used by governance or owned by governance.
-
-The diagram also shows the location of governance-related contracts on Arbitrum One, Nova and Ethereum Mainnet.
-
-## Token
-
-Three instances of the $ARB token are currently deployed, each on a different network: Arbitrum One, Arbitrum Nova, and Ethereum Mainnet.
-
-The total supply of the token is tracked by the Arbitrum One instance of the token, the total supply of the token on other networks is not representative of the actual total supply. The Arbitrum One instance also allows the minting of up to 2% of the total supply once per year.
 
 ## Assets under governance
 
@@ -52,8 +38,7 @@ To differentiate between these two types of proposal, Arbitrum governance uses t
 
 ## Proposal delays
 
-All governance activities occur on Arbitrum One. Proposals are made there, as well as delegation and voting.
-A proposal made to the 3% governor experiences no delays after passing, however a proposal made to the 5% governor experiences enough delay to ensure that users can safely exit the chain before the proposal is executed, should they deem it malicious.
+All governance activities occur on Arbitrum One. Proposals are made there, as well as delegation and voting. A proposal made to the constitutional governor experiences enough delay to ensure that users can safely exit the chain before the proposal is executed, should they deem it malicious.
 
 1. **Arbitrum One timelock** - 3 days delay. After passing, a proposal is delivered to a timelock on Arbitrum One. The purpose of this delay is to allow users to initiate withdrawals from the chain should they wish to.
 2. **L2->L1 message delay** - ~1 week. All proposals must be withdrawn to L1 before being executed (even if they will eventually execute back on an L2). This ensures that any exits made by users in the previous delay can be processed before the upgrade will, since both go through this delay.
@@ -61,7 +46,27 @@ A proposal made to the 3% governor experiences no delays after passing, however 
 
 Once the proposal has gone through each of these delays, it is then directed to the target of its execution, which could be on any of Arbitrum One, Nova or Ethereum mainnet. When the target is on an L2, the proposal will contain information for forming the correct L1->L2 message.
 
-## Governance related Contracts
+```mermaid
+graph TD;
+  D["<a href='#phase-3-on-chain-dao-vote' style='text-decoration:none;'><b>On-chain DAO vote</b></a><br/><span style='font-size:smaller'>(14 days, extendable by 2 days)</span>"];
+  D -->|"<span style='padding: 3px;'>Passes, Constitutional AIP</span>"| E["<a href='#phase-4-l2-waiting-period' style='text-decoration:none;'><b>L2 waiting period</b></a><br/><span style='font-size:smaller'>(3 days)</span>"];
+  E --> F["<a href='#phase-5-l2-to-l1-message' style='text-decoration:none;'><b>L2-to-L1 message</b></a><br/><span style='font-size:smaller'>(~ 1 week)</span>"];
+  F --> G["<a href='#phase-6-l1-waiting-period' style='text-decoration:none;'><b>L1 waiting period</b></a><br/><span style='font-size:smaller'>(3 days)</span>"];
+  G --> H["<a href='#phase-7-implementation' style='text-decoration:none;'><b>Execution target</b></a>"];
+```
+
+## Token
+
+Three instances of the $ARB token are currently deployed, each on a different network: Arbitrum One, Arbitrum Nova, and Ethereum Mainnet.
+
+The total supply of the token is tracked by the Arbitrum One instance of the token, the total supply of the token on other networks is not representative of the actual total supply. The Arbitrum One instance also allows the minting of up to 2% of the total supply once per year.
+
+##### Vote Exclusion
+Token holders have the ability to exclude their votes from the governance quorum calculations by delegating to a designated "exclude address," address `0xA4b86`. Delegating to the exclude address prevents tokens that are not expected to participate in governance from "artificially" inflating the required quorum size. For example, the treasury should not use its own tokens to vote on proposals, thus, the treasury's votes are delegated to the exclude address.      
+
+## Governance contracts overview
+
+Lets dive a bit deeper into each of the individual contracts, and describe more specifically the role each of the plays in the system.
 
 #### Arbitrum One 3% Governor
 
@@ -77,9 +82,6 @@ _Comparison Table_
 | -------- | ------------- | ------ |
 | Arb One 3% Governor | non-constitutional | only treasury-related proposals |
 | Arb One 5% Governor | constitutional | - |
-
-##### Vote Exclusion
-Token holders have the ability to exclude their votes from the above quorum calculations by delegating to a designated "exclude address," address `0xA4b86`. Delegating to the exclude address prevents tokens that are not expected to participate in governance from "artificially" inflating the required quorum size. For example, the treasury should not use its own tokens to vote on proposals, thus, the treasury's votes are delegated to the exclude address.      
 
 #### Arbitrum One L2 Timelock
 
@@ -109,7 +111,45 @@ The Arbitrum One Upgrade Executor is the Arbitrum One chain "owner", and also ha
 
 The Arbitrum Nova Upgrade Executor is the Arbitrum Nova chain "owner". Only the Arbitrum Nova Security Council and the L1 Timelock (via a retryable ticket) have the rights to execute proposals via the Arb Nova Upgrade Executer.
 
-#### Future DAO-Governed Chains
+<br/>
+
+_Comparison Table_
+| Contract | Owner of | Who has the rights to call it? |
+| -------- | -------- | ------------------------------ |
+| L1 Upgrade Executor | Arbitrum One and Nova-related contracts on L1 | L1 Timelock, and the Security Council |
+| Arbitrum One Upgrade Executor | Arbitrum One chain, and governance | L1 Timelock, and the Arbitrum One Security Council |
+| Arbitrum Nova Upgrade Executor | Arbitrum Nova chain | L1 Timelock, and the Arbitrum Nova Security Council |
+
+#### Arbitrum DAO Constitution
+
+The Arbitrum DAO Constitution contract stores the hash of the canonical text of the Constitution. 
+To upgrade the Constitution, a proposal should be created which calls `ArbitrumDAOConstitution.setConstitutionHash` with the new content hash. The proposal's "description" field should read:
+
+> Update the Constitution hash to be the keccak256 hash of the following text: 
+> "... Constitution text etc ..."
+
+If keccak256 hash of the new Constitution text doesn't match the provided hash, the DAO should reject the proposal. 
+
+## Overall configuration
+
+Putting it all together we get a picture of the connections between all the components, and where they reside on Arbitrum One, Nova and Ethereum Mainnet.
+
+![Diagram of the overall contract configuration](./roundtrip-governance.png "Diagram of the overall contract configuration") .
+
+Executing a passed proposal takes a number of transactions; when a new transaction is required these are represented by a stick figure. Round objects in the diagram above represent contracts that already exist in the Arbitrum system. These are not introduced by governance, but instead are either used by governance or owned by governance.
+
+#### Proposal lifecycle
+
+The contracts in the diagram encode ownership chains that ensure only governance or the Security Council have the rights to upgrade Arbitrum contracts. The path that the proposal will take through these contracts is defined in the proposal itself. As the proposal moves through each stage of the path, a layer of the proposal data is unwrapped; the unwrapped data defines which contract should be called next.
+
+This means that forming a proposal involves working backwards from the target, wrapping the data multiple times to define the path the upgrade will take.
+
+You can read more about how the path is encoded in the [proposal lifecycle document](./docs/proposal_lifecycle_example.md)
+
+## Proposal Cancellation 
+Both governor contracts have the affordance to cancel proposals scheduled in the L2 Timelock. The Security Council can likewise cancel proposals [via calling L2ArbitrumGovernor.relay](src/gov-action-contracts/governance/CancelTimelockOperation.sol). Note that although the core-governor Security Council has the affordance to cancel proposals in the L2 timelock via calling `cancel` directly, for clarity and consistency, it should use the aforementioned `relay` method. 
+
+## Future DAO-Governed Chains
 
 When a [new L2 chain is authorized by the DAO](https://docs.arbitrum.foundation/new-arb-chains), the following steps should be carried out for the new chain to become DAO-governed:
 1. Deploy a new UpgradeExecutor contract and a new Security Council on the new L2 chain.
@@ -124,37 +164,4 @@ When a [new L2 chain is authorized by the DAO](https://docs.arbitrum.foundation/
     - The new L2 Upgrade Executor should be granted the following affordances:
         - L2 token bridge Proxy Admin Owner 
         - Chain Owner
-        - Standard Arb-ERC20 Beacon Proxy owner 
-
-<br/>
-
-_Comparison Table_
-| Contract | Owner of | Who has the rights to call it? |
-| -------- | -------- | ------------------------------ |
-| L1 Upgrade Executor | Arbitrum One and Nova-related contracts on L1 | L1 Timelock, and the Security Council |
-| Arbitrum One Upgrade Executor | Arbitrum One chain, and governance | L1 Timelock, and the Arbitrum One Security Council |
-| Arbitrum Nova Upgrade Executor | Arbitrum Nova chain | L1 Timelock, and the Arbitrum Nova Security Council |
-
-## Proposal lifecycle
-
-The contracts in the diagram encode ownership chains that ensure only governance or the Security Council have the rights to upgrade Arbitrum contracts. The path that the proposal will take through these contracts is defined in the proposal itself. As the proposal moves through each stage of the path, a layer of the proposal data is unwrapped; the unwrapped data defines which contract should be called next.
-
-This means that forming a proposal involves working backwards from the target, wrapping the data multiple times to define the path the upgrade will take.
-
-#### Arbitrum DAO Constitution
-
-The Arbitrum DAO Constitution contract stores the hash of the canonical text of the Constitution. 
-To upgrade the Constitution, a proposal should be created which calls `ArbitrumDAOConstitution.setConstitutionHash` with the new content hash. The proposal's "description" field should read:
-
-> Update the Constitution hash to be the keccak256 hash of the following text: 
-> "... Constitution text etc ..."
-
-If keccak256 hash of the new Constitution text doesn't match the provided hash, the DAO should reject the proposal. 
-
-
-## Proposal Cancellation 
-Both governor contracts have the affordance to cancel proposals scheduled in the L2 Timelock. The Security Council can likewise cancel proposals [via calling L2ArbitrumGovernor.relay](src/gov-action-contracts/governance/CancelTimelockOperation.sol). Note that although the core-governor Security Council has the affordance to cancel proposals in the L2 timelock via calling `cancel` directly, for clarity and consistency, it should use the aforementioned `relay` method. 
-
-### Further readings
-
-A walkthrough of a proposal's lifecycle from proposal creation to being executed is available [here](./proposal_lifecycle_example.md).
+        - Standard Arb-ERC20 Beacon Proxy owner
