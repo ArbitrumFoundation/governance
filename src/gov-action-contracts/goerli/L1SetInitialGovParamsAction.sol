@@ -15,6 +15,6 @@ contract L1SetInitialGovParamsAction {
     function perform() external {
         IL1Timelock timelock = registry.l1Timelock();
         timelock.updateDelay(l1TimelockPeriod);
-        require(timelock.getMinDelay() == l1TimelockPeriod, "Timelock delay");
+        require(timelock.getMinDelay() == l1TimelockPeriod, "L1SetInitialGovParamsAction: Timelock delay");
     }
 }
