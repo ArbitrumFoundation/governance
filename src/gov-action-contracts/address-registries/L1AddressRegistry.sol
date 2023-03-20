@@ -5,9 +5,11 @@ import "./interfaces.sol";
 
 contract L1AddressRegistry is IL1AddressRegistry {
     IInbox public immutable inbox;
+    IL1Timelock public immutable l1Timelock;
 
-    constructor(IInbox _inbox) {
+    constructor(IInbox _inbox, IL1Timelock _l1Timelock) {
         inbox = _inbox;
+        l1Timelock = _l1Timelock;
     }
 
     function rollup() public view returns (IRollupCore) {

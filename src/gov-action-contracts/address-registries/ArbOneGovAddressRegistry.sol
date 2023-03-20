@@ -31,6 +31,6 @@ contract ArbOneGovAddressRegistry is IArbOneGovAddressRegistry {
     }
 
     function l2ArbitrumToken() external view returns (IL2ArbitrumToken) {
-        IL2ArbitrumGoverner(address(coreGov)).token();
+        return IL2ArbitrumGoverner(address(coreGov)).token();
     }
 }

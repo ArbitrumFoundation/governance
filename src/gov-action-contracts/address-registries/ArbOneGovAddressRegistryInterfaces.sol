@@ -14,6 +14,7 @@ interface IArbitrumTimelock {
         uint256 delay
     ) external;
     function getMinDelay() external view returns (uint256 duration);
+    function updateDelay(uint256 newDelay) external;
 }
 
 interface IOwnable {
@@ -33,6 +34,10 @@ interface IL2ArbitrumGoverner {
     function token() external view returns (IL2ArbitrumToken);
     function relay(address target, uint256 value, bytes calldata data) external;
     function timelock() external view returns (address);
+    function votingDelay() external view returns (uint256);
+    function setVotingDelay(uint256 newVotingDelay) external;
+    function votingPeriod() external view returns (uint256);
+    function setVotingPeriod(uint256 newVotingPeriod) external;
 }
 
 interface ICoreGovTimelockGetter {
