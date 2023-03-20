@@ -3,7 +3,7 @@ pragma solidity 0.8.16;
 
 import "../address-registries/ArbOneGovAddressRegistryInterfaces.sol";
 
-contract ArbOneSetInitialGovParamsAction {
+contract ArbGoerliSetInitialGovParamsAction {
     uint256 public constant coreVotingDelay = 10;
     uint256 public constant coreVotingPeriod = 50;
     uint256 public constant coreTimelockPeriod = 900; // seconds
