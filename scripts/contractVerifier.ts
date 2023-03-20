@@ -59,6 +59,10 @@ export class ContractVerifier {
     l2TokenDistributor: "src/TokenDistributor.sol:TokenDistributor",
     noteStore: "src/hardhatTest/TestUpgrade.sol:NoteStore",
     testUpgrade: "src/hardhatTest/TestUpgrade.sol:TestUpgrade",
+    L1AddressRegistry: "src/gov-action-contracts/address-registries/L1AddressRegistry.sol:L1AddressRegistry",
+    L1SetInitialGovParamsAction: "src/gov-action-contracts/goerli/L1SetInitialGovParamsAction.sol:L1SetInitialGovParamsAction",
+    ArbOneGovAddressRegistry: "src/gov-action-contracts/address-registries/ArbOneGovAddressRegistry.sol:ArbOneGovAddressRegistry",
+    ArbGoerliSetInitialGovParamsAction: "src/gov-action-contracts/goerli/ArbGoerliSetInitialGovParamsAction.sol:ArbGoerliSetInitialGovParamsAction",
   };
 
   constructor(chainId: number, apiKey: string, deployedContracts: DeployProgressCache) {
