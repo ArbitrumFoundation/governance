@@ -14,6 +14,11 @@ interface IRollupCore {
     function setOutbox(IOutbox _outbox) external;
 }
 
+interface IL1Timelock {
+    function updateDelay(uint256 newDelay) external;
+    function getMinDelay() external view returns (uint256 duration);
+}
+
 interface IRollupGetter {
     function rollup() external view returns (IRollupCore);
 }
@@ -30,9 +35,14 @@ interface ISequencerInboxGetter {
     function sequencerInbox() external view returns (ISequencerInbox);
 }
 
+interface IL1TimelockGetter {
+    function l1Timelock() external view returns (IL1Timelock);
+}
+
 interface IL1AddressRegistry is
     IRollupGetter,
     IInboxGetter,
     ISequencerInboxGetter,
-    IBridgeGetter
+    IBridgeGetter,
+    IL1TimelockGetter
 {}

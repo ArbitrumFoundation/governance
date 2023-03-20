@@ -9,9 +9,15 @@ import "@arbitrum/nitro-contracts/src/bridge/Inbox.sol";
 import "@arbitrum/nitro-contracts/src/bridge/ISequencerInbox.sol";
 
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "../../src/L2ArbitrumGovernor.sol";
+import "../../src/L2ArbitrumToken.sol";
+import "../../src/ArbitrumTimelock.sol";
+import "../../src/L1ArbitrumTimelock.sol";
+import "../../src/FixedDelegateErc20Wallet.sol";
 import "../util/TestUtil.sol";
 import "../../src/UpgradeExecutor.sol";
 import "../../src/gov-action-contracts/address-registries/L1AddressRegistry.sol" as _ar;
+import "../../src/gov-action-contracts/address-registries/ArbOneGovAddressRegistry.sol" as _ar1;
 import "../../src/gov-action-contracts/address-registries/interfaces.sol" as _ifaces;
 
 contract OwnableStub is Ownable {}
@@ -21,6 +27,7 @@ contract OutboxStub {}
 abstract contract ActionTestBase {
     address executor0 = address(138);
     address executor1 = address(139);
+    address executor2 = address(140);
 
     address[] outboxesToAdd;
     address[] outboxesToRemove;
@@ -34,6 +41,15 @@ abstract contract ActionTestBase {
     _ifaces.IBridgeGetter bridgeGetter;
     _ifaces.IInboxGetter inboxGetter;
     _ifaces.ISequencerInboxGetter sequencerInboxGetter;
+    L1ArbitrumTimelock l1Timelock;
+
+    UpgradeExecutor arbOneUe;
+    L2ArbitrumGovernor coreGov;
+    L2ArbitrumToken arbOneToken;
+    ArbitrumTimelock coreTimelock;
+    L2ArbitrumGovernor treasuryGov;
+    ArbitrumTimelock treasuryTimelock;
+    _ar1.ArbOneGovAddressRegistry arbOneAddressRegistry;
 
     function setUp() public {
         outboxesToAdd =
@@ -56,9 +72,62 @@ abstract contract ActionTestBase {
         si.initialize(bridge, ISequencerInbox.MaxTimeVariation(0, 0, 0, 0));
         inbox = Inbox(TestUtil.deployProxy(address(new Inbox())));
         inbox.initialize(bridge, si);
-        addressRegistry = new _ar.L1AddressRegistry(IInbox(address(inbox)));
+
+        l1Timelock =
+            L1ArbitrumTimelock(payable(TestUtil.deployProxy(address(new L1ArbitrumTimelock()))));
+        address[] memory l1Proposers = new address[](1);
+        l1Proposers[0] = address(bridge);
+        l1Timelock.initialize(5, l1Proposers, new address[](0));
+        l1Timelock.grantRole(l1Timelock.TIMELOCK_ADMIN_ROLE(), address(ue));
+        l1Timelock.revokeRole(l1Timelock.TIMELOCK_ADMIN_ROLE(), address(l1Timelock));
+        l1Timelock.revokeRole(l1Timelock.TIMELOCK_ADMIN_ROLE(), address(this));
+
+        addressRegistry =
+        new _ar.L1AddressRegistry(IInbox(address(inbox)), _ifaces.IL1Timelock(address(l1Timelock)));
         bridgeGetter = _ifaces.IBridgeGetter(address(addressRegistry));
         inboxGetter = _ifaces.IInboxGetter(address(addressRegistry));
         sequencerInboxGetter = _ifaces.ISequencerInboxGetter(address(addressRegistry));
+
+        arbOneUe = UpgradeExecutor(TestUtil.deployProxy(address(new UpgradeExecutor())));
+        address[] memory executors2 = new address[](1);
+        executors2[0] = executor2;
+        arbOneUe.initialize(address(arbOneUe), executors2);
+
+        arbOneToken = L2ArbitrumToken(TestUtil.deployProxy(address(new L2ArbitrumToken())));
+        arbOneToken.initialize(address(4567), 10_000_000_000, address(arbOneUe));
+        coreTimelock =
+            ArbitrumTimelock(payable(TestUtil.deployProxy(address(new ArbitrumTimelock()))));
+        coreGov =
+            L2ArbitrumGovernor(payable(TestUtil.deployProxy(address(new L2ArbitrumGovernor()))));
+        address[] memory proposers = new address[](1);
+        proposers[0] = address(coreGov);
+        coreTimelock.initialize(5, proposers, new address[](0));
+        coreTimelock.grantRole(coreTimelock.TIMELOCK_ADMIN_ROLE(), address(arbOneUe));
+        coreTimelock.revokeRole(coreTimelock.TIMELOCK_ADMIN_ROLE(), address(coreTimelock));
+        coreTimelock.revokeRole(coreTimelock.TIMELOCK_ADMIN_ROLE(), address(this));
+        coreGov.initialize(arbOneToken, coreTimelock, address(arbOneUe), 3, 4, 500, 50, 50);
+
+        treasuryTimelock =
+            ArbitrumTimelock(payable(TestUtil.deployProxy(address(new ArbitrumTimelock()))));
+        treasuryGov =
+            L2ArbitrumGovernor(payable(TestUtil.deployProxy(address(new L2ArbitrumGovernor()))));
+        address[] memory proposers2 = new address[](1);
+        proposers[0] = address(treasuryGov);
+        treasuryTimelock.initialize(7, proposers2, new address[](0));
+        treasuryTimelock.grantRole(treasuryTimelock.TIMELOCK_ADMIN_ROLE(), address(arbOneUe));
+        treasuryTimelock.revokeRole(
+            treasuryTimelock.TIMELOCK_ADMIN_ROLE(), address(treasuryTimelock)
+        );
+        treasuryTimelock.revokeRole(treasuryTimelock.TIMELOCK_ADMIN_ROLE(), address(this));
+        treasuryGov.initialize(arbOneToken, treasuryTimelock, address(arbOneUe), 7, 8, 600, 60, 60);
+
+        FixedDelegateErc20Wallet treasuryWallet =
+            FixedDelegateErc20Wallet(TestUtil.deployProxy(address(new FixedDelegateErc20Wallet())));
+        treasuryWallet.initialize(
+            address(arbOneToken), treasuryGov.EXCLUDE_ADDRESS(), address(treasuryTimelock)
+        );
+
+        arbOneAddressRegistry =
+        new _ar1.ArbOneGovAddressRegistry(_ar1.IL2ArbitrumGoverner(address(coreGov)), _ar1.IL2ArbitrumGoverner(address(treasuryGov)), _ar1.IFixedDelegateErc20Wallet(address(treasuryWallet)));
     }
 }
