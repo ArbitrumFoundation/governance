@@ -19,13 +19,13 @@ const GOERLI_ROLLUP_TREASURY_WALLET = "0xDA4d3D030B469c3D42B0613202341a6b00E8836
 
 dotenv.config();
 
-const l1RPC = "https://goerli.infura.io/v3/8838d00c028a46449be87e666387c71a";
-const L2_RPC = "https://goerli-rollup.arbitrum.io/rpc";
-const apiKey = process.env.ETHERSCAN_KEY;
+const l1RPC = process.env.ETH_URL;
+const L2_RPC = process.env.ARB_URL;
+const apiKey = process.env.VERIFY_API_KEY;
 const l1Key = process.env.ETH_KEY as string;
 const l2Key = process.env.ARB_KEY as string;
 if (!apiKey) {
-  throw new Error("Set ETHERSCAN_KEY");
+  throw new Error("Set VERIFY_API_KEY");
 }
 
 const main = async () => {
