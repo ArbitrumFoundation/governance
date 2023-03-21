@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.16;
 
-import "../address-registries/ArbOneGovAddressRegistryInterfaces.sol";
+import "../address-registries/L2GovAddressRegistryInterfaces.sol";
 
 contract ArbGoerliSetInitialGovParamsAction {
     uint256 public constant coreVotingDelay = 10;
@@ -10,9 +10,9 @@ contract ArbGoerliSetInitialGovParamsAction {
     uint256 public constant treasuryVotingDelay = 10;
     uint256 public constant treasuryVotingPeriod = 50;
     uint256 public constant treasuryTimelockPeriod = 900; // seconds
-    IArbOneGovAddressRegistry immutable registry;
+    IL2GovAddressRegistry immutable registry;
 
-    constructor(IArbOneGovAddressRegistry _registry) {
+    constructor(IL2GovAddressRegistry _registry) {
         registry = _registry;
     }
 
