@@ -10,6 +10,7 @@ import {
   AddSequencerAction__factory,
   RemoveSequencerAction__factory,
 } from "../typechain-types";
+import { ContractVerifier } from "./contractVerifier";
 import { Wallet, utils, ContractFactory } from "ethers";
 import { JsonRpcProvider } from "@ethersproject/providers";
 import fs from "fs";
@@ -20,7 +21,7 @@ dotenv.config();
 const abi = utils.defaultAbiCoder;
 
 const l1RPC = process.env.ETH_URL;
-const apiKey = process.env.ETHERSCAN_API_KEY;
+const apiKey = process.env.VERIFY_API_KEY as string;
 const l1Key = process.env.ETH_KEY as string;
 const l2ChainID = +(process.env.ARB_CHAIN_ID as string);
 
@@ -37,10 +38,10 @@ type RegistryArgMamp = {
 
 const chainIdToRegistryAddresses: RegistryArgMamp = {
   41261: {
-    inbox: "0x",
-    govL1Timelock: "0x",
-    customGateway: "0x",
-    l1GatewayRouter: "",
+    inbox: "0x4Dbd4fc535Ac27206064B68FfCf827b0A60BAB3f",
+    govL1Timelock: "0xE6841D92B0C345144506576eC13ECf5103aC7f49",
+    customGateway: "0xcEe284F754E854890e311e3280b767F80797180d",
+    l1GatewayRouter: "0x72Ce9c846789fdB6fC1f34aC4AD25Dd9ef7031ef",
   },
   412163: {
     inbox: "0x6BEbC4925716945D46F0Ec336D5C2564F419682C",
@@ -67,53 +68,6 @@ interface DeployedContracts {
   sequencerAddAction: string;
   sequencerRemoveAction: string;
 }
-
-const contractSources: DeployedContracts = {
-  l1AddressRegistry:
-    "src/gov-action-contracts/address-registries/L1AddressRegistry.sol:L1AddressRegistry",
-  pauseInboxAction: "src/gov-action-contracts/pause-inbox/PauseInboxAction.sol:PauseInboxAction",
-  unpauseInboxAction:
-    "src/gov-action-contracts/pause-inbox/UnpauseInboxAction.sol:UnpauseInboxAction",
-  pauseRollupAction: "src/gov-action-contracts/rollup/PauseRollupAction.sol:PauseRollupAction",
-  unpauseRollupAction:
-    "src/gov-action-contracts/rollup/UnpauseRollupAction.sol:UnpauseRollupAction",
-  bridgeRemoveAllOutboxesAction:
-    "src/gov-action-contracts/set-outbox/BridgeRemoveAllOutboxesAction.sol:BridgeRemoveAllOutboxesAction",
-  bridgeAddOutboxesAction:
-    "src/gov-action-contracts/set-outbox/BridgeAddOutboxesAction.sol:BridgeAddOutboxesAction",
-  sequencerAddAction:
-    "src/gov-action-contracts/sequencer/AddSequencerAction.sol:AddSequencerAction",
-  sequencerRemoveAction:
-    "src/gov-action-contracts/sequencer/RemoveSequencerAction.sol:RemoveSequencerAction",
-};
-const verifyWithAddress = async (
-  sourceFile: string,
-  contractAddress: string,
-  chainId: number,
-  constructorArgs?: string
-) => {
-  // avoid rate limiting
-  await new Promise((resolve) => setTimeout(resolve, 2000));
-
-  let command = `ETHERSCAN_API_KEY='${apiKey}' forge verify-contract --chain-id ${chainId} --num-of-optimizations 20000 --compiler-version 0.8.16`;
-  
-  if (constructorArgs) {
-    command = `${command} --constructor-args ${constructorArgs}`;
-  }
-  command = `${command} ${contractAddress} ${sourceFile}`;
-  
-  console.log('command', command);
-  exec(command, (err: Error | null, stdout: string, stderr: string) => {
-    console.log("-----------------");
-    console.log(command);
-    if (err) {
-      console.log("Failed to submit for verification", contractAddress, stderr);
-    } else {
-      console.log("Successfully submitted for verification", contractAddress);
-      console.log(stdout);
-    }
-  });
-};
 
 const deployAll = async () => {
   const l1Deployer = new Wallet(l1Key, new JsonRpcProvider(l1RPC));
@@ -148,7 +102,6 @@ const deployAll = async () => {
   await l1AddressRegistry.deployed();
   const l1RegistryAddress = l1AddressRegistry.address;
   console.log("deployed: L1AddressRegistry", l1RegistryAddress);
-
   const factories = [
     PauseInboxAction__factory,
     UnpauseInboxAction__factory,
@@ -189,12 +142,13 @@ const deployAll = async () => {
 };
 
 const verifyAll = async () => {
+  const provider = new JsonRpcProvider(l1RPC);
+  const chainID = (await provider.getNetwork()).chainId;
   const data = fs.readFileSync(`./files/actions/critical-${l2ChainID}.json`);
   const deploymentData: DeployedContracts = JSON.parse(data.toString());
+  const l2Verifier = new ContractVerifier(chainID, apiKey, {});
+
   for (const [key, value] of Object.entries(deploymentData)) {
-    // @ts-ignore
-    const source = contractSources[key] as string;
-    if (!source) throw new Error(`Missing source`)
     const registryConstructorAddresses = chainIdToRegistryAddresses[l2ChainID];
 
     const constructorArgs =
@@ -209,8 +163,12 @@ const verifyAll = async () => {
             ]
           )
         : abi.encode(["address"], [deploymentData.l1AddressRegistry]);
-    await verifyWithAddress(source, value, l2ChainID, constructorArgs);
+
+    await l2Verifier.verifyWithAddress(key, value, constructorArgs);
   }
 };
 
-verifyAll()
+(async () => {
+  await deployAll();
+  await verifyAll();
+})();
