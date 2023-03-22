@@ -14,7 +14,6 @@ import { ContractVerifier } from "./contractVerifier";
 import { Wallet, utils, ContractFactory } from "ethers";
 import { JsonRpcProvider } from "@ethersproject/providers";
 import fs from "fs";
-import { exec } from "child_process";
 
 import dotenv from "dotenv";
 dotenv.config();
@@ -152,7 +151,7 @@ const verifyAll = async () => {
     const registryConstructorAddresses = chainIdToRegistryAddresses[l2ChainID];
 
     const constructorArgs =
-      key === "l1AddressesRegistry"
+      key === "l1AddressRegistry"
         ? abi.encode(
             ["address", "address", "address", "address"],
             [
