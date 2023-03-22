@@ -12,6 +12,8 @@ interface IRollupCore {
     function forceResolveChallenge(address[] memory stackerA, address[] memory stackerB) external;
     function outbox() external view returns (IOutbox);
     function setOutbox(IOutbox _outbox) external;
+    function setValidator(address[] memory _validator, bool[] memory _val) external;
+    function setValidatorWhitelistDisabled(bool _validatorWhitelistDisabled) external;
 }
 
 interface IL1Timelock {
