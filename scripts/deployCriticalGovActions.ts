@@ -1,7 +1,6 @@
 import {
   L1AddressRegistry__factory,
   PauseInboxAction__factory,
-  UnpauseInboxAction,
   UnpauseInboxAction__factory,
   PauseRollupAction__factory,
   UnpauseRollupAction__factory,
@@ -11,7 +10,7 @@ import {
   RemoveSequencerAction__factory,
 } from "../typechain-types";
 import { ContractVerifier } from "./contractVerifier";
-import { Wallet, utils, ContractFactory } from "ethers";
+import { Wallet, utils } from "ethers";
 import { JsonRpcProvider } from "@ethersproject/providers";
 import fs from "fs";
 
