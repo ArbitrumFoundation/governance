@@ -31,7 +31,9 @@ contract ArbGoerliSetInitialGovParamsAction {
         bytes memory votingPeriodData =
             abi.encodeWithSelector(IL2ArbitrumGoverner.setVotingPeriod.selector, vp);
         gov.relay(address(gov), 0, votingPeriodData);
-        require(gov.votingPeriod() == vp, "ArbGoerliSetInitialGovParamsAction: Voting period not set");
+        require(
+            gov.votingPeriod() == vp, "ArbGoerliSetInitialGovParamsAction: Voting period not set"
+        );
 
         timelock.updateDelay(tp);
         require(timelock.getMinDelay() == tp, "ArbGoerliSetInitialGovParamsAction: Timelock delay");
