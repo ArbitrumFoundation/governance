@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.16;
 
-import "./ArbOwnerLib.sol";
+import "./ArbPrecompilesLib.sol";
 
 contract AddChainOwnerAction {
     function perform(address newOwner) external {
-        ArbOwnerLib.arbOwner.addChainOwner(newOwner);
+        ArbPrecompilesLib.arbOwner.addChainOwner(newOwner);
     }
 }

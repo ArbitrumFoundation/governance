@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.16;
 
-import "./ArbOwnerLib.sol";
+import "./ArbPrecompilesLib.sol";
 
 contract SetL1PricingRewardRecipientAction {
     function perform(address newRecipient) external {
-        ArbOwnerLib.arbOwner.setL1PricingRewardRecipient(newRecipient);
+        ArbPrecompilesLib.arbOwner.setL1PricingRewardRecipient(newRecipient);
     }
 }
