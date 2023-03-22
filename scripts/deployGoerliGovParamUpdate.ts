@@ -2,7 +2,7 @@ import {
   L1AddressRegistry__factory,
   L1SetInitialGovParamsAction__factory,
   ArbGoerliSetInitialGovParamsAction__factory,
-  L2GovAddressRegistry__factory,
+  L2AddressRegistry__factory,
 } from "../typechain-types";
 import { Wallet, utils } from "ethers";
 import { JsonRpcProvider } from "@ethersproject/providers";
@@ -60,16 +60,16 @@ const main = async () => {
     abi.encode(["address"], [l1AddressRegistry.address])
   );
 
-  const l2GovRegistryFactory = new L2GovAddressRegistry__factory().connect(l2Deployer);
+  const l2GovRegistryFactory = new L2AddressRegistry__factory().connect(l2Deployer);
   const l2GovRegistry = await l2GovRegistryFactory.deploy(
     GOERLI_ROLLUP_CORE_GOV,
     GOERLI_ROLLUP_TREASURY_GOV,
     GOERLI_ROLLUP_TREASURY_WALLET
   );
   await l2GovRegistry.deployed();
-  console.log("L2GovAddressRegistry", l2GovRegistry.address);
+  console.log("L2AddressRegistry", l2GovRegistry.address);
   await l2Verifier.verifyWithAddress(
-    "L2GovAddressRegistry",
+    "L2AddressRegistry",
     l2GovRegistry.address,
     abi.encode(
       ["address", "address", "address"],

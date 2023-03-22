@@ -61,7 +61,7 @@ export class ContractVerifier {
     testUpgrade: "src/hardhatTest/TestUpgrade.sol:TestUpgrade",
     L1AddressRegistry: "src/gov-action-contracts/address-registries/L1AddressRegistry.sol:L1AddressRegistry",
     L1SetInitialGovParamsAction: "src/gov-action-contracts/goerli/L1SetInitialGovParamsAction.sol:L1SetInitialGovParamsAction",
-    L2GovAddressRegistry: "src/gov-action-contracts/address-registries/L2GovAddressRegistry.sol:L2GovAddressRegistry",
+    L2AddressRegistry: "src/gov-action-contracts/address-registries/L2AddressRegistry.sol:L2AddressRegistry",
     ArbGoerliSetInitialGovParamsAction: "src/gov-action-contracts/goerli/ArbGoerliSetInitialGovParamsAction.sol:ArbGoerliSetInitialGovParamsAction",
   };
 

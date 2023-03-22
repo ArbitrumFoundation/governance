@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.16;
 
-import "../address-registries/L2GovAddressRegistry.sol";
+import "../address-registries/L2AddressRegistry.sol";
 import "./CancelTimelockOperation.sol";
 
 /// @notice Can be used by the Security Council to cancel a Treasury Proposal
