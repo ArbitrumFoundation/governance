@@ -12,6 +12,8 @@ interface IRollupCore {
     function forceResolveChallenge(address[] memory stackerA, address[] memory stackerB) external;
     function outbox() external view returns (IOutbox);
     function setOutbox(IOutbox _outbox) external;
+    function setValidator(address[] memory _validator, bool[] memory _val) external;
+    function setValidatorWhitelistDisabled(bool _validatorWhitelistDisabled) external;
 }
 
 interface IL1Timelock {
@@ -39,10 +41,40 @@ interface IL1TimelockGetter {
     function l1Timelock() external view returns (IL1Timelock);
 }
 
+interface IL1GatewayRouter {
+    function setGateways(
+        address[] memory _token,
+        address[] memory _gateway,
+        uint256 _maxGas,
+        uint256 _gasPriceBid,
+        uint256 _maxSubmissionCost
+    ) external payable returns (uint256);
+}
+
+interface IL1CustomGateway {
+    function forceRegisterTokenToL2(
+        address[] calldata _l1Addresses,
+        address[] calldata _l2Addresses,
+        uint256 _maxGas,
+        uint256 _gasPriceBid,
+        uint256 _maxSubmissionCost
+    ) external payable returns (uint256);
+}
+
+interface IL1CustomGatewayGetter {
+    function customGateway() external view returns (IL1CustomGateway);
+}
+
+interface IL1GatewayRouterGetter {
+    function gatewayRouter() external view returns (IL1GatewayRouter);
+}
+
 interface IL1AddressRegistry is
     IRollupGetter,
     IInboxGetter,
     ISequencerInboxGetter,
     IBridgeGetter,
-    IL1TimelockGetter
+    IL1TimelockGetter,
+    IL1GatewayRouterGetter,
+    IL1CustomGatewayGetter
 {}
