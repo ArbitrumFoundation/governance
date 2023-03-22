@@ -69,12 +69,12 @@ interface IL1GatewayRouterGetter {
     function gatewayRouter() external view returns (IL1GatewayRouter);
 }
 
-interface ITokenBridgeAddressRegistry is IL1GatewayRouterGetter, IL1CustomGatewayGetter {}
-
 interface IL1AddressRegistry is
     IRollupGetter,
     IInboxGetter,
     ISequencerInboxGetter,
     IBridgeGetter,
-    IL1TimelockGetter
+    IL1TimelockGetter,
+    IL1GatewayRouterGetter,
+    IL1CustomGatewayGetter
 {}
