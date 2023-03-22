@@ -48,10 +48,10 @@ const chainIdToRegistryAddresses: RegistryArgMamp = {
     l1GatewayRouter: "0x4c7708168395aEa569453Fc36862D2ffcDaC588c",
   },
   41270: {
-    inbox: "0x",
-    govL1Timelock: "0x",
-    customGateway: "0x",
-    l1GatewayRouter: "0x",
+    inbox: "0xc4448b71118c9071Bcb9734A0EAc55D18A153949",
+    govL1Timelock: "0xE6841D92B0C345144506576eC13ECf5103aC7f49",
+    customGateway: "0x23122da8C581AA7E0d07A36Ff1f16F799650232f",
+    l1GatewayRouter: "0xC840838Bc438d73C16c2f8b22D2Ce3669963cD48",
   },
 };
 
