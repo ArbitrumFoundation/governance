@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.16;
 
-import "./ArbOneGovAddressRegistryInterfaces.sol";
+import "./L2AddressRegistryInterfaces.sol";
 
-contract ArbOneGovAddressRegistry is IArbOneGovAddressRegistry {
+contract L2AddressRegistry is IL2AddressRegistry {
     IL2ArbitrumGoverner public immutable coreGov;
     IL2ArbitrumGoverner public immutable treasuryGov;
     IFixedDelegateErc20Wallet public immutable treasuryWallet;
@@ -15,7 +15,7 @@ contract ArbOneGovAddressRegistry is IArbOneGovAddressRegistry {
     ) {
         require(
             _treasuryWallet.owner() == _treasuryGov.timelock(),
-            "ArbOneGovAddressRegistry: treasury gov timelock must own treasuryWallet"
+            "L2AddressRegistry: treasury gov timelock must own treasuryWallet"
         );
         coreGov = _coreGov;
         treasuryGov = _treasuryGov;

@@ -64,7 +64,7 @@ interface IL2ArbitrumTokenGetter {
     function l2ArbitrumToken() external view returns (IL2ArbitrumToken);
 }
 
-interface IArbOneGovAddressRegistry is
+interface IL2AddressRegistry is
     ICoreGovGetter,
     ICoreGovTimelockGetter,
     ITreasuryGovTimelockGetter,

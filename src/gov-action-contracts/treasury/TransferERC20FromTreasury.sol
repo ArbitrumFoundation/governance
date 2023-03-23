@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.16;
 
-import "../address-registries/ArbOneGovAddressRegistry.sol";
+import "../address-registries/L2AddressRegistry.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
@@ -13,7 +13,7 @@ library TransferERC20FromTreasury {
         bytes32 _predecessor,
         string calldata _description,
         uint256 _delay,
-        IArbOneGovAddressRegistry govAddressRegisry
+        IL2AddressRegistry govAddressRegisry
     ) internal {
         require(
             Address.isContract(_token),

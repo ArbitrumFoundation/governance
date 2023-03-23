@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.16;
 
-import "../address-registries/ArbOneGovAddressRegistry.sol";
+import "../address-registries/L2AddressRegistry.sol";
 
 library CancelTimelockOperation {
     function cancel(IL2ArbitrumGoverner l2ArbitrumGovernor, bytes32 proposalID) internal {

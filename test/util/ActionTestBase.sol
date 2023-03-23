@@ -17,7 +17,7 @@ import "../../src/FixedDelegateErc20Wallet.sol";
 import "../util/TestUtil.sol";
 import "../../src/UpgradeExecutor.sol";
 import "../../src/gov-action-contracts/address-registries/L1AddressRegistry.sol" as _ar;
-import "../../src/gov-action-contracts/address-registries/ArbOneGovAddressRegistry.sol" as _ar1;
+import "../../src/gov-action-contracts/address-registries/L2AddressRegistry.sol" as _ar1;
 import "../../src/gov-action-contracts/address-registries/interfaces.sol" as _ifaces;
 
 contract OwnableStub is Ownable {}
@@ -49,7 +49,7 @@ abstract contract ActionTestBase {
     ArbitrumTimelock coreTimelock;
     L2ArbitrumGovernor treasuryGov;
     ArbitrumTimelock treasuryTimelock;
-    _ar1.ArbOneGovAddressRegistry arbOneAddressRegistry;
+    _ar1.L2AddressRegistry arbOneAddressRegistry;
 
     function setUp() public {
         outboxesToAdd =
@@ -128,6 +128,6 @@ abstract contract ActionTestBase {
         );
 
         arbOneAddressRegistry =
-        new _ar1.ArbOneGovAddressRegistry(_ar1.IL2ArbitrumGoverner(address(coreGov)), _ar1.IL2ArbitrumGoverner(address(treasuryGov)), _ar1.IFixedDelegateErc20Wallet(address(treasuryWallet)));
+        new _ar1.L2AddressRegistry(_ar1.IL2ArbitrumGoverner(address(coreGov)), _ar1.IL2ArbitrumGoverner(address(treasuryGov)), _ar1.IFixedDelegateErc20Wallet(address(treasuryWallet)));
     }
 }

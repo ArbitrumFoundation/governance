@@ -1,12 +1,12 @@
 pragma solidity 0.8.16;
 
-import "../address-registries/ArbOneGovAddressRegistry.sol";
+import "../address-registries/L2AddressRegistry.sol";
 import "./TransferERC20FromTreasury.sol";
 
 contract TransferArbFromTreasurySimpleAction {
-    IArbOneGovAddressRegistry public immutable govAddressRegisry;
+    IL2AddressRegistry public immutable govAddressRegisry;
 
-    constructor(IArbOneGovAddressRegistry _govAddressRegisry) {
+    constructor(IL2AddressRegistry _govAddressRegisry) {
         govAddressRegisry = _govAddressRegisry;
     }
 
