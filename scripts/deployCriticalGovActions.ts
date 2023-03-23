@@ -35,19 +35,19 @@ type RegistryArgMamp = {
 };
 
 const chainIdToRegistryAddresses: RegistryArgMamp = {
-  41261: {
+  42161: {
     inbox: "0x4Dbd4fc535Ac27206064B68FfCf827b0A60BAB3f",
     govL1Timelock: "0xE6841D92B0C345144506576eC13ECf5103aC7f49",
     customGateway: "0xcEe284F754E854890e311e3280b767F80797180d",
     l1GatewayRouter: "0x72Ce9c846789fdB6fC1f34aC4AD25Dd9ef7031ef",
   },
-  412163: {
+  421613: {
     inbox: "0x6BEbC4925716945D46F0Ec336D5C2564F419682C",
     govL1Timelock: "0x364188EcF8E0733cB90d8EbeD90d56E56205dDfE",
     customGateway: "0x9fDD1C4E4AA24EEc1d913FABea925594a20d43C7",
     l1GatewayRouter: "0x4c7708168395aEa569453Fc36862D2ffcDaC588c",
   },
-  41270: {
+  42170: {
     inbox: "0xc4448b71118c9071Bcb9734A0EAc55D18A153949",
     govL1Timelock: "0xE6841D92B0C345144506576eC13ECf5103aC7f49",
     customGateway: "0x23122da8C581AA7E0d07A36Ff1f16F799650232f",
@@ -75,11 +75,11 @@ const deployAll = async () => {
     throw new Error("L1 deployer has no balance");
   }
   const chainID = await l1Deployer.getChainId();
-  if (chainID === 5 && l2ChainID !== 412163) {
+  if (chainID === 5 && l2ChainID !== 421613) {
     console.log(chainID, l2ChainID);
 
     throw new Error("L1 / L2 missmatch");
-  } else if (chainID === 1 && l2ChainID != 41261 && l2ChainID != 41270) {
+  } else if (chainID === 1 && l2ChainID != 42161 && l2ChainID != 42170) {
     throw new Error("L1 / L2 missmatch");
   }
 
