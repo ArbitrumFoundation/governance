@@ -237,14 +237,14 @@ export class RoundTripProposalCreator {
     const upgradeData =  iface.encodeFunctionData("perform")
 
     const proposalCallData = ( await this.create(upgradeAddr, upgradeValue, upgradeData, description)).callData
-    const salt = keccak256(description)
+    const salt = keccak256(  defaultAbiCoder.encode( ["string"], [description]))
     return {
       target: ARB_SYS_ADDRESS,
-      value: upgradeValue,
+      value: upgradeValue.toNumber(),
       data: proposalCallData,
       predecessor,
       salt,
-      delay
+      delay: delay.toNumber()
     }
 
   }
