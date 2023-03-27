@@ -212,6 +212,13 @@ export class RoundTripProposalCreator {
     );
   }
 
+    /**
+   * Outputs the arguments to be passed in to to the Core Governor Timelock's schedule method. This can be called by the 7 of 12 security council (non-critical delayed upgrade)
+   * @param l2GovConfig config for network where governance is located 
+   * @param upgradeAddr address of Governance Action contract (to be eventually passed into UpgradeExecutor.execute)
+   * @param description The proposal description
+   * @returns Object with Timelock.schedule params
+   */
   public async createTimelockScheduleArgs(
     l2GovConfig: L2GovConfig,
     upgradeAddr: string,
