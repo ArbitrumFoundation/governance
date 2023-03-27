@@ -232,7 +232,7 @@ export class RoundTripProposalCreator {
     const l2Timelock = await ArbitrumTimelock__factory.connect(l2TimelockAddress, l2GovConfig.provider)
     const delay = options?._delay? options?._delay : await l2Timelock.getMinDelay(); // default to min delay
 
-    let ABI = [ "function perform() external" ]; // TODO: allow for optional args
+    let ABI = [ "function perform() external" ];
     let iface = new utils.Interface(ABI);
     const upgradeData =  iface.encodeFunctionData("perform")
 
