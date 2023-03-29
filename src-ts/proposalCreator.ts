@@ -3,11 +3,12 @@ import { ArbSys__factory } from "@arbitrum/sdk/dist/lib/abi/factories/ArbSys__fa
 import { ARB_SYS_ADDRESS } from "@arbitrum/sdk/dist/lib/dataEntities/constants";
 import { defaultAbiCoder } from "@ethersproject/abi";
 import { JsonRpcProvider } from "@ethersproject/providers";
-import { BigNumber, constants } from "ethers";
+import { BigNumber, constants, utils } from "ethers";
 import { id, keccak256 } from "ethers/lib/utils";
 import {
   L1ArbitrumTimelock__factory,
   L2ArbitrumGovernor__factory,
+  ArbitrumTimelock__factory,
   UpgradeExecutor__factory,
 } from "../typechain-types";
 
@@ -209,5 +210,49 @@ export class RoundTripProposalCreator {
       proposalCallData,
       proposalDescription
     );
+  }
+
+    /**
+   * Outputs the arguments to be passed in to to the Core Governor Timelock's schedule method. This can be called by the 7 of 12 security council (non-critical delayed upgrade)
+   * @param l2GovConfig config for network where governance is located 
+   * @param upgradeAddr address of Governance Action contract (to be eventually passed into UpgradeExecutor.execute)
+   * @param description The proposal description
+   * @returns Object with Timelock.schedule params
+   */
+  public async createTimelockScheduleArgs(
+    l2GovConfig: L2GovConfig,
+    upgradeAddr: string,
+    description: string,
+    options?: {
+      _upgradeValue?: BigNumber,
+      _upgradeArgs?: string,
+      _delay?: BigNumber,
+      _predecessor?: string,
+    }
+  
+  )  {
+    const upgradeValue = options?._upgradeValue || BigNumber.from(0) // default to 0 value
+    const predecessor = options?._predecessor || "0x"; // default to no predecessor
+    
+    const l2Gov = await L2ArbitrumGovernor__factory.connect(  l2GovConfig.governorAddr, l2GovConfig.provider)
+    const l2TimelockAddress = await l2Gov.timelock()
+    const l2Timelock = await ArbitrumTimelock__factory.connect(l2TimelockAddress, l2GovConfig.provider)
+    const delay = options?._delay? options?._delay : await l2Timelock.getMinDelay(); // default to min delay
+
+    let ABI = [ "function perform() external" ];
+    let iface = new utils.Interface(ABI);
+    const upgradeData =  iface.encodeFunctionData("perform")
+
+    const proposalCallData = ( await this.create(upgradeAddr, upgradeValue, upgradeData, description)).callData
+    const salt = keccak256(  defaultAbiCoder.encode( ["string"], [description]))
+    return {
+      target: ARB_SYS_ADDRESS,
+      value: upgradeValue.toNumber(),
+      data: proposalCallData,
+      predecessor,
+      salt,
+      delay: delay.toNumber()
+    }
+
   }
 }
