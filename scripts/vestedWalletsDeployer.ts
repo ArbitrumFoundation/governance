@@ -42,7 +42,7 @@ export const deployVestedWallets = async (
       }));
 
     for (const walletPair of walletPairs) {
-      const amount = recipients[walletPair.beneficiary.toLowerCase()];
+      const amount = recipients[walletPair.beneficiary];
 
       if (!amount.gt(0)) {
         throw new Error(`Missing amount for ${walletPair.beneficiary}`);
