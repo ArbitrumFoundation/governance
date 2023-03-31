@@ -248,8 +248,11 @@ export class RoundTripProposalCreator {
     const l2Gov = await L2ArbitrumGovernor__factory.connect(  l2GovConfig.governorAddr, l2GovConfig.provider)
     const l2TimelockAddress = await l2Gov.timelock()
     const l2Timelock = await ArbitrumTimelock__factory.connect(l2TimelockAddress, l2GovConfig.provider)
-    const delay = options?._delay? options?._delay : await l2Timelock.getMinDelay(); // default to min delay
 
+    const minDelay = await l2Timelock.getMinDelay(); 
+    const delay = options?._delay? options?._delay : minDelay // default to min delay
+    if (delay.lt(minDelay)) throw new Error("Timelock delay below minimum delay")
+    
     let ABI = [ "function perform() external" ];
     let iface = new utils.Interface(ABI);
     const upgradeData =  iface.encodeFunctionData("perform")
