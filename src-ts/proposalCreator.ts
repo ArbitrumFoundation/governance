@@ -234,28 +234,33 @@ export class RoundTripProposalCreator {
     l2GovConfig: L2GovConfig,
     upgradeAddr: string,
     description: string,
-    options?: {
-      _upgradeValue?: BigNumber,
-      _upgradeArgs?: string,
+    options: {
+      upgradeValue?: BigNumber,
+      _upgradeParams?: {
+        upgradeABI: string,
+        upgradeArgs: any[]
+      },
       _delay?: BigNumber,
-      _predecessor?: string,
-    }
+      predecessor?: string,
+    } = {}
   
   )  {
-    const upgradeValue = options?._upgradeValue || BigNumber.from(0) // default to 0 value
-    const predecessor = options?._predecessor || "0x"; // default to no predecessor
+    // default upgrade value and predecessor values
+    const { upgradeValue = constants.Zero, predecessor = "0x"   }  = options
     
     const l2Gov = await L2ArbitrumGovernor__factory.connect(  l2GovConfig.governorAddr, l2GovConfig.provider)
     const l2TimelockAddress = await l2Gov.timelock()
     const l2Timelock = await ArbitrumTimelock__factory.connect(l2TimelockAddress, l2GovConfig.provider)
 
     const minDelay = await l2Timelock.getMinDelay(); 
-    const delay = options?._delay? options?._delay : minDelay // default to min delay
+    const delay = options?._delay || minDelay // default to min delay
+
     if (delay.lt(minDelay)) throw new Error("Timelock delay below minimum delay")
-    
-    let ABI = [ "function perform() external" ];
-    let iface = new utils.Interface(ABI);
-    const upgradeData =  iface.encodeFunctionData("perform")
+
+    let ABI = options?._upgradeParams ?  [options?._upgradeParams.upgradeABI] :  [ "function perform() external" ]; // default to perform with no params
+    let upgradeArgs = options?._upgradeParams ?  options?._upgradeParams.upgradeArgs: [] // default to empty array / no values
+    let actionIface = new utils.Interface(ABI);
+    const upgradeData =  actionIface.encodeFunctionData("perform", upgradeArgs)
 
     const proposalCallData = await this.createRoundTripCallData(upgradeAddr, upgradeValue, upgradeData, description)
     const salt = keccak256(  defaultAbiCoder.encode( ["string"], [description]))
