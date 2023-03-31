@@ -29,8 +29,6 @@ contract ArbitrumVestingWalletFactoryTest is Test {
 
     function testOnlyOwnerCanCreateWallets() external {
         ArbitrumVestingWalletsFactory fac = new ArbitrumVestingWalletsFactory();
-        vm.warp(timestampNow);
-
         address[] memory beneficiaries = new address[](3);
 
         vm.prank(address(123_456_789));
