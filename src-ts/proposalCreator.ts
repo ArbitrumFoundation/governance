@@ -125,21 +125,15 @@ export class RoundTripProposalCreator {
     public readonly l1Config: L1GovConfig,
     public readonly targetNetworkConfig: UpgradeConfig
   ) {}
-
+  
   /**
-   * Create a a new proposal
-   * @param upgradeAddr The address of the upgrade contract that will be called by an UpgradeExecutor
-   * @param upgradeValue Value sent to the upgrade contract
-   * @param upgradeData Call data sent to the upgrade contract
-   * @param proposalDescription The proposal description
-   * @returns
+   * Creates calldata for roundtrio path; data to be used either in a proposal or directly in timelock.schedule
    */
-  public async create(
+  private async createRoundTripCallData(   
     upgradeAddr: string,
     upgradeValue: BigNumber,
     upgradeData: string,
-    proposalDescription: string
-  ): Promise<Proposal> {
+    proposalDescription: string){
     const descriptionHash = id(proposalDescription);
 
     // the upgrade executor
@@ -199,10 +193,27 @@ export class RoundTripProposalCreator {
     );
 
     const iArbSys = ArbSys__factory.createInterface();
-    const proposalCallData = iArbSys.encodeFunctionData("sendTxToL1", [
+    return iArbSys.encodeFunctionData("sendTxToL1", [
       l1TimelockTo,
       l1TImelockScheduleCallData,
     ]);
+  }
+
+  /**
+   * Create a a new proposal
+   * @param upgradeAddr The address of the upgrade contract that will be called by an UpgradeExecutor
+   * @param upgradeValue Value sent to the upgrade contract
+   * @param upgradeData Call data sent to the upgrade contract
+   * @param proposalDescription The proposal description
+   * @returns
+   */
+  public async create(
+    upgradeAddr: string,
+    upgradeValue: BigNumber,
+    upgradeData: string,
+    proposalDescription: string
+  ): Promise<Proposal> {
+    const proposalCallData = await this.createRoundTripCallData(upgradeAddr, upgradeValue,upgradeData, proposalDescription)
 
     return new Proposal(
       ARB_SYS_ADDRESS,
@@ -243,7 +254,7 @@ export class RoundTripProposalCreator {
     let iface = new utils.Interface(ABI);
     const upgradeData =  iface.encodeFunctionData("perform")
 
-    const proposalCallData = ( await this.create(upgradeAddr, upgradeValue, upgradeData, description)).callData
+    const proposalCallData = await this.createRoundTripCallData(upgradeAddr, upgradeValue, upgradeData, description)
     const salt = keccak256(  defaultAbiCoder.encode( ["string"], [description]))
     return {
       target: ARB_SYS_ADDRESS,
