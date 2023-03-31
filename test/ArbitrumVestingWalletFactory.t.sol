@@ -33,7 +33,7 @@ contract ArbitrumVestingWalletFactoryTest is Test {
 
         address[] memory beneficiaries = new address[](3);
 
-        vm.prank(address(123456789));
+        vm.prank(address(123_456_789));
         vm.expectRevert("Ownable: caller is not the owner");
         fac.createWallets(startTimestamp, duration, beneficiaries);
     }

@@ -4,7 +4,6 @@ pragma solidity 0.8.16;
 import "./ArbitrumVestingWallet.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-
 contract ArbitrumVestingWalletsFactory is Ownable {
     event WalletCreated(address indexed beneficiary, address indexed vestingWalletAddress);
 
