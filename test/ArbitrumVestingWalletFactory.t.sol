@@ -26,4 +26,15 @@ contract ArbitrumVestingWalletFactoryTest is Test {
             "Beneficiary 0"
         );
     }
+
+    function testOnlyOwnerCanCreateWallets() external {
+        ArbitrumVestingWalletsFactory fac = new ArbitrumVestingWalletsFactory();
+        vm.warp(timestampNow);
+
+        address[] memory beneficiaries = new address[](3);
+
+        vm.prank(address(123456789));
+        vm.expectRevert("Ownable: caller is not the owner");
+        fac.createWallets(startTimestamp, duration, beneficiaries);
+    }
 }
