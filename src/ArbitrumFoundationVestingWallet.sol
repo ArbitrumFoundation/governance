@@ -12,7 +12,7 @@ interface IL2ArbitrumGoverner {
 }
 
 /// @notice A wallet that vests tokens over time. Votes are delegated to exclude address. Beneficiary can be updated by owner.
-contract ArbotrumFoundationVestingWallet is VestingWalletUpgradeable, OwnableUpgradeable {
+contract ArbitrumFoundationVestingWallet is VestingWalletUpgradeable, OwnableUpgradeable {
     address private _beneficiary;
 
     constructor() {
@@ -42,7 +42,7 @@ contract ArbotrumFoundationVestingWallet is VestingWalletUpgradeable, OwnableUpg
     }
 
     modifier onlyBeneficiary() {
-        require(msg.sender == beneficiary(), "ArbotrumFoundationVestingWallet: not beneficiary");
+        require(msg.sender == beneficiary(), "ArbitrumFoundationVestingWallet: not beneficiary");
         _;
     }
 
