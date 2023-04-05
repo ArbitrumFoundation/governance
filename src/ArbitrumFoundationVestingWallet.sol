@@ -26,8 +26,18 @@ contract ArbitrumFoundationVestingWallet is VestingWalletUpgradeable, OwnableUpg
         address _arbitrumGoverner,
         address _owner
     ) public initializer {
+        require(
+            _beneficiaryAddress != address(0),
+            "ArbitrumFoundationVestingWallet: zero beneficiary address"
+        );
+        require(
+            _arbitrumGoverner != address(0),
+            "ArbitrumFoundationVestingWallet: zero arbitrumGoverner address"
+        );
+
         // init vesting wallet
-        __VestingWallet_init(_beneficiaryAddress, _startTimestamp, _durationSeconds);
+        // first argument (beneficiary) is unused by contract; a dummy value is provided
+        __VestingWallet_init(address(1), _startTimestamp, _durationSeconds);
         _beneficiary = _beneficiaryAddress;
 
         // set owner
