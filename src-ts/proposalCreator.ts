@@ -125,21 +125,15 @@ export class RoundTripProposalCreator {
     public readonly l1Config: L1GovConfig,
     public readonly targetNetworkConfig: UpgradeConfig
   ) {}
-
+  
   /**
-   * Create a a new proposal
-   * @param upgradeAddr The address of the upgrade contract that will be called by an UpgradeExecutor
-   * @param upgradeValue Value sent to the upgrade contract
-   * @param upgradeData Call data sent to the upgrade contract
-   * @param proposalDescription The proposal description
-   * @returns
+   * Creates calldata for roundtrio path; data to be used either in a proposal or directly in timelock.schedule
    */
-  public async create(
+  private async createRoundTripCallData(   
     upgradeAddr: string,
     upgradeValue: BigNumber,
     upgradeData: string,
-    proposalDescription: string
-  ): Promise<Proposal> {
+    proposalDescription: string){
     const descriptionHash = id(proposalDescription);
 
     // the upgrade executor
@@ -199,10 +193,27 @@ export class RoundTripProposalCreator {
     );
 
     const iArbSys = ArbSys__factory.createInterface();
-    const proposalCallData = iArbSys.encodeFunctionData("sendTxToL1", [
+    return iArbSys.encodeFunctionData("sendTxToL1", [
       l1TimelockTo,
       l1TImelockScheduleCallData,
     ]);
+  }
+
+  /**
+   * Create a a new proposal
+   * @param upgradeAddr The address of the upgrade contract that will be called by an UpgradeExecutor
+   * @param upgradeValue Value sent to the upgrade contract
+   * @param upgradeData Call data sent to the upgrade contract
+   * @param proposalDescription The proposal description
+   * @returns
+   */
+  public async create(
+    upgradeAddr: string,
+    upgradeValue: BigNumber,
+    upgradeData: string,
+    proposalDescription: string
+  ): Promise<Proposal> {
+    const proposalCallData = await this.createRoundTripCallData(upgradeAddr, upgradeValue,upgradeData, proposalDescription)
 
     return new Proposal(
       ARB_SYS_ADDRESS,
@@ -223,27 +234,35 @@ export class RoundTripProposalCreator {
     l2GovConfig: L2GovConfig,
     upgradeAddr: string,
     description: string,
-    options?: {
-      _upgradeValue?: BigNumber,
-      _upgradeArgs?: string,
+    options: {
+      upgradeValue?: BigNumber,
+      _upgradeParams?: {
+        upgradeABI: string,
+        upgradeArgs: any[]
+      },
       _delay?: BigNumber,
-      _predecessor?: string,
-    }
+      predecessor?: string,
+    } = {}
   
   )  {
-    const upgradeValue = options?._upgradeValue || BigNumber.from(0) // default to 0 value
-    const predecessor = options?._predecessor || "0x"; // default to no predecessor
+    // default upgrade value and predecessor values
+    const { upgradeValue = constants.Zero, predecessor = "0x"   }  = options
     
     const l2Gov = await L2ArbitrumGovernor__factory.connect(  l2GovConfig.governorAddr, l2GovConfig.provider)
     const l2TimelockAddress = await l2Gov.timelock()
     const l2Timelock = await ArbitrumTimelock__factory.connect(l2TimelockAddress, l2GovConfig.provider)
-    const delay = options?._delay? options?._delay : await l2Timelock.getMinDelay(); // default to min delay
 
-    let ABI = [ "function perform() external" ];
-    let iface = new utils.Interface(ABI);
-    const upgradeData =  iface.encodeFunctionData("perform")
+    const minDelay = await l2Timelock.getMinDelay(); 
+    const delay = options?._delay || minDelay // default to min delay
 
-    const proposalCallData = ( await this.create(upgradeAddr, upgradeValue, upgradeData, description)).callData
+    if (delay.lt(minDelay)) throw new Error("Timelock delay below minimum delay")
+
+    let ABI = options?._upgradeParams ?  [options?._upgradeParams.upgradeABI] :  [ "function perform() external" ]; // default to perform with no params
+    let upgradeArgs = options?._upgradeParams ?  options?._upgradeParams.upgradeArgs: [] // default to empty array / no values
+    let actionIface = new utils.Interface(ABI);
+    const upgradeData =  actionIface.encodeFunctionData("perform", upgradeArgs)
+
+    const proposalCallData = await this.createRoundTripCallData(upgradeAddr, upgradeValue, upgradeData, description)
     const salt = keccak256(  defaultAbiCoder.encode( ["string"], [description]))
     return {
       target: ARB_SYS_ADDRESS,
