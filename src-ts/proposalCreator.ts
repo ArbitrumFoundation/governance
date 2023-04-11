@@ -135,12 +135,12 @@ export class RoundTripProposalCreator {
     upgradeData: string,
     proposalDescription: string){
 
-      const {l1TimelockTo, l1TImelockScheduleCallData } = await  this.createArbSysArgs(upgradeAddr, upgradeValue, upgradeData, proposalDescription) 
+      const {l1TimelockTo, l1TimelockScheduleCallData } = await  this.createArbSysArgs(upgradeAddr, upgradeValue, upgradeData, proposalDescription) 
 
       const iArbSys = ArbSys__factory.createInterface();
       return iArbSys.encodeFunctionData("sendTxToL1", [
         l1TimelockTo,
-        l1TImelockScheduleCallData,
+        l1TimelockScheduleCallData,
       ]);
       
     }
@@ -203,14 +203,14 @@ export class RoundTripProposalCreator {
       l1Value = upgradeExecutorValue;
     }
 
-    const l1TImelockScheduleCallData = l1Timelock.interface.encodeFunctionData(
+    const l1TimelockScheduleCallData = l1Timelock.interface.encodeFunctionData(
       "schedule",
       [l1To, l1Value, l1Data, constants.HashZero, descriptionHash, minDelay]
     );
 
     return {
       l1TimelockTo,
-      l1TImelockScheduleCallData,
+      l1TimelockScheduleCallData,
     }
   }
 
