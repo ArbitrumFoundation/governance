@@ -16,6 +16,7 @@ import "../../src/L1ArbitrumTimelock.sol";
 import "../../src/FixedDelegateErc20Wallet.sol";
 import "../util/TestUtil.sol";
 import "../../src/UpgradeExecutor.sol";
+import "../../src/ArbitrumDAOConstitution.sol";
 import "../../src/gov-action-contracts/address-registries/L1AddressRegistry.sol" as _ar;
 import "../../src/gov-action-contracts/address-registries/L2AddressRegistry.sol" as _ar1;
 import "../../src/gov-action-contracts/address-registries/interfaces.sol" as _ifaces;
@@ -28,6 +29,8 @@ abstract contract ActionTestBase {
     address executor0 = address(138);
     address executor1 = address(139);
     address executor2 = address(140);
+
+    bytes32 constitutionHash = bytes32("0x010101");
 
     address[] outboxesToAdd;
     address[] outboxesToRemove;
@@ -49,6 +52,7 @@ abstract contract ActionTestBase {
     ArbitrumTimelock coreTimelock;
     L2ArbitrumGovernor treasuryGov;
     ArbitrumTimelock treasuryTimelock;
+    ArbitrumDAOConstitution arbitrumDAOConstitution;
     _ar1.L2AddressRegistry arbOneAddressRegistry;
 
     function setUp() public {
@@ -63,6 +67,8 @@ abstract contract ActionTestBase {
         executors[0] = executor0;
         executors[1] = executor1;
         ue.initialize(address(ue), executors);
+
+        arbitrumDAOConstitution = new ArbitrumDAOConstitution(constitutionHash);
 
         rollup = new OwnableStub();
         rollup.transferOwnership(address(ue));
@@ -128,6 +134,6 @@ abstract contract ActionTestBase {
         );
 
         arbOneAddressRegistry =
-        new _ar1.L2AddressRegistry(_ar1.IL2ArbitrumGoverner(address(coreGov)), _ar1.IL2ArbitrumGoverner(address(treasuryGov)), _ar1.IFixedDelegateErc20Wallet(address(treasuryWallet)));
+        new _ar1.L2AddressRegistry(_ar1.IL2ArbitrumGoverner(address(coreGov)), _ar1.IL2ArbitrumGoverner(address(treasuryGov)), _ar1.IFixedDelegateErc20Wallet(address(treasuryWallet)), _ar1.IArbitrumDAOConstitution(address(arbitrumDAOConstitution)));
     }
 }

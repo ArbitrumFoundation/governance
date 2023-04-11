@@ -29,6 +29,11 @@ interface IFixedDelegateErc20Wallet is IOwnable {
     function transfer(address _token, address _to, uint256 _amount) external returns (bool);
 }
 
+interface IArbitrumDAOConstitution is IOwnable {
+    function constitutionHash() external view returns (bytes32);
+    function setConstitutionHash(bytes32 _constitutionHash) external;
+}
+
 interface IL2ArbitrumGoverner {
     // token() is inherited from GovernorVotesUpgradeable
     function token() external view returns (IL2ArbitrumToken);
@@ -38,6 +43,12 @@ interface IL2ArbitrumGoverner {
     function setVotingDelay(uint256 newVotingDelay) external;
     function votingPeriod() external view returns (uint256);
     function setVotingPeriod(uint256 newVotingPeriod) external;
+    function proposalThreshold() external view returns (uint256);
+    function setProposalThreshold(uint256 newProposalThreshold) external;
+}
+
+interface IArbitrumDAOConstitutionGetter {
+    function arbitrumDAOConstitution() external view returns (IArbitrumDAOConstitution);
 }
 
 interface ICoreGovTimelockGetter {
@@ -70,5 +81,6 @@ interface IL2AddressRegistry is
     ITreasuryGovTimelockGetter,
     IDaoTreasuryGetter,
     ITreasuryGovGetter,
-    IL2ArbitrumTokenGetter
+    IL2ArbitrumTokenGetter,
+    IArbitrumDAOConstitutionGetter
 {}
