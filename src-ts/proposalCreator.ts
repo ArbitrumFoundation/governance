@@ -144,7 +144,9 @@ export class RoundTripProposalCreator {
       ]);
       
     }
-  
+  /**
+   * Generates arguments for ArbSys.sendTxToL1 for a constitutional proposal. Can be used to submit a proposal in e.g. the Tally UI.  
+  */
   public async createArbSysArgs(   
     upgradeAddr: string,
     upgradeValue: BigNumber,
