@@ -40,76 +40,76 @@ contract ArbitrumFoundationVestingWalletTest is Test {
             L2ArbitrumGovernor(payable(TestUtil.deployProxy(address(new L2ArbitrumGovernor()))));
         l2ArbitrumGovernor.initialize(token, timelock, address(0), 1, 1, 1, 1, 1);
 
-        ArbitrumFoundationVestingWallet foundaitonVestingWallet = ArbitrumFoundationVestingWallet(
+        ArbitrumFoundationVestingWallet foundationVestingWallet = ArbitrumFoundationVestingWallet(
             payable(TestUtil.deployProxy(address(new ArbitrumFoundationVestingWallet())))
         );
-        foundaitonVestingWallet.initialize(
+        foundationVestingWallet.initialize(
             beneficiary, startTime, duration, address(l2ArbitrumGovernor), vestingWalletOwner
         );
 
         vm.startPrank(tokenOwner);
-        token.transfer(address(foundaitonVestingWallet), initialFundingAmount);
+        token.transfer(address(foundationVestingWallet), initialFundingAmount);
         vm.stopPrank();
-        return (foundaitonVestingWallet, token, l2ArbitrumGovernor);
+        return (foundationVestingWallet, token, l2ArbitrumGovernor);
     }
 
     function testProperlyInits() external {
         (
-            ArbitrumFoundationVestingWallet foundaitonVestingWallet,
+            ArbitrumFoundationVestingWallet foundationVestingWallet,
             L2ArbitrumToken token,
             L2ArbitrumGovernor gov
         ) = deployAndInit();
-        assertEq(foundaitonVestingWallet.start(), startTime, "Start time set");
-        assertEq(foundaitonVestingWallet.duration(), duration, "Duration set");
-        assertEq(foundaitonVestingWallet.beneficiary(), beneficiary, "beneficiary set");
-        assertEq(foundaitonVestingWallet.owner(), vestingWalletOwner, "Owner set");
+        assertEq(foundationVestingWallet.start(), startTime, "Start time set");
+        assertEq(foundationVestingWallet.duration(), duration, "Duration set");
+        assertEq(foundationVestingWallet.beneficiary(), beneficiary, "beneficiary set");
+        assertEq(foundationVestingWallet.owner(), vestingWalletOwner, "Owner set");
         assertEq(
-            token.delegates(address(foundaitonVestingWallet)),
+            token.delegates(address(foundationVestingWallet)),
             gov.EXCLUDE_ADDRESS(),
             "Delegates to exclude address"
         );
         assertEq(
-            token.balanceOf(address(foundaitonVestingWallet)),
+            token.balanceOf(address(foundationVestingWallet)),
             initialFundingAmount,
             "wallet is funded"
         );
 
         vm.expectRevert("Initializable: contract is already initialized");
-        foundaitonVestingWallet.initialize(
+        foundationVestingWallet.initialize(
             beneficiary, startTime, duration, address(gov), vestingWalletOwner
         );
     }
 
     function testOnlyOwnerCanSetBeneficiary() external {
         (
-            ArbitrumFoundationVestingWallet foundaitonVestingWallet,
+            ArbitrumFoundationVestingWallet foundationVestingWallet,
             L2ArbitrumToken token,
             L2ArbitrumGovernor gov
         ) = deployAndInit();
-        assertEq(foundaitonVestingWallet.beneficiary(), beneficiary, "beneficiary set");
+        assertEq(foundationVestingWallet.beneficiary(), beneficiary, "beneficiary set");
 
         vm.startPrank(vestingWalletOwner);
-        foundaitonVestingWallet.setBeneficiary(newBeneficary);
-        assertEq(foundaitonVestingWallet.beneficiary(), newBeneficary, "new beneficiary set");
+        foundationVestingWallet.setBeneficiary(newBeneficary);
+        assertEq(foundationVestingWallet.beneficiary(), newBeneficary, "new beneficiary set");
         vm.stopPrank();
     }
 
     function testOwnlyOwnerCanSetBeneficiary() external {
         (
-            ArbitrumFoundationVestingWallet foundaitonVestingWallet,
+            ArbitrumFoundationVestingWallet foundationVestingWallet,
             L2ArbitrumToken token,
             L2ArbitrumGovernor gov
         ) = deployAndInit();
 
         vm.startPrank(rando);
         vm.expectRevert("Ownable: caller is not the owner");
-        foundaitonVestingWallet.setBeneficiary(address(newBeneficary));
+        foundationVestingWallet.setBeneficiary(address(newBeneficary));
         vm.stopPrank();
     }
 
     function testRelease() external {
         (
-            ArbitrumFoundationVestingWallet foundaitonVestingWallet,
+            ArbitrumFoundationVestingWallet foundationVestingWallet,
             L2ArbitrumToken token,
             L2ArbitrumGovernor gov
         ) = deployAndInit();
@@ -119,23 +119,23 @@ contract ArbitrumFoundationVestingWalletTest is Test {
         assertTrue(block.timestamp < startTime, "pre start time");
 
         vm.startPrank(beneficiary);
-        foundaitonVestingWallet.release();
+        foundationVestingWallet.release();
         assertEq(token.balanceOf(beneficiary), 0, "beneficiary still has no tokens");
 
         vm.warp(1500);
 
-        foundaitonVestingWallet.release(address(token));
+        foundationVestingWallet.release(address(token));
         assertEq(token.balanceOf(beneficiary), 500, "beneficiary got tokens");
         vm.stopPrank();
 
         vm.startPrank(vestingWalletOwner);
-        foundaitonVestingWallet.setBeneficiary(newBeneficary);
+        foundationVestingWallet.setBeneficiary(newBeneficary);
 
         vm.warp(1600);
         vm.stopPrank();
 
         vm.startPrank(newBeneficary);
-        foundaitonVestingWallet.release(address(token));
+        foundationVestingWallet.release(address(token));
 
         assertEq(token.balanceOf(newBeneficary), 100, "new beneficiary got tokens");
 
@@ -145,13 +145,13 @@ contract ArbitrumFoundationVestingWalletTest is Test {
 
     function testOnlyBeneficiaryCanRelease() public {
         (
-            ArbitrumFoundationVestingWallet foundaitonVestingWallet,
+            ArbitrumFoundationVestingWallet foundationVestingWallet,
             L2ArbitrumToken token,
             L2ArbitrumGovernor gov
         ) = deployAndInit();
         vm.startPrank(rando);
         vm.expectRevert("ArbitrumFoundationVestingWallet: not beneficiary");
-        foundaitonVestingWallet.release(address(token));
+        foundationVestingWallet.release(address(token));
         vm.stopPrank();
     }
 }
