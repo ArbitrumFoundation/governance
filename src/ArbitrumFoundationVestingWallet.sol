@@ -11,7 +11,7 @@ interface IL2ArbitrumGoverner {
     function EXCLUDE_ADDRESS() external view returns (address);
 }
 
-/// @notice A wallet that vests tokens over time. Votes are delegated to exclude address. Beneficiary can be updated by owner.
+/// @notice A wallet that vests tokens over time on a linear schedule. Votes are delegated to exclude address. Beneficiary can be updated by owner.
 contract ArbitrumFoundationVestingWallet is VestingWalletUpgradeable, OwnableUpgradeable {
     address private _beneficiary;
 
