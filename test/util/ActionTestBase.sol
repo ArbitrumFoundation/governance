@@ -54,6 +54,7 @@ abstract contract ActionTestBase {
     ArbitrumTimelock treasuryTimelock;
     ArbitrumDAOConstitution arbitrumDAOConstitution;
     _ar1.L2AddressRegistry arbOneAddressRegistry;
+    FixedDelegateErc20Wallet treasuryWallet;
 
     function setUp() public {
         outboxesToAdd =
@@ -67,8 +68,6 @@ abstract contract ActionTestBase {
         executors[0] = executor0;
         executors[1] = executor1;
         ue.initialize(address(ue), executors);
-
-        arbitrumDAOConstitution = new ArbitrumDAOConstitution(constitutionHash);
 
         rollup = new OwnableStub();
         rollup.transferOwnership(address(ue));
@@ -99,6 +98,9 @@ abstract contract ActionTestBase {
         executors2[0] = executor2;
         arbOneUe.initialize(address(arbOneUe), executors2);
 
+        arbitrumDAOConstitution = new ArbitrumDAOConstitution(constitutionHash);
+        arbitrumDAOConstitution.transferOwnership(address(arbOneUe));
+
         arbOneToken = L2ArbitrumToken(TestUtil.deployProxy(address(new L2ArbitrumToken())));
         arbOneToken.initialize(address(4567), 10_000_000_000, address(arbOneUe));
         coreTimelock =
@@ -127,7 +129,7 @@ abstract contract ActionTestBase {
         treasuryTimelock.revokeRole(treasuryTimelock.TIMELOCK_ADMIN_ROLE(), address(this));
         treasuryGov.initialize(arbOneToken, treasuryTimelock, address(arbOneUe), 7, 8, 600, 60, 60);
 
-        FixedDelegateErc20Wallet treasuryWallet =
+        treasuryWallet =
             FixedDelegateErc20Wallet(TestUtil.deployProxy(address(new FixedDelegateErc20Wallet())));
         treasuryWallet.initialize(
             address(arbOneToken), treasuryGov.EXCLUDE_ADDRESS(), address(treasuryTimelock)
