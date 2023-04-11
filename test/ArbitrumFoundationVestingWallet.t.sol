@@ -47,9 +47,8 @@ contract ArbitrumFoundationVestingWalletTest is Test {
             beneficiary, startTime, duration, address(l2ArbitrumGovernor), vestingWalletOwner
         );
 
-        vm.startPrank(tokenOwner);
+        vm.prank(tokenOwner);
         token.transfer(address(foundationVestingWallet), initialFundingAmount);
-        vm.stopPrank();
         return (foundationVestingWallet, token, l2ArbitrumGovernor);
     }
 
@@ -88,10 +87,9 @@ contract ArbitrumFoundationVestingWalletTest is Test {
         ) = deployAndInit();
         assertEq(foundationVestingWallet.beneficiary(), beneficiary, "beneficiary set");
 
-        vm.startPrank(vestingWalletOwner);
+        vm.prank(vestingWalletOwner);
         foundationVestingWallet.setBeneficiary(newBeneficary);
         assertEq(foundationVestingWallet.beneficiary(), newBeneficary, "new beneficiary set");
-        vm.stopPrank();
     }
 
     function testOwnlyOwnerCanSetBeneficiary() external {
@@ -101,10 +99,9 @@ contract ArbitrumFoundationVestingWalletTest is Test {
             L2ArbitrumGovernor gov
         ) = deployAndInit();
 
-        vm.startPrank(rando);
+        vm.prank(rando);
         vm.expectRevert("Ownable: caller is not the owner");
         foundationVestingWallet.setBeneficiary(address(newBeneficary));
-        vm.stopPrank();
     }
 
     function testRelease() external {
@@ -128,19 +125,17 @@ contract ArbitrumFoundationVestingWalletTest is Test {
         assertEq(token.balanceOf(beneficiary), 500, "beneficiary got tokens");
         vm.stopPrank();
 
-        vm.startPrank(vestingWalletOwner);
+        vm.prank(vestingWalletOwner);
         foundationVestingWallet.setBeneficiary(newBeneficary);
 
         vm.warp(1600);
-        vm.stopPrank();
 
-        vm.startPrank(newBeneficary);
+        vm.prank(newBeneficary);
         foundationVestingWallet.release(address(token));
 
         assertEq(token.balanceOf(newBeneficary), 100, "new beneficiary got tokens");
 
         assertEq(token.balanceOf(beneficiary), 500, "prev beneficiary didn't get more tokens");
-        vm.stopPrank();
     }
 
     function testOnlyBeneficiaryCanRelease() public {
@@ -149,9 +144,8 @@ contract ArbitrumFoundationVestingWalletTest is Test {
             L2ArbitrumToken token,
             L2ArbitrumGovernor gov
         ) = deployAndInit();
-        vm.startPrank(rando);
+        vm.prank(rando);
         vm.expectRevert("ArbitrumFoundationVestingWallet: not beneficiary");
         foundationVestingWallet.release(address(token));
-        vm.stopPrank();
     }
 }
