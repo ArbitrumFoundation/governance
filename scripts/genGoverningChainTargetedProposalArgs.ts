@@ -1,14 +1,11 @@
-import {
-  RoundTripProposalCreator,
-  L1GovConfig,
-  UpgradeConfig,
-} from "../src-ts/proposalCreator";
+import { RoundTripProposalCreator, L1GovConfig, UpgradeConfig } from "../src-ts/proposalCreator";
 import { JsonRpcProvider } from "@ethersproject/providers";
 import { DeployedContracts } from "../src-ts/types";
 import fs from "fs";
 
 import dotenv from "dotenv";
 import { BigNumber, utils } from "ethers";
+
 const goerliDeployedContracts = JSON.parse(
   fs.readFileSync("./files/goerli/deployedContracts.json").toString()
 ) as DeployedContracts;
@@ -18,11 +15,18 @@ const mainnetDeployedContracts = JSON.parse(
 dotenv.config();
 
 const ensureContract = async (address: string, provider: JsonRpcProvider) => {
-  if ((await provider.getCode(address)).length <= 2) throw new Error(`${address} contract not found`);
+  if ((await provider.getCode(address)).length <= 2)
+    throw new Error(`${address} contract not found`);
 };
 
-
-export const generateArbSysArgs = async (l1Provider:JsonRpcProvider, l2Provider: JsonRpcProvider, upgradeAddr: string, description: string, upgradeValue = BigNumber.from(0), upgradeArgs=[]) => {
+export const generateArbSysArgs = async (
+  l1Provider: JsonRpcProvider,
+  l2Provider: JsonRpcProvider,
+  upgradeAddr: string,
+  description: string,
+  upgradeValue = BigNumber.from(0),
+  upgradeArgs = []
+) => {
   let actionIface = new utils.Interface(["function perform() external"]);
   const upgradeData = actionIface.encodeFunctionData("perform", upgradeArgs);
 
@@ -33,11 +37,11 @@ export const generateArbSysArgs = async (l1Provider:JsonRpcProvider, l2Provider:
     throw new Error("Unsupported chain pairing");
 
   const deployedContracts = l1ChainId === 1 ? mainnetDeployedContracts : goerliDeployedContracts;
-  const { l1Timelock, l2Executor } = deployedContracts
+  const { l1Timelock, l2Executor } = deployedContracts;
 
-  await ensureContract(upgradeAddr, l2Provider)
-  await ensureContract(l2Executor, l2Provider)
-  await ensureContract(l1Timelock, l1Provider)
+  await ensureContract(upgradeAddr, l2Provider);
+  await ensureContract(l2Executor, l2Provider);
+  await ensureContract(l1Timelock, l1Provider);
 
   const L1GovConfig: L1GovConfig = {
     timelockAddr: l1Timelock,
@@ -50,12 +54,5 @@ export const generateArbSysArgs = async (l1Provider:JsonRpcProvider, l2Provider:
   };
 
   const proposalCreator = new RoundTripProposalCreator(L1GovConfig, upgradeConfig);
-  return  proposalCreator.createArbSysArgs(
-    upgradeAddr,
-    upgradeValue,
-    upgradeData,
-    description
-  );
-  
+  return proposalCreator.createArbSysArgs(upgradeAddr, upgradeValue, upgradeData, description);
 };
-
