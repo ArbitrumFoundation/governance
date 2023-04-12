@@ -13,7 +13,7 @@ interface IL2ArbitrumGoverner {
 }
 
 /**
- * @notice A wallet for foundation owned founds as per AIP 1.1 specification.
+ * @notice A wallet for foundation owned founds as per AIP-1.1 specification.
  * DAO can migrate funds to new wallet.
  * Wallet vests funds over time on a linear schedule.
  * Governance votes are delegated to exclude address.
@@ -86,13 +86,13 @@ contract ArbitrumFoundationVestingWallet is VestingWalletUpgradeable, OwnableUpg
         super.release();
     }
 
-    // @notice DAO can migrate funds to a new wallet, e.g. one with a different vesting schedule, as per API 1.1.
+    // @notice DAO can migrate funds to a new wallet, e.g. one with a different vesting schedule, as per AIP-1.1.
     function migrateTokensToNewWallet(address _token, address _newWallet) public onlyOwner {
         IERC20 token = IERC20(_token);
         token.safeTransfer(_newWallet, token.balanceOf(address(this)));
     }
 
-    // @notice DAO can migrate funds to a new wallet, e.g. one with a different vesting schedule, as per API 1.1.
+    // @notice DAO can migrate funds to a new wallet, e.g. one with a different vesting schedule, as per AIP-1.1.
     function migrateEthToNewWallet(address _newWallet) public onlyOwner {
         _newWallet.call{value: address(this).balance}("");
     }
