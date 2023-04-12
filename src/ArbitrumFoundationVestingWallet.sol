@@ -3,6 +3,7 @@ pragma solidity 0.8.16;
 
 import "@openzeppelin/contracts-upgradeable/finance/VestingWalletUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import {IERC20VotesUpgradeable} from "./Util.sol";
 
@@ -11,8 +12,17 @@ interface IL2ArbitrumGoverner {
     function EXCLUDE_ADDRESS() external view returns (address);
 }
 
-/// @notice A wallet that vests tokens over time on a linear schedule. Votes are delegated to exclude address. Beneficiary can be updated by owner.
+/**
+ * @notice A wallet for foundation owned founds as per AIP 1.1 specification.
+ * DAO can migrate funds to new wallet.
+ * Wallet vests funds over time on a linear schedule.
+ * Governance votes are delegated to exclude address.
+ * Beneficiary can be updated by DAO.
+ */
+
 contract ArbitrumFoundationVestingWallet is VestingWalletUpgradeable, OwnableUpgradeable {
+    using SafeERC20 for IERC20;
+
     address private _beneficiary;
 
     constructor() {
@@ -40,7 +50,7 @@ contract ArbitrumFoundationVestingWallet is VestingWalletUpgradeable, OwnableUpg
         __VestingWallet_init(address(1), _startTimestamp, _durationSeconds);
         _beneficiary = _beneficiaryAddress;
 
-        // set owner
+        // set owner (DAO)
         __Ownable_init();
         _transferOwnership(_owner);
 
@@ -61,7 +71,7 @@ contract ArbitrumFoundationVestingWallet is VestingWalletUpgradeable, OwnableUpg
         return _beneficiary;
     }
 
-    // @notice set new beneficiary; only owner can call
+    // @notice set new beneficiary; only DAO can call
     function setBeneficiary(address _newBeneficiary) public onlyOwner {
         _beneficiary = _newBeneficiary;
     }
@@ -69,5 +79,21 @@ contract ArbitrumFoundationVestingWallet is VestingWalletUpgradeable, OwnableUpg
     // @notice release vested tokens; only benefiary can call
     function release(address token) public override onlyBeneficiary {
         super.release(token);
+    }
+
+    // @notice eth sent to wallet is automatically put under vesting schedule; only benefitiary can release
+    function release() public override onlyBeneficiary {
+        super.release();
+    }
+
+    // @notice DAO can migrate funds to a new wallet, e.g. one with a different vesting schedule, as per API 1.1.
+    function migrateTokensToNewWallet(address _token, address _newWallet) public onlyOwner {
+        IERC20 token = IERC20(_token);
+        token.safeTransfer(_newWallet, token.balanceOf(address(this)));
+    }
+
+    // @notice DAO can migrate funds to a new wallet, e.g. one with a different vesting schedule, as per API 1.1.
+    function migrateEthToNewWallet(address _newWallet) public onlyOwner {
+        _newWallet.call{value: address(this).balance}("");
     }
 }

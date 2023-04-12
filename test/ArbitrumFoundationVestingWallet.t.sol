@@ -148,4 +148,47 @@ contract ArbitrumFoundationVestingWalletTest is Test {
         vm.expectRevert("ArbitrumFoundationVestingWallet: not beneficiary");
         foundationVestingWallet.release(address(token));
     }
+
+    function testOnlyOwnerCanMigrate() public {
+        (
+            ArbitrumFoundationVestingWallet foundationVestingWallet,
+            L2ArbitrumToken token,
+            L2ArbitrumGovernor gov
+        ) = deployAndInit();
+        vm.startPrank(rando);
+        vm.expectRevert("Ownable: caller is not the owner");
+        foundationVestingWallet.migrateTokensToNewWallet(address(token), rando);
+
+        vm.expectRevert("Ownable: caller is not the owner");
+        foundationVestingWallet.migrateEthToNewWallet(rando);
+    }
+
+    function testMigrateTokensToNewWallet() public {
+        (
+            ArbitrumFoundationVestingWallet foundationVestingWallet,
+            L2ArbitrumToken token,
+            L2ArbitrumGovernor gov
+        ) = deployAndInit();
+        address newWallet = address(123_456_789);
+        vm.prank(vestingWalletOwner);
+        foundationVestingWallet.migrateTokensToNewWallet(address(token), newWallet);
+        assertEq(token.balanceOf(address(foundationVestingWallet)), 0, "tokens not migrated");
+        assertEq(token.balanceOf(address(newWallet)), initialFundingAmount, "tokens not migrated");
+    }
+
+    function testMigrateEthToNewWallet() public {
+        (
+            ArbitrumFoundationVestingWallet foundationVestingWallet,
+            L2ArbitrumToken token,
+            L2ArbitrumGovernor gov
+        ) = deployAndInit();
+        address newWallet = address(123_456_789);
+        uint256 etherAmount = 1 ether;
+        vm.deal(address(foundationVestingWallet), etherAmount);
+
+        vm.prank(vestingWalletOwner);
+        foundationVestingWallet.migrateEthToNewWallet(newWallet);
+        assertEq(address(foundationVestingWallet).balance, 0, "eth not migrated");
+        assertEq(newWallet.balance, etherAmount, "eth not migrated");
+    }
 }
