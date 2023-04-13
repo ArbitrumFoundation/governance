@@ -79,7 +79,7 @@ contract ArbitrumFoundationVestingWalletTest is Test {
         );
     }
 
-    function testOnlyOwnerCanSetBeneficiary() external {
+    function testOwnerCanSetBeneficiary() external {
         (
             ArbitrumFoundationVestingWallet foundationVestingWallet,
             L2ArbitrumToken token,
@@ -92,7 +92,20 @@ contract ArbitrumFoundationVestingWalletTest is Test {
         assertEq(foundationVestingWallet.beneficiary(), newBeneficary, "new beneficiary set");
     }
 
-    function testOwnlyOwnerCanSetBeneficiary() external {
+    function testBeneficiaryCanSetBeneficiary() external {
+        (
+            ArbitrumFoundationVestingWallet foundationVestingWallet,
+            L2ArbitrumToken token,
+            L2ArbitrumGovernor gov
+        ) = deployAndInit();
+        assertEq(foundationVestingWallet.beneficiary(), beneficiary, "beneficiary set");
+
+        vm.prank(beneficiary);
+        foundationVestingWallet.setBeneficiary(newBeneficary);
+        assertEq(foundationVestingWallet.beneficiary(), newBeneficary, "new beneficiary set");
+    }
+
+    function testRandomAddressCantSetBeneficiary() external {
         (
             ArbitrumFoundationVestingWallet foundationVestingWallet,
             L2ArbitrumToken token,
@@ -100,7 +113,7 @@ contract ArbitrumFoundationVestingWalletTest is Test {
         ) = deployAndInit();
 
         vm.prank(rando);
-        vm.expectRevert("Ownable: caller is not the owner");
+        vm.expectRevert("ArbitrumFoundationVestingWallet: caller is not beneficiary or owner");
         foundationVestingWallet.setBeneficiary(address(newBeneficary));
     }
 

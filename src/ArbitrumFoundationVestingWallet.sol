@@ -25,7 +25,7 @@ contract ArbitrumFoundationVestingWallet is VestingWalletUpgradeable, OwnableUpg
 
     address private _beneficiary;
 
-    event NewBeneficiary(address newBeneficiary);
+    event NewBeneficiary(address newBeneficiary, address caller);
     event TokenMigrated(address token, uint256 amount, address destination);
     event EthMigrated(uint256 amount, address destination);
 
@@ -75,17 +75,25 @@ contract ArbitrumFoundationVestingWallet is VestingWalletUpgradeable, OwnableUpg
         _;
     }
 
+    modifier onlyBeneficiaryOrOwner() {
+        require(
+            msg.sender == beneficiary() || msg.sender == owner(),
+            "ArbitrumFoundationVestingWallet: caller is not beneficiary or owner"
+        );
+        _;
+    }
+
     /// @dev inheritted OZ VestingWalletUpgradeable contract has private `_beneficiary` variable with no setter. This version can be dynamically updated through the `setBeneficiary` function
     function beneficiary() public view override returns (address) {
         return _beneficiary;
     }
 
-    /// @notice set new beneficiary; only the owner (Arbitrum DAO) can call
+    /// @notice set new beneficiary; only the owner (Arbitrum DAO) or current beneficiary can call
     /// @param _newBeneficiary new contract to receive proceeds from the vesting contract
     /// Emits event NewBeneficiary
-    function setBeneficiary(address _newBeneficiary) public onlyOwner {
+    function setBeneficiary(address _newBeneficiary) public onlyBeneficiaryOrOwner {
         _beneficiary = _newBeneficiary;
-        emit NewBeneficiary(_newBeneficiary);
+        emit NewBeneficiary(_newBeneficiary, msg.sender);
     }
 
     /// @notice release vested tokens; only beneficiary can call
