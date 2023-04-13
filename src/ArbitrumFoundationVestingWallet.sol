@@ -25,7 +25,7 @@ contract ArbitrumFoundationVestingWallet is VestingWalletUpgradeable, OwnableUpg
 
     address private _beneficiary;
 
-    event NewBeneficiary(address newBeneficiary, address caller);
+    event BeneficiarySet(address newBeneficiary, address caller);
     event TokenMigrated(address token, uint256 amount, address destination);
     event EthMigrated(uint256 amount, address destination);
 
@@ -57,7 +57,7 @@ contract ArbitrumFoundationVestingWallet is VestingWalletUpgradeable, OwnableUpg
         // init vesting wallet
         // first argument (beneficiary) is unused by contract; a dummy value is provided
         __VestingWallet_init(address(1), _startTimestamp, _durationSeconds);
-        _beneficiary = _beneficiaryAddress;
+        _setBeneficiary(_beneficiaryAddress);
 
         // set owner (DAO)
         __Ownable_init();
@@ -90,10 +90,14 @@ contract ArbitrumFoundationVestingWallet is VestingWalletUpgradeable, OwnableUpg
 
     /// @notice set new beneficiary; only the owner (Arbitrum DAO) or current beneficiary can call
     /// @param _newBeneficiary new contract to receive proceeds from the vesting contract
-    /// Emits event NewBeneficiary
+    /// Emits event BeneficiarySet
     function setBeneficiary(address _newBeneficiary) public onlyBeneficiaryOrOwner {
+        _setBeneficiary(_newBeneficiary);
+    }
+
+    function _setBeneficiary(address _newBeneficiary) internal {
         _beneficiary = _newBeneficiary;
-        emit NewBeneficiary(_newBeneficiary, msg.sender);
+        emit BeneficiarySet(_newBeneficiary, msg.sender);
     }
 
     /// @notice release vested tokens; only beneficiary can call
