@@ -75,7 +75,7 @@ contract ArbitrumFoundationVestingWallet is VestingWalletUpgradeable, OwnableUpg
         _;
     }
 
-    // @dev inheritted OZ  VestingWalletUpgradeable contract has private _beneficiary var. New _beneficiary var is added to this contract and beneficiary() getter is overridden so that setBeneficiary is available.
+    /// @dev inheritted OZ VestingWalletUpgradeable contract has private `_beneficiary` variable with no setter. This version can be dynamically updated through the `setBeneficiary` function
     function beneficiary() public view override returns (address) {
         return _beneficiary;
     }
