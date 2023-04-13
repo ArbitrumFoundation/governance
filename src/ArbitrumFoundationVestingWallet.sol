@@ -25,9 +25,18 @@ contract ArbitrumFoundationVestingWallet is VestingWalletUpgradeable, OwnableUpg
 
     address private _beneficiary;
 
+    event NewBeneficiary(address newBeneficiary);
+    event TokenMigrated(address token, uint256 amount, address destination);
+    event EthMigrated(uint256 amount, address destination);
+
     constructor() {
         _disableInitializers();
     }
+    /// @param _beneficiaryAddress Can release funds and receives released funds
+    /// @param _startTimestamp The time to start vesting
+    /// @param _durationSeconds The time period for funds to fully vest
+    /// @param _arbitrumGoverner Core DAO Governer address
+    /// @param _owner Arbitrum DAO. Can migrate funds to new wallet and change beneficiary
 
     function initialize(
         address _beneficiaryAddress,
@@ -76,11 +85,13 @@ contract ArbitrumFoundationVestingWallet is VestingWalletUpgradeable, OwnableUpg
     /// Emits event NewBeneficiary
     function setBeneficiary(address _newBeneficiary) public onlyOwner {
         _beneficiary = _newBeneficiary;
+        emit NewBeneficiary(_newBeneficiary);
     }
 
     /// @notice release vested tokens; only beneficiary can call
-    function release(address token) public override onlyBeneficiary {
-        super.release(token);
+    /// @param _token Address of token to release
+    function release(address _token) public override onlyBeneficiary {
+        super.release(_token);
     }
 
     // @notice eth sent to wallet is automatically put under vesting schedule; only benefitiary can release
@@ -88,17 +99,23 @@ contract ArbitrumFoundationVestingWallet is VestingWalletUpgradeable, OwnableUpg
         super.release();
     }
 
-    /// @notice DAO can migrate unvested (as well as vested but not yet claimed) funds to a new wallet, e.g. one with a different vesting schedule, as per AIP-1.1.
+    /// @notice DAO can migrate unvested (as well as vested but not yet claimed) tokens to a new wallet, e.g. one with a different vesting schedule, as per AIP-1.1.
     /// @param _token address of token to be migrated
-    /// @param _wallet address of wallet to receive funds
+    /// @param _wallet address of wallet to receive tokens
     /// Emits event TokenMigrated
-    function migrateTokensToNewWallet(address _token, address _newWallet) public onlyOwner {
+    function migrateTokensToNewWallet(address _token, address _wallet) public onlyOwner {
         IERC20 token = IERC20(_token);
-        token.safeTransfer(_newWallet, token.balanceOf(address(this)));
+        uint256 tokenBalance = token.balanceOf(address(this));
+        token.safeTransfer(_wallet, tokenBalance);
+        emit TokenMigrated(_token, tokenBalance, _wallet);
     }
 
-    // @notice DAO can migrate funds to a new wallet, e.g. one with a different vesting schedule, as per AIP-1.1.
-    function migrateEthToNewWallet(address _newWallet) public onlyOwner {
-        _newWallet.call{value: address(this).balance}("");
+    /// @notice DAO can migrate unvested (as well as vested but not yet claimed) Eth to a new wallet, e.g. one with a different vesting schedule, as per AIP-1.1.
+    /// @param _wallet address of wallet to receive Eth
+    /// Emits event EthMigrated
+    function migrateEthToNewWallet(address _wallet) public onlyOwner {
+        uint256 ethBalance = address(this).balance;
+        _wallet.call{value: ethBalance}("");
+        emit EthMigrated(ethBalance, _wallet);
     }
 }
