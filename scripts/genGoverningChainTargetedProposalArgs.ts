@@ -26,9 +26,10 @@ export const generateArbSysArgs = async (
   upgradeAddr: string,
   description: string,
   upgradeValue = BigNumber.from(0),
+  actionIfaceStr = "function perform() external", 
   upgradeArgs = []
 ) => {
-  let actionIface = new utils.Interface(["function perform() external"]);
+  let actionIface = new utils.Interface([actionIfaceStr]);
   const upgradeData = actionIface.encodeFunctionData("perform", upgradeArgs);
 
   const l1ChainId = (await l1Provider.getNetwork()).chainId;
