@@ -88,7 +88,10 @@ contract ArbitrumFoundationVestingWallet is VestingWalletUpgradeable, OwnableUpg
         super.release();
     }
 
-    // @notice DAO can migrate funds to a new wallet, e.g. one with a different vesting schedule, as per AIP-1.1.
+    /// @notice DAO can migrate unvested (as well as vested but not yet claimed) funds to a new wallet, e.g. one with a different vesting schedule, as per AIP-1.1.
+    /// @param _token address of token to be migrated
+    /// @param _wallet address of wallet to receive funds
+    /// Emits event TokenMigrated
     function migrateTokensToNewWallet(address _token, address _newWallet) public onlyOwner {
         IERC20 token = IERC20(_token);
         token.safeTransfer(_newWallet, token.balanceOf(address(this)));
