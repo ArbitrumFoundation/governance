@@ -71,7 +71,9 @@ contract ArbitrumFoundationVestingWallet is VestingWalletUpgradeable, OwnableUpg
         return _beneficiary;
     }
 
-    // @notice set new beneficiary; only DAO can call
+    /// @notice set new beneficiary; only the owner (Arbitrum DAO) can call
+    /// @param _newBeneficiary new contract to receive proceeds from the vesting contract
+    /// Emits event NewBeneficiary
     function setBeneficiary(address _newBeneficiary) public onlyOwner {
         _beneficiary = _newBeneficiary;
     }
