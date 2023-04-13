@@ -184,6 +184,27 @@ contract ArbitrumFoundationVestingWalletTest is Test {
         assertEq(token.balanceOf(address(newWallet)), initialFundingAmount, "tokens not migrated");
     }
 
+    function testMigrateTokensToNewWalletWithFasterVesting() public {
+        (
+            ArbitrumFoundationVestingWallet foundationVestingWallet,
+            L2ArbitrumToken token,
+            L2ArbitrumGovernor gov
+        ) = deployAndInit();
+
+        ArbitrumFoundationVestingWallet newWallet = ArbitrumFoundationVestingWallet(
+            payable(TestUtil.deployProxy(address(new ArbitrumFoundationVestingWallet())))
+        );
+        uint64 newWalletVestingDuration = 10;
+        newWallet.initialize(
+            beneficiary, startTime, newWalletVestingDuration, address(gov), vestingWalletOwner
+        );
+
+        vm.prank(vestingWalletOwner);
+        foundationVestingWallet.migrateTokensToNewWallet(address(token), address(newWallet));
+        assertEq(token.balanceOf(address(foundationVestingWallet)), 0, "tokens not migrated");
+        assertEq(token.balanceOf(address(newWallet)), initialFundingAmount, "tokens not migrated");
+    }
+
     function testMigrateEthToNewWalletWithSlowerVesting() public {
         (
             ArbitrumFoundationVestingWallet foundationVestingWallet,
