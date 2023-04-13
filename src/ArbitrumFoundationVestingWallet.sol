@@ -78,7 +78,7 @@ contract ArbitrumFoundationVestingWallet is VestingWalletUpgradeable, OwnableUpg
         _beneficiary = _newBeneficiary;
     }
 
-    // @notice release vested tokens; only benefiary can call
+    /// @notice release vested tokens; only beneficiary can call
     function release(address token) public override onlyBeneficiary {
         super.release(token);
     }
