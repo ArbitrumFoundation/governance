@@ -163,32 +163,47 @@ contract ArbitrumFoundationVestingWalletTest is Test {
         foundationVestingWallet.migrateEthToNewWallet(rando);
     }
 
-    function testMigrateTokensToNewWallet() public {
+    function testMigrateTokensToNewWalletWithSlowerVesting() public {
         (
             ArbitrumFoundationVestingWallet foundationVestingWallet,
             L2ArbitrumToken token,
             L2ArbitrumGovernor gov
         ) = deployAndInit();
-        address newWallet = address(123_456_789);
+
+        ArbitrumFoundationVestingWallet newWallet = ArbitrumFoundationVestingWallet(
+            payable(TestUtil.deployProxy(address(new ArbitrumFoundationVestingWallet())))
+        );
+        uint64 newWalletVestingDuration = 100_000;
+        newWallet.initialize(
+            beneficiary, startTime, newWalletVestingDuration, address(gov), vestingWalletOwner
+        );
+
         vm.prank(vestingWalletOwner);
-        foundationVestingWallet.migrateTokensToNewWallet(address(token), newWallet);
+        foundationVestingWallet.migrateTokensToNewWallet(address(token), address(newWallet));
         assertEq(token.balanceOf(address(foundationVestingWallet)), 0, "tokens not migrated");
         assertEq(token.balanceOf(address(newWallet)), initialFundingAmount, "tokens not migrated");
     }
 
-    function testMigrateEthToNewWallet() public {
+    function testMigrateEthToNewWalletWithSlowerVesting() public {
         (
             ArbitrumFoundationVestingWallet foundationVestingWallet,
             L2ArbitrumToken token,
             L2ArbitrumGovernor gov
         ) = deployAndInit();
-        address newWallet = address(123_456_789);
+
+        ArbitrumFoundationVestingWallet newWallet = ArbitrumFoundationVestingWallet(
+            payable(TestUtil.deployProxy(address(new ArbitrumFoundationVestingWallet())))
+        );
+        uint64 newWalletVestingDuration = 100_000;
+        newWallet.initialize(
+            beneficiary, startTime, newWalletVestingDuration, address(gov), vestingWalletOwner
+        );
         uint256 etherAmount = 1 ether;
         vm.deal(address(foundationVestingWallet), etherAmount);
 
         vm.prank(vestingWalletOwner);
-        foundationVestingWallet.migrateEthToNewWallet(newWallet);
+        foundationVestingWallet.migrateEthToNewWallet(address(newWallet));
         assertEq(address(foundationVestingWallet).balance, 0, "eth not migrated");
-        assertEq(newWallet.balance, etherAmount, "eth not migrated");
+        assertEq(address(newWallet).balance, etherAmount, "eth not migrated");
     }
 }
