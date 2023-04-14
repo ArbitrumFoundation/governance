@@ -17,7 +17,7 @@ const chainIDToConfig: ChainIDToConfig = {
   42161: {
     beneficiary: "",
     startTimestamp: 0,
-    durationSeconds: secondsInADay * (365 * 4 + 1),
+    durationSeconds: secondsInADay * (365 * 4 + 1), // Days in 4 years, includes 1 day for leap day
     l2ArbitrumGovernor: "0xf07DeD9dC292157749B6Fd268E37DF6EA38395B9",
     l2UpgradeExecutor: "0xCF57572261c7c2BCF21ffD220ea7d1a27D40A827",
     l2GovProxyAdmin: "0xdb216562328215E010F819B5aBe947bad4ca961e",
