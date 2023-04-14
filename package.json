@@ -24,6 +24,8 @@
     "execute:ownership:transfer": "ts-node ./scripts/executeLocalProtocolOwnershipTransfer.ts",
     "verify:ownership:transfer": "ts-node ./scripts/protocolOwnershipVerifier.ts",
     "verify:contracts:etherscan": "ts-node ./scripts/verifyContractsCode.ts",
+    "deploy:foundation-wallet": "ts-node ./scripts/foundation-wallet-deployment/deploy.ts",
+    "verify:foundation-wallet": "ts-node ./scripts/foundation-wallet-deployment/verifyDeployment.ts",
     "test:integration": "hardhat test",
     "test:proposals": "ts-node ./scripts/proposalTests.ts",
     "format:sol": "forge fmt"
