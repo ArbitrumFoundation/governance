@@ -19,25 +19,44 @@ interface IL2ArbitrumGoverner {
  * Governance votes are delegated to exclude address.
  * Beneficiary can be updated by DAO.
  */
-
 contract ArbitrumFoundationVestingWallet is VestingWalletUpgradeable, OwnableUpgradeable {
     using SafeERC20 for IERC20;
 
     address private _beneficiary;
 
+    /**
+     * @notice emitted when beneficiary address is changed
+     * @param newBeneficiary address of new beneficiary
+     * @param caller address that called beneficiary-setter; either current beneficiary or owner (DAO)
+     */
     event BeneficiarySet(address newBeneficiary, address caller);
+
+    /**
+     * @notice emitted when tokens are migrated to a new wallet
+     * @param token address of token being migrated
+     * @param amount amount of tokens migrated
+     * @param destination new wallet address
+     */
     event TokenMigrated(address token, uint256 amount, address destination);
+
+    /**
+     * @notice emitted when Eth us migrated to a new wallet
+     * @param amount amount of Eth migrated
+     * @param destination new wallet address
+     */
     event EthMigrated(uint256 amount, address destination);
 
     constructor() {
         _disableInitializers();
     }
-    /// @param _beneficiaryAddress Can release funds and receives released funds
-    /// @param _startTimestamp The time to start vesting
-    /// @param _durationSeconds The time period for funds to fully vest
-    /// @param _arbitrumGoverner Core DAO Governer address
-    /// @param _owner Arbitrum DAO. Can migrate funds to new wallet and change beneficiary
 
+    /**
+     * @param _beneficiaryAddress Can release funds and receives released funds
+     * @param _startTimestamp The time to start vesting
+     * @param _durationSeconds The time period for funds to fully vest
+     * @param _arbitrumGoverner Core DAO Governer address
+     * @param _owner Arbitrum DAO. Can migrate funds to new wallet and change beneficiary
+     */
     function initialize(
         address _beneficiaryAddress,
         uint64 _startTimestamp,
