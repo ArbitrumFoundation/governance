@@ -4,13 +4,8 @@ pragma solidity 0.8.16;
 import "@openzeppelin/contracts-upgradeable/finance/VestingWalletUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-
+import "./interfaces/IL2ArbitrumGovernor.sol";
 import {IERC20VotesUpgradeable} from "./Util.sol";
-
-interface IL2ArbitrumGoverner {
-    function token() external view returns (IERC20VotesUpgradeable);
-    function EXCLUDE_ADDRESS() external view returns (address);
-}
 
 /**
  * @notice A wallet for foundation owned founds as per AIP-1.1 specification.
@@ -84,7 +79,7 @@ contract ArbitrumFoundationVestingWallet is VestingWalletUpgradeable, OwnableUpg
 
         // delegate to exclude address
         IL2ArbitrumGoverner arbitrumGoverner = IL2ArbitrumGoverner(_arbitrumGoverner);
-        IERC20VotesUpgradeable voteToken = arbitrumGoverner.token();
+        IL2ArbitrumToken voteToken = arbitrumGoverner.token();
         address excludeAddress = arbitrumGoverner.EXCLUDE_ADDRESS();
         voteToken.delegate(excludeAddress);
     }
