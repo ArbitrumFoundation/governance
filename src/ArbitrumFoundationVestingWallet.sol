@@ -29,7 +29,7 @@ contract ArbitrumFoundationVestingWallet is VestingWalletUpgradeable, OwnableUpg
      * @param newBeneficiary address of new beneficiary
      * @param caller address that called beneficiary-setter; either current beneficiary or owner (DAO)
      */
-    event BeneficiarySet(address newBeneficiary, address caller);
+    event BeneficiarySet(address indexed newBeneficiary, address indexed caller);
 
     /**
      * @notice emitted when tokens are migrated to a new wallet
@@ -37,14 +37,14 @@ contract ArbitrumFoundationVestingWallet is VestingWalletUpgradeable, OwnableUpg
      * @param amount amount of tokens migrated
      * @param destination new wallet address
      */
-    event TokenMigrated(address token, uint256 amount, address destination);
+    event TokenMigrated(address indexed token, uint256 amount, address indexed destination);
 
     /**
      * @notice emitted when Eth us migrated to a new wallet
      * @param amount amount of Eth migrated
      * @param destination new wallet address
      */
-    event EthMigrated(uint256 amount, address destination);
+    event EthMigrated(uint256 amount, address indexed destination);
 
     constructor() {
         _disableInitializers();
