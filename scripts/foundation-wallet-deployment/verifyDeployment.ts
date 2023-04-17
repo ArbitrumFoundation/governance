@@ -17,7 +17,7 @@ if (!ARB_URL) throw new Error("ARB_URL required");
 const verifyWalletDeployment = async () => {
   const l2Provider = new JsonRpcProvider(ARB_URL);
   const { name: networkName, chainId } = await l2Provider.getNetwork();
-  const { beneficiary, startTimestamp, durationSeconds, l2ArbitrumGovernor, l2UpgradeExecutor } =
+  const { beneficiary, startTimestamp, durationSeconds, l2ArbitrumGovernor, l2GovProxyAdmin } =
     getFoundationWalletDeploymentConfig(chainId);
   const arbitrumFoundationWalletAddress = deployedWallets[chainId] as string;
 
@@ -26,17 +26,11 @@ const verifyWalletDeployment = async () => {
   );
 
   const proxyOwner = await getProxyOwner(arbitrumFoundationWalletAddress, l2Provider);
-  assertEquals(proxyOwner, l2UpgradeExecutor, "Proxy owner should be L2 UpgradeExecutor");
+  assertEquals(proxyOwner, l2GovProxyAdmin, "Proxy owner should be L2 l2GovProxyAdmin");
 
   const arbitrumFoundationWallet = ArbitrumFoundationVestingWallet__factory.connect(
     arbitrumFoundationWalletAddress,
     l2Provider
-  );
-
-  assertEquals(
-    await arbitrumFoundationWallet.owner(),
-    l2UpgradeExecutor,
-    "owner should be L2 UpgradeExecutor"
   );
 
   assertEquals(
@@ -58,6 +52,11 @@ const verifyWalletDeployment = async () => {
   );
 
   const governor = L2ArbitrumGovernor__factory.connect(l2ArbitrumGovernor, l2Provider);
+  assertEquals(
+    await arbitrumFoundationWallet.owner(),
+    await governor.owner(),
+    "owner should be same owner as gov (L2 UpgradeExecutor)"
+  );
   const token = L2ArbitrumToken__factory.connect(await governor.token(), l2Provider);
   assertEquals(
     await token.delegates(arbitrumFoundationWalletAddress),

@@ -25,13 +25,11 @@ const deployWallet = async () => {
     startTimestamp,
     durationSeconds,
     l2ArbitrumGovernor,
-    l2UpgradeExecutor,
     l2GovProxyAdmin,
   } = getFoundationWalletDeploymentConfig(chainId);
 
   await ensureContract(beneficiary, l2Provider); // NOTE: on mainnet this will be a multisig; we may want to skip this check for testnet deployments
   await ensureContract(l2ArbitrumGovernor, l2Provider);
-  await ensureContract(l2UpgradeExecutor, l2Provider);
   await ensureContract(l2GovProxyAdmin, l2Provider);
   if (startTimestamp === 0) throw new Error("need startTimestamp");
   if (durationSeconds === 0) throw new Error("need durationSeconds");
@@ -67,8 +65,7 @@ const deployWallet = async () => {
     beneficiary,
     startTimestamp,
     durationSeconds,
-    l2ArbitrumGovernor,
-    l2UpgradeExecutor
+    l2ArbitrumGovernor
   );
 
   await res.wait();
