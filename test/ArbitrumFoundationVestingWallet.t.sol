@@ -17,7 +17,7 @@ contract ArbitrumFoundationVestingWalletTest is Test {
     uint64 startTime = 1000;
     uint64 duration = 1000;
     address arbitrumGoverner;
-    address vestingWalletOwner = address(1112);
+    address vestingWalletOwner;
 
     uint256 initialSupply = 10 * 1_000_000_000 * (10 ** 18);
     address tokenOwner = address(1113);
@@ -44,8 +44,9 @@ contract ArbitrumFoundationVestingWalletTest is Test {
             payable(TestUtil.deployProxy(address(new ArbitrumFoundationVestingWallet())))
         );
         foundationVestingWallet.initialize(
-            beneficiary, startTime, duration, address(l2ArbitrumGovernor), vestingWalletOwner
+            beneficiary, startTime, duration, address(l2ArbitrumGovernor)
         );
+        vestingWalletOwner = foundationVestingWallet.owner();
 
         vm.prank(tokenOwner);
         token.transfer(address(foundationVestingWallet), initialFundingAmount);
@@ -61,7 +62,7 @@ contract ArbitrumFoundationVestingWalletTest is Test {
         assertEq(foundationVestingWallet.start(), startTime, "Start time set");
         assertEq(foundationVestingWallet.duration(), duration, "Duration set");
         assertEq(foundationVestingWallet.beneficiary(), beneficiary, "beneficiary set");
-        assertEq(foundationVestingWallet.owner(), vestingWalletOwner, "Owner set");
+        assertEq(gov.owner(), vestingWalletOwner, "Owner set to gov owner");
         assertEq(
             token.delegates(address(foundationVestingWallet)),
             gov.EXCLUDE_ADDRESS(),
@@ -74,9 +75,7 @@ contract ArbitrumFoundationVestingWalletTest is Test {
         );
 
         vm.expectRevert("Initializable: contract is already initialized");
-        foundationVestingWallet.initialize(
-            beneficiary, startTime, duration, address(gov), vestingWalletOwner
-        );
+        foundationVestingWallet.initialize(beneficiary, startTime, duration, address(gov));
     }
 
     function testOwnerCanSetBeneficiary() external {
@@ -187,9 +186,7 @@ contract ArbitrumFoundationVestingWalletTest is Test {
             payable(TestUtil.deployProxy(address(new ArbitrumFoundationVestingWallet())))
         );
         uint64 newWalletVestingDuration = 100_000;
-        newWallet.initialize(
-            beneficiary, startTime, newWalletVestingDuration, address(gov), vestingWalletOwner
-        );
+        newWallet.initialize(beneficiary, startTime, newWalletVestingDuration, address(gov));
 
         vm.prank(vestingWalletOwner);
         foundationVestingWallet.migrateTokensToNewWallet(address(token), address(newWallet));
@@ -208,9 +205,7 @@ contract ArbitrumFoundationVestingWalletTest is Test {
             payable(TestUtil.deployProxy(address(new ArbitrumFoundationVestingWallet())))
         );
         uint64 newWalletVestingDuration = 10;
-        newWallet.initialize(
-            beneficiary, startTime, newWalletVestingDuration, address(gov), vestingWalletOwner
-        );
+        newWallet.initialize(beneficiary, startTime, newWalletVestingDuration, address(gov));
 
         vm.prank(vestingWalletOwner);
         foundationVestingWallet.migrateTokensToNewWallet(address(token), address(newWallet));
@@ -229,9 +224,7 @@ contract ArbitrumFoundationVestingWalletTest is Test {
             payable(TestUtil.deployProxy(address(new ArbitrumFoundationVestingWallet())))
         );
         uint64 newWalletVestingDuration = 100_000;
-        newWallet.initialize(
-            beneficiary, startTime, newWalletVestingDuration, address(gov), vestingWalletOwner
-        );
+        newWallet.initialize(beneficiary, startTime, newWalletVestingDuration, address(gov));
         uint256 etherAmount = 1 ether;
         vm.deal(address(foundationVestingWallet), etherAmount);
 

@@ -29,17 +29,17 @@ contract ArbitrumFoundationVestingWallet is VestingWalletUpgradeable, OwnableUpg
     /**
      * @notice emitted when tokens are migrated to a new wallet
      * @param token address of token being migrated
-     * @param amount amount of tokens migrated
      * @param destination new wallet address
+     * @param amount amount of tokens migrated
      */
-    event TokenMigrated(address indexed token, uint256 amount, address indexed destination);
+    event TokenMigrated(address indexed token, address indexed destination, uint256 amount);
 
     /**
      * @notice emitted when Eth us migrated to a new wallet
-     * @param amount amount of Eth migrated
      * @param destination new wallet address
+     * @param amount amount of Eth migrated
      */
-    event EthMigrated(uint256 amount, address indexed destination);
+    event EthMigrated(address indexed destination, uint256 amount);
 
     constructor() {
         _disableInitializers();
@@ -50,14 +50,12 @@ contract ArbitrumFoundationVestingWallet is VestingWalletUpgradeable, OwnableUpg
      * @param _startTimestamp The time to start vesting
      * @param _durationSeconds The time period for funds to fully vest
      * @param _arbitrumGoverner Core DAO Governer address
-     * @param _owner Arbitrum DAO. Can migrate funds to new wallet and change beneficiary
      */
     function initialize(
         address _beneficiaryAddress,
         uint64 _startTimestamp,
         uint64 _durationSeconds,
-        address _arbitrumGoverner,
-        address _owner
+        address _arbitrumGoverner
     ) public initializer {
         require(
             _beneficiaryAddress != address(0),
@@ -73,12 +71,13 @@ contract ArbitrumFoundationVestingWallet is VestingWalletUpgradeable, OwnableUpg
         __VestingWallet_init(address(1), _startTimestamp, _durationSeconds);
         _setBeneficiary(_beneficiaryAddress);
 
-        // set owner (DAO)
+        // set owner to same order as Governer, i.e., the DAO
+        IL2ArbitrumGoverner arbitrumGoverner = IL2ArbitrumGoverner(_arbitrumGoverner);
+        address _owner = arbitrumGoverner.owner();
         __Ownable_init();
         _transferOwnership(_owner);
 
         // delegate to exclude address
-        IL2ArbitrumGoverner arbitrumGoverner = IL2ArbitrumGoverner(_arbitrumGoverner);
         IL2ArbitrumToken voteToken = arbitrumGoverner.token();
         address excludeAddress = arbitrumGoverner.EXCLUDE_ADDRESS();
         voteToken.delegate(excludeAddress);
@@ -133,7 +132,7 @@ contract ArbitrumFoundationVestingWallet is VestingWalletUpgradeable, OwnableUpg
         IERC20 token = IERC20(_token);
         uint256 tokenBalance = token.balanceOf(address(this));
         token.safeTransfer(_wallet, tokenBalance);
-        emit TokenMigrated(_token, tokenBalance, _wallet);
+        emit TokenMigrated(_token, _wallet, tokenBalance);
     }
 
     /// @notice DAO can migrate unvested (as well as vested but not yet claimed) Eth to a new wallet, e.g. one with a different vesting schedule, as per AIP-1.1.
@@ -142,6 +141,6 @@ contract ArbitrumFoundationVestingWallet is VestingWalletUpgradeable, OwnableUpg
     function migrateEthToNewWallet(address _wallet) public onlyOwner {
         uint256 ethBalance = address(this).balance;
         _wallet.call{value: ethBalance}("");
-        emit EthMigrated(ethBalance, _wallet);
+        emit EthMigrated(_wallet, ethBalance);
     }
 }
