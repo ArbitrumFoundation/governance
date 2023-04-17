@@ -75,6 +75,7 @@ const deployWallet = async () => {
 };
 
 const ensureContract = async (address: string, provider: JsonRpcProvider) => {
+  if(!address) throw new Error(`Address not provided`);
   if (!utils.isAddress(address)) throw new Error(`Invalid address: ${address}`);
   if ((await provider.getCode(address)).length <= 2)
     throw new Error(`${address} contract not found`);
