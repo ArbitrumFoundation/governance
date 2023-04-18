@@ -23,7 +23,7 @@ const ensureContract = async (address: string, provider: JsonRpcProvider) => {
 export const generateArbSysArgs = async (
   l1Provider: JsonRpcProvider,
   l2Provider: JsonRpcProvider,
-  upgradeAddr: string,
+  l2UpgradeAddr: string,
   description: string,
   upgradeValue = BigNumber.from(0),
   actionIfaceStr = "function perform() external", 
@@ -41,7 +41,7 @@ export const generateArbSysArgs = async (
   const deployedContracts = l1ChainId === 1 ? mainnetDeployedContracts : goerliDeployedContracts;
   const { l1Timelock, l2Executor } = deployedContracts;
 
-  await ensureContract(upgradeAddr, l2Provider);
+  await ensureContract(l2UpgradeAddr, l2Provider);
   await ensureContract(l2Executor, l2Provider);
   await ensureContract(l1Timelock, l1Provider);
 
@@ -56,5 +56,5 @@ export const generateArbSysArgs = async (
   };
 
   const proposalCreator = new RoundTripProposalCreator(L1GovConfig, upgradeConfig);
-  return proposalCreator.createArbSysArgs(upgradeAddr, upgradeValue, upgradeData, description);
+  return proposalCreator.createArbSysArgs(l2UpgradeAddr, upgradeValue, upgradeData, description);
 };
