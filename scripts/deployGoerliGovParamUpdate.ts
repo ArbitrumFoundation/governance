@@ -28,67 +28,69 @@ if (!apiKey) {
   throw new Error("Set VERIFY_API_KEY");
 }
 
+// NOTE: needs updating for new Address Registry Interfaces; low priority, commenting out so tsc succeeds
+
 const main = async () => {
-  const l1Deployer = new Wallet(l1Key, new JsonRpcProvider(l1RPC));
-  const l1Verifier = new ContractVerifier(5, apiKey, {});
+  // const l1Deployer = new Wallet(l1Key, new JsonRpcProvider(l1RPC));
+  // const l1Verifier = new ContractVerifier(5, apiKey, {});
 
-  const l2Deployer = new Wallet(l2Key, new JsonRpcProvider(L2_RPC));
-  const l2Verifier = new ContractVerifier(421613, apiKey, {});
+  // const l2Deployer = new Wallet(l2Key, new JsonRpcProvider(L2_RPC));
+  // const l2Verifier = new ContractVerifier(421613, apiKey, {});
 
-  const l1AddressRegistryFactory = new L1AddressRegistry__factory().connect(l1Deployer);
-  const l1AddressRegistry = await l1AddressRegistryFactory.deploy(
-    GOERLI_ROLLUP_INBOX,
-    GOERLI_ROLLUP_GOV_L1_TIMELOCK
-  );
-  await l1AddressRegistry.deployed();
-  console.log("L1AddressRegistry", l1AddressRegistry.address);
+  // const l1AddressRegistryFactory = new L1AddressRegistry__factory().connect(l1Deployer);
+  // const l1AddressRegistry = await l1AddressRegistryFactory.deploy(
+  //   GOERLI_ROLLUP_INBOX,
+  //   GOERLI_ROLLUP_GOV_L1_TIMELOCK
+  // );
+  // await l1AddressRegistry.deployed();
+  // console.log("L1AddressRegistry", l1AddressRegistry.address);
 
-  await l1Verifier.verifyWithAddress(
-    "L1AddressRegistry",
-    l1AddressRegistry.address,
-    abi.encode(["address", "address"], [GOERLI_ROLLUP_INBOX, GOERLI_ROLLUP_GOV_L1_TIMELOCK])
-  );
+  // await l1Verifier.verifyWithAddress(
+  //   "L1AddressRegistry",
+  //   l1AddressRegistry.address,
+  //   abi.encode(["address", "address"], [GOERLI_ROLLUP_INBOX, GOERLI_ROLLUP_GOV_L1_TIMELOCK])
+  // );
 
-  const setGovL1ParamsFactory = new L1SetInitialGovParamsAction__factory().connect(l1Deployer);
-  const setL1GovParams = await setGovL1ParamsFactory.deploy(l1AddressRegistry.address);
-  await setL1GovParams.deployed();
-  console.log("L1SetInitialGovParamsAction", setL1GovParams.address);
+  // const setGovL1ParamsFactory = new L1SetInitialGovParamsAction__factory().connect(l1Deployer);
+  // const setL1GovParams = await setGovL1ParamsFactory.deploy(l1AddressRegistry.address);
+  // await setL1GovParams.deployed();
+  // console.log("L1SetInitialGovParamsAction", setL1GovParams.address);
 
-  await l1Verifier.verifyWithAddress(
-    "L1SetInitialGovParamsAction",
-    setL1GovParams.address,
-    abi.encode(["address"], [l1AddressRegistry.address])
-  );
+  // await l1Verifier.verifyWithAddress(
+  //   "L1SetInitialGovParamsAction",
+  //   setL1GovParams.address,
+  //   abi.encode(["address"], [l1AddressRegistry.address])
+  // );
 
-  const l2GovRegistryFactory = new L2AddressRegistry__factory().connect(l2Deployer);
-  const l2GovRegistry = await l2GovRegistryFactory.deploy(
-    GOERLI_ROLLUP_CORE_GOV,
-    GOERLI_ROLLUP_TREASURY_GOV,
-    GOERLI_ROLLUP_TREASURY_WALLET
-  );
-  await l2GovRegistry.deployed();
-  console.log("L2AddressRegistry", l2GovRegistry.address);
-  await l2Verifier.verifyWithAddress(
-    "L2AddressRegistry",
-    l2GovRegistry.address,
-    abi.encode(
-      ["address", "address", "address"],
-      [GOERLI_ROLLUP_CORE_GOV, GOERLI_ROLLUP_TREASURY_GOV, GOERLI_ROLLUP_TREASURY_WALLET]
-    )
-  );
+  // const l2GovRegistryFactory = new L2AddressRegistry__factory().connect(l2Deployer);
+  // const l2GovRegistry = await l2GovRegistryFactory.deploy(
+  //   GOERLI_ROLLUP_CORE_GOV,
+  //   GOERLI_ROLLUP_TREASURY_GOV,
+  //   GOERLI_ROLLUP_TREASURY_WALLET
+  // );
+  // await l2GovRegistry.deployed();
+  // console.log("L2AddressRegistry", l2GovRegistry.address);
+  // await l2Verifier.verifyWithAddress(
+  //   "L2AddressRegistry",
+  //   l2GovRegistry.address,
+  //   abi.encode(
+  //     ["address", "address", "address"],
+  //     [GOERLI_ROLLUP_CORE_GOV, GOERLI_ROLLUP_TREASURY_GOV, GOERLI_ROLLUP_TREASURY_WALLET]
+  //   )
+  // );
 
-  const setL2GovParamsFactory = new ArbGoerliSetInitialGovParamsAction__factory().connect(
-    l2Deployer
-  );
-  const setL2GovParams = await setL2GovParamsFactory.deploy(l2GovRegistry.address);
-  await setL2GovParams.deployed();
-  console.log("ArbGoerliSetInitialGovParams", setL2GovParams.address);
+  // const setL2GovParamsFactory = new ArbGoerliSetInitialGovParamsAction__factory().connect(
+  //   l2Deployer
+  // );
+  // const setL2GovParams = await setL2GovParamsFactory.deploy(l2GovRegistry.address);
+  // await setL2GovParams.deployed();
+  // console.log("ArbGoerliSetInitialGovParams", setL2GovParams.address);
 
-  await l2Verifier.verifyWithAddress(
-    "ArbGoerliSetInitialGovParamsAction",
-    setL2GovParams.address,
-    abi.encode(["address"], [l2GovRegistry.address])
-  );
+  // await l2Verifier.verifyWithAddress(
+  //   "ArbGoerliSetInitialGovParamsAction",
+  //   setL2GovParams.address,
+  //   abi.encode(["address"], [l2GovRegistry.address])
+  // );
 };
 
 main().then(() => console.log("Done."));
