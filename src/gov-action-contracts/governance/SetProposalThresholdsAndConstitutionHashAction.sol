@@ -15,6 +15,7 @@ contract SetProposalThresholdsAndConstitutionHashAction {
         l2GovAddressRegistry = _l2GovAddressRegistry;
     }
 
+    /// @notice update proposal threshold for core and treasury governer and set new constitution hash
     function perform() external {
         IL2ArbitrumGoverner coreGov = l2GovAddressRegistry.coreGov();
         setProposalThreshold(coreGov, newProposalThreshold);
