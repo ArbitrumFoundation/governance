@@ -10,7 +10,7 @@ const goerliDeployedContracts = JSON.parse(
   fs.readFileSync("./files/goerli/deployedContracts.json").toString()
 ) as DeployedContracts;
 const mainnetDeployedContracts = JSON.parse(
-  fs.readFileSync("./files/goerli/deployedContracts.json").toString()
+  fs.readFileSync("./files/mainnet/deployedContracts.json").toString()
 ) as DeployedContracts;
 dotenv.config();
 
