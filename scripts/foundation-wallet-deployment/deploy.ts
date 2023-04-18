@@ -23,7 +23,7 @@ const deployWallet = async () => {
   const {
     beneficiary,
     startTimestamp,
-    durationSeconds,
+    vestingPeriodInSeconds,
     l2ArbitrumGovernor,
     l2GovProxyAdmin,
   } = getFoundationWalletDeploymentConfig(chainId);
@@ -32,7 +32,7 @@ const deployWallet = async () => {
   await ensureContract(l2ArbitrumGovernor, l2Provider);
   await ensureContract(l2GovProxyAdmin, l2Provider);
   if (startTimestamp === 0) throw new Error("need startTimestamp");
-  if (durationSeconds === 0) throw new Error("need durationSeconds");
+  if (vestingPeriodInSeconds === 0) throw new Error("need vestingPeriodInSeconds");
 
   console.log(
     `Starting deployment from deployer ${deployer.address} on network ${networkName}, ${chainId}`
@@ -64,7 +64,7 @@ const deployWallet = async () => {
   const res = await arbitrumFoundationVestingWallet.initialize(
     beneficiary,
     startTimestamp,
-    durationSeconds,
+    vestingPeriodInSeconds,
     l2ArbitrumGovernor
   );
 

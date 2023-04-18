@@ -17,7 +17,7 @@ if (!ARB_URL) throw new Error("ARB_URL required");
 const verifyWalletDeployment = async () => {
   const l2Provider = new JsonRpcProvider(ARB_URL);
   const { name: networkName, chainId } = await l2Provider.getNetwork();
-  const { beneficiary, startTimestamp, durationSeconds, l2ArbitrumGovernor, l2GovProxyAdmin } =
+  const { beneficiary, startTimestamp, vestingPeriodInSeconds, l2ArbitrumGovernor, l2GovProxyAdmin } =
     getFoundationWalletDeploymentConfig(chainId);
   const arbitrumFoundationWalletAddress = deployedWallets[chainId] as string;
 
@@ -47,7 +47,7 @@ const verifyWalletDeployment = async () => {
 
   assertNumbersEquals(
     await arbitrumFoundationWallet.duration(),
-    BigNumber.from(durationSeconds),
+    BigNumber.from(vestingPeriodInSeconds),
     "startTimestamp should be properly set"
   );
 

@@ -1,7 +1,18 @@
+import { DeployedContracts } from "../../src-ts/types";
+
+import fs from 'fs'
+
+const goerliDeployedContracts = JSON.parse(
+  fs.readFileSync("./files/goerli/deployedContracts.json").toString()
+) as DeployedContracts;
+const mainnetDeployedContracts = JSON.parse(
+  fs.readFileSync("./files/mainnet/deployedContracts.json").toString()
+) as DeployedContracts;
+
 interface FoundationWalletDeploymentConfig {
   beneficiary: string;
   startTimestamp: number;
-  durationSeconds: number;
+  vestingPeriodInSeconds: number;
   l2ArbitrumGovernor: string;
   l2GovProxyAdmin: string;
 }
@@ -12,20 +23,22 @@ interface ChainIDToConfig {
 
 const secondsInADay = 60 * 60 * 24;
 
+const secondsInFourYears = secondsInADay * (365 * 4 + 1); // Days in 4 years, includes 1 day for leap day
+
 const chainIDToConfig: ChainIDToConfig = {
   42161: {
     beneficiary: "", // TODO
     startTimestamp: 0, // TODO
-    durationSeconds: secondsInADay * (365 * 4 + 1), // Days in 4 years, includes 1 day for leap day
-    l2ArbitrumGovernor: "0xf07DeD9dC292157749B6Fd268E37DF6EA38395B9",
-    l2GovProxyAdmin: "0xdb216562328215E010F819B5aBe947bad4ca961e",
+    vestingPeriodInSeconds: secondsInFourYears, 
+    l2ArbitrumGovernor: mainnetDeployedContracts.l2CoreGoverner,
+    l2GovProxyAdmin: mainnetDeployedContracts.l2ProxyAdmin,
   },
   421613: {
     beneficiary: "", // TODO
     startTimestamp: 0, // TODO
-    durationSeconds: 0, // TOOD
-    l2ArbitrumGovernor: "0xa584d185244DCbCa8A98dBdB4e550a5De3A64c81",
-    l2GovProxyAdmin: "0x8CfA7Dc239B15E2b4cA6E4B4F4d044f49d5558d4",
+    vestingPeriodInSeconds: 0, // TODO
+    l2ArbitrumGovernor: goerliDeployedContracts.l2CoreGoverner,
+    l2GovProxyAdmin: goerliDeployedContracts.l2ProxyAdmin,
   },
 };
 
