@@ -1,18 +1,11 @@
 import { RoundTripProposalCreator, L1GovConfig, UpgradeConfig } from "../src-ts/proposalCreator";
 import { JsonRpcProvider } from "@ethersproject/providers";
-import { DeployedContracts } from "../src-ts/types";
-import fs from "fs";
-
-import dotenv from "dotenv";
+import { importDeployedContracts } from "../src-ts/utils";
+import { getL1Network, getL2Network } from "@arbitrum/sdk";
 import { BigNumber, utils } from "ethers";
 
-const goerliDeployedContracts = JSON.parse(
-  fs.readFileSync("./files/goerli/deployedContracts.json").toString()
-) as DeployedContracts;
-const mainnetDeployedContracts = JSON.parse(
-  fs.readFileSync("./files/mainnet/deployedContracts.json").toString()
-) as DeployedContracts;
-dotenv.config();
+const goerliDeployedContracts = importDeployedContracts("./files/goerli/deployedContracts.json");
+const mainnetDeployedContracts = importDeployedContracts("./files/mainnet/deployedContracts.json");
 
 const ensureContract = async (address: string, provider: JsonRpcProvider) => {
   if ((await provider.getCode(address)).length <= 2)
@@ -26,19 +19,28 @@ export const generateArbSysArgs = async (
   l2UpgradeAddr: string,
   description: string,
   upgradeValue = BigNumber.from(0),
-  actionIfaceStr = "function perform() external", 
+  actionIfaceStr = "function perform() external",
   upgradeArgs = []
 ) => {
   const actionIface = new utils.Interface([actionIfaceStr]);
   const upgradeData = actionIface.encodeFunctionData("perform", upgradeArgs);
 
-  const l1ChainId = (await l1Provider.getNetwork()).chainId;
-  const l2ChainId = (await l2Provider.getNetwork()).chainId;
+  const l1Network = await getL1Network(l1Provider);
+  const l2Network = await getL2Network(l2Provider);
 
-  if (!((l1ChainId === 1 && l2ChainId === 42161) || (l1ChainId === 5 && l2ChainId === 421613)))
+  if (!l1Network.partnerChainIDs.includes(l2Network.chainID))
     throw new Error("Unsupported chain pairing");
 
-  const deployedContracts = l1ChainId === 1 ? mainnetDeployedContracts : goerliDeployedContracts;
+  const deployedContracts = (() => {
+    switch (l1Network.chainID) {
+      case 1:
+        return mainnetDeployedContracts;
+      case 5:
+        return goerliDeployedContracts;
+      default:
+        throw new Error("Unsupported l1 chain");
+    }
+  })();
   const { l1Timelock, l2Executor } = deployedContracts;
 
   await ensureContract(l2UpgradeAddr, l2Provider);
