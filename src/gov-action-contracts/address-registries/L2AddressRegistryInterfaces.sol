@@ -34,7 +34,7 @@ interface IArbitrumDAOConstitution is IOwnable {
     function setConstitutionHash(bytes32 _constitutionHash) external;
 }
 
-interface IL2ArbitrumGoverner {
+interface IL2ArbitrumGoverner is IOwnable {
     // token() is inherited from GovernorVotesUpgradeable
     function token() external view returns (IL2ArbitrumToken);
     function relay(address target, uint256 value, bytes calldata data) external;
