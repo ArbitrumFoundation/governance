@@ -34,9 +34,9 @@ const chainIDToConfig: ChainIDToConfig = {
     l2GovProxyAdmin: mainnetDeployedContracts.l2ProxyAdmin,
   },
   421613: {
-    beneficiary: "", // TODO
-    startTimestamp: 0, // TODO
-    vestingPeriodInSeconds: 0, // TODO
+    beneficiary: "0xA4b1838cb086DDDAFA655F247716b502e87A0672", 
+    startTimestamp: 1681929083,
+    vestingPeriodInSeconds: secondsInFourYears, // TODO
     l2ArbitrumGovernor: goerliDeployedContracts.l2CoreGoverner,
     l2GovProxyAdmin: goerliDeployedContracts.l2ProxyAdmin,
   },
@@ -55,5 +55,5 @@ interface DeployedWallets {
 }
 export const deployedWallets: DeployedWallets = {
   42161: "",
-  421613: "",
+  421613: "0x1ac5F3691B74c624f48E1f92eC14F46eE1790412",
 };
