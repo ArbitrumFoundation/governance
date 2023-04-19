@@ -140,7 +140,8 @@ contract ArbitrumFoundationVestingWallet is VestingWalletUpgradeable, OwnableUpg
     /// Emits event EthMigrated
     function migrateEthToNewWallet(address _wallet) public onlyOwner {
         uint256 ethBalance = address(this).balance;
-        _wallet.call{value: ethBalance}("");
+        (bool success,) = _wallet.call{value: ethBalance}("");
+        require(success, "ArbitrumFoundationVestingWallet: eth transfer failed");
         emit EthMigrated(_wallet, ethBalance);
     }
 }
