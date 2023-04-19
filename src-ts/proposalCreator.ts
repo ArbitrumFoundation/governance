@@ -135,7 +135,7 @@ export class RoundTripProposalCreator {
     upgradeData: string,
     proposalDescription: string){
 
-      const {l1TimelockTo, l1TimelockScheduleCallData } = await  this.createArbSysArgs(upgradeAddr, upgradeValue, upgradeData, proposalDescription) 
+      const {l1TimelockTo, l1TimelockScheduleCallData } = await  this.createRoundTripCallDataForArbSysCall(upgradeAddr, upgradeValue, upgradeData, proposalDescription) 
 
       const iArbSys = ArbSys__factory.createInterface();
       return iArbSys.encodeFunctionData("sendTxToL1", [
@@ -147,7 +147,7 @@ export class RoundTripProposalCreator {
   /**
    * Generates arguments for ArbSys.sendTxToL1 for a constitutional proposal. Can be used to submit a proposal in e.g. the Tally UI.  
   */
-  public async createArbSysArgs(   
+  public async createRoundTripCallDataForArbSysCall(   
     upgradeAddr: string,
     upgradeValue: BigNumber,
     upgradeData: string,

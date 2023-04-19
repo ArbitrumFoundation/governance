@@ -58,5 +58,5 @@ export const generateArbSysArgs = async (
   };
 
   const proposalCreator = new RoundTripProposalCreator(L1GovConfig, upgradeConfig);
-  return proposalCreator.createArbSysArgs(l2UpgradeAddr, upgradeValue, upgradeData, description);
+  return proposalCreator.createRoundTripCallDataForArbSysCall(l2UpgradeAddr, upgradeValue, upgradeData, description);
 };
