@@ -8,22 +8,26 @@ import { BigNumber } from "ethers";
 import { getFoundationWalletDeploymentConfig, deployedWallets } from "./config";
 import dotenv from "dotenv";
 import { assertEquals, assertNumbersEquals, getProxyOwner } from "../testUtils";
-
+import {  ContractVerifier } from "../contractVerifier";
 dotenv.config();
 
-const { ARB_URL } = process.env;
+const { ARB_URL, ARBISCAN_API_KEY } = process.env;
 if (!ARB_URL) throw new Error("ARB_URL required");
+if (!ARBISCAN_API_KEY) throw new Error("ARBISCAN_API_KEY required");
+
 
 const verifyWalletDeployment = async () => {
   const l2Provider = new JsonRpcProvider(ARB_URL);
   const { name: networkName, chainId } = await l2Provider.getNetwork();
+  const verifier = new ContractVerifier(chainId, ARBISCAN_API_KEY, {} )
   const { beneficiary, startTimestamp, vestingPeriodInSeconds, l2ArbitrumGovernor, l2GovProxyAdmin } =
     getFoundationWalletDeploymentConfig(chainId);
   const arbitrumFoundationWalletAddress = deployedWallets[chainId] as string;
-
   console.log(
     `Starting verification of wallet ${arbitrumFoundationWalletAddress} on network ${networkName}, ${chainId}`
   );
+
+  await verifier.verifyWithAddress("ArbitrumFoundationVestingWallet", arbitrumFoundationWalletAddress);
 
   const proxyOwner = await getProxyOwner(arbitrumFoundationWalletAddress, l2Provider);
   assertEquals(proxyOwner, l2GovProxyAdmin, "Proxy owner should be L2 l2GovProxyAdmin");

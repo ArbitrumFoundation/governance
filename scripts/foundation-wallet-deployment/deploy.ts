@@ -27,8 +27,9 @@ const deployWallet = async () => {
     l2ArbitrumGovernor,
     l2GovProxyAdmin,
   } = getFoundationWalletDeploymentConfig(chainId);
-
-  await ensureContract(beneficiary, l2Provider); // NOTE: on mainnet this will be a multisig; we may want to skip this check for testnet deployments
+  if (chainId === 42161){
+    await ensureContract(beneficiary, l2Provider); // for mainnet this will def be a multisig; for testnet it can be lax
+  }
   await ensureContract(l2ArbitrumGovernor, l2Provider);
   await ensureContract(l2GovProxyAdmin, l2Provider);
   if (startTimestamp === 0) throw new Error("need startTimestamp");
