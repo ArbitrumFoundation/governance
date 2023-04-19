@@ -1,4 +1,4 @@
-# Governance Action Deployments
+# Critical Governance Action Deployments
 
 ## L1 Actions
 
