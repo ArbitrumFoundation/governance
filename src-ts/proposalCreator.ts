@@ -3,11 +3,12 @@ import { ArbSys__factory } from "@arbitrum/sdk/dist/lib/abi/factories/ArbSys__fa
 import { ARB_SYS_ADDRESS } from "@arbitrum/sdk/dist/lib/dataEntities/constants";
 import { defaultAbiCoder } from "@ethersproject/abi";
 import { JsonRpcProvider } from "@ethersproject/providers";
-import { BigNumber, constants } from "ethers";
+import { BigNumber, constants, utils } from "ethers";
 import { id, keccak256 } from "ethers/lib/utils";
 import {
   L1ArbitrumTimelock__factory,
   L2ArbitrumGovernor__factory,
+  ArbitrumTimelock__factory,
   UpgradeExecutor__factory,
 } from "../typechain-types";
 
@@ -124,21 +125,15 @@ export class RoundTripProposalCreator {
     public readonly l1Config: L1GovConfig,
     public readonly targetNetworkConfig: UpgradeConfig
   ) {}
-
+  
   /**
-   * Create a a new proposal
-   * @param upgradeAddr The address of the upgrade contract that will be called by an UpgradeExecutor
-   * @param upgradeValue Value sent to the upgrade contract
-   * @param upgradeData Call data sent to the upgrade contract
-   * @param proposalDescription The proposal description
-   * @returns
+   * Creates calldata for roundtrio path; data to be used either in a proposal or directly in timelock.schedule
    */
-  public async create(
+  private async createRoundTripCallData(   
     upgradeAddr: string,
     upgradeValue: BigNumber,
     upgradeData: string,
-    proposalDescription: string
-  ): Promise<Proposal> {
+    proposalDescription: string){
     const descriptionHash = id(proposalDescription);
 
     // the upgrade executor
@@ -198,10 +193,27 @@ export class RoundTripProposalCreator {
     );
 
     const iArbSys = ArbSys__factory.createInterface();
-    const proposalCallData = iArbSys.encodeFunctionData("sendTxToL1", [
+    return iArbSys.encodeFunctionData("sendTxToL1", [
       l1TimelockTo,
       l1TImelockScheduleCallData,
     ]);
+  }
+
+  /**
+   * Create a a new proposal
+   * @param upgradeAddr The address of the upgrade contract that will be called by an UpgradeExecutor
+   * @param upgradeValue Value sent to the upgrade contract
+   * @param upgradeData Call data sent to the upgrade contract
+   * @param proposalDescription The proposal description
+   * @returns
+   */
+  public async create(
+    upgradeAddr: string,
+    upgradeValue: BigNumber,
+    upgradeData: string,
+    proposalDescription: string
+  ): Promise<Proposal> {
+    const proposalCallData = await this.createRoundTripCallData(upgradeAddr, upgradeValue,upgradeData, proposalDescription)
 
     return new Proposal(
       ARB_SYS_ADDRESS,
@@ -209,5 +221,57 @@ export class RoundTripProposalCreator {
       proposalCallData,
       proposalDescription
     );
+  }
+
+    /**
+   * Outputs the arguments to be passed in to to the Core Governor Timelock's schedule method. This can be called by the 7 of 12 security council (non-critical delayed upgrade)
+   * @param l2GovConfig config for network where governance is located 
+   * @param upgradeAddr address of Governance Action contract (to be eventually passed into UpgradeExecutor.execute)
+   * @param description The proposal description
+   * @returns Object with Timelock.schedule params
+   */
+  public async createTimelockScheduleArgs(
+    l2GovConfig: L2GovConfig,
+    upgradeAddr: string,
+    description: string,
+    options: {
+      upgradeValue?: BigNumber,
+      _upgradeParams?: {
+        upgradeABI: string,
+        upgradeArgs: any[]
+      },
+      _delay?: BigNumber,
+      predecessor?: string,
+    } = {}
+  
+  )  {
+    // default upgrade value and predecessor values
+    const { upgradeValue = constants.Zero, predecessor = "0x"   }  = options
+    
+    const l2Gov = await L2ArbitrumGovernor__factory.connect(  l2GovConfig.governorAddr, l2GovConfig.provider)
+    const l2TimelockAddress = await l2Gov.timelock()
+    const l2Timelock = await ArbitrumTimelock__factory.connect(l2TimelockAddress, l2GovConfig.provider)
+
+    const minDelay = await l2Timelock.getMinDelay(); 
+    const delay = options?._delay || minDelay // default to min delay
+
+    if (delay.lt(minDelay)) throw new Error("Timelock delay below minimum delay")
+
+    let ABI = options?._upgradeParams ?  [options?._upgradeParams.upgradeABI] :  [ "function perform() external" ]; // default to perform with no params
+    let upgradeArgs = options?._upgradeParams ?  options?._upgradeParams.upgradeArgs: [] // default to empty array / no values
+    let actionIface = new utils.Interface(ABI);
+    const upgradeData =  actionIface.encodeFunctionData("perform", upgradeArgs)
+
+    const proposalCallData = await this.createRoundTripCallData(upgradeAddr, upgradeValue, upgradeData, description)
+    const salt = keccak256(  defaultAbiCoder.encode( ["string"], [description]))
+    return {
+      target: ARB_SYS_ADDRESS,
+      value: upgradeValue.toNumber(),
+      data: proposalCallData,
+      predecessor,
+      salt,
+      delay: delay.toNumber()
+    }
+
   }
 }
