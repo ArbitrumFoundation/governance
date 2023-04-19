@@ -7,6 +7,7 @@ import "../address-registries/L2AddressRegistry.sol";
 contract SetProposalThresholdsAndConstitutionHashAction {
     IL2AddressRegistry public immutable l2GovAddressRegistry;
 
+    // hash of constitution in https://github.com/ArbitrumFoundation/docs/pull/385
     bytes32 public constant newConstitutionHash =
         bytes32(0x44618e85660b81480dc2e7296746216942fa5e5c6ad494bd3f8240e1bbdcdae4);
     uint256 public constant newProposalThreshold = 1_000_000 ether;
