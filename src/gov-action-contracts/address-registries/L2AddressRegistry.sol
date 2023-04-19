@@ -19,7 +19,10 @@ contract L2AddressRegistry is IL2AddressRegistry {
             _treasuryWallet.owner() == _treasuryGov.timelock(),
             "L2AddressRegistry: treasury gov timelock must own treasuryWallet"
         );
-        require(_arbitrumDAOConstitution.owner() == _coreGov.owner(), "L2AddressRegistry DAO must own ArbitrumDAOConstitution");
+        require(
+            _arbitrumDAOConstitution.owner() == _coreGov.owner(),
+            "L2AddressRegistry DAO must own ArbitrumDAOConstitution"
+        );
         coreGov = _coreGov;
         treasuryGov = _treasuryGov;
         treasuryWallet = _treasuryWallet;
