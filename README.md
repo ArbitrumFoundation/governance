@@ -224,6 +224,15 @@ Finally, let's make sure owership of protocol assets has been succsessfully tran
 yarn verify:ownership:transfer
 ```
 
+### ArbitrumFoundationVestingWallet Deployer
 
+#### Deploy
+- Set `ARB_URL` and `ARB_KEY` env vars
+- Set FoundationWalletDeploymentConfig variables (for target chain) in [config file](./scripts/foundation-wallet-deployment/config.ts)
+-  run ```yarn deploy:foundation-wallet ```
 
-
+#### Verify Deployment
+_Verify contract's bytecode on Arbiscan and verify that contract's parameters were set correctly_
+- Set `ARB_URL` and `ARBISCAN_API_KEY` env vars 
+- Set DeployedWallet address (for target chain) in [config file](./scripts/foundation-wallet-deployment/config.ts)
+- run ```yarn verify:foundation-wallet ```

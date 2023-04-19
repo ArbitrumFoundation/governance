@@ -27,6 +27,7 @@ Governance is responsible for the following assets:
 - **Arb One L2 parameters** - All Arbitrum chains have a chain "owner" that can set certain parameters. Read more [here](https://github.com/OffchainLabs/nitro/blob/master/precompiles/ArbOwner.go). Governance has control over the chain owner.
 - **Arb Nova L2 parameters** - same as Arb One L2 parameters.
 - **Governance contracts** - Governance has the ability to upgrade and modify itself.
+- **Arbitrum Foundation Administrative Budget Wallet** — see [here](./foundation-vesting-wallet.md) for info.
 
 ## Proposal types
 

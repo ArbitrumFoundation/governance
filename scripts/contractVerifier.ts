@@ -63,6 +63,7 @@ export class ContractVerifier {
     L1SetInitialGovParamsAction: "src/gov-action-contracts/goerli/L1SetInitialGovParamsAction.sol:L1SetInitialGovParamsAction",
     L2AddressRegistry: "src/gov-action-contracts/address-registries/L2AddressRegistry.sol:L2AddressRegistry",
     ArbGoerliSetInitialGovParamsAction: "src/gov-action-contracts/goerli/ArbGoerliSetInitialGovParamsAction.sol:ArbGoerliSetInitialGovParamsAction",
+    ArbitrumFoundationVestingWallet: "src/ArbitrumFoundationVestingWallet.sol:ArbitrumFoundationVestingWallet",
   };
 
   constructor(chainId: number, apiKey: string, deployedContracts: DeployProgressCache) {
@@ -93,7 +94,7 @@ export class ContractVerifier {
     if (constructorArgs) {
       command = `${command} --constructor-args ${constructorArgs}`;
     }
-    command = `${command} ${contractAddress} ${sourceFile} ${this.apiKey}`;
+    command = `${command} ${contractAddress} ${sourceFile} --etherscan-api-key ${this.apiKey}`;
 
     exec(command, (err: Error | null, stdout: string, stderr: string) => {
       console.log("-----------------");
