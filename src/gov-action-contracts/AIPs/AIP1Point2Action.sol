@@ -4,7 +4,7 @@ pragma solidity 0.8.16;
 import "../address-registries/L2AddressRegistry.sol";
 
 /// @notice Governance action for AIP 1.2 https://forum.arbitrum.foundation/t/proposal-aip-1-2-foundation-and-dao-governance/13362/22
-contract SetProposalThresholdsAndConstitutionHashAction {
+contract AIP1Point2Action {
     IL2AddressRegistry public immutable l2GovAddressRegistry;
 
     // hash of constitution in https://github.com/ArbitrumFoundation/docs/pull/385
