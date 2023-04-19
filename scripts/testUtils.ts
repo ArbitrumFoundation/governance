@@ -69,6 +69,31 @@ export async function getProxyOwner(contractAddress: string, provider: Provider)
   return ethers.utils.getAddress(formatAddress);
 }
 
+/**
+ * Gets the proxy owner by reading storage
+ *
+ * @param contractAddress
+ * @param provider
+ * @returns
+ */
+ export async function getProxyImplementation(contractAddress: string, provider: Provider) {
+  // gets address in format like 0x000000000000000000000000a898b332e65d0cc9cb538495ff145983806d8453
+  const ownerStorageValue = await provider.getStorageAt(
+    contractAddress,
+    "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc"
+  );
+
+  if (!ownerStorageValue) {
+    return "";
+  }
+
+  // remove execess bytes -> 0xa898b332e65d0cc9cb538495ff145983806d8453
+  const formatAddress = ownerStorageValue.substring(0, 2) + ownerStorageValue.substring(26);
+
+  // return address as checksum address -> 0xA898b332e65D0cc9CB538495FF145983806D8453
+  return ethers.utils.getAddress(formatAddress);
+}
+
 export type Recipients = { readonly [key: string]: BigNumber };
 
 export const loadRecipients = (fileLocation: string): Recipients => {

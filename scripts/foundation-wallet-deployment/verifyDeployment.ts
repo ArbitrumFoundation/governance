@@ -7,7 +7,7 @@ import { JsonRpcProvider } from "@ethersproject/providers";
 import { BigNumber } from "ethers";
 import { getFoundationWalletDeploymentConfig, deployedWallets } from "./config";
 import dotenv from "dotenv";
-import { assertEquals, assertNumbersEquals, getProxyOwner } from "../testUtils";
+import { assertEquals, assertNumbersEquals, getProxyOwner, getProxyImplementation } from "../testUtils";
 import {  ContractVerifier } from "../contractVerifier";
 dotenv.config();
 
@@ -27,7 +27,9 @@ const verifyWalletDeployment = async () => {
     `Starting verification of wallet ${arbitrumFoundationWalletAddress} on network ${networkName}, ${chainId}`
   );
 
-  await verifier.verifyWithAddress("ArbitrumFoundationVestingWallet", arbitrumFoundationWalletAddress);
+  const implementation = await getProxyImplementation(arbitrumFoundationWalletAddress, l2Provider);
+  await verifier.verifyWithAddress("ArbitrumFoundationVestingWalletProxy", arbitrumFoundationWalletAddress);
+  await verifier.verifyWithAddress("ArbitrumFoundationVestingWalletLogic", implementation);
 
   const proxyOwner = await getProxyOwner(arbitrumFoundationWalletAddress, l2Provider);
   assertEquals(proxyOwner, l2GovProxyAdmin, "Proxy owner should be L2 l2GovProxyAdmin");
