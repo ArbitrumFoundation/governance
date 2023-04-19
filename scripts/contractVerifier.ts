@@ -64,6 +64,7 @@ export class ContractVerifier {
     L2AddressRegistry: "src/gov-action-contracts/address-registries/L2AddressRegistry.sol:L2AddressRegistry",
     ArbGoerliSetInitialGovParamsAction: "src/gov-action-contracts/goerli/ArbGoerliSetInitialGovParamsAction.sol:ArbGoerliSetInitialGovParamsAction",
     ArbitrumFoundationVestingWallet: "src/ArbitrumFoundationVestingWallet.sol:ArbitrumFoundationVestingWallet",
+    AIP1Point2Action: "src/gov-action-contracts/AIPs/AIP1Point2Action.sol:AIP1Point2Action",
   };
 
   constructor(chainId: number, apiKey: string, deployedContracts: DeployProgressCache) {

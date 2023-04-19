@@ -25,5 +25,7 @@
     "l1Executor": "0x9b082cBFCDA26dE9F38010ADc8D52f4652504b27",
     "l1ProxyAdmin": "0x2cD70932105955489e4c452FDcd531a6B811b394",
     "l1Timelock": "0x364188EcF8E0733cB90d8EbeD90d56E56205dDfE",
-    "l2TokenDistributor": "0x9AfB2254c24eb480e36dee66A4F26b5C540b6615"
+    "l2TokenDistributor": "0x9AfB2254c24eb480e36dee66A4F26b5C540b6615",
+    "l1AddressRegistry": "0x8b194bEae1d3e0788A1a35173978001ACDFba668",
+    "l2AddressRegistry": "0xAAa6704eeA535c8a07Cbe647680b440264f74f08"
   }

@@ -25,4 +25,6 @@ export interface DeployedContracts {
   l1Executor: string;
   l1ProxyAdmin: string;
   l1Timelock: string;
+  l1AddressRegistry: string;
+  l2AddressRegistry: string;
 }
