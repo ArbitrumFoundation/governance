@@ -12,7 +12,7 @@ const ensureContract = async (address: string, provider: JsonRpcProvider) => {
     throw new Error(`${address} contract not found`);
 };
 
-// Generate the ArbSys.sendTxToL1 arguments for a proposal whose action contract resigns on a governance chain (i.e, Arb One or Arb Goerli)
+// Generate the ArbSys.sendTxToL1 arguments for a proposal whose action contract resides on a governance chain (i.e, Arb One or Arb Goerli)
 export const generateArbSysArgs = async (
   l1Provider: JsonRpcProvider,
   l2Provider: JsonRpcProvider,
