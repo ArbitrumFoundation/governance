@@ -80,13 +80,18 @@ contract SecurityCouncilManager is Initializable, AccessControlUpgradeable {
     function _dispatchUpdateCohort(address[] memory _newMembers, address[] memory _oldMembers)
         internal
     {
-        // TODO: remove duplicates here?
+        (address[] memory newMembers, address[] memory oldMembers) =
+            SecurityCouncilMgmtUtils.removeSharedAddresses(_newMembers, _oldMembers);
         ISecurityCouncilUpgradeExectutor(
             targetContracts.govChainEmergencySecurityCouncilUpgradeExecutor
-        ).updateMembers(_newMembers, _oldMembers);
+        ).updateMembers(newMembers, oldMembers);
         ISecurityCouncilUpgradeExectutor(
             targetContracts.govChainNonEmergencySecurityCouncilUpgradeExecutor
-        ).updateMembers(_newMembers, _oldMembers);
+        ).updateMembers(newMembers, oldMembers);
+
+        bytes memory data = abi.encodeWithSelector(
+            IL1SecurityCouncilUpdateRouter.handleUpdateCohort.selector, newMembers, oldMembers
+        );
     }
 
     function addMemberToMarchCohort(address _newMember) external onlyRole(MEMBER_ADDER_ROLE) {
