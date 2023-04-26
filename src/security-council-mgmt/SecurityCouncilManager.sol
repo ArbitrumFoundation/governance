@@ -92,6 +92,7 @@ contract SecurityCouncilManager is Initializable, AccessControlUpgradeable {
         bytes memory data = abi.encodeWithSelector(
             IL1SecurityCouncilUpdateRouter.handleUpdateCohort.selector, newMembers, oldMembers
         );
+        _sendToL1Router(data);
     }
 
     function addMemberToMarchCohort(address _newMember) external onlyRole(MEMBER_ADDER_ROLE) {
