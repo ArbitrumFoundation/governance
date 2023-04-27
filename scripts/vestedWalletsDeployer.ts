@@ -4,6 +4,7 @@ import { WalletCreatedEvent } from "../typechain-types/src/ArbitrumVestingWallet
 import { Recipients, loadRecipients } from "./testUtils";
 import dotenv from "dotenv";
 import path from "path";
+import fs from "fs";
 import { JsonRpcProvider } from "@ethersproject/providers";
 
 dotenv.config();
@@ -11,25 +12,39 @@ dotenv.config();
 const TOKEN_DEPLOYMENT_TIMESTAMP = 1678968508;
 const ONE_YEAR_IN_SECONDS = 365 * 24 * 60 * 60;
 
+interface VestedWallet {
+  beneficiary: string;
+  walletAddress: string;
+}
+
+interface DeploymentData {
+  vestingWalletFactory: string;
+  wallets: VestedWallet[];
+}
+
 export const deployVestedWallets = async (
+  deployedWalletsFileLocation: string,
   deployer: Signer,
   recipients: Recipients,
   startTimeSeconds: number,
   durationSeconds: number
 ) => {
-  /// deploy factory
+  let data: DeploymentData = { vestingWalletFactory: "", wallets: [] };
+
+  // deploy factory
   const vestedWalletFactoryFac = new ArbitrumVestingWalletsFactory__factory(deployer);
   const vestedWalletFactory = await vestedWalletFactoryFac.deploy();
   await vestedWalletFactory.deployed();
-  // write to file
-  console.log("Factory: ", vestedWalletFactory.address);
+  data.vestingWalletFactory = vestedWalletFactory.address;
+  // store factory address
+  updateDeployedWallets(deployedWalletsFileLocation, data);
 
   /// deploy wallets in batches of 5
   const recipientAddresses = Object.keys(recipients);
   const batchSize = 5;
 
   for (let index = 0; index < recipientAddresses.length; index = index + batchSize) {
-    const recipientBatch = recipientAddresses.slice(index, batchSize);
+    const recipientBatch = recipientAddresses.slice(index, index + batchSize);
 
     const walletCreationReceipt = await (
       await vestedWalletFactory.createWallets(startTimeSeconds, durationSeconds, recipientBatch)
@@ -46,9 +61,10 @@ export const deployVestedWallets = async (
         wallet: w.vestingWalletAddress,
       }));
 
+    // store wallet addresses
     for (const walletPair of walletPairs) {
-      // write to file
-      console.log("Beneficiary: ", walletPair.beneficiary, "; wallet: " + walletPair.wallet);
+      data.wallets.push({ beneficiary: walletPair.beneficiary, walletAddress: walletPair.wallet });
+      updateDeployedWallets(deployedWalletsFileLocation, data);
     }
   }
 
@@ -74,11 +90,13 @@ async function main() {
     );
   }
 
+  const deployedWalletsFileLocation = path.join(__dirname, "..", deployedWalletsLocation);
   const vestedRecipientsFileLocation = path.join(__dirname, "..", vestedRecipientsLocation);
   const vestedRecipients = loadRecipients(vestedRecipientsFileLocation);
   const arbDeployer = new Wallet(arbKey, new JsonRpcProvider(arbRpc));
 
   await deployVestedWallets(
+    deployedWalletsFileLocation,
     arbDeployer,
     vestedRecipients,
     // start vesting in 1 years time
@@ -112,8 +130,8 @@ process.on("SIGINT", function () {
 //   ) as DeployProgressCache;
 // };
 
-// const updateDeployedWallets = (cache: DeployProgressCache) => {
-//   fs.writeFileSync(envVars.deployedWalletsLocation, JSON.stringify(cache, null, 2));
-// };
+const updateDeployedWallets = (location: string, data: DeploymentData) => {
+  fs.writeFileSync(location, JSON.stringify(data, null, 2));
+};
 
 main().then(() => console.log("Done."));
