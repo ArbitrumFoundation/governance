@@ -25,7 +25,7 @@ interface DeploymentData {
   wallets: VestedWallet[];
 }
 
-export const deployVestedWallets = async (
+const deployVestedWallets = async (
   deployedWalletsFileLocation: string,
   deployer: Signer,
   recipients: Recipients,
