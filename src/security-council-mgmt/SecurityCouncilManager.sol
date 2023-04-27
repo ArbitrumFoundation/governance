@@ -90,7 +90,7 @@ contract SecurityCouncilManager is Initializable, AccessControlUpgradeable {
         ).updateMembers(newMembers, oldMembers);
 
         bytes memory data = abi.encodeWithSelector(
-            IL1SecurityCouncilUpdateRouter.handleUpdateCohort.selector, newMembers, oldMembers
+            IL1SecurityCouncilUpdateRouter.handleUpdateMembers.selector, newMembers, oldMembers
         );
         _sendToL1Router(data);
     }
@@ -123,47 +123,40 @@ contract SecurityCouncilManager is Initializable, AccessControlUpgradeable {
         _sendToL1Router(data);
     }
 
-    function removeMember(address _prevMemberInLinkedList, address _member)
-        external
-        onlyRole(MEMBER_REMOVER_ROLE)
-        returns (bool)
-    {
-        if (_removeMemberFromCohort(_prevMemberInLinkedList, _member, marchCohort)) {
+    function removeMember(address _member) external onlyRole(MEMBER_REMOVER_ROLE) returns (bool) {
+        if (_removeMemberFromCohort(_member, marchCohort)) {
             return true;
         }
-        if (_removeMemberFromCohort(_prevMemberInLinkedList, _member, septemberCohort)) {
+        if (_removeMemberFromCohort(_member, septemberCohort)) {
             return true;
         }
 
         revert("SecurityCouncilManager: member not found");
     }
 
-    function _removeMemberFromCohort(
-        address _prevMemberInLinkedList,
-        address _member,
-        address[] storage _cohort
-    ) internal returns (bool) {
+    function _removeMemberFromCohort(address _member, address[] storage _cohort)
+        internal
+        returns (bool)
+    {
         for (uint256 i = 0; i < _cohort.length; i++) {
             if (_member == _cohort[i]) {
                 delete _cohort[i];
-                _dispatchRemoveMember(_prevMemberInLinkedList, _member);
+                _dispatchRemoveMember(_member);
                 return true;
             }
         }
         return false;
     }
 
-    function _dispatchRemoveMember(address _prevMemberInLinkedList, address _member) internal {
+    function _dispatchRemoveMember(address _member) internal {
         ISecurityCouncilUpgradeExectutor(
             targetContracts.govChainEmergencySecurityCouncilUpgradeExecutor
-        ).removeMember(_prevMemberInLinkedList, _member);
+        ).removeMember(_member);
         ISecurityCouncilUpgradeExectutor(
             targetContracts.govChainNonEmergencySecurityCouncilUpgradeExecutor
-        ).removeMember(_prevMemberInLinkedList, _member);
+        ).removeMember(_member);
         bytes memory data = abi.encodeWithSelector(
-            IL1SecurityCouncilUpdateRouter.handleRemoveMember.selector,
-            _prevMemberInLinkedList,
-            _member
+            IL1SecurityCouncilUpdateRouter.handleRemoveMember.selector, _member
         );
         _sendToL1Router(data);
     }

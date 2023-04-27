@@ -2,7 +2,7 @@
 pragma solidity 0.8.16;
 
 interface IL1SecurityCouncilUpdateRouter {
-    function handleUpdateCohort(
+    function handleUpdateMembers(
         address[] calldata _membersToAdd,
         address[] calldata _membersToRemove
     ) external;
