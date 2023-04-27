@@ -1,30 +1,30 @@
-import { Signer } from "ethers";
-import {
-  ArbitrumVestingWalletsFactory__factory,
-  L2ArbitrumToken__factory,
-} from "../typechain-types";
+import { Signer, Wallet } from "ethers";
+import { ArbitrumVestingWalletsFactory__factory } from "../typechain-types";
 import { WalletCreatedEvent } from "../typechain-types/src/ArbitrumVestingWalletFactory.sol/ArbitrumVestingWalletsFactory";
 import { Recipients, loadRecipients } from "./testUtils";
 import dotenv from "dotenv";
 import path from "path";
-import fs from "fs";
+import { JsonRpcProvider } from "@ethersproject/providers";
 
 dotenv.config();
 
+const TOKEN_DEPLOYMENT_TIMESTAMP = 1678968508;
+const ONE_YEAR_IN_SECONDS = 365 * 24 * 60 * 60;
+
 export const deployVestedWallets = async (
   deployer: Signer,
-  tokenHolder: Signer,
-  tokenAddress: string,
   recipients: Recipients,
   startTimeSeconds: number,
   durationSeconds: number
 ) => {
-  const token = L2ArbitrumToken__factory.connect(tokenAddress, tokenHolder);
-
+  /// deploy factory
   const vestedWalletFactoryFac = new ArbitrumVestingWalletsFactory__factory(deployer);
   const vestedWalletFactory = await vestedWalletFactoryFac.deploy();
   await vestedWalletFactory.deployed();
+  // write to file
+  console.log("Factory: ", vestedWalletFactory.address);
 
+  /// deploy wallets in batches of 5
   const recipientAddresses = Object.keys(recipients);
   const batchSize = 5;
 
@@ -47,70 +47,45 @@ export const deployVestedWallets = async (
       }));
 
     for (const walletPair of walletPairs) {
-      const amount = recipients[walletPair.beneficiary.toLowerCase()];
-
-      if (!amount.gt(0)) {
-        throw new Error(`Missing amount for ${walletPair.beneficiary}`);
-      }
-
-      await (await token.transfer(walletPair.wallet, amount)).wait();
+      // write to file
+      console.log("Beneficiary: ", walletPair.beneficiary, "; wallet: " + walletPair.wallet);
     }
   }
 
   return vestedWalletFactory;
 };
 
-// async function deployAndTransferVestedWallets(
-//   arbDeployer: Signer,
-//   arbInitialSupplyRecipient: Signer,
-//   l2TokenAddress: string,
-//   vestedRecipients: Recipients,
-//   config: {
-//     L2_CLAIM_PERIOD_START: number;
-//   }
-// ) {
-//   const oneYearInSeconds = 365 * 24 * 60 * 60;
-
-//   if (!deployedContracts.vestedWalletFactory) {
-//     // we dont currently have full error handling for errors thrown during
-//     // vested wallet deployment, for now just throw an error and require
-//     // manual intervention if an error occurs in here
-//     if (deployedContracts.vestedWalletInProgress) {
-//       throw new Error(
-//         "Vested wallet deployment started but a failure occurred, manual intervention required"
-//       );
-//     }
-//     deployedContracts.vestedWalletInProgress = true;
-
-//     const vestedWalletFactory = await deployVestedWallets(
-//       arbDeployer,
-//       arbInitialSupplyRecipient,
-//       l2TokenAddress,
-//       vestedRecipients,
-//       // start vesting in 1 years time
-//       config.L2_CLAIM_PERIOD_START + oneYearInSeconds,
-//       // vesting lasts for 3 years
-//       oneYearInSeconds * 3
-//     );
-//     deployedContracts.vestedWalletInProgress = undefined;
-//     deployedContracts.vestedWalletFactory = vestedWalletFactory.address;
-//   }
-// }
-
 async function main() {
   console.log("Start vested wallets deployment process...");
 
+  /// get env vars
+  const arbKey = process.env["ARB_KEY"] as string;
+  const arbRpc = process.env["ARB_URL"] as string;
   const vestedRecipientsLocation = process.env["VESTED_RECIPIENTS_FILE_LOCATION"] as string;
   const deployedWalletsLocation = process.env["DEPLOYED_WALLETS_FILE_LOCATION"] as string;
-
-  if (vestedRecipientsLocation === undefined || deployedWalletsLocation === undefined) {
+  if (
+    arbKey === undefined ||
+    arbRpc === undefined ||
+    vestedRecipientsLocation === undefined ||
+    deployedWalletsLocation === undefined
+  ) {
     throw new Error(
-      "VESTED_RECIPIENTS_FILE_LOCATION and DEPLOYED_WALLETS_FILE_LOCATION have to be defined in env vars"
+      "Following env vars have to be defined: ARB_KEY, ARB_URL, VESTED_RECIPIENTS_FILE_LOCATION and DEPLOYED_WALLETS_FILE_LOCATION"
     );
   }
 
   const vestedRecipientsFileLocation = path.join(__dirname, "..", vestedRecipientsLocation);
-  const beneficiaries = loadRecipients(vestedRecipientsFileLocation);
+  const vestedRecipients = loadRecipients(vestedRecipientsFileLocation);
+  const arbDeployer = new Wallet(arbKey, new JsonRpcProvider(arbRpc));
+
+  await deployVestedWallets(
+    arbDeployer,
+    vestedRecipients,
+    // start vesting in 1 years time
+    TOKEN_DEPLOYMENT_TIMESTAMP + ONE_YEAR_IN_SECONDS,
+    // vesting lasts for 3 years
+    ONE_YEAR_IN_SECONDS * 3
+  );
 
   // const deployedWallets = loadDeployedWallets(deployedWalletsLocation);
   // console.log(`Cache: ${JSON.stringify(deployedContracts, null, 2)}`);

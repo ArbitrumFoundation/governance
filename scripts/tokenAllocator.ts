@@ -167,42 +167,7 @@ async function postDeploymentL2TokenTasks(
   }
 }
 
-async function deployAndTransferVestedWallets(
-  arbDeployer: Signer,
-  arbInitialSupplyRecipient: Signer,
-  l2TokenAddress: string,
-  vestedRecipients: Recipients,
-  config: {
-    L2_CLAIM_PERIOD_START: number;
-  }
-) {
-  const oneYearInSeconds = 365 * 24 * 60 * 60;
 
-  if (!deployedContracts.vestedWalletFactory) {
-    // we dont currently have full error handling for errors thrown during
-    // vested wallet deployment, for now just throw an error and require
-    // manual intervention if an error occurs in here
-    if (deployedContracts.vestedWalletInProgress) {
-      throw new Error(
-        "Vested wallet deployment started but a failure occurred, manual intervention required"
-      );
-    }
-    deployedContracts.vestedWalletInProgress = true;
-
-    const vestedWalletFactory = await deployVestedWallets(
-      arbDeployer,
-      arbInitialSupplyRecipient,
-      l2TokenAddress,
-      vestedRecipients,
-      // start vesting in 1 years time
-      config.L2_CLAIM_PERIOD_START + oneYearInSeconds,
-      // vesting lasts for 3 years
-      oneYearInSeconds * 3
-    );
-    deployedContracts.vestedWalletInProgress = undefined;
-    deployedContracts.vestedWalletFactory = vestedWalletFactory.address;
-  }
-}
 
 async function deployTokenDistributor(
   arbDeployer: Signer,
