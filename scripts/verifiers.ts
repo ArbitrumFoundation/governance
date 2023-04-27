@@ -4,8 +4,6 @@ import {
   ArbitrumDAOConstitution__factory,
   ArbitrumTimelock,
   ArbitrumTimelock__factory,
-  ArbitrumVestingWallet__factory,
-  ArbitrumVestingWalletsFactory,
   ArbitrumVestingWalletsFactory__factory,
   FixedDelegateErc20Wallet,
   FixedDelegateErc20Wallet__factory,
@@ -52,7 +50,6 @@ import { Provider } from "@ethersproject/providers";
 import { getRecipientsDataFromContractEvents } from "./tokenDistributorHelper";
 import dotenv from "dotenv";
 import { Recipients, assert, assertEquals, assertNumbersEquals, getProxyOwner } from "./testUtils";
-import { WalletCreatedEvent } from "../typechain-types/src/ArbitrumVestingWalletFactory.sol/ArbitrumVestingWalletsFactory";
 import { TransferEvent } from "../typechain-types/src/Util.sol/IERC20VotesUpgradeable";
 import { OwnershipTransferredEvent } from "../typechain-types/src/L2ArbitrumToken";
 const deadAddress = "0x000000000000000000000000000000000000dEaD";

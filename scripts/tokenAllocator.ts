@@ -14,7 +14,6 @@ import {
   updateDeployedContracts,
 } from "./providerSetup";
 import { getRecipientsDataFromContractEvents, setClaimRecipients } from "./tokenDistributorHelper";
-import { deployVestedWallets } from "./vestedWalletsDeployer";
 import { Recipients, StringProps, TypeChainContractFactoryStatic } from "./testUtils";
 import { checkConfigTotals } from "./verifiers";
 
@@ -166,8 +165,6 @@ async function postDeploymentL2TokenTasks(
     deployedContracts.l2TokenTask6 = true;
   }
 }
-
-
 
 async function deployTokenDistributor(
   arbDeployer: Signer,
