@@ -132,7 +132,7 @@ async function main() {
     deployedWalletsFileLocation,
     arbDeployer,
     vestedRecipients,
-    // start vesting in 1 years time
+    // start vesting 1 year after token generation
     TOKEN_DEPLOYMENT_TIMESTAMP + ONE_YEAR_IN_SECONDS,
     // vesting lasts for 3 years
     ONE_YEAR_IN_SECONDS * 3
