@@ -7,7 +7,13 @@ import {
 import path from "path";
 import fs from "fs";
 import dotenv from "dotenv";
-import { Recipients, assertEquals, assertNumbersEquals, loadRecipients } from "./testUtils";
+import {
+  Recipients,
+  VestedWallets,
+  assertEquals,
+  assertNumbersEquals,
+  loadVestedRecipients,
+} from "./testUtils";
 import { JsonRpcProvider, Provider } from "@ethersproject/providers";
 import { WalletCreatedEvent } from "../typechain-types/src/ArbitrumVestingWalletFactory.sol/ArbitrumVestingWalletsFactory";
 
@@ -21,7 +27,7 @@ async function main() {
 
   const vestedRecipientsLocation = process.env["VESTED_RECIPIENTS_FILE_LOCATION"] as string;
   const vestedRecipientsFileLocation = path.join(__dirname, "..", vestedRecipientsLocation);
-  const vestedRecipients = loadRecipients(vestedRecipientsFileLocation);
+  const vestedRecipients = loadVestedRecipients(vestedRecipientsFileLocation);
 
   const deployedWalletsLocation = process.env["DEPLOYED_WALLETS_FILE_LOCATION"] as string;
   const deployedWalletsFileLocation = path.join(__dirname, "..", deployedWalletsLocation);
@@ -38,7 +44,7 @@ async function main() {
  * - Each vested wallet has the recipient balance of tokens
  */
 async function verifyVestedWallets(
-  vestedRecipients: Recipients,
+  vestedRecipients: VestedWallets,
   vestedWalletFactory: ArbitrumVestingWalletsFactory,
   arbProvider: Provider
 ) {
@@ -57,14 +63,20 @@ async function verifyVestedWallets(
 
   assertEquals(
     walletLogs.length.toString(),
-    Object.keys(vestedRecipients).length.toString(),
-    "Wallets created number not equal vested recipients number"
+    Object.values(vestedRecipients)
+      .reduce((sum, arr) => sum + arr.length, 0)
+      .toString(),
+    "Wallets created number not correct"
   );
 
   for (const vr of Object.keys(vestedRecipients)) {
     const logs = walletLogs.filter((l) => l.beneficiary.toLowerCase() === vr.toLowerCase());
 
-    assertNumbersEquals(BigNumber.from(logs.length), BigNumber.from(1), "Too many logs");
+    assertNumbersEquals(
+      BigNumber.from(logs.length),
+      BigNumber.from(vestedRecipients[vr].length),
+      "Too many logs"
+    );
 
     const log = logs[0];
 
