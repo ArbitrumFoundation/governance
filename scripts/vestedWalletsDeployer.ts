@@ -4,7 +4,7 @@ import {
   ArbitrumVestingWalletsFactory,
   WalletCreatedEvent,
 } from "../typechain-types/src/ArbitrumVestingWalletFactory.sol/ArbitrumVestingWalletsFactory";
-import { Recipients, loadRecipients } from "./testUtils";
+import { Recipients, VestedWallets, loadRecipients, loadVestedRecipients } from "./testUtils";
 import dotenv from "dotenv";
 import path from "path";
 import fs from "fs";
@@ -15,20 +15,20 @@ dotenv.config();
 const TOKEN_DEPLOYMENT_TIMESTAMP = 1678968508;
 const ONE_YEAR_IN_SECONDS = 365 * 24 * 60 * 60;
 
-interface VestedWallet {
-  beneficiary: string;
-  walletAddress: string;
-}
-
 interface DeploymentData {
   vestingWalletFactory: string;
-  wallets: VestedWallet[];
+  beneficiaries: BeneficiaryData[];
+}
+
+interface BeneficiaryData {
+  beneficiary: string;
+  walletAddresses: string[];
 }
 
 const deployVestedWallets = async (
   deployedWalletsFileLocation: string,
   deployer: Signer,
-  recipients: Recipients,
+  recipients: VestedWallets,
   startTimeSeconds: number,
   durationSeconds: number
 ) => {
@@ -52,11 +52,15 @@ const deployVestedWallets = async (
     );
   }
 
-  /// deploy wallets in batches of 5
-  const recipientAddresses = Object.keys(recipients);
+  // make a list of beneficiary addresses where address can occur multiple times
+  const recipientAddresses = Object.keys(recipients)
+    .map((key) => Array(recipients[key].length).fill(key))
+    .flat();
+  // sum up number of already deployed wallets
+  const startIndex = data.beneficiaries.reduce((sum, obj) => sum + obj.walletAddresses.length, 0);
   const batchSize = 5;
-  const startIndex = data.wallets.length;
 
+  /// deploy wallets in batches of 5
   for (let index = startIndex; index < recipientAddresses.length; index = index + batchSize) {
     const recipientBatch = recipientAddresses.slice(index, index + batchSize);
 
@@ -78,7 +82,20 @@ const deployVestedWallets = async (
 
     // store wallet addresses
     for (const walletPair of walletPairs) {
-      data.wallets.push({ beneficiary: walletPair.beneficiary, walletAddress: walletPair.wallet });
+      const beneficiaryData = data.beneficiaries.find(
+        (b) => b.beneficiary == walletPair.beneficiary
+      );
+
+      if (beneficiaryData !== undefined) {
+        // add new wallet for existing beneficiary
+        beneficiaryData.walletAddresses.push(walletPair.wallet);
+      } else {
+        // this is a 1st wallet for this beneficiary
+        data.beneficiaries.push({
+          beneficiary: walletPair.beneficiary,
+          walletAddresses: [walletPair.wallet],
+        });
+      }
     }
     updateDeployedWallets(deployedWalletsFileLocation, data);
   }
@@ -107,7 +124,8 @@ async function main() {
 
   const deployedWalletsFileLocation = path.join(__dirname, "..", deployedWalletsLocation);
   const vestedRecipientsFileLocation = path.join(__dirname, "..", vestedRecipientsLocation);
-  const vestedRecipients = loadRecipients(vestedRecipientsFileLocation);
+  const vestedRecipients = loadVestedRecipients(vestedRecipientsFileLocation);
+
   const arbDeployer = new Wallet(arbKey, new JsonRpcProvider(arbRpc));
 
   await deployVestedWallets(
@@ -124,7 +142,7 @@ async function main() {
 }
 
 const loadDeployedWallets = (location: string): DeploymentData => {
-  if (!fs.existsSync(location)) return { vestingWalletFactory: "", wallets: [] };
+  if (!fs.existsSync(location)) return { vestingWalletFactory: "", beneficiaries: [] };
   return JSON.parse(fs.readFileSync(location).toString()) as DeploymentData;
 };
 

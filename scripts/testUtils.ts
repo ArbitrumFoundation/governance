@@ -91,6 +91,31 @@ export const loadRecipients = (fileLocation: string): Recipients => {
   return recipients;
 };
 
+export type VestedWallets = { [key: string]: [BigNumber] };
+
+export const loadVestedRecipients = (fileLocation: string): VestedWallets => {
+  const fileContents = fs.readFileSync(fileLocation).toString();
+  const jsonFile = JSON.parse(fileContents);
+
+  const beneficiaries = Object.keys(jsonFile);
+  const wallets: VestedWallets = {};
+
+  for (const beneficiary of beneficiaries) {
+    // the token has 18 decimals, like ether, so we can use parseEther
+    const tokenAmounts = jsonFile[beneficiary].map(parseEther);
+
+    wallets[beneficiary.toLowerCase()] = tokenAmounts;
+
+    if (wallets[beneficiary.toLowerCase()].some((amount) => amount.lt(parseEther("1")))) {
+      throw new Error(
+        `Unexpected token count less than 1 for beneficiary: ${beneficiary.toString()}`
+      );
+    }
+  }
+
+  return wallets;
+};
+
 export type ClaimRecipients = { [addr: string]: { points: number } };
 
 /**
