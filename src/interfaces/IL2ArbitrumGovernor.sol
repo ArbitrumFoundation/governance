@@ -14,4 +14,6 @@ interface IL2ArbitrumGoverner {
     function setVotingPeriod(uint256 newVotingPeriod) external;
     function EXCLUDE_ADDRESS() external view returns (address);
     function owner() external view returns (address);
+    function proposalThreshold() external view returns (uint256);
+    function setProposalThreshold(uint256 newProposalThreshold) external;
 }

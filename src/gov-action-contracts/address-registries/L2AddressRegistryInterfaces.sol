@@ -6,6 +6,7 @@ import "../../interfaces/IArbitrumTimelock.sol";
 import "../../interfaces/IFixedDelegateErc20Wallet.sol";
 import "../../interfaces/IL2ArbitrumToken.sol";
 import "../../interfaces/IL2ArbitrumGovernor.sol";
+import "../../interfaces/IArbitrumDAOConstitution.sol";
 
 interface ICoreGovTimelockGetter {
     function coreGovTimelock() external view returns (IArbitrumTimelock);
@@ -31,11 +32,16 @@ interface IL2ArbitrumTokenGetter {
     function l2ArbitrumToken() external view returns (IL2ArbitrumToken);
 }
 
+interface IArbitrumDAOConstitutionGetter {
+    function arbitrumDAOConstitution() external view returns (IArbitrumDAOConstitution);
+}
+
 interface IL2AddressRegistry is
     ICoreGovGetter,
     ICoreGovTimelockGetter,
     ITreasuryGovTimelockGetter,
     IDaoTreasuryGetter,
     ITreasuryGovGetter,
-    IL2ArbitrumTokenGetter
+    IL2ArbitrumTokenGetter,
+    IArbitrumDAOConstitutionGetter
 {}

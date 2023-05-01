@@ -41,7 +41,7 @@ export interface L1GovConfig {
 }
 
 /**
- * Config for the network where the upgrade will actually take place - could be ArbOne, L1, or ArbNova.
+ * Config for the network where the upgrade will actually take place - for a mainnet upgrade, it could be ArbOne, L1, or ArbNova.
  */
 export interface UpgradeConfig {
   /**
@@ -125,11 +125,29 @@ export class RoundTripProposalCreator {
     public readonly l1Config: L1GovConfig,
     public readonly targetNetworkConfig: UpgradeConfig
   ) {}
-  
-  /**
+
+    /**
    * Creates calldata for roundtrio path; data to be used either in a proposal or directly in timelock.schedule
    */
-  private async createRoundTripCallData(   
+  public async createRoundTripCallData(   
+    upgradeAddr: string,
+    upgradeValue: BigNumber,
+    upgradeData: string,
+    proposalDescription: string){
+
+      const {l1TimelockTo, l1TimelockScheduleCallData } = await  this.createRoundTripCallDataForArbSysCall(upgradeAddr, upgradeValue, upgradeData, proposalDescription) 
+
+      const iArbSys = ArbSys__factory.createInterface();
+      return iArbSys.encodeFunctionData("sendTxToL1", [
+        l1TimelockTo,
+        l1TimelockScheduleCallData,
+      ]);
+      
+    }
+  /**
+   * Generates arguments for ArbSys.sendTxToL1 for a constitutional proposal. Can be used to submit a proposal in e.g. the Tally UI.  
+  */
+  public async createRoundTripCallDataForArbSysCall(   
     upgradeAddr: string,
     upgradeValue: BigNumber,
     upgradeData: string,
@@ -187,16 +205,15 @@ export class RoundTripProposalCreator {
       l1Value = upgradeExecutorValue;
     }
 
-    const l1TImelockScheduleCallData = l1Timelock.interface.encodeFunctionData(
+    const l1TimelockScheduleCallData = l1Timelock.interface.encodeFunctionData(
       "schedule",
       [l1To, l1Value, l1Data, constants.HashZero, descriptionHash, minDelay]
     );
 
-    const iArbSys = ArbSys__factory.createInterface();
-    return iArbSys.encodeFunctionData("sendTxToL1", [
+    return {
       l1TimelockTo,
-      l1TImelockScheduleCallData,
-    ]);
+      l1TimelockScheduleCallData,
+    }
   }
 
   /**
