@@ -4,8 +4,6 @@ import {
   ArbitrumDAOConstitution__factory,
   ArbitrumTimelock,
   ArbitrumTimelock__factory,
-  ArbitrumVestingWallet__factory,
-  ArbitrumVestingWalletsFactory,
   ArbitrumVestingWalletsFactory__factory,
   FixedDelegateErc20Wallet,
   FixedDelegateErc20Wallet__factory,
@@ -52,7 +50,6 @@ import { Provider } from "@ethersproject/providers";
 import { getRecipientsDataFromContractEvents } from "./tokenDistributorHelper";
 import dotenv from "dotenv";
 import { Recipients, assert, assertEquals, assertNumbersEquals, getProxyOwner } from "./testUtils";
-import { WalletCreatedEvent } from "../typechain-types/src/ArbitrumVestingWalletFactory.sol/ArbitrumVestingWalletsFactory";
 import { TransferEvent } from "../typechain-types/src/Util.sol/IERC20VotesUpgradeable";
 import { OwnershipTransferredEvent } from "../typechain-types/src/L2ArbitrumToken";
 const deadAddress = "0x000000000000000000000000000000000000dEaD";
@@ -1305,76 +1302,6 @@ async function verifyNovaProxyAdmin(
     novaUpgradeExecutor.address,
     "NovaUpgradeExecutor should be NovaProxyAdmin's owner"
   );
-}
-
-/**
- * Verify:
- * - All vested recipients have a vested wallet
- * - Each vested wallet has the recipient balance of tokens
- */
-async function verifyVestedWallets(
-  vestedRecipients: Recipients,
-  vestedWalletFactory: ArbitrumVestingWalletsFactory,
-  l2Token: L2ArbitrumToken,
-  arbProvider: Provider,
-  config: {
-    L2_CLAIM_PERIOD_START: number;
-  }
-) {
-  // find all the events emitted by this address
-  // check that every recipient has received the correct amount
-  const filter = vestedWalletFactory.filters["WalletCreated(address,address)"]();
-
-  const walletLogs = (
-    await arbProvider.getLogs({
-      ...filter,
-      fromBlock: 0,
-      toBlock: "latest",
-    })
-  ).map((l) => {
-    return vestedWalletFactory.interface.parseLog(l).args as WalletCreatedEvent["args"];
-  });
-
-  assertEquals(
-    walletLogs.length.toString(),
-    Object.keys(vestedRecipients).length.toString(),
-    "Wallets created number not equal vested recipients number"
-  );
-
-  for (const vr of Object.keys(vestedRecipients)) {
-    const logs = walletLogs.filter((l) => l.beneficiary.toLowerCase() === vr.toLowerCase());
-
-    assertNumbersEquals(BigNumber.from(logs.length), BigNumber.from(1), "Too many logs");
-
-    const log = logs[0];
-    const tokenBalance = await l2Token.balanceOf(log.vestingWalletAddress);
-
-    assertNumbersEquals(
-      vestedRecipients[vr],
-      tokenBalance,
-      "Recipient amount not equal token balance"
-    );
-
-    const vestingWallet = ArbitrumVestingWallet__factory.connect(
-      log.vestingWalletAddress,
-      arbProvider
-    );
-    const oneYearInSeconds = 365 * 24 * 60 * 60;
-
-    const start = await vestingWallet.start();
-    assertNumbersEquals(
-      start,
-      BigNumber.from(config.L2_CLAIM_PERIOD_START + oneYearInSeconds),
-      "Invalid vesting start time"
-    );
-
-    const duration = await vestingWallet.duration();
-    assertNumbersEquals(
-      duration,
-      BigNumber.from(oneYearInSeconds * 3),
-      "Invalid vesting duration time"
-    );
-  }
 }
 
 export async function getInitialSupplyRecipientAddr(
