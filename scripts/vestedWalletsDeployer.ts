@@ -32,7 +32,7 @@ const deployVestedWallets = async (
   startTimeSeconds: number,
   durationSeconds: number
 ) => {
-  let data = loadDeployedWallets(deployedWalletsFileLocation);
+  const data = loadDeployedWallets(deployedWalletsFileLocation);
 
   let vestedWalletFactory: ArbitrumVestingWalletsFactory;
   if (data.vestingWalletFactory === "" || data.vestingWalletFactory === undefined) {
