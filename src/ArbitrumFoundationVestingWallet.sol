@@ -5,7 +5,7 @@ import "@openzeppelin/contracts-upgradeable/finance/VestingWalletUpgradeable.sol
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./interfaces/IL2ArbitrumGovernor.sol";
-import {IERC20VotesUpgradeable} from "./Util.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
 
 /**
  * @notice A wallet for foundation owned founds as per AIP-1.1 specification.
@@ -17,6 +17,7 @@ import {IERC20VotesUpgradeable} from "./Util.sol";
 contract ArbitrumFoundationVestingWallet is VestingWalletUpgradeable, OwnableUpgradeable {
     using SafeERC20 for IERC20;
 
+    // a _beneficiary var is declared in VestingWalletUpgradeable; it  is (re)declared here so that setBeneficiary can be used
     address private _beneficiary;
 
     /**
@@ -68,7 +69,7 @@ contract ArbitrumFoundationVestingWallet is VestingWalletUpgradeable, OwnableUpg
 
         // init vesting wallet
         // first argument (beneficiary) is unused by contract; a dummy value is provided
-        __VestingWallet_init(address(1), _startTimestamp, _durationSeconds);
+        __VestingWallet_init(address(0xdead), _startTimestamp, _durationSeconds);
         _setBeneficiary(_beneficiaryAddress);
 
         // set owner to same order as Governer, i.e., the DAO
@@ -129,6 +130,10 @@ contract ArbitrumFoundationVestingWallet is VestingWalletUpgradeable, OwnableUpg
     /// @param _wallet address of wallet to receive tokens
     /// Emits event TokenMigrated
     function migrateTokensToNewWallet(address _token, address _wallet) public onlyOwner {
+        require(
+            Address.isContract(_wallet),
+            "ArbitrumFoundationVestingWallet: new wallet must be a contract"
+        );
         IERC20 token = IERC20(_token);
         uint256 tokenBalance = token.balanceOf(address(this));
         token.safeTransfer(_wallet, tokenBalance);
@@ -139,6 +144,10 @@ contract ArbitrumFoundationVestingWallet is VestingWalletUpgradeable, OwnableUpg
     /// @param _wallet address of wallet to receive Eth
     /// Emits event EthMigrated
     function migrateEthToNewWallet(address _wallet) public onlyOwner {
+        require(
+            Address.isContract(_wallet),
+            "ArbitrumFoundationVestingWallet: new wallet must be a contract"
+        );
         uint256 ethBalance = address(this).balance;
         (bool success,) = _wallet.call{value: ethBalance}("");
         require(success, "ArbitrumFoundationVestingWallet: eth transfer failed");

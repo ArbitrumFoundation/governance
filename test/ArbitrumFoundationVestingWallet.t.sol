@@ -175,6 +175,23 @@ contract ArbitrumFoundationVestingWalletTest is Test {
         foundationVestingWallet.migrateEthToNewWallet(rando);
     }
 
+    function testMigrationTargetMustBeContract() public {
+        (
+            ArbitrumFoundationVestingWallet foundationVestingWallet,
+            L2ArbitrumToken token,
+            L2ArbitrumGovernor gov
+        ) = deployAndInit();
+        vm.startPrank(vestingWalletOwner);
+
+        vm.expectRevert("ArbitrumFoundationVestingWallet: new wallet must be a contract");
+        foundationVestingWallet.migrateTokensToNewWallet(address(token), rando);
+
+        vm.expectRevert("ArbitrumFoundationVestingWallet: new wallet must be a contract");
+        foundationVestingWallet.migrateEthToNewWallet(rando);
+
+        vm.stopPrank();
+    }
+
     function testMigrateTokensToNewWalletWithSlowerVesting() public {
         (
             ArbitrumFoundationVestingWallet foundationVestingWallet,
