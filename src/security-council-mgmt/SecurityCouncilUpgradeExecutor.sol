@@ -28,6 +28,7 @@ contract SecurityCouncilUpgradeExecutor is
         external
         onlyOwner
     {
+        // TODO: depluplicate? 
         uint256 threshold = securityCouncil.getThreshold();
         for (uint256 i = 0; i < _membersToRemove.length; i++) {
             address member = _membersToRemove[i];
