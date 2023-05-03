@@ -24,16 +24,6 @@ contract SecurityCouncilUpgradeExecutor is
         _transferOwnership(_owner);
     }
 
-    function addMember(address _member) public onlyOwner {
-        uint256 threshold = securityCouncil.getThreshold();
-        _addMember(_member, threshold);
-    }
-
-    function removeMember(address _member) public onlyOwner {
-        uint256 threshold = securityCouncil.getThreshold();
-        _removeMember(_member, threshold);
-    }
-
     function updateMembers(address[] memory _membersToAdd, address[] memory _membersToRemove)
         external
         onlyOwner
@@ -42,6 +32,7 @@ contract SecurityCouncilUpgradeExecutor is
         for (uint256 i = 0; i < _membersToRemove.length; i++) {
             address member = _membersToRemove[i];
             for (uint256 i = 0; i < _membersToAdd.length; i++) {
+                // TODO: owner check?
                 _addMember(_membersToAdd[i], threshold);
             }
 
@@ -50,6 +41,7 @@ contract SecurityCouncilUpgradeExecutor is
                 _removeMember(member, threshold);
             }
         }
+        // TODO: sanity check for threshold ?
     }
 
     function _addMember(address _member, uint256 _threshold) internal {

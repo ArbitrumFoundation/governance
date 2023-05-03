@@ -12,7 +12,7 @@ contract SecurityCouncilManager is Initializable, AccessControlUpgradeable {
     address[] public marchCohort;
     address[] public septemberCohort;
 
-    bytes32 public constant COHORT_UPDATOR_ROLE = keccak256("COHORT_UPDATOR");
+    bytes32 public constant ELECTION_EXECUTOR_ROLE = keccak256("ELECTION_EXECUTOR");
     bytes32 public constant MEMBER_ADDER_ROLE = keccak256("MEMBER_ADDER");
     bytes32 public constant MEMBER_REMOVER_ROLE = keccak256("MEMBER_REMOVER");
 
@@ -45,54 +45,38 @@ contract SecurityCouncilManager is Initializable, AccessControlUpgradeable {
         septemberCohort = _septemberCohort;
         // TODO verify that marchcohort.concat(septemberCohort) == current SecurityCouncil
         _setupRole(DEFAULT_ADMIN_ROLE, _roles.admin);
-        _grantRole(COHORT_UPDATOR_ROLE, _roles.cohortUpdator);
+        _grantRole(ELECTION_EXECUTOR_ROLE, _roles.cohortUpdator);
         _grantRole(MEMBER_ADDER_ROLE, _roles.memberAdder);
         _grantRole(MEMBER_REMOVER_ROLE, _roles.memberRemover);
         // TODO require non zero, require code? setter
         targetContracts = _targetContracts;
     }
 
-    function upgdateMarchCohort(address[] memory _newMarchCohort)
+    function executeMarchElectionResult(address[] memory _newMarchCohort)
         external
-        onlyRole(COHORT_UPDATOR_ROLE)
+        onlyRole(ELECTION_EXECUTOR_ROLE)
     {
         require(_newMarchCohort.length == 6, "SecurityCouncilManager: invalid march cohort length");
+        // TODO: essure no duplicates accross cohorts?
         address[] memory previousMembersCopy =
             SecurityCouncilMgmtUtils.copyAddressArray(_newMarchCohort);
         marchCohort = _newMarchCohort;
-        _dispatchUpdateCohort(_newMarchCohort, previousMembersCopy);
+        _dispatchUpdateMembers(_newMarchCohort, previousMembersCopy);
     }
 
-    function upgdateSeptemberCohort(address[] memory _newSeptemberCohort)
+    function executeSeptemperElectionResult(address[] memory _newSeptemberCohort)
         external
-        onlyRole(COHORT_UPDATOR_ROLE)
+        onlyRole(ELECTION_EXECUTOR_ROLE)
     {
         require(
             _newSeptemberCohort.length == 6,
             "SecurityCouncilManager: invalid september cohort length"
         );
+        // TODO: essure no duplicates accross cohorts?
         address[] memory previousMembersCopy =
             SecurityCouncilMgmtUtils.copyAddressArray(_newSeptemberCohort);
         septemberCohort = _newSeptemberCohort;
-        _dispatchUpdateCohort(_newSeptemberCohort, previousMembersCopy);
-    }
-
-    function _dispatchUpdateCohort(address[] memory _newMembers, address[] memory _oldMembers)
-        internal
-    {
-        (address[] memory newMembers, address[] memory oldMembers) =
-            SecurityCouncilMgmtUtils.removeSharedAddresses(_newMembers, _oldMembers);
-        ISecurityCouncilUpgradeExectutor(
-            targetContracts.govChainEmergencySecurityCouncilUpgradeExecutor
-        ).updateMembers(newMembers, oldMembers);
-        ISecurityCouncilUpgradeExectutor(
-            targetContracts.govChainNonEmergencySecurityCouncilUpgradeExecutor
-        ).updateMembers(newMembers, oldMembers);
-
-        bytes memory data = abi.encodeWithSelector(
-            IL1SecurityCouncilUpdateRouter.handleUpdateMembers.selector, newMembers, oldMembers
-        );
-        _sendToL1Router(data);
+        _dispatchUpdateMembers(_newSeptemberCohort, previousMembersCopy);
     }
 
     function addMemberToMarchCohort(address _newMember) external onlyRole(MEMBER_ADDER_ROLE) {
@@ -105,22 +89,22 @@ contract SecurityCouncilManager is Initializable, AccessControlUpgradeable {
 
     function _addMemberToCohort(address _newMember, address[] storage _cohort) internal {
         require(_cohort.length < 6, "SecurityCouncilManager: cohort is full");
-        _cohort.push(_newMember);
-        _dispatchAddMember(_newMember);
-    }
-
-    function _dispatchAddMember(address _newMember) internal {
-        ISecurityCouncilUpgradeExectutor(
-            targetContracts.govChainEmergencySecurityCouncilUpgradeExecutor
-        ).addMember(_newMember);
-        ISecurityCouncilUpgradeExectutor(
-            targetContracts.govChainNonEmergencySecurityCouncilUpgradeExecutor
-        ).addMember(_newMember);
-
-        bytes memory data = abi.encodeWithSelector(
-            IL1SecurityCouncilUpdateRouter.handleAddMember.selector, _newMember
+        require(
+            !SecurityCouncilMgmtUtils.isInArray(_newMember, marchCohort),
+            "SecurityCouncilManager: member already in march cohort"
         );
-        _sendToL1Router(data);
+        require(
+            !SecurityCouncilMgmtUtils.isInArray(_newMember, septemberCohort),
+            "SecurityCouncilManager: member already in septemberCohort cohort"
+        );
+
+        _cohort.push(_newMember);
+
+        address[] memory membersToAdd;
+        membersToAdd[0] = (_newMember);
+
+        address[] memory membersToRemove;
+        _dispatchUpdateMembers(membersToAdd, membersToRemove);
     }
 
     function removeMember(address _member) external onlyRole(MEMBER_REMOVER_ROLE) returns (bool) {
@@ -141,29 +125,36 @@ contract SecurityCouncilManager is Initializable, AccessControlUpgradeable {
         for (uint256 i = 0; i < _cohort.length; i++) {
             if (_member == _cohort[i]) {
                 delete _cohort[i];
-                _dispatchRemoveMember(_member);
+                address[] memory membersToAdd;
+                address[] memory membersToRemove;
+                membersToRemove[0] = _member;
+                _dispatchUpdateMembers(membersToAdd, membersToRemove);
                 return true;
             }
         }
         return false;
     }
 
-    function _dispatchRemoveMember(address _member) internal {
+    function _dispatchUpdateMembers(
+        address[] memory _membersToAdd,
+        address[] memory _membersToRemove
+    ) internal {
+        (address[] memory newMembers, address[] memory oldMembers) =
+            SecurityCouncilMgmtUtils.removeSharedAddresses(_membersToAdd, _membersToRemove);
+
         ISecurityCouncilUpgradeExectutor(
             targetContracts.govChainEmergencySecurityCouncilUpgradeExecutor
-        ).removeMember(_member);
+        ).updateMembers(newMembers, oldMembers);
+
         ISecurityCouncilUpgradeExectutor(
             targetContracts.govChainNonEmergencySecurityCouncilUpgradeExecutor
-        ).removeMember(_member);
-        bytes memory data = abi.encodeWithSelector(
-            IL1SecurityCouncilUpdateRouter.handleRemoveMember.selector, _member
-        );
-        _sendToL1Router(data);
-    }
+        ).updateMembers(newMembers, oldMembers);
 
-    function _sendToL1Router(bytes memory callData) internal {
+        bytes memory data = abi.encodeWithSelector(
+            IL1SecurityCouncilUpdateRouter.handleUpdateMembers.selector, newMembers, oldMembers
+        );
         ArbSys(0x0000000000000000000000000000000000000064).sendTxToL1(
-            targetContracts.l1SecurityCouncilUpdateRouter, callData
+            targetContracts.l1SecurityCouncilUpdateRouter, data
         );
     }
 }
