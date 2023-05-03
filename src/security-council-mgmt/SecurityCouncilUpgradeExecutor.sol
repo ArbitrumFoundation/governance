@@ -41,18 +41,21 @@ contract SecurityCouncilUpgradeExecutor is
         uint256 threshold = securityCouncil.getThreshold();
         for (uint256 i = 0; i < _membersToRemove.length; i++) {
             address member = _membersToRemove[i];
+            for (uint256 i = 0; i < _membersToAdd.length; i++) {
+                _addMember(_membersToAdd[i], threshold);
+            }
+
             // skip, don't revert, if it's not a member
             if (securityCouncil.isOwner(member)) {
                 _removeMember(member, threshold);
             }
         }
-        for (uint256 i = 0; i < _membersToAdd.length; i++) {
-            _addMember(_membersToAdd[i], threshold);
-        }
     }
 
     function _addMember(address _member, uint256 _threshold) internal {
-        securityCouncil.addOwnerWithThreshold(_member, _threshold);
+        _execFromModule(
+            abi.encodeWithSelector(IGnosisSafe.addOwnerWithThreshold.selector, _member, _threshold)
+        );
     }
 
     function _removeMember(address _member, uint256 _threshold) internal {
@@ -65,6 +68,16 @@ contract SecurityCouncilUpgradeExecutor is
             }
             previousOwner = currentOwner;
         }
-        securityCouncil.removeOwner(previousOwner, _member, _threshold);
+        _execFromModule(
+            abi.encodeWithSelector(
+                IGnosisSafe.removeOwner.selector, previousOwner, _member, _threshold
+            )
+        );
+    }
+
+    function _execFromModule(bytes memory data) internal {
+        securityCouncil.execTransactionFromModule(
+            address(securityCouncil), 0, data, Enum.Operation.Call
+        );
     }
 }
