@@ -236,3 +236,53 @@ _Verify contract's bytecode on Arbiscan and verify that contract's parameters we
 - Set `ARB_URL` and `ARBISCAN_API_KEY` env vars 
 - Set DeployedWallet address (for target chain) in [config file](./scripts/foundation-wallet-deployment/config.ts)
 - run ```yarn verify:foundation-wallet ```
+### Guide for deploying vesting wallets
+Vesting wallets deployer script can be used to deploy vesting wallets. Script will deploy wallet factory contract, and then call `createWallets` function in a loop, 5 wallets at a time. Currently script does not contain logic for transfering tokens to deployed wallets, it only deploys wallets. Deployer script can handle failures, ie. if execution is unexpectedly terminated script can be re-run and it will continue deploying wallets which haven't been deployed. It is important to notice  assumption that input list of recipients does not change between runs.
+
+Input for the script is list of recipients/beneficiaries and it should have following format:
+```
+{
+  "0xbf7258ead721d9ecc04a8476cf4f863f1b754497": ["1", "340"],
+  "0xb98637f3750707fe6d1f0b35dbaf5fc8de65c63d": ["2"],
+  "0x28e7A8CD861E9fd6D253bffE80B0704752Fd6A0D": ["650", "1100", "2500"]
+}
+```
+Input format defines beneficiary address as key and a list of token amounts as value. Actual token amounts are not used in script as atm we're not doing token transfers.
+
+Output format containing deployed addresses will look like this:
+```
+{
+  "vestingWalletFactory": "0x24067223381F042fF36fb87818196dB4D2C56E9B",
+  "beneficiaries": [
+    {
+      "beneficiary": "0xbf7258Ead721d9eCC04a8476Cf4F863F1b754497",
+      "walletAddresses": [
+        "0x10956D45F1d221D3b98898d0e7af28C20541057F",
+        "0xA10AF745eC1245fC61ed63f891ce6ee5D8E57Ba3"
+      ]
+    },
+    {
+      "beneficiary": "0xb98637f3750707FE6d1F0b35dbAF5fC8De65c63d",
+      "walletAddresses": [
+        "0xE54D680B7DCA2eb6761d0797a5247bD03FB7DF16"
+      ]
+    },
+    {
+      "beneficiary": "0x28e7A8CD861E9fd6D253bffE80B0704752Fd6A0D",
+      "walletAddresses": [
+        "0x1e4e5273cb79a55296CDe3351925ad6FbdFFDfe1",
+        "0x7afD37b828dA31ea4313fAD334A4B7A5A7832489",
+        "0xAd47B4D46d927C6A1150107A26FC4286b08eB5F2"
+      ]
+    }
+  ]
+}
+```
+
+Deployment steps:
+- prepare `.env`, ie. `cp files/goerli/.env-sample .env`
+  - `.env` shall include: `ARB_KEY`, `ARB_URL`, `VESTED_RECIPIENTS_FILE_LOCATION` and `DEPLOYED_WALLETS_FILE_LOCATION`
+- prepare `vestingWalletRecipients.json` in a location which is pointed to by `VESTED_RECIPIENTS_FILE_LOCATION`
+- run `yarn build`
+- run deployer: `yarn deploy:vested-wallets`
+- run verifier: `yarn verify:vested-wallets`
