@@ -79,11 +79,7 @@ contract ArbitrumFoundationVestingWalletTest is Test {
     }
 
     function testOwnerCanSetBeneficiary() external {
-        (
-            ArbitrumFoundationVestingWallet foundationVestingWallet,
-            L2ArbitrumToken token,
-            L2ArbitrumGovernor gov
-        ) = deployAndInit();
+        (ArbitrumFoundationVestingWallet foundationVestingWallet,,) = deployAndInit();
         assertEq(foundationVestingWallet.beneficiary(), beneficiary, "beneficiary set");
 
         vm.prank(vestingWalletOwner);
@@ -92,11 +88,7 @@ contract ArbitrumFoundationVestingWalletTest is Test {
     }
 
     function testBeneficiaryCanSetBeneficiary() external {
-        (
-            ArbitrumFoundationVestingWallet foundationVestingWallet,
-            L2ArbitrumToken token,
-            L2ArbitrumGovernor gov
-        ) = deployAndInit();
+        (ArbitrumFoundationVestingWallet foundationVestingWallet,,) = deployAndInit();
         assertEq(foundationVestingWallet.beneficiary(), beneficiary, "beneficiary set");
 
         vm.prank(beneficiary);
@@ -105,11 +97,7 @@ contract ArbitrumFoundationVestingWalletTest is Test {
     }
 
     function testRandomAddressCantSetBeneficiary() external {
-        (
-            ArbitrumFoundationVestingWallet foundationVestingWallet,
-            L2ArbitrumToken token,
-            L2ArbitrumGovernor gov
-        ) = deployAndInit();
+        (ArbitrumFoundationVestingWallet foundationVestingWallet,,) = deployAndInit();
 
         vm.prank(rando);
         vm.expectRevert("ArbitrumFoundationVestingWallet: caller is not beneficiary or owner");
@@ -117,11 +105,8 @@ contract ArbitrumFoundationVestingWalletTest is Test {
     }
 
     function testRelease() external {
-        (
-            ArbitrumFoundationVestingWallet foundationVestingWallet,
-            L2ArbitrumToken token,
-            L2ArbitrumGovernor gov
-        ) = deployAndInit();
+        (ArbitrumFoundationVestingWallet foundationVestingWallet, L2ArbitrumToken token,) =
+            deployAndInit();
         assertEq(token.balanceOf(beneficiary), 0, "beneficiary has no tokens");
 
         // sanity: ensure test env is att a < starttime timestamp
@@ -151,28 +136,36 @@ contract ArbitrumFoundationVestingWalletTest is Test {
     }
 
     function testOnlyBeneficiaryCanRelease() public {
-        (
-            ArbitrumFoundationVestingWallet foundationVestingWallet,
-            L2ArbitrumToken token,
-            L2ArbitrumGovernor gov
-        ) = deployAndInit();
+        (ArbitrumFoundationVestingWallet foundationVestingWallet, L2ArbitrumToken token,) =
+            deployAndInit();
         vm.prank(rando);
         vm.expectRevert("ArbitrumFoundationVestingWallet: not beneficiary");
         foundationVestingWallet.release(address(token));
     }
 
     function testOnlyOwnerCanMigrate() public {
-        (
-            ArbitrumFoundationVestingWallet foundationVestingWallet,
-            L2ArbitrumToken token,
-            L2ArbitrumGovernor gov
-        ) = deployAndInit();
+        (ArbitrumFoundationVestingWallet foundationVestingWallet, L2ArbitrumToken token,) =
+            deployAndInit();
         vm.startPrank(rando);
         vm.expectRevert("Ownable: caller is not the owner");
         foundationVestingWallet.migrateTokensToNewWallet(address(token), rando);
 
         vm.expectRevert("Ownable: caller is not the owner");
         foundationVestingWallet.migrateEthToNewWallet(rando);
+    }
+
+    function testMigrationTargetMustBeContract() public {
+        (ArbitrumFoundationVestingWallet foundationVestingWallet, L2ArbitrumToken token,) =
+            deployAndInit();
+        vm.startPrank(vestingWalletOwner);
+
+        vm.expectRevert("ArbitrumFoundationVestingWallet: new wallet must be a contract");
+        foundationVestingWallet.migrateTokensToNewWallet(address(token), rando);
+
+        vm.expectRevert("ArbitrumFoundationVestingWallet: new wallet must be a contract");
+        foundationVestingWallet.migrateEthToNewWallet(rando);
+
+        vm.stopPrank();
     }
 
     function testMigrateTokensToNewWalletWithSlowerVesting() public {
@@ -214,11 +207,8 @@ contract ArbitrumFoundationVestingWalletTest is Test {
     }
 
     function testMigrateEthToNewWalletWithSlowerVesting() public {
-        (
-            ArbitrumFoundationVestingWallet foundationVestingWallet,
-            L2ArbitrumToken token,
-            L2ArbitrumGovernor gov
-        ) = deployAndInit();
+        (ArbitrumFoundationVestingWallet foundationVestingWallet,, L2ArbitrumGovernor gov) =
+            deployAndInit();
 
         ArbitrumFoundationVestingWallet newWallet = ArbitrumFoundationVestingWallet(
             payable(TestUtil.deployProxy(address(new ArbitrumFoundationVestingWallet())))
