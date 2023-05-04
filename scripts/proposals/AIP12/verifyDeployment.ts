@@ -25,15 +25,15 @@ const main = async () => {
   assertEquals(
     expectedConstitutionHash,
     await aip21action.newConstitutionHash(),
-    "constitution hash"
+    "action has expected constitution has bytes"
   );
   assertEquals(
     expectedAddressRegistry,
     await aip21action.l2GovAddressRegistry(),
-    "constitution hash"
+    "action uses expected l2 address registry "
   );
-  assertNumbersEquals(expectedThreshold, await aip21action.newProposalThreshold(), "threshold");
-  console.log("success");
+  assertNumbersEquals(expectedThreshold, await aip21action.newProposalThreshold(), "action uses expected proposal threshold");
+  console.log("successfully verified");
 };
 
 main().then(() => {
