@@ -9,6 +9,8 @@ import "./interfaces/IL1SecurityCouncilUpdateRouter.sol";
 import "./SecurityCouncilMgmtUtils.sol";
 
 contract SecurityCouncilManager is Initializable, AccessControlUpgradeable {
+    // cohort arrays are source-of-truth for security council; the 12 owners security council owners should always be equal to the
+    // sum of these two arrays (or have pending x-chain messages on their way to updating them)
     address[] public marchCohort;
     address[] public septemberCohort;
 
@@ -29,6 +31,11 @@ contract SecurityCouncilManager is Initializable, AccessControlUpgradeable {
         address l1SecurityCouncilUpdateRouter;
     }
 
+    enum Cohort {
+        MARCH,
+        SEPTEMBER
+    }
+
     TargetContracts targetContracts;
 
     constructor() {
@@ -43,52 +50,40 @@ contract SecurityCouncilManager is Initializable, AccessControlUpgradeable {
     ) external initializer {
         marchCohort = _marchCohort;
         septemberCohort = _septemberCohort;
-        // TODO verify that marchcohort.concat(septemberCohort) == current SecurityCouncil
         _setupRole(DEFAULT_ADMIN_ROLE, _roles.admin);
         _grantRole(ELECTION_EXECUTOR_ROLE, _roles.cohortUpdator);
         _grantRole(MEMBER_ADDER_ROLE, _roles.memberAdder);
         _grantRole(MEMBER_REMOVER_ROLE, _roles.memberRemover);
-        // TODO require non zero, require code? setter
+        // TODO require non zero / require code? setter method to update?
         targetContracts = _targetContracts;
     }
 
-    function executeMarchElectionResult(address[] memory _newMarchCohort)
+    /// @notice callable only by Election Governer. Updates cohort in this contract's state and triggers dispatch
+    function executeElectionResult(address[] memory _newCohort, Cohort _cohort)
         external
         onlyRole(ELECTION_EXECUTOR_ROLE)
     {
-        require(_newMarchCohort.length == 6, "SecurityCouncilManager: invalid march cohort length");
-        // TODO: essure no duplicates accross cohorts?
-        address[] memory previousMembersCopy =
-            SecurityCouncilMgmtUtils.copyAddressArray(_newMarchCohort);
-        marchCohort = _newMarchCohort;
-        _dispatchUpdateMembers(_newMarchCohort, previousMembersCopy);
+        require(_newCohort.length == 6, "SecurityCouncilManager: invalid cohort length");
+        // TODO: ensure no duplicates accross cohorts; enforce here and/or in nomination process?
+        address[] memory previousMembersCopy;
+        if (_cohort == Cohort.MARCH) {
+            previousMembersCopy = SecurityCouncilMgmtUtils.copyAddressArray(marchCohort);
+            marchCohort = _newCohort;
+        } else if (_cohort == Cohort.SEPTEMBER) {
+            previousMembersCopy = SecurityCouncilMgmtUtils.copyAddressArray(septemberCohort);
+            septemberCohort = _newCohort;
+        }
+
+        _dispatchUpdateMembers(_newCohort, previousMembersCopy);
     }
 
-    function executeSeptemperElectionResult(address[] memory _newSeptemberCohort)
+    /// @notice callable only by 9 of 12 SC. Adds member in this contract's state and triggers dispatch
+    function addMemberToCohort(address _newMember, Cohort _cohort)
         external
-        onlyRole(ELECTION_EXECUTOR_ROLE)
+        onlyRole(MEMBER_ADDER_ROLE)
     {
-        require(
-            _newSeptemberCohort.length == 6,
-            "SecurityCouncilManager: invalid september cohort length"
-        );
-        // TODO: essure no duplicates accross cohorts?
-        address[] memory previousMembersCopy =
-            SecurityCouncilMgmtUtils.copyAddressArray(_newSeptemberCohort);
-        septemberCohort = _newSeptemberCohort;
-        _dispatchUpdateMembers(_newSeptemberCohort, previousMembersCopy);
-    }
-
-    function addMemberToMarchCohort(address _newMember) external onlyRole(MEMBER_ADDER_ROLE) {
-        _addMemberToCohort(_newMember, marchCohort);
-    }
-
-    function addMemberToSeptemberCohort(address _newMember) external onlyRole(MEMBER_ADDER_ROLE) {
-        _addMemberToCohort(_newMember, septemberCohort);
-    }
-
-    function _addMemberToCohort(address _newMember, address[] storage _cohort) internal {
-        require(_cohort.length < 6, "SecurityCouncilManager: cohort is full");
+        address[] storage cohort = _cohort == Cohort.MARCH ? marchCohort : septemberCohort;
+        require(cohort.length < 6, "SecurityCouncilManager: cohort is full");
         require(
             !SecurityCouncilMgmtUtils.isInArray(_newMember, marchCohort),
             "SecurityCouncilManager: member already in march cohort"
@@ -98,7 +93,7 @@ contract SecurityCouncilManager is Initializable, AccessControlUpgradeable {
             "SecurityCouncilManager: member already in septemberCohort cohort"
         );
 
-        _cohort.push(_newMember);
+        cohort.push(_newMember);
 
         address[] memory membersToAdd;
         membersToAdd[0] = (_newMember);
@@ -107,6 +102,8 @@ contract SecurityCouncilManager is Initializable, AccessControlUpgradeable {
         _dispatchUpdateMembers(membersToAdd, membersToRemove);
     }
 
+    /// @notice callable only by SC Removal Governor.
+    /// Don't need to specify cohort since duplicate members aren't allowed (so always unambiguous)
     function removeMember(address _member) external onlyRole(MEMBER_REMOVER_ROLE) returns (bool) {
         if (_removeMemberFromCohort(_member, marchCohort)) {
             return true;
@@ -118,6 +115,7 @@ contract SecurityCouncilManager is Initializable, AccessControlUpgradeable {
         revert("SecurityCouncilManager: member not found");
     }
 
+    /// @notice Removes member in this contract's state and triggers dispatch
     function _removeMemberFromCohort(address _member, address[] storage _cohort)
         internal
         returns (bool)
@@ -135,21 +133,26 @@ contract SecurityCouncilManager is Initializable, AccessControlUpgradeable {
         return false;
     }
 
+    /// @notice initates update to all Security Council Multisigs (gov chain, L1, and all others governed L2 chains)
     function _dispatchUpdateMembers(
         address[] memory _membersToAdd,
         address[] memory _membersToRemove
     ) internal {
+        // A candidate new be relected, which case they appear in both the arrays; removing and re-added is a no-op. We instead remove them from both arrays; this simplifies the logic of updating them in the gnosis safe.
         (address[] memory newMembers, address[] memory oldMembers) =
             SecurityCouncilMgmtUtils.removeSharedAddresses(_membersToAdd, _membersToRemove);
 
+        // update 9 of 12 gov-chain council directly
         ISecurityCouncilUpgradeExectutor(
             targetContracts.govChainEmergencySecurityCouncilUpgradeExecutor
         ).updateMembers(newMembers, oldMembers);
 
+        // update 7 of 12 gov-chain council directly
         ISecurityCouncilUpgradeExectutor(
             targetContracts.govChainNonEmergencySecurityCouncilUpgradeExecutor
         ).updateMembers(newMembers, oldMembers);
 
+        // Initiate L2 to L1 message to handle updating remaining secuirity councils
         bytes memory data = abi.encodeWithSelector(
             IL1SecurityCouncilUpdateRouter.handleUpdateMembers.selector, newMembers, oldMembers
         );
