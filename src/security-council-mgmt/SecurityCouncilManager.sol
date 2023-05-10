@@ -64,7 +64,7 @@ contract SecurityCouncilManager is Initializable, AccessControlUpgradeable {
         onlyRole(ELECTION_EXECUTOR_ROLE)
     {
         require(_newCohort.length == 6, "SecurityCouncilManager: invalid cohort length");
-        // TODO: ensure no duplicates accross cohorts; enforce here and/or in nomination process?
+        // TODO: ensure no duplicates accross cohorts; this should be enforced in nomination process. If there are duplicates, this call will revert in the Gnosis safe contract
         address[] memory previousMembersCopy;
         if (_cohort == Cohort.MARCH) {
             previousMembersCopy = SecurityCouncilMgmtUtils.copyAddressArray(marchCohort);
