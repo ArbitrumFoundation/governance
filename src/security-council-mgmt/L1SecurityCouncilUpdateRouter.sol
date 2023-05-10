@@ -92,6 +92,7 @@ contract L1SecurityCouncilUpdateRouter is
                 address(0xdead),
                 msg.value,
                 0,
+                // possibly controversial: for each of param passing, don't attempt auto-execution
                 L2GasParams({_maxSubmissionCost: submissionCost, _maxGas: 0, _gasPriceBid: 0}),
                 l2CallData
             );
