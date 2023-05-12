@@ -163,17 +163,17 @@ contract CoreProposalCreator is Initializable, AccessControlUpgradeable {
         uint256[] memory _targetChainIDs,
         address[] memory _govActionContracts
     ) external onlyRole(PROPOSAL_CREATOR_ROLE) {
-        bytes[] memory _govActionContractCalldatas;
-        uint256[] memory _values;
+        bytes[] memory _defaultGovActionContractCalldatas;
+        uint256[] memory _defaultValues;
         for (uint256 i = 0; i < _targetChainIDs.length; i++) {
-            _govActionContractCalldatas[i] = DEFAULT_GOV_ACTION_CALLDATA;
-            _values[i] = DEFAULT_VALUE;
+            _defaultGovActionContractCalldatas[i] = DEFAULT_GOV_ACTION_CALLDATA;
+            _defaultValues[i] = DEFAULT_VALUE;
         }
         _createProposalBatch(
             _targetChainIDs,
             _govActionContracts,
-            _govActionContractCalldatas,
-            _values,
+            _defaultGovActionContractCalldatas,
+            _defaultValues,
             DEFAULT_PREDECESSOR,
             this.generateSalt(),
             this.defaultL1TimelockDelay()
