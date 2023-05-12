@@ -16,7 +16,7 @@ interface IInboxSubmissionFee {
 /// @dev   Only accepts proposals from a counterparty L2 timelock
 ///        If ever upgrading to a later version of TimelockControllerUpgradeable be sure to check that
 ///        no new behaviour has been given to the PROPOSER role, as this is assigned to the bridge
-///        and any new behaviour should be overriden to also include the 'onlyCounterpartTimelock' modifier check
+///        and any new behaviour should be overriden to also include the 'onlyCoreProposalCreator' modifier check
 contract L1ArbitrumTimelock is ArbitrumTimelock, L1ArbitrumMessenger {
     /// @notice The magic address to be used when a retryable ticket is to be created
     /// @dev When the target of an proposal is this magic value then the proposal
@@ -31,6 +31,7 @@ contract L1ArbitrumTimelock is ArbitrumTimelock, L1ArbitrumMessenger {
     address public governanceChainInbox;
     /// @notice The timelock of the governance contract on L2
     address public l2Timelock;
+    address public coreProposalCreator;
 
     constructor() {
         _disableInitializers();
@@ -41,23 +42,24 @@ contract L1ArbitrumTimelock is ArbitrumTimelock, L1ArbitrumMessenger {
     /// @param executors    The addresses that can execute a proposal (set address(0) for open execution)
     /// @param _governanceChainInbox       The address of the inbox contract, for the L2 chain on which governance is based.
     ///                     For the Arbitrum DAO this the Arb1 inbox
-    /// @param _l2Timelock  The address of the timelock on the L2 where governance is based
+    /// @param _coreProposalCreator  The address of the coreproposalcreator on the L2
     ///                     For the Arbitrum DAO this the Arbitrum DAO timelock on Arb1
+    //    TODO: update / update test
     function initialize(
         uint256 minDelay,
         address[] memory executors,
         address _governanceChainInbox,
-        address _l2Timelock
+        address _coreProposalCreator
     ) external initializer {
         require(_governanceChainInbox != address(0), "L1ArbitrumTimelock: zero inbox");
-        require(_l2Timelock != address(0), "L1ArbitrumTimelock: zero l2 timelock");
+        require(_coreProposalCreator != address(0), "L1ArbitrumTimelock: zero coreProposalCreator");
         // this timelock doesnt accept any proposers since they wont pass the
         // onlyCounterpartTimelock check
         address[] memory proposers;
         __ArbitrumTimelock_init(minDelay, proposers, executors);
 
         governanceChainInbox = _governanceChainInbox;
-        l2Timelock = _l2Timelock;
+        coreProposalCreator = _coreProposalCreator;
 
         // the bridge is allowed to create proposals
         // and we ensure that the l2 caller is the l2timelock
@@ -66,20 +68,30 @@ contract L1ArbitrumTimelock is ArbitrumTimelock, L1ArbitrumMessenger {
         grantRole(PROPOSER_ROLE, bridge);
     }
 
-    modifier onlyCounterpartTimelock() {
+    function postUpgradeHook(address _coreProposalCreator) external {
+        require(_coreProposalCreator != address(0), "L1ArbitrumTimelock: zero _coreProposalCreator");
+        require(
+            coreProposalCreator != address(0), "L1ArbitrumTimelock: postUpgradeHook already called"
+        );
+        coreProposalCreator = _coreProposalCreator;
+    }
+
+    modifier onlyCoreProposalCreator() {
         // this bridge == msg.sender check is redundant in all the places that
         // we currently use this modifier since we call a function on super
         // that also checks the proposer role, which we enforce is in the intializer above
         // so although the msg.sender is being checked against the bridge twice we
         // still leave this check here for consistency of this function and in case
-        // onlyCounterpartTimelock is used on other functions without this proposer check
+        // onlyCoreProposalCreator is used on other functions without this proposer check
         // in future
         address govChainBridge = address(getBridge(governanceChainInbox));
         require(msg.sender == govChainBridge, "L1ArbitrumTimelock: not from bridge");
 
         // the outbox reports that the L2 address of the sender is the counterpart gateway
         address l2ToL1Sender = super.getL2ToL1Sender(governanceChainInbox);
-        require(l2ToL1Sender == l2Timelock, "L1ArbitrumTimelock: not from l2 timelock");
+        require(
+            l2ToL1Sender == coreProposalCreator, "L1ArbitrumTimelock: not from coreProposalCreator"
+        );
         _;
     }
 
@@ -98,7 +110,7 @@ contract L1ArbitrumTimelock is ArbitrumTimelock, L1ArbitrumMessenger {
         bytes32 predecessor,
         bytes32 salt,
         uint256 delay
-    ) public virtual override(TimelockControllerUpgradeable) onlyCounterpartTimelock {
+    ) public virtual override(TimelockControllerUpgradeable) onlyCoreProposalCreator {
         TimelockControllerUpgradeable.scheduleBatch(
             targets, values, payloads, predecessor, salt, delay
         );
@@ -107,7 +119,7 @@ contract L1ArbitrumTimelock is ArbitrumTimelock, L1ArbitrumMessenger {
     /// @inheritdoc TimelockControllerUpgradeable
     /// @dev Adds the restriction that only the counterparty timelock can call this func
     /// @param predecessor  Do not use predecessor to preserve ordering for proposals that make cross
-    ///                     chain calls, since those calls are executed async it and do not preserve order themselves.
+    ///                     chain calls, since those calls are executed async and do not preserve order themselves.
     function schedule(
         address target,
         uint256 value,
@@ -115,7 +127,7 @@ contract L1ArbitrumTimelock is ArbitrumTimelock, L1ArbitrumMessenger {
         bytes32 predecessor,
         bytes32 salt,
         uint256 delay
-    ) public virtual override(TimelockControllerUpgradeable) onlyCounterpartTimelock {
+    ) public virtual override(TimelockControllerUpgradeable) onlyCoreProposalCreator {
         TimelockControllerUpgradeable.schedule(target, value, data, predecessor, salt, delay);
     }
 
