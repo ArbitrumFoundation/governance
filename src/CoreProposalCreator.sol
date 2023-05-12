@@ -232,7 +232,7 @@ contract CoreProposalCreator is Initializable, AccessControlUpgradeable {
             _l1TimelockSalt,
             _l1TimelockDelay
         );
-        ArbSys(address(100)).sendTxToL1(l1ArbitrumTimelock, l1TimelockCallData);
+        sendTxToL1Timelock(l1TimelockCallData);
         emit ProposalBatchCreated(
             _targetChainIDs,
             _govActionContracts,
@@ -305,7 +305,7 @@ contract CoreProposalCreator is Initializable, AccessControlUpgradeable {
             _l1TimelockSalt,
             _l1TimelockDelay
         );
-        ArbSys(address(100)).sendTxToL1(l1ArbitrumTimelock, l1TimelockCallData);
+        sendTxToL1Timelock(l1TimelockCallData);
         emit ProposalCreated(
             _targetChainID,
             _govActionContract,
@@ -348,6 +348,10 @@ contract CoreProposalCreator is Initializable, AccessControlUpgradeable {
                 upgradeExecutorCallData
             );
         }
+    }
+
+    function sendTxToL1Timelock(bytes memory _l1TimelockCallData) internal {
+        ArbSys(address(100)).sendTxToL1(l1ArbitrumTimelock, _l1TimelockCallData);
     }
 
     function generateSalt() external view returns (bytes32) {
