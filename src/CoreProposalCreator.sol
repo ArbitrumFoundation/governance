@@ -115,9 +115,15 @@ contract CoreProposalCreator is Initializable, AccessControlUpgradeable {
 
     function _registerChain(uint256 _chainID, UpgradeContracts memory _upgradeContracts) internal {
         require(_chainID != 0, "CoreProposalCreator: zero chainID");
-        require(_upgradeContracts.upgradeExecutor != address(0));
+        require(
+            _upgradeContracts.upgradeExecutor != address(0),
+            "CoreProposalCreator: zero upgradeExecutor"
+        );
         if (_chainID != 1) {
-            require(_upgradeContracts.inbox != address(0));
+            require(
+                _upgradeContracts.inbox != address(0),
+                "CoreProposalCreator: zero inbox for L2 chain"
+            );
         }
         _upgradeContracts.exists = true;
         chainIDToUpgradeContracts[_chainID] = _upgradeContracts;
