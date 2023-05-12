@@ -24,6 +24,7 @@ contract CoreProposalCreator is Initializable, AccessControlUpgradeable {
     }
 
     mapping(uint256 => UpgradeContracts) chainIDToUpgradeContracts;
+
     uint256 minL1TimelockDelay;
 
     address public constant RETRYABLE_TICKET_MAGIC = 0xa723C008e76E379c55599D2E4d93879BeaFDa79C;
@@ -71,7 +72,7 @@ contract CoreProposalCreator is Initializable, AccessControlUpgradeable {
         _;
     }
 
-    function requireRegisteredChainID(uint256 _chainID) internal {
+    function requireRegisteredChainID(uint256 _chainID) internal view {
         require(
             chainIDToUpgradeContracts[_chainID].exists,
             "CoreProposalCreator: unregisterded chain ID"
@@ -100,6 +101,13 @@ contract CoreProposalCreator is Initializable, AccessControlUpgradeable {
         _setMinL1TimelockDelay(_minL1TimelockDelay);
     }
 
+    function setMinL1TimelockDelay(uint256 _minL1TimelockDelay)
+        external
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
+        _setMinL1TimelockDelay(_minL1TimelockDelay);
+    }
+
     function _setMinL1TimelockDelay(uint256 _minL1TimelockDelay) internal {
         minL1TimelockDelay = _minL1TimelockDelay;
         emit MinL1TimelockDelaySet(minL1TimelockDelay);
@@ -116,13 +124,6 @@ contract CoreProposalCreator is Initializable, AccessControlUpgradeable {
         emit L2ChainInboxRegistered(
             _chainID, _upgradeContracts.inbox, _upgradeContracts.upgradeExecutor
         );
-    }
-
-    function setMinL1TimelockDelay(uint256 _minL1TimelockDelay)
-        external
-        onlyRole(DEFAULT_ADMIN_ROLE)
-    {
-        _setMinL1TimelockDelay(_minL1TimelockDelay);
     }
 
     function registerChain(uint256 _chainID, UpgradeContracts memory _upgradeContracts)
@@ -282,7 +283,6 @@ contract CoreProposalCreator is Initializable, AccessControlUpgradeable {
         uint256 _l1TimelockDelay
     ) internal sufficientTimelockDelay(_l1TimelockDelay) {
         requireRegisteredChainID(_targetChainID);
-        UpgradeContracts storage upgradeContracts = chainIDToUpgradeContracts[_targetChainID];
         bytes memory upgradeExecutorCallData = abi.encodeWithSelector(
             UpgradeExecutor.execute.selector, _govActionContract, govActionContractCalldata
         );
