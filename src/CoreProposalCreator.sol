@@ -81,22 +81,22 @@ contract CoreProposalCreator is Initializable, AccessControlUpgradeable {
 
     function initialize(
         address _l1ArbitrumTimelock,
-        uint256[] memory _l2ChainIDs,
+        uint256[] memory _chainIDs,
         UpgradeContracts[] memory _upgradeContracts,
         address _admin,
         address _proposalCreator,
         uint256 _minL1TimelockDelay
     ) external initializer {
         require(
-            _l2ChainIDs.length == _upgradeContracts.length,
-            "CoreProposalCreator: _l2ChainIDs _upgradeContracts length mismatch"
+            _chainIDs.length == _upgradeContracts.length,
+            "CoreProposalCreator: _chainIDs _upgradeContracts length mismatch"
         );
         _setupRole(DEFAULT_ADMIN_ROLE, _admin);
         _grantRole(PROPOSAL_CREATOR_ROLE, _proposalCreator);
 
         l1ArbitrumTimelock = _l1ArbitrumTimelock;
-        for (uint256 i = 0; i < _l2ChainIDs.length; i++) {
-            _registerChain(_l2ChainIDs[i], _upgradeContracts[i]);
+        for (uint256 i = 0; i < _chainIDs.length; i++) {
+            _registerChain(_chainIDs[i], _upgradeContracts[i]);
         }
         _setMinL1TimelockDelay(_minL1TimelockDelay);
     }
