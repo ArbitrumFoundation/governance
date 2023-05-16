@@ -29,8 +29,9 @@ contract L1ArbitrumTimelock is ArbitrumTimelock, L1ArbitrumMessenger {
     address public constant RETRYABLE_TICKET_MAGIC = 0xa723C008e76E379c55599D2E4d93879BeaFDa79C;
     /// @notice The inbox for the L2 where governance is based
     address public governanceChainInbox;
-    /// @notice The timelock of the governance contract on L2
+    /// @notice The timelock of the governance contract on L2 (unused / deprecated)
     address public l2Timelock;
+    /// @notice The address of the core proposal creator on L2
     address public coreProposalCreator;
 
     constructor() {
@@ -71,7 +72,7 @@ contract L1ArbitrumTimelock is ArbitrumTimelock, L1ArbitrumMessenger {
     function postUpgradeHook(address _coreProposalCreator) external {
         require(_coreProposalCreator != address(0), "L1ArbitrumTimelock: zero _coreProposalCreator");
         require(
-            coreProposalCreator != address(0), "L1ArbitrumTimelock: postUpgradeHook already called"
+            coreProposalCreator == address(0), "L1ArbitrumTimelock: postUpgradeHook already called"
         );
         coreProposalCreator = _coreProposalCreator;
     }
