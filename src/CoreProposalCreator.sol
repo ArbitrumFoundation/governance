@@ -12,6 +12,7 @@ interface DefaultGovAction {
     function perform() external;
 }
 
+/// @notice Contract that packages "round trip" proposals to be sent to the L1 timelock
 contract CoreProposalCreator is Initializable, AccessControlUpgradeable {
     bytes32 public constant PROPOSAL_CREATOR_ROLE = keccak256("PROPOSAL_CREATOR_ROLE");
 
@@ -25,8 +26,10 @@ contract CoreProposalCreator is Initializable, AccessControlUpgradeable {
 
     mapping(uint256 => UpgradeContracts) chainIDToUpgradeContracts;
 
+    // The minimum L1 timelock delay that can be used for a proposal. Should be kept in sync with min delay on the L1 timelock.
     uint256 minL1TimelockDelay;
 
+    // Used as a magic value to indicate that a retryable ticket should be created by the L1 timelock
     address public constant RETRYABLE_TICKET_MAGIC = 0xa723C008e76E379c55599D2E4d93879BeaFDa79C;
 
     event L2ChainInboxRegistered(
@@ -56,6 +59,7 @@ contract CoreProposalCreator is Initializable, AccessControlUpgradeable {
         uint256 l1TimelockDelay
     );
 
+    // Default args for creating a proposal, used by createProposalWithDefaulArgs and createProposalBatchWithDefaultArgs
     bytes public constant DEFAULT_GOV_ACTION_CALLDATA =
         abi.encodeWithSelector(DefaultGovAction.perform.selector);
     uint256 public constant DEFAULT_VALUE = 0;
@@ -79,6 +83,12 @@ contract CoreProposalCreator is Initializable, AccessControlUpgradeable {
         );
     }
 
+    /// @param _l1ArbitrumTimelock address of the core gov L1 timelock
+    /// @param _chainIDs array of target chains for governance actions
+    /// @param _upgradeContracts array of upgrade contracts for target chains
+    /// @param _admin address of the admin role
+    /// @param _proposalCreator address of the proposal creator role (l2 gov timelock)
+    /// @param _minL1TimelockDelay minimum delay for L1 timelock
     function initialize(
         address _l1ArbitrumTimelock,
         uint256[] memory _chainIDs,
@@ -101,6 +111,7 @@ contract CoreProposalCreator is Initializable, AccessControlUpgradeable {
         _setMinL1TimelockDelay(_minL1TimelockDelay);
     }
 
+    /// @notice Sets the minimum L1 timelock delay that can be used for a proposal; value should be kept in sync with value in L1 timelock
     function setMinL1TimelockDelay(uint256 _minL1TimelockDelay)
         external
         onlyRole(DEFAULT_ADMIN_ROLE)
@@ -132,6 +143,7 @@ contract CoreProposalCreator is Initializable, AccessControlUpgradeable {
         );
     }
 
+    /// @notice Add a new chain to be used for governance actions
     function registerChain(uint256 _chainID, UpgradeContracts memory _upgradeContracts)
         external
         onlyRole(DEFAULT_ADMIN_ROLE)
@@ -139,6 +151,7 @@ contract CoreProposalCreator is Initializable, AccessControlUpgradeable {
         _registerChain(_chainID, _upgradeContracts);
     }
 
+    /// @notice Remove a chain to be used for governance actions
     function removeRegisteredL2Chain(uint256 _chainID) external onlyRole(DEFAULT_ADMIN_ROLE) {
         UpgradeContracts storage upgradeContracts = chainIDToUpgradeContracts[_chainID];
         delete chainIDToUpgradeContracts[_chainID];
@@ -165,6 +178,12 @@ contract CoreProposalCreator is Initializable, AccessControlUpgradeable {
         );
     }
 
+    /// @notice Create a proposal batch; callable by the core gov timelock. Uses common values as default args:
+    /// calldatas are all for an action with a perform() method (no arguments)
+    /// values are all 0
+    /// predecessor is bytes(0)
+    /// salt is generated from block.timestamp and block.number
+    /// delay is the default delay (the minimum)
     function createProposalBatchWithDefaultArgs(
         uint256[] memory _targetChainIDs,
         address[] memory _govActionContracts
@@ -264,6 +283,12 @@ contract CoreProposalCreator is Initializable, AccessControlUpgradeable {
         );
     }
 
+    /// @notice Create a proposal batch; callable by the core gov timelock. Uses common values as default args:
+    /// calldata aisre all for an action with a perform() method (no arguments)
+    /// value is 0
+    /// predecessor is bytes(0)
+    /// salt is generated from block.timestamp and block.number
+    /// delay is the default delay (the minimum)
     function createProposalWithDefaulArgs(uint256 _targetChainID, address _govActionContract)
         external
         onlyRole(PROPOSAL_CREATOR_ROLE)
@@ -317,6 +342,7 @@ contract CoreProposalCreator is Initializable, AccessControlUpgradeable {
         );
     }
 
+    /// @notice Get the target, value, and payload for a proposal to be sent to the L1 timelock
     function _getScheduleParams(
         uint256 _targetChainID,
         address _govActionContract,
@@ -333,10 +359,12 @@ contract CoreProposalCreator is Initializable, AccessControlUpgradeable {
         uint256 value;
         bytes memory paylod;
         if (_targetChainID == 1) {
+            // target and value are encoded top level for L1 actions
             target = upgradeContracts.upgradeExecutor;
             value = _value;
             payload = upgradeExecutorCallData;
         } else {
+            // For L2 actions, magic is top level target, and value and calldata are encoded in payload
             target = RETRYABLE_TICKET_MAGIC;
             value = 0;
             payload = abi.encode(
