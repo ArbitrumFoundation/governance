@@ -16,7 +16,7 @@ contract AIP1Point1Target {
         treasuryTimelock = _treasuryTimelock;
     }
 
-    function effectuate() {
+    function effectuate() external {
         require(msg.sender == treasuryTimelock, "AIP1Point1Target: only from treasury timelock");
         require(!passed, "AIP1Point1Target: already passed");
         passed = true;
