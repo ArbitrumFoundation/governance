@@ -50,7 +50,7 @@ contract SecurityCouncilManager is Initializable, AccessControlUpgradeable {
     ) external initializer {
         marchCohort = _marchCohort;
         septemberCohort = _septemberCohort;
-        _setupRole(DEFAULT_ADMIN_ROLE, _roles.admin);
+        _grantRole(DEFAULT_ADMIN_ROLE, _roles.admin);
         _grantRole(ELECTION_EXECUTOR_ROLE, _roles.cohortUpdator);
         _grantRole(MEMBER_ADDER_ROLE, _roles.memberAdder);
         _grantRole(MEMBER_REMOVER_ROLE, _roles.memberRemover);
