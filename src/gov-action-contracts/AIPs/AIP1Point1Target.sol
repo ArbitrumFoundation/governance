@@ -7,8 +7,8 @@ pragma solidity 0.8.16;
 /// and for bookkeeping.
 /// @dev note that this is not a "Gov Action" contract and thus does not conform to that standard.
 contract AIP1Point1Target {
-    address public treasuryTimelock;
-    address public arbitrumFoundationWallet;
+    address immutable public treasuryTimelock;
+    address immutable public arbitrumFoundationWallet;
 
     bool public passed = false;
 
