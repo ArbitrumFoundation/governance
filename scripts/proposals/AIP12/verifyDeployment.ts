@@ -25,7 +25,7 @@ const main = async () => {
   assertEquals(
     expectedConstitutionHash,
     await aip21action.newConstitutionHash(),
-    "action has expected constitution has bytes"
+    "action has expected constitution hash"
   );
   assertEquals(
     expectedAddressRegistry,
