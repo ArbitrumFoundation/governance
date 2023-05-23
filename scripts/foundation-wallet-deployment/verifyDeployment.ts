@@ -54,7 +54,7 @@ const verifyWalletDeployment = async () => {
   assertNumbersEquals(
     await arbitrumFoundationWallet.duration(),
     BigNumber.from(vestingPeriodInSeconds),
-    "startTimestamp should be properly set"
+    "duration should be properly set"
   );
 
   const governor = L2ArbitrumGovernor__factory.connect(l2ArbitrumGovernor, l2Provider);
