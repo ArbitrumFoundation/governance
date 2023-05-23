@@ -229,7 +229,8 @@ yarn verify:ownership:transfer
 #### Deploy
 - Set `ARB_URL` and `ARB_KEY` env vars
 - Set FoundationWalletDeploymentConfig variables (for target chain) in [config file](./scripts/foundation-wallet-deployment/config.ts)
--  run ```yarn deploy:foundation-wallet ```
+- run ```yarn hardhat compile ```
+- run ```yarn deploy:foundation-wallet ```
 
 #### Verify Deployment
 _Verify contract's bytecode on Arbiscan and verify that contract's parameters were set correctly_
