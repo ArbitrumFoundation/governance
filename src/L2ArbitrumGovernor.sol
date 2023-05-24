@@ -224,6 +224,7 @@ contract L2ArbitrumGovernor is
     function supportsInterface(bytes4 interfaceId)
         public
         view
+        virtual
         override(GovernorUpgradeable, GovernorTimelockControlUpgradeable)
         returns (bool)
     {
