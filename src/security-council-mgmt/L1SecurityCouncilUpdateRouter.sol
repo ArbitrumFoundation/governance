@@ -83,19 +83,21 @@ contract L1SecurityCouncilUpdateRouter is
             uint256 submissionCost = IInboxSubmissionFee(l2ChainToUpdate.inbox)
                 .calculateRetryableSubmissionFee(l2CallData.length, block.basefee);
 
-            sendTxToL2CustomRefund(
-                l2ChainToUpdate.inbox,
-                l2ChainToUpdate.securityCouncilUpgradeExecutor,
-                // fee refund address, for excesss basefee
-                msg.sender,
-                // callValueRefundAddress: there is no call value, and nobody should be able to cancel
-                address(0xdead),
-                msg.value,
-                0,
-                // possibly controversial: for each of param passing, don't attempt auto-execution
-                L2GasParams({_maxSubmissionCost: submissionCost, _maxGas: 0, _gasPriceBid: 0}),
-                l2CallData
-            );
+            sendTxToL2CustomRefund({
+                _inbox: l2ChainToUpdate.inbox, // target inbox
+                _to: l2ChainToUpdate.securityCouncilUpgradeExecutor, // target l2 address
+                _refundTo: tx.origin, //   fee refund address, for excess basefee TODO: better option?
+                _user: address(0xdead), //there is no call value, and nobody should be able to cancel
+                _l1CallValue: msg.value, // L1 callvalue
+                _l2CallValue: 0, // L2 callvalue
+                // TODO possibly controversial: for each of param passing, don't attempt auto-execution
+                _l2GasParams: L2GasParams({
+                    _maxSubmissionCost: submissionCost,
+                    _maxGas: 0,
+                    _gasPriceBid: 0
+                }),
+                _data: l2CallData
+            });
         }
     }
 
