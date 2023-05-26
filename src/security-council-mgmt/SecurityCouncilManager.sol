@@ -8,11 +8,16 @@ import "./interfaces/ISecurityCouncilUpgradeExectutor.sol";
 import "./interfaces/IL1SecurityCouncilUpdateRouter.sol";
 import "./SecurityCouncilMgmtUtils.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
+import "./interfaces/ISecurityCouncilManager.sol";
 
 /// @notice Manages the security council updates.
 ///         Receives election results (replace cohort with 6 new members), add-member actions, and remove-member actions,
 ///         and dispatches them to all security councils on all relevant chains
-contract SecurityCouncilManager is Initializable, AccessControlUpgradeable {
+contract SecurityCouncilManager is
+    Initializable,
+    AccessControlUpgradeable,
+    ISecurityCouncilManager
+{
     // cohort arrays are source-of-truth for security council; the maximum 12 owners security council owners should always be equal to the
     // sum of these two arrays (or have pending x-chain messages on their way to updating them)
     address[] public marchCohort;
@@ -21,24 +26,6 @@ contract SecurityCouncilManager is Initializable, AccessControlUpgradeable {
     bytes32 public constant ELECTION_EXECUTOR_ROLE = keccak256("ELECTION_EXECUTOR");
     bytes32 public constant MEMBER_ADDER_ROLE = keccak256("MEMBER_ADDER");
     bytes32 public constant MEMBER_REMOVER_ROLE = keccak256("MEMBER_REMOVER");
-
-    struct Roles {
-        address admin;
-        address cohortUpdator;
-        address memberAdder;
-        address memberRemover;
-    }
-
-    struct TargetContracts {
-        address govChainEmergencySecurityCouncilUpgradeExecutor;
-        address govChainNonEmergencySecurityCouncilUpgradeExecutor;
-        address l1SecurityCouncilUpdateRouter;
-    }
-
-    enum Cohort {
-        MARCH,
-        SEPTEMBER
-    }
 
     TargetContracts targetContracts;
 
@@ -218,5 +205,13 @@ contract SecurityCouncilManager is Initializable, AccessControlUpgradeable {
             _targetContracts.govChainNonEmergencySecurityCouncilUpgradeExecutor,
             _targetContracts.l1SecurityCouncilUpdateRouter
         );
+    }
+
+    function getMarchCohort() external view returns (address[] memory) {
+        return marchCohort;
+    }
+
+    function getSeptemberCohort() external view returns (address[] memory) {
+        return septemberCohort;
     }
 }
