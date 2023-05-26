@@ -17,15 +17,16 @@ interface IInboxSubmissionFee {
         returns (uint256);
 }
 
+/// @notice Receives security council updatees from the Security Council manager and forwards them to
+/// the L1 security council and the non-governance chain governed L2 security councils
 contract L1SecurityCouncilUpdateRouter is
     L1ArbitrumMessenger,
     Initializable,
     OwnableUpgradeable,
     IL1SecurityCouncilUpdateRouter
 {
-    // TODO: setters for all of these?
     address public governanceChainInbox;
-    address public securityCouncilManager;
+    address public l2SecurityCouncilManager;
     address public l1SecurityCouncilUpgradeExecutor;
 
     L2ChainToUpdate[] public l2ChainsToUpdateArr;
@@ -36,14 +37,18 @@ contract L1SecurityCouncilUpdateRouter is
         _disableInitializers();
     }
 
+    /// @notice initialize the L1SecurityCouncilUpdateRouter
+    /// @param _governanceChainInbox the address of the governance chain inbox
+    /// @param _l1SecurityCouncilUpgradeExecutor the address of the L1 security council upgrade executor
+    /// @param _l2SecurityCouncilManager L2 address of security council manager on governance chain
     function initialize(
         address _governanceChainInbox,
         address _l1SecurityCouncilUpgradeExecutor,
-        address _securityCouncilManager,
+        address _l2SecurityCouncilManager,
         L2ChainToUpdate[] memory _initiall2ChainsToUpdateArr
     ) external initializer {
         governanceChainInbox = _governanceChainInbox;
-        securityCouncilManager = securityCouncilManager;
+        l2SecurityCouncilManager = _l2SecurityCouncilManager;
         l1SecurityCouncilUpgradeExecutor = _l1SecurityCouncilUpgradeExecutor;
         for (uint256 i = 0; i < _initiall2ChainsToUpdateArr.length; i++) {
             _registerL2Chain(_initiall2ChainsToUpdateArr[i]);
@@ -56,19 +61,21 @@ contract L1SecurityCouncilUpdateRouter is
 
         address l2ToL1Sender = super.getL2ToL1Sender(governanceChainInbox);
         require(
-            l2ToL1Sender == securityCouncilManager,
+            l2ToL1Sender == l2SecurityCouncilManager,
             "L1SecurityCouncilUpdateRouter: not from SecurityCouncilManager"
         );
         _;
     }
 
     /// @notice update l1 security council and send L1 to L2 messages to update security councils for all L2s (except governance chain)
+    /// @param _membersToAdd addresses of new members to add to the security council
+    /// @param _membersToRemove addresses of members to remove from the security council
     function handleUpdateMembers(address[] memory _membersToAdd, address[] memory _membersToRemove)
         external
         payable
         onlyFromL2SecurityCouncilManager
     {
-        // update l2 security council
+        // update l1 security council
         ISecurityCouncilUpgradeExectutor(l1SecurityCouncilUpgradeExecutor).updateMembers(
             _membersToAdd, _membersToRemove
         );
@@ -101,10 +108,14 @@ contract L1SecurityCouncilUpdateRouter is
         }
     }
 
+    /// @notice Register new DAO governed L2 chain so its security councils get updated. Callable by DAO.
+    /// @param l2ChainToUpdate new governed L2 chain
     function registerL2Chain(L2ChainToUpdate memory l2ChainToUpdate) external onlyOwner {
         _registerL2Chain(l2ChainToUpdate);
     }
 
+    /// @notice Remove L2 chain so it's security council is no longer updated
+    /// @param chainID chainID of chain to remove
     function removeL2Chain(uint256 chainID) external onlyOwner returns (bool) {
         for (uint256 i = 0; i < l2ChainsToUpdateArr.length; i++) {
             if (chainID == l2ChainsToUpdateArr[i].chainID) {
