@@ -4,9 +4,11 @@ pragma solidity 0.8.16;
 import "../L2ArbitrumGovernor.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
+import "./interfaces/ISecurityCouncilManager.sol";
+import "./SecurityCouncilMgmtUtils.sol";
 
 contract SecurityCouncilMemberRemoverGov is L2ArbitrumGovernor, AccessControlUpgradeable {
-    address public securityCouncilManager;
+    ISecurityCouncilManager public securityCouncilManager;
     bytes32 public constant PROPSER_ROLE = keccak256("PROPOSER");
 
     constructor() {
@@ -15,7 +17,7 @@ contract SecurityCouncilMemberRemoverGov is L2ArbitrumGovernor, AccessControlUpg
 
     function initialize(
         address _proposer,
-        address _securityCouncilManager,
+        ISecurityCouncilManager _securityCouncilManager,
         IVotesUpgradeable _token,
         TimelockControllerUpgradeable _timelock,
         address _owner,
@@ -29,10 +31,10 @@ contract SecurityCouncilMemberRemoverGov is L2ArbitrumGovernor, AccessControlUpg
             _proposer != address(0), "SecurityCouncilMemberRemoverGov: non-zero proposer address"
         );
         require(
-            Address.isContract(_securityCouncilManager),
+            Address.isContract(address(_securityCouncilManager)),
             "SecurityCouncilMemberRemoverGov: invalid _securityCouncilManager"
         );
-        securtyCouncilManager = _securityCouncilManager;
+        securityCouncilManager = _securityCouncilManager;
         _grantRole(DEFAULT_ADMIN_ROLE, _owner);
         _grantRole(PROPSER_ROLE, _proposer);
         this.initialize(
@@ -53,18 +55,25 @@ contract SecurityCouncilMemberRemoverGov is L2ArbitrumGovernor, AccessControlUpg
         bytes[] memory calldatas,
         string memory description
     ) public override(IGovernorUpgradeable, GovernorUpgradeable) returns (uint256) {
-        revert("no");
-        // GovernorUpgradeable.propose(targets, values, calldatas, description);
+        revert("SecurityCouncilMemberRemoverGov: generic propose not supported");
     }
 
-    function proposeRemoveMembert(address memberToRemove, string description)
+    function proposeRemoveMember(address memberToRemove, string memory description)
         public
         onlyRole(PROPSER_ROLE)
         returns (uint256)
     {
-        GovernorUpgradeable.propose(targets, values, calldatas, description);
+        
 
-        // super.propose(targets, values, calldatas, description);
+        uint256[] memory values;
+        values[0] = 0;
+
+        bytes memory removalCallData =
+            abi.encodeWithSelector(ISecurityCouncilManager.removeMember.selector, memberToRemove);
+        bytes[] memory callDatas;
+        callDatas[0] = removalCallData;
+
+        GovernorUpgradeable.propose(targets, values, callDatas, description);
     }
 
     function supportsInterface(bytes4 interfaceId)
