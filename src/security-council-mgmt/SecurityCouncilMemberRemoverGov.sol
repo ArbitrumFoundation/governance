@@ -7,6 +7,10 @@ import "@openzeppelin/contracts/utils/Address.sol";
 import "./interfaces/ISecurityCouncilManager.sol";
 import "./SecurityCouncilMgmtUtils.sol";
 
+/// @notice Governance for proposing removal of a single security council member due to
+/// unforseen circumstances, as described in the DAO constitution.
+/// The 9 of 12 emergency council submits the removal proposal (giving implicit approval),
+/// and the DAO votes on it.
 contract SecurityCouncilMemberRemoverGov is L2ArbitrumGovernor, AccessControlUpgradeable {
     ISecurityCouncilManager public securityCouncilManager;
     bytes32 public constant PROPSER_ROLE = keccak256("PROPOSER");
@@ -15,6 +19,17 @@ contract SecurityCouncilMemberRemoverGov is L2ArbitrumGovernor, AccessControlUpg
         _disableInitializers();
     }
 
+    /// @notice Initialize the contract
+    /// @param _proposer The address that can propose a removal (9 of 12 emergency council)
+    /// @param _securityCouncilManager The address of the security council manager
+    /// @param _token The address of the governance token
+    /// @param _timelock A time lock for proposal execution
+    /// @param _owner The DAO (Upgrade Executor); admin over proposal role
+    /// @param _votingDelay The delay between a proposal submission and voting starts
+    /// @param _votingPeriod The period for which the vote lasts
+    /// @param _quorumNumerator The proportion of the circulating supply required to reach a quorum
+    /// @param _proposalThreshold The number of delegated votes required to create a proposal
+    /// @param _minPeriodAfterQuorum The minimum number of blocks available for voting after the quorum is reached
     function initialize(
         address _proposer,
         ISecurityCouncilManager _securityCouncilManager,
@@ -49,15 +64,20 @@ contract SecurityCouncilMemberRemoverGov is L2ArbitrumGovernor, AccessControlUpg
         );
     }
 
+    /// @notice public propose method is overridden and simply revers.
+    /// Removal proposals must go through the proposeRemoveMember method
     function propose(
-        address[] memory targets,
-        uint256[] memory values,
-        bytes[] memory calldatas,
-        string memory description
+        address[] memory __,
+        uint256[] memory ___,
+        bytes[] memory ____,
+        string memory _____
     ) public override(IGovernorUpgradeable, GovernorUpgradeable) returns (uint256) {
         revert("SecurityCouncilMemberRemoverGov: generic propose not supported");
     }
 
+    /// @notice Propose a removal of a security council member. Callable only by the 9 of 12 emergency council
+    /// @param memberToRemove The address of the member to remove
+    /// @param description The description of the proposal (i.e., explanation of why member is should be removed)
     function proposeRemoveMember(address memberToRemove, string memory description)
         public
         onlyRole(PROPSER_ROLE)
