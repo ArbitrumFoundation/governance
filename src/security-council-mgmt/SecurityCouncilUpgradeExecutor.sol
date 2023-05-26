@@ -28,6 +28,7 @@ contract SecurityCouncilUpgradeExecutor is
         _transferOwnership(_owner);
     }
 
+    // TODO: allow security council to call this directly? TBD
     /// @notice update gnosis safe members. We use add and remove gnosis's swapOwners method for cleansliness of handling different sized _membersToAdd & _membersToRemove arrays
     function updateMembers(address[] memory _membersToAdd, address[] memory _membersToRemove)
         external
