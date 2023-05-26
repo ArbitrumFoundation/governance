@@ -63,7 +63,18 @@ contract SecurityCouncilMemberRemoverGov is L2ArbitrumGovernor, AccessControlUpg
         onlyRole(PROPSER_ROLE)
         returns (uint256)
     {
-        
+        require(
+            SecurityCouncilMgmtUtils.isInArray(
+                memberToRemove, securityCouncilManager.getMarchCohort()
+            )
+                || SecurityCouncilMgmtUtils.isInArray(
+                    memberToRemove, securityCouncilManager.getSeptemberCohort()
+                ),
+            "SecurityCouncilMemberRemoverGov: memberToRemove is not a member"
+        );
+
+        address[] memory targets;
+        targets[0] = address(securityCouncilManager);
 
         uint256[] memory values;
         values[0] = 0;
