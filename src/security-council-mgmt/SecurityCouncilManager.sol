@@ -161,7 +161,7 @@ contract SecurityCouncilManager is Initializable, AccessControlUpgradeable {
     /// @notice initates update to all Security Council Multisigs (gov chain, L1, and all others governed L2 chains).
     /// Handles election results (add 6, remove 6 or fewer), add member (add one, remove none), and remove member (add none, remove one)
     /// @param _membersToAdd array of members to add. can be empty.
-    /// @param
+    /// @param _membersToRemove array of members to remove. can be empty.
     function _dispatchUpdateMembers(
         address[] memory _membersToAdd,
         address[] memory _membersToRemove
