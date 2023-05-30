@@ -28,14 +28,16 @@ contract SecurityCouncilUpgradeExecutorFactory is Ownable {
             "SecurityCouncilUpgradeExecutorFactory: securityCouncilOwner is zero address"
         );
 
-        SecurityCouncilUpgradeExecutor securityCouncilUpgradeExecutorLogic = new SecurityCouncilUpgradeExecutor();
+        SecurityCouncilUpgradeExecutor securityCouncilUpgradeExecutorLogic =
+            new SecurityCouncilUpgradeExecutor();
 
         TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(
             address(securityCouncilUpgradeExecutorLogic),
             proxyAdmin,
             bytes("")
         );
-        SecurityCouncilUpgradeExecutor securityCouncilUpgradeExecutor = SecurityCouncilUpgradeExecutor(address(proxy));
+        SecurityCouncilUpgradeExecutor securityCouncilUpgradeExecutor =
+            SecurityCouncilUpgradeExecutor(address(proxy));
         securityCouncilUpgradeExecutor.initialize(securityCouncil, securityCouncilOwner);
 
         emit SecurityCouncilUpgradeExecutorCreated(address(securityCouncilUpgradeExecutor));
