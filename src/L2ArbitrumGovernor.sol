@@ -202,7 +202,7 @@ contract L2ArbitrumGovernor is
         uint256[] memory values,
         bytes[] memory calldatas,
         bytes32 descriptionHash
-    ) internal override(GovernorUpgradeable, GovernorTimelockControlUpgradeable) {
+    ) internal virtual override(GovernorUpgradeable, GovernorTimelockControlUpgradeable) {
         GovernorTimelockControlUpgradeable._execute(
             proposalId, targets, values, calldatas, descriptionHash
         );
@@ -215,6 +215,7 @@ contract L2ArbitrumGovernor is
         bytes32 descriptionHash
     )
         internal
+        virtual
         override(GovernorUpgradeable, GovernorTimelockControlUpgradeable)
         returns (uint256)
     {
