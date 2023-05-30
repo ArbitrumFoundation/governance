@@ -10,7 +10,7 @@ import "../SecurityCouncilUpgradeExecutor.sol";
 contract SecurityCouncilUpgradeExecutorFactory is Ownable {
     event SecurityCouncilUpgradeExecutorCreated(address indexed securityCouncilUpgradeExecutor);
 
-    function delpoy(IGnosisSafe securityCouncil, address securityCouncilOwner, address proxyAdmin)
+    function deploy(IGnosisSafe securityCouncil, address securityCouncilOwner, address proxyAdmin)
         external
         onlyOwner
         returns (address securityCouncilUpradeExecutorAddress)
