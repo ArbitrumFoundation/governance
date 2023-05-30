@@ -8,6 +8,13 @@ struct L2ChainToUpdate {
 }
 
 interface IL1SecurityCouncilUpdateRouter {
+    function initialize(
+        address _governanceChainInbox,
+        address _l1SecurityCouncilUpgradeExecutor,
+        address _l2SecurityCouncilManager,
+        L2ChainToUpdate[] memory _initiall2ChainsToUpdateArr,
+        address _owner
+    ) external;
     function handleUpdateMembers(
         address[] calldata _membersToAdd,
         address[] calldata _membersToRemove
