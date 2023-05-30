@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.16;
 
+import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "@arbitrum/nitro-contracts/src/precompiles/ArbSys.sol";
@@ -18,6 +19,8 @@ contract SecurityCouncilManager is
     AccessControlUpgradeable,
     ISecurityCouncilManager
 {
+    using ECDSA for bytes32;
+
     // cohort arrays are source-of-truth for security council; the maximum 12 owners security council owners should always be equal to the
     // sum of these two arrays (or have pending x-chain messages on their way to updating them)
     address[] public marchCohort;
@@ -25,6 +28,7 @@ contract SecurityCouncilManager is
 
     bytes32 public constant ELECTION_EXECUTOR_ROLE = keccak256("ELECTION_EXECUTOR");
     bytes32 public constant MEMBER_ADDER_ROLE = keccak256("MEMBER_ADDER");
+    bytes32 public constant MEMBER_ROTATOR_ROLE = keccak256("MEMBER_ROTATOR");
     bytes32 public constant MEMBER_REMOVER_ROLE = keccak256("MEMBER_REMOVER");
 
     TargetContracts targetContracts;
@@ -37,6 +41,8 @@ contract SecurityCouncilManager is
     event ElectionResultHandled(address[] newCohort, Cohort indexed cohort);
     event MemberAdded(address indexed newMember, Cohort indexed cohort);
     event MemberRemoved(address indexed member, Cohort indexed cohort);
+
+    uint256 public rotationNonce = 0;
 
     constructor() {
         _disableInitializers();
@@ -143,6 +149,73 @@ contract SecurityCouncilManager is
             }
         }
         return false;
+    }
+
+    /// @notice Security council member can rotate out their address for a new one.
+    /// Rotation must be initiated by the security council, and member rotating out must give explicit
+    /// consent via signature
+    /// @param _currentAddress Address to rotate out
+    /// @param _newAddress Address to rotate in
+    /// @param _signature Signature from _currentAddress
+    function rotateMember(address _currentAddress, address _newAddress, bytes memory _signature)
+        external
+        onlyRole(MEMBER_ROTATOR_ROLE)
+    {
+        require(
+            !SecurityCouncilMgmtUtils.isInArray(_newAddress, marchCohort)
+                && !SecurityCouncilMgmtUtils.isInArray(_newAddress, septemberCohort),
+            "SecurityCouncilManager: new member already included"
+        );
+        address[] storage cohort;
+        if (SecurityCouncilMgmtUtils.isInArray(_currentAddress, marchCohort)) {
+            cohort = marchCohort;
+        } else if (SecurityCouncilMgmtUtils.isInArray(_currentAddress, septemberCohort)) {
+            cohort = septemberCohort;
+        } else {
+            revert("SecurityCouncilManager: current address not in either cohort");
+        }
+
+        // TODO: double check that this makes sense
+        bytes32 data = getRotateDataToSign(_currentAddress, _newAddress);
+        require(
+            _verify(data, _signature, _currentAddress), "SecurityCouncilManager: invalid signature"
+        );
+        for (uint256 i = 0; i < cohort.length; i++) {
+            if (cohort[i] == _currentAddress) {
+                cohort[i] = _newAddress;
+
+                address[] memory membersToAdd;
+                address[] memory membersToRemove;
+                membersToAdd[0] = _newAddress;
+                membersToRemove[0] = _currentAddress;
+                _dispatchUpdateMembers(membersToAdd, membersToRemove);
+            }
+        }
+        rotationNonce += 1;
+    }
+
+    /// @notice Get data to sign for a key rotation. Uses an incremented nonce
+    /// @param _currentAddress Address to rotate out
+    /// @param _newAddress Address to rotate in
+    function getRotateDataToSign(address _currentAddress, address _newAddress)
+        public
+        view
+        returns (bytes32)
+    {
+        return keccak256(abi.encodePacked(_currentAddress, _newAddress, rotationNonce));
+    }
+
+    /// @notice Verify signature over data
+    /// @param data Signed data
+    /// @param signature over data
+    /// @param account signer
+    /// @return true if signature is valid and from account
+    function _verify(bytes32 data, bytes memory signature, address account)
+        public
+        pure
+        returns (bool)
+    {
+        return data.toEthSignedMessageHash().recover(signature) == account;
     }
 
     /// @notice initates update to all Security Council Multisigs (gov chain, L1, and all others governed L2 chains).
