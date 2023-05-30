@@ -6,12 +6,17 @@ import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol"
 import "@openzeppelin/contracts/utils/Address.sol";
 import "./interfaces/ISecurityCouncilManager.sol";
 import "./SecurityCouncilMgmtUtils.sol";
+import "./interfaces/ISecurityCouncilMemberRemoverGov.sol";
 
 /// @notice Governance for proposing removal of a single security council member due to
 /// unforseen circumstances, as described in the DAO constitution.
 /// The 9 of 12 emergency council submits the removal proposal (giving implicit approval),
 /// and the DAO votes on it.
-contract SecurityCouncilMemberRemoverGov is L2ArbitrumGovernor, AccessControlUpgradeable {
+contract SecurityCouncilMemberRemoverGov is
+    L2ArbitrumGovernor,
+    AccessControlUpgradeable,
+    ISecurityCouncilMemberRemoverGov
+{
     ISecurityCouncilManager public securityCouncilManager;
     bytes32 public constant PROPSER_ROLE = keccak256("PROPOSER");
 
@@ -79,7 +84,7 @@ contract SecurityCouncilMemberRemoverGov is L2ArbitrumGovernor, AccessControlUpg
     /// @param memberToRemove The address of the member to remove
     /// @param description The description of the proposal (i.e., explanation of why member is should be removed)
     function proposeRemoveMember(address memberToRemove, string memory description)
-        public
+        external
         onlyRole(PROPSER_ROLE)
         returns (uint256)
     {
