@@ -6,8 +6,13 @@ import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol"
 import "@openzeppelin/contracts/utils/Address.sol";
 import "./interfaces/ISecurityCouncilManager.sol";
 import "./SecurityCouncilMgmtUtils.sol";
+import "./interfaces/ISecurityCouncilMemberRemoverGov.sol";
 
-contract SecurityCouncilMemberRemoverGov is L2ArbitrumGovernor, AccessControlUpgradeable {
+contract SecurityCouncilMemberRemoverGov is
+    L2ArbitrumGovernor,
+    AccessControlUpgradeable,
+    ISecurityCouncilMemberRemoverGov
+{
     ISecurityCouncilManager public securityCouncilManager;
     bytes32 public constant PROPSER_ROLE = keccak256("PROPOSER");
 
@@ -59,7 +64,7 @@ contract SecurityCouncilMemberRemoverGov is L2ArbitrumGovernor, AccessControlUpg
     }
 
     function proposeRemoveMember(address memberToRemove, string memory description)
-        public
+        external
         onlyRole(PROPSER_ROLE)
         returns (uint256)
     {
