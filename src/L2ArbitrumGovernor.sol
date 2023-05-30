@@ -164,6 +164,7 @@ contract L2ArbitrumGovernor is
     function state(uint256 proposalId)
         public
         view
+        virtual
         override(GovernorUpgradeable, GovernorTimelockControlUpgradeable)
         returns (ProposalState)
     {
