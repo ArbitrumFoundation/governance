@@ -41,6 +41,7 @@ contract L1SecurityCouncilUpdateRouter is
     /// @param _governanceChainInbox the address of the governance chain inbox
     /// @param _l1SecurityCouncilUpgradeExecutor the address of the L1 security council upgrade executor
     /// @param _l2SecurityCouncilManager L2 address of security council manager on governance chain
+    /// @param _owner the owner of the contract
     function initialize(
         address _governanceChainInbox,
         address _l1SecurityCouncilUpgradeExecutor,
