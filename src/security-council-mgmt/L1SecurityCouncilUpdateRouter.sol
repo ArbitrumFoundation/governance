@@ -40,14 +40,16 @@ contract L1SecurityCouncilUpdateRouter is
         address _governanceChainInbox,
         address _l1SecurityCouncilUpgradeExecutor,
         address _securityCouncilManager,
-        L2ChainToUpdate[] memory _initiall2ChainsToUpdateArr
-    ) external initializer {
+        L2ChainToUpdate[] memory _initiall2ChainsToUpdateArr,
+        address _owner
+    ) external initializer onlyOwner {
         governanceChainInbox = _governanceChainInbox;
         securityCouncilManager = securityCouncilManager;
         l1SecurityCouncilUpgradeExecutor = _l1SecurityCouncilUpgradeExecutor;
         for (uint256 i = 0; i < _initiall2ChainsToUpdateArr.length; i++) {
             _registerL2Chain(_initiall2ChainsToUpdateArr[i]);
         }
+        transferOwnership(_owner);
     }
 
     modifier onlyFromL2SecurityCouncilManager() {
