@@ -21,6 +21,10 @@ contract L1SecurityCouncilMgmtFactory is Ownable {
     IL1SecurityCouncilUpdateRouter public l1SecurityCouncilUpdateRouter;
     address public l1SecurityCouncilUpgradeExecutor;
 
+    event ContractsDeployed(
+        address l1SecurityCouncilUpgradeExecutor, address l1SecurityCouncilUpdateRouter
+    );
+
     enum Step {
         One,
         Three,
@@ -35,7 +39,6 @@ contract L1SecurityCouncilMgmtFactory is Ownable {
         address _l1UpgradeExecutor
     ) external onlyOwner {
         require(step == Step.One, "L1SecurityCouncilMgmtFactory: step is not One");
-        // address checks
         require(
             Address.isContract(_proxyAdmin),
             "L1SecurityCouncilMgmtFactory: _proxyAdmin is not a contract"
@@ -73,12 +76,24 @@ contract L1SecurityCouncilMgmtFactory is Ownable {
 
         // event
         step = Step.Three;
+        emit ContractsDeployed(
+            address(l1SecurityCouncilUpgradeExecutor), address(l1SecurityCouncilUpdateRouter)
+        );
     }
 
-    function deployStep3(address _governanceChainInbox, address _l2SecurityCouncilManager)
-        external
-        onlyOwner
-    {
+    function deployStep3(
+        address _governanceChainInbox,
+        address _l2SecurityCouncilManager,
+        L2ChainToUpdate[] memory _initiall2ChainsToUpdateArr
+    ) external onlyOwner {
         require(step == Step.Three, "L1SecurityCouncilMgmtFactory: step is not Three");
+        l1SecurityCouncilUpdateRouter.initialize({
+            _governanceChainInbox: _governanceChainInbox,
+            _l1SecurityCouncilUpgradeExecutor: l1SecurityCouncilUpgradeExecutor,
+            _l2SecurityCouncilManager: _l2SecurityCouncilManager,
+            _initiall2ChainsToUpdateArr: _initiall2ChainsToUpdateArr,
+            _owner: l1UpgradeExecutor
+        });
+        step = Step.Complete;
     }
 }
