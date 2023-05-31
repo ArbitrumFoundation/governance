@@ -9,62 +9,172 @@ import "./AddressAliasHelper.sol";
 import "../SecurityCouncilMemberRemoverGov.sol";
 import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import "../interfaces/ISecurityCouncilManager.sol";
+import "../interfaces/ISecurityCouncilMemberRemoverGov.sol";
+import "../../ArbitrumTimelock.sol";
+import "@openzeppelin/contracts-upgradeable/governance/utils/IVotesUpgradeable.sol";
 
 contract L2SecurityCouncilMgmtFactory is Ownable {
-    function deployStep2(
-        address _govChainEmergencySecurityCouncil,
-        address _govChainNonEmergencySecurityCouncil,
-        address _l1SecurityCouncilUpdateRouter,
-        address _proxyAdmin,
-        address[] memory _marchCohort,
-        address[] memory _septemberCohort,
-        address l2UpgradeExecutor
-    ) external onlyOwner {
-        // todo address checks
+    event ContractsDeployed(
+        address emergencySecurityCouncilUpgradeExecutor,
+        address nonEmergencySecurityCouncilUpgradeExecutor,
+        address securityCouncilRemovalGov,
+        address securityCouncilManager
+    );
+
+    struct DeployParams {
+        address _govChainEmergencySecurityCouncil;
+        address _govChainNonEmergencySecurityCouncil;
+        address _l1SecurityCouncilUpdateRouter;
+        address _proxyAdmin;
+        address[] _marchCohort;
+        address[] _septemberCohort;
+        address l2UpgradeExecutor;
+        address arbToken;
+        uint256 _removalGovMinTimelockDelay;
+        uint256 _removalGovVotingDelay;
+        uint256 _removalGovVotingPeriod;
+        uint256 _removalGovQuorumNumerator;
+        uint256 _removalGovProposalThreshold;
+        uint64 _removalGovMinPeriodAfterQuorum;
+    }
+
+    function deployStep2(DeployParams memory dp) external onlyOwner {
+        require(
+            Address.isContract(dp._govChainEmergencySecurityCouncil),
+            "L2SecurityCouncilMgmtFactory: _govChainEmergencySecurityCouncil is not a contract"
+        );
+        require(
+            Address.isContract(dp._govChainNonEmergencySecurityCouncil),
+            "L2SecurityCouncilMgmtFactory: _govChainNonEmergencySecurityCouncil is not a contract"
+        );
+        require(
+            Address.isContract(dp._proxyAdmin),
+            "L2SecurityCouncilMgmtFactory: _proxyAdmin is not a contract"
+        );
+        require(
+            Address.isContract(dp.l2UpgradeExecutor),
+            "L2SecurityCouncilMgmtFactory: l2UpgradeExecutor is not a contract"
+        );
+        require(
+            Address.isContract(dp.arbToken),
+            "L2SecurityCouncilMgmtFactory: arbToken is not a contract"
+        );
+        require(
+            dp._removalGovQuorumNumerator != 0,
+            "L2SecurityCouncilMgmtFactory: _removalGovQuorumNumerator is 0"
+        );
+
+        // TODO election deployment
         SecurityCouncilUpgradeExecutorFactory securityCouncilUpgradeExecutorFactory =
             new SecurityCouncilUpgradeExecutorFactory();
 
         address l2EmergencySecurityCouncilUpgradeExecutor = securityCouncilUpgradeExecutorFactory
             .deploy({
-            securityCouncil: IGnosisSafe(_govChainEmergencySecurityCouncil),
-            securityCouncilOwner: AddressAliasHelper.applyL1ToL2Alias(_l1SecurityCouncilUpdateRouter),
-            proxyAdmin: _proxyAdmin
+            securityCouncil: IGnosisSafe(dp._govChainEmergencySecurityCouncil),
+            securityCouncilOwner: AddressAliasHelper.applyL1ToL2Alias(dp._l1SecurityCouncilUpdateRouter),
+            proxyAdmin: dp._proxyAdmin
         });
 
         address l2NonEmergencySecurityCouncilUpgradeExecutor = securityCouncilUpgradeExecutorFactory
             .deploy({
-            securityCouncil: IGnosisSafe(_govChainNonEmergencySecurityCouncil),
-            securityCouncilOwner: AddressAliasHelper.applyL1ToL2Alias(_l1SecurityCouncilUpdateRouter),
-            proxyAdmin: _proxyAdmin
+            securityCouncil: IGnosisSafe(dp._govChainNonEmergencySecurityCouncil),
+            securityCouncilOwner: AddressAliasHelper.applyL1ToL2Alias(dp._l1SecurityCouncilUpdateRouter),
+            proxyAdmin: dp._proxyAdmin
         });
 
-        // removal gov
-        SecurityCouncilMemberRemoverGov securityCouncilMemberRemoverGovLogic =
-            new SecurityCouncilMemberRemoverGov();
-
-        SecurityCouncilManager securityCouncilManagerLogic = new SecurityCouncilManager();
+        ISecurityCouncilMemberRemoverGov securityCouncilMemberRemoverGov =
+        ISecurityCouncilMemberRemoverGov(
+            address(
+                new TransparentUpgradeableProxy(
+                address(new SecurityCouncilMemberRemoverGov()),
+                dp._proxyAdmin,
+                bytes("")
+                )
+            )
+        );
 
         Roles memory roles = Roles({
-            admin: l2UpgradeExecutor,
-            cohortUpdator: _govChainEmergencySecurityCouncil,
-            memberAdder: _govChainEmergencySecurityCouncil,
-            memberRemover: address(securityCouncilMemberRemoverGovLogic)
+            admin: dp.l2UpgradeExecutor,
+            cohortUpdator: dp._govChainEmergencySecurityCouncil,
+            memberAdder: dp._govChainEmergencySecurityCouncil,
+            memberRemover: address(securityCouncilMemberRemoverGov)
         });
 
         TargetContracts memory targetContracts = TargetContracts({
             govChainEmergencySecurityCouncilUpgradeExecutor: l2EmergencySecurityCouncilUpgradeExecutor,
             govChainNonEmergencySecurityCouncilUpgradeExecutor: l2NonEmergencySecurityCouncilUpgradeExecutor,
-            l1SecurityCouncilUpdateRouter: _l1SecurityCouncilUpdateRouter
+            l1SecurityCouncilUpdateRouter: dp._l1SecurityCouncilUpdateRouter
         });
 
-        TransparentUpgradeableProxy securityCouncilManagerProxy = new TransparentUpgradeableProxy(
-            address(securityCouncilManagerLogic),
-            _proxyAdmin,
-            bytes("")
+        ISecurityCouncilManager securityCouncilManager = ISecurityCouncilManager(
+            address(
+                new TransparentUpgradeableProxy(
+                address(new SecurityCouncilManager()),
+                dp._proxyAdmin,
+                bytes(""))
+            )
         );
-        ISecurityCouncilManager securityCouncilManager =
-            ISecurityCouncilManager(address(securityCouncilManagerProxy));
 
-        securityCouncilManager.initialize(_marchCohort, _septemberCohort, roles, targetContracts);
+        securityCouncilManager.initialize(
+            dp._marchCohort, dp._septemberCohort, roles, targetContracts
+        );
+
+        ArbitrumTimelock memberRemovalGovTimelock = ArbitrumTimelock(
+            payable(
+                address(
+                    new TransparentUpgradeableProxy(
+                    address(new ArbitrumTimelock()),
+                    dp._proxyAdmin,
+                    bytes("")
+                    )
+                )
+            )
+        );
+
+        memberRemovalGovTimelock.initialize(
+            dp._removalGovMinTimelockDelay, new address[](0), new address[](0)
+        );
+        // removal gov can propose
+        memberRemovalGovTimelock.grantRole(
+            memberRemovalGovTimelock.PROPOSER_ROLE(), address(securityCouncilMemberRemoverGov)
+        );
+        // anyone can execute
+        memberRemovalGovTimelock.grantRole(memberRemovalGovTimelock.EXECUTOR_ROLE(), address(0));
+
+        // DAO (upgrade executor) is admin
+        memberRemovalGovTimelock.grantRole(
+            memberRemovalGovTimelock.TIMELOCK_ADMIN_ROLE(), dp.l2UpgradeExecutor
+        );
+        // TODO do we need to revoke the TIMELOCK_ADMIN_ROLE from the timelock itself?
+
+        _initRemovalGov(
+            dp, securityCouncilManager, memberRemovalGovTimelock, securityCouncilMemberRemoverGov
+        );
+        emit ContractsDeployed(
+            l2EmergencySecurityCouncilUpgradeExecutor,
+            l2NonEmergencySecurityCouncilUpgradeExecutor,
+            address(securityCouncilMemberRemoverGov),
+            address(securityCouncilManager)
+        );
+    }
+
+    function _initRemovalGov(
+        DeployParams memory dp,
+        ISecurityCouncilManager _securityCouncilManager,
+        ArbitrumTimelock _memberRemovalGovTimelock,
+        ISecurityCouncilMemberRemoverGov securityCouncilMemberRemoverGov
+    ) internal {
+        securityCouncilMemberRemoverGov.initialize({
+            _proposer: dp._govChainEmergencySecurityCouncil,
+            _securityCouncilManager: _securityCouncilManager,
+            _token: IVotesUpgradeable(dp.arbToken),
+            _timelock: _memberRemovalGovTimelock,
+            _owner: dp.l2UpgradeExecutor,
+            _votingDelay: dp._removalGovVotingDelay,
+            _votingPeriod: dp._removalGovVotingPeriod,
+            _quorumNumerator: dp._removalGovQuorumNumerator,
+            _proposalThreshold: dp._removalGovProposalThreshold,
+            _minPeriodAfterQuorum: dp._removalGovMinPeriodAfterQuorum
+        });
     }
 }
