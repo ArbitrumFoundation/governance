@@ -7,9 +7,14 @@ import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import "../SecurityCouncilUpgradeExecutor.sol";
 
+/// @notice Factory for deploying SecurityCouncilUpgradeExecutor contract for a given securiy council
 contract SecurityCouncilUpgradeExecutorFactory is Ownable {
     event SecurityCouncilUpgradeExecutorCreated(address indexed securityCouncilUpgradeExecutor);
 
+    /// @notice Deploys SecurityCouncilUpgradeExecutor contract for a given securiy council
+    /// @param securityCouncil Security council contract address
+    /// @param securityCouncilOwner Security council owner address, which has affordance to update members
+    /// @param proxyAdmin Address for governance contract proxy admin for the target security council's chain
     function deploy(IGnosisSafe securityCouncil, address securityCouncilOwner, address proxyAdmin)
         external
         onlyOwner

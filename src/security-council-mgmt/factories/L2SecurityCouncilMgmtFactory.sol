@@ -13,6 +13,7 @@ import "../interfaces/ISecurityCouncilMemberRemoverGov.sol";
 import "../../ArbitrumTimelock.sol";
 import "@openzeppelin/contracts-upgradeable/governance/utils/IVotesUpgradeable.sol";
 
+/// @notice Factory for deploying L2 Security Council management contracts
 contract L2SecurityCouncilMgmtFactory is Ownable {
     event ContractsDeployed(
         address emergencySecurityCouncilUpgradeExecutor,
@@ -65,23 +66,26 @@ contract L2SecurityCouncilMgmtFactory is Ownable {
         );
 
         // TODO election deployment
+
+        // deploy a security council upgrade executor factory; we use it to deplouy an upgrade executor for both security councils
         SecurityCouncilUpgradeExecutorFactory securityCouncilUpgradeExecutorFactory =
             new SecurityCouncilUpgradeExecutorFactory();
 
         address l2EmergencySecurityCouncilUpgradeExecutor = securityCouncilUpgradeExecutorFactory
             .deploy({
             securityCouncil: IGnosisSafe(dp._govChainEmergencySecurityCouncil),
-            securityCouncilOwner: AddressAliasHelper.applyL1ToL2Alias(dp._l1SecurityCouncilUpdateRouter),
+            securityCouncilOwner: AddressAliasHelper.applyL1ToL2Alias(dp._l1SecurityCouncilUpdateRouter), // L2 council is updated by l1SecurityCouncilUpdateRouter via a cross chain message, thus we alias
             proxyAdmin: dp._proxyAdmin
         });
 
         address l2NonEmergencySecurityCouncilUpgradeExecutor = securityCouncilUpgradeExecutorFactory
             .deploy({
             securityCouncil: IGnosisSafe(dp._govChainNonEmergencySecurityCouncil),
-            securityCouncilOwner: AddressAliasHelper.applyL1ToL2Alias(dp._l1SecurityCouncilUpdateRouter),
+            securityCouncilOwner: AddressAliasHelper.applyL1ToL2Alias(dp._l1SecurityCouncilUpdateRouter), // L2 council is updated by l1SecurityCouncilUpdateRouter via a cross chain message, thus we alias
             proxyAdmin: dp._proxyAdmin
         });
 
+        // deploy security council member remover gov
         ISecurityCouncilMemberRemoverGov securityCouncilMemberRemoverGov =
         ISecurityCouncilMemberRemoverGov(
             address(
@@ -106,6 +110,7 @@ contract L2SecurityCouncilMgmtFactory is Ownable {
             l1SecurityCouncilUpdateRouter: dp._l1SecurityCouncilUpdateRouter
         });
 
+        // deploy and initialize security council manager
         ISecurityCouncilManager securityCouncilManager = ISecurityCouncilManager(
             address(
                 new TransparentUpgradeableProxy(

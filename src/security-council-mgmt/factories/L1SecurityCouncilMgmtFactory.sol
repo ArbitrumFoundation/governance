@@ -11,19 +11,16 @@ import "../interfaces/IL1SecurityCouncilUpdateRouter.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "../L1SecurityCouncilUpdateRouter.sol";
 
-/**
- * @title L1SecurityCouncilMgmtFactory
- * @notice Factory for deploying L1SecurityCouncilMgmt contracts.
- */
-
+/// @notice Factory contract for deploying and initializing L1 Security Council contracts: l1SecurityCouncilUpdateRouter and l1SecurityCouncilUpgradeExecutor
+/// Has a layer 2 dependency, so deployment takes 2 steps
 contract L1SecurityCouncilMgmtFactory is Ownable {
-    address public l1UpgradeExecutor;
     IL1SecurityCouncilUpdateRouter public l1SecurityCouncilUpdateRouter;
     address public l1SecurityCouncilUpgradeExecutor;
 
     event ContractsDeployed(
         address l1SecurityCouncilUpgradeExecutor, address l1SecurityCouncilUpdateRouter
     );
+    event UpdateRouterInitialized();
 
     enum Step {
         One,
@@ -32,12 +29,11 @@ contract L1SecurityCouncilMgmtFactory is Ownable {
     }
 
     Step public step = Step.One;
+    /// @notice Step One: Deploy L1SecurityCouncilUpgradeExecutor and L1SecurityCouncilUpdateRouter
+    /// @param _proxyAdmin address of the proxy admin of L1 governance contracts
+    /// @param _l1SecurityCouncil address of the L1 emergency Security Council
 
-    function deployStep1(
-        address _proxyAdmin,
-        address _l1SecurityCouncil,
-        address _l1UpgradeExecutor
-    ) external onlyOwner {
+    function deployStep1(address _proxyAdmin, address _l1SecurityCouncil) external onlyOwner {
         require(step == Step.One, "L1SecurityCouncilMgmtFactory: step is not One");
         require(
             Address.isContract(_proxyAdmin),
@@ -47,24 +43,10 @@ contract L1SecurityCouncilMgmtFactory is Ownable {
             Address.isContract(_l1SecurityCouncil),
             "L1SecurityCouncilMgmtFactory: _l1SecurityCouncil is not a contract"
         );
-        require(
-            Address.isContract(_l1UpgradeExecutor),
-            "L1SecurityCouncilMgmtFactory: _l1UpgradeExecutor is not a contract"
-        );
-        l1UpgradeExecutor = _l1UpgradeExecutor;
 
-        SecurityCouncilUpgradeExecutorFactory securityCouncilUpgradeExecutorFactory =
-            new SecurityCouncilUpgradeExecutorFactory();
-        address _l1SecurityCouncilUpgradeExecutor = securityCouncilUpgradeExecutorFactory.deploy({
-            securityCouncil: IGnosisSafe(_l1SecurityCouncil),
-            securityCouncilOwner: _l1UpgradeExecutor,
-            proxyAdmin: _proxyAdmin
-        });
-        l1SecurityCouncilUpgradeExecutor = _l1SecurityCouncilUpgradeExecutor;
-
+        // Deploy L1 Security Council Update Router
         L1SecurityCouncilUpdateRouter l1SecurityCouncilUpdateRouterLogic =
             new L1SecurityCouncilUpdateRouter();
-
         TransparentUpgradeableProxy l1SecurityCouncilUpdateRouterProxy =
         new TransparentUpgradeableProxy(
             address(l1SecurityCouncilUpdateRouterLogic),
@@ -74,26 +56,44 @@ contract L1SecurityCouncilMgmtFactory is Ownable {
         IL1SecurityCouncilUpdateRouter l1SecurityCouncilUpdateRouter =
             IL1SecurityCouncilUpdateRouter(address(l1SecurityCouncilUpdateRouterProxy));
 
-        // event
+        // deploy L1 Security Council Upgrade Exectutior
+        SecurityCouncilUpgradeExecutorFactory securityCouncilUpgradeExecutorFactory =
+            new SecurityCouncilUpgradeExecutorFactory();
+        address _l1SecurityCouncilUpgradeExecutor = securityCouncilUpgradeExecutorFactory.deploy({
+            securityCouncil: IGnosisSafe(_l1SecurityCouncil),
+            securityCouncilOwner: address(l1SecurityCouncilUpdateRouter), // Router is owner (can update members)
+            proxyAdmin: _proxyAdmin
+        });
+        // save l1SecurityCouncilUpgradeExecutor for deploy step3
+        l1SecurityCouncilUpgradeExecutor = _l1SecurityCouncilUpgradeExecutor;
+
+        // update to step 3
         step = Step.Three;
         emit ContractsDeployed(
             address(l1SecurityCouncilUpgradeExecutor), address(l1SecurityCouncilUpdateRouter)
         );
     }
+    /// @notice Step Three: initialize L1SecurityCouncilUpdateRouter
+    /// @param _governanceChainInbox L1 address of the inbox of the Arbitrum chain that handles governance
+    /// @param _l2SecurityCouncilManager L2 address of the Security Council Manager on the governance chain
+    /// @param _l1UpgradeExecutor L1 address of the Uprade Executor (DAO)
 
     function deployStep3(
         address _governanceChainInbox,
         address _l2SecurityCouncilManager,
+        address _l1UpgradeExecutor,
         L2ChainToUpdate[] memory _initiall2ChainsToUpdateArr
     ) external onlyOwner {
         require(step == Step.Three, "L1SecurityCouncilMgmtFactory: step is not Three");
+        // initialize l1SecurityCouncilUpdateRouter
         l1SecurityCouncilUpdateRouter.initialize({
             _governanceChainInbox: _governanceChainInbox,
             _l1SecurityCouncilUpgradeExecutor: l1SecurityCouncilUpgradeExecutor,
             _l2SecurityCouncilManager: _l2SecurityCouncilManager,
             _initiall2ChainsToUpdateArr: _initiall2ChainsToUpdateArr,
-            _owner: l1UpgradeExecutor
+            _owner: _l1UpgradeExecutor
         });
         step = Step.Complete;
+        emit UpdateRouterInitialized();
     }
 }
