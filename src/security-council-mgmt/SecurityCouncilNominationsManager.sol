@@ -74,6 +74,9 @@ contract SecurityCouncilNominationsManager {
             // TODO:
             // call some ElectionsManager to start the election with the nominated candidates
             // the ElectionsManager or ElectionsGovernor will call either this contract or the NominationsGovernor to check which candidates are eligible when someone casts a vote
+            // ... or we can read out the entire list of successfullyNominatedCandidates and pass that along, but the list could be pretty long
+
+            // or maybe we don't use another manager contract at all, just have this contract manage the nominations governor as well as the phase 2&3 governor
             return;
         }
 
