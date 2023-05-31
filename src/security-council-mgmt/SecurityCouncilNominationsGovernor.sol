@@ -197,6 +197,7 @@ contract SecurityCouncilNominationsGovernor is L2ArbitrumGovernor {
         uint256 proposalId = super.propose(targets, values, calldatas, description);
 
         // set the electionId for this proposal
+        // alternatively, we can decode the calldata and get the electionId from there
         uint256 electionId = nominationsManager.nominationsCount();
         nominationElections[proposalId].electionId = electionId;
 
