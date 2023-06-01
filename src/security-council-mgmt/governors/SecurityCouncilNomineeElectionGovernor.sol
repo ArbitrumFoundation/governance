@@ -27,6 +27,10 @@ contract SecurityCouncilNomineeElectionGovernor is
     Cohort public firstCohort;
     uint256 public firstNominationStartTime;
     uint256 public nominationFrequency;
+    // delay between voting end and when execute can be called (expressed in blocks)
+    // this allows the foundation to blacklist noncompliant nominees
+    uint256 public foundationBlacklistDuration;
+    address public foundation;
     ISecurityCouncilManager public securityCouncilManager;
 
     // number of nominee selection proposals that have been created
@@ -34,6 +38,17 @@ contract SecurityCouncilNomineeElectionGovernor is
 
     // maps proposalId to map of address to bool indicating whether the candidate is a contender for nomination
     mapping(uint256 => mapping(address => bool)) public contenders;
+
+    // proposalId => nominee => bool indicating whether the nominee has been blacklisted
+    mapping(uint256 => mapping(address => bool)) public blacklisted;
+
+    // proposalId => blacklisted nominee count
+    mapping(uint256 => uint256) public blacklistedNomineeCount;
+
+    modifier onlyFoundation {
+        require(msg.sender == foundation, "Only the foundation can call this function");
+        _;
+    }
 
     /// @notice Allows the owner to make calls from the governor
     /// @dev    See {L2ArbitrumGovernor-relay}
@@ -86,7 +101,11 @@ contract SecurityCouncilNomineeElectionGovernor is
         bytes[] memory calldatas,
         bytes32 /*descriptionHash*/
     ) internal virtual override {
-        uint256 numNominated = nomineeCount(proposalId);
+        uint256 blacklistDeadline = proposalDeadline(proposalId) + foundationBlacklistDuration;
+        require(block.number > blacklistDeadline, "Proposal is still in the blacklist period");
+
+        uint256 numBlacklisted = blacklistedNomineeCount[proposalId];
+        uint256 numNominated = nomineeCount(proposalId) - numBlacklisted;
 
         if (numNominated > targetNomineeCount) {
             // todo:
@@ -100,7 +119,24 @@ contract SecurityCouncilNomineeElectionGovernor is
             // todo: randomly select some number of candidates from current cohort to add to the nominees
             // nominees = ...
         }
+        else if (numBlacklisted > 0) {
+            // there are exactly the right number of compliant nominees
+            // but some of the nominees have been blacklisted
+            // we should remove the blacklisted nominees from SecurityCouncilNomineeElectionGovernorCounting's list
+            address[] memory maybeCompliantNominees = SecurityCouncilNomineeElectionGovernorCounting.nominees(proposalId);
+            nominees = new address[](targetNomineeCount);
+
+            uint256 j = 0;
+            for (uint256 i = 0; i < maybeCompliantNominees.length; i++) {
+                address nominee = maybeCompliantNominees[i];
+                if (!blacklisted[proposalId][nominee]) {
+                    nominees[j] = nominee;
+                    j++;
+                }
+            }
+        }
         else {
+            // there are exactly the right number of compliant nominees and none have been blacklisted
             nominees = SecurityCouncilNomineeElectionGovernorCounting.nominees(proposalId);
         }
         
@@ -116,6 +152,17 @@ contract SecurityCouncilNomineeElectionGovernor is
         // todo: check to make sure the candidate is eligible (not part of the other cohort, etc.)
 
         contenders[proposalId][account] = true;
+    }
+
+    function blacklistNominee(uint256 proposalId, address account) external onlyFoundation {
+        // todo: during what state(s) should this be allowed? ProposalState.Succeeded? ProposalState.Active or ProposalState.Succeeded?
+        blacklisted[proposalId][account] = true;
+        blacklistedNomineeCount[proposalId]++;
+    }
+
+    // phase 2&3 governor calls this to check whether a nominee is compliant and can receive votes
+    function isCompliantNominee(uint256 proposalId, address account) external view returns (bool) {
+        return isNominee(proposalId, account) && !blacklisted[proposalId][account];
     }
 
     function _isContender(uint256 proposalId, address candidate) internal view virtual override returns (bool) {
