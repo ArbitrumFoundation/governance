@@ -87,6 +87,10 @@ abstract contract SecurityCouncilNomineeElectionGovernorCounting is Initializabl
         }
     }
 
+    function isNominee(uint256 proposalId, address candidate) public view returns (bool) {
+        return _elections[proposalId].votes[candidate] >= quorum(proposalSnapshot(proposalId));
+    }
+
     function nomineeCount(uint256 proposalId) public view returns (uint256) {
         return _elections[proposalId].nominees.length;
     }
