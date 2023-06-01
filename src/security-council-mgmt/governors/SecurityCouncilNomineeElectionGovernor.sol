@@ -9,8 +9,8 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/StringsUpgradeable.sol";
 
 import "../interfaces/ISecurityCouncilManager.sol";
-import "./SecurityCouncilNomineeElectionGovernorCounting.sol";
-import "./ArbitrumGovernorVotesQuorumFractionUpgradeable.sol";
+import "./modules/SecurityCouncilNomineeElectionGovernorCounting.sol";
+import "./modules/ArbitrumGovernorVotesQuorumFractionUpgradeable.sol";
 
 
 contract SecurityCouncilNomineeElectionGovernor is
