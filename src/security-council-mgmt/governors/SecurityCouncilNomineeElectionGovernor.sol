@@ -80,15 +80,12 @@ contract SecurityCouncilNomineeElectionGovernor is
     }
 
     function _execute(
-        uint256 /* proposalId */,
+        uint256 proposalId,
         address[] memory /* targets */,
         uint256[] memory /* values */,
         bytes[] memory calldatas,
         bytes32 /*descriptionHash*/
     ) internal virtual override {
-        uint256 proposalIndex = abi.decode(calldatas[0], (uint256));
-        uint256 proposalId = proposalIndexToProposalId(proposalIndex);
-
         uint256 numNominated = nomineeCount(proposalId);
 
         if (numNominated > targetNomineeCount) {
@@ -108,6 +105,7 @@ contract SecurityCouncilNomineeElectionGovernor is
         }
         
         // call the SecurityCouncilManager to switch out the security council members
+        uint256 proposalIndex = abi.decode(calldatas[0], (uint256));
         securityCouncilManager.executeElectionResult(nominees, proposalIndexToCohort(proposalIndex));
     }
 
