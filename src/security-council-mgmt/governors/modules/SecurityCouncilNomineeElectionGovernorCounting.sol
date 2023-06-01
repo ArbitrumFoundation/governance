@@ -18,6 +18,7 @@ abstract contract SecurityCouncilNomineeElectionGovernorCounting is Initializabl
         return "TODO: ???";
     }
 
+    // returns true if the account has voted any amount for any contender
     function hasVoted(
         uint256 proposalId, 
         address account
@@ -27,8 +28,7 @@ abstract contract SecurityCouncilNomineeElectionGovernorCounting is Initializabl
         override
         returns (bool) 
     {
-        // should this return true if they've cast any amount of votes? or if they've cast all of their votes?
-        revert("TODO");
+        return _elections[proposalId].tokensUsed[account] > 0;
     }
 
     // there is no minimum quorum for nominations, so we just return true
@@ -41,6 +41,8 @@ abstract contract SecurityCouncilNomineeElectionGovernorCounting is Initializabl
         return true;
     }
 
+    // todo: rename candidate to contender everywhere, not just here
+    // generally make sure naming is consistent
     function _countVote(
         uint256 proposalId,
         address account,
@@ -60,18 +62,28 @@ abstract contract SecurityCouncilNomineeElectionGovernorCounting is Initializabl
         uint256 previouslyUsedTokens = election.tokensUsed[account];
         require(tokens + previouslyUsedTokens <= weight, "Not enough tokens to cast this vote");
 
-        // add to tokensUsed
-        election.tokensUsed[account] = previouslyUsedTokens + tokens;
-
-        // add tokens to the candidate
         uint256 oldVotesForCandidate = election.votes[candidate];
-        election.votes[candidate] = oldVotesForCandidate + tokens;
+        uint256 votesThreshold = quorum(proposalSnapshot(proposalId));
 
-        // if this vote put the candidate over the line, push to nominees
-        uint256 votesNeeded = quorum(proposalSnapshot(proposalId));
-        if (oldVotesForCandidate < votesNeeded && oldVotesForCandidate + tokens >= votesNeeded) {
+        require(oldVotesForCandidate < votesThreshold, "Candidate already has enough votes");
+
+        if (oldVotesForCandidate + tokens < votesThreshold) {
+            // we didn't push the candidate over the line, so just add the tokens
+            election.tokensUsed[account] = previouslyUsedTokens + tokens;
+            election.votes[candidate] = oldVotesForCandidate + tokens;
+        }
+        else {
+            // we pushed the candidate over the line
+            // we should only give the candidate enough tokens to get to the line so that we don't waste tokens
+            uint256 tokensNeeded = votesThreshold - oldVotesForCandidate;
+
+            election.tokensUsed[account] = previouslyUsedTokens + tokensNeeded;
+            election.votes[candidate] = oldVotesForCandidate + tokensNeeded;
+
+            // push the candidate to the nominees
             election.nominees.push(candidate);
-            // emit some event like CandidateSuccessfullyNominated(proposalId, candidate);
+
+            // emit some event like NewNominee(proposalId, candidate);
         }
     }
 
