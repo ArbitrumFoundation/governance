@@ -6,9 +6,9 @@ import "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorVotesU
 import "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorPreventLateQuorumUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
-import "../L2ArbitrumGovernor.sol";
+import "../../L2ArbitrumGovernor.sol";
 import "./SecurityCouncilNominationsManager.sol";
-import "./interfaces/ISecurityCouncilManager.sol";
+import "../interfaces/ISecurityCouncilManager.sol";
 
 abstract contract ArbitrumGovernorVotesQuorumFractionUpgradeable is Initializable, GovernorVotesQuorumFractionUpgradeable {
     /// @notice address for which votes will not be counted toward quorum

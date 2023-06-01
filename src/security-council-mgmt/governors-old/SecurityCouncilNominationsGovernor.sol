@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.16;
 
-import "../L2ArbitrumGovernor.sol";
+import "../../L2ArbitrumGovernor.sol";
 import "./SecurityCouncilNominationsManager.sol";
-import "./interfaces/ISecurityCouncilManager.sol";
+import "../interfaces/ISecurityCouncilManager.sol";
 
 
 // narrows a set of candidates down to a set of nominees

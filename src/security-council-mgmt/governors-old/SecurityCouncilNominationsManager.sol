@@ -3,7 +3,7 @@ pragma solidity 0.8.16;
 
 import "@openzeppelin/contracts-upgradeable/governance/IGovernorUpgradeable.sol";
 
-import "./SecurityCouncilManager.sol";
+import "../SecurityCouncilManager.sol";
 import "./SecurityCouncilNominationsGovernor.sol";
 
 // todo: constructor or initializer
