@@ -12,7 +12,7 @@ import "../interfaces/ISecurityCouncilManager.sol";
 import "./modules/SecurityCouncilNomineeElectionGovernorCounting.sol";
 import "./modules/ArbitrumGovernorVotesQuorumFractionUpgradeable.sol";
 
-
+// handles phase 1 of security council elections (narrowing contenders down to a set of nominees)
 contract SecurityCouncilNomineeElectionGovernor is
     Initializable,
     GovernorUpgradeable,
@@ -33,10 +33,10 @@ contract SecurityCouncilNomineeElectionGovernor is
     address public foundation;
     ISecurityCouncilManager public securityCouncilManager;
 
-    // number of nominee selection proposals that have been created
+    // number of nominee elections that have been created
     uint256 public proposalCount;
 
-    // maps proposalId to map of address to bool indicating whether the candidate is a contender for nomination
+    // maps proposalId to map of address to bool indicating whether the account is a contender for nomination
     mapping(uint256 => mapping(address => bool)) public contenders;
 
     // proposalId => nominee => bool indicating whether the nominee has been blacklisted
@@ -116,7 +116,7 @@ contract SecurityCouncilNomineeElectionGovernor is
 
         address[] memory nominees;
         if (numNominated < targetNomineeCount) {
-            // todo: randomly select some number of candidates from current cohort to add to the nominees
+            // todo: randomly select some number of members from current cohort to add to the nominees
             // nominees = ...
         }
         else if (numBlacklisted > 0) {
@@ -149,13 +149,14 @@ contract SecurityCouncilNomineeElectionGovernor is
         ProposalState state = state(proposalId);
         require(state == ProposalState.Active, "Proposal is not active");
 
-        // todo: check to make sure the candidate is eligible (not part of the other cohort, etc.)
+        // todo: check to make sure the contender is eligible (not part of the other cohort, etc.)
 
         contenders[proposalId][account] = true;
     }
 
     function blacklistNominee(uint256 proposalId, address account) external onlyFoundation {
         // todo: during what state(s) should this be allowed? ProposalState.Succeeded? ProposalState.Active or ProposalState.Succeeded?
+        // if this is allowed during ProposalState.Active, then SecurityCouncilNomineeElectionGovernorCounting should revert when someone tries to cast a vote for a blacklisted contender
         blacklisted[proposalId][account] = true;
         blacklistedNomineeCount[proposalId]++;
     }
@@ -165,8 +166,8 @@ contract SecurityCouncilNomineeElectionGovernor is
         return isNominee(proposalId, account) && !blacklisted[proposalId][account];
     }
 
-    function _isContender(uint256 proposalId, address candidate) internal view virtual override returns (bool) {
-        return contenders[proposalId][candidate];
+    function _isContender(uint256 proposalId, address contender) internal view virtual override returns (bool) {
+        return contenders[proposalId][contender];
     }
 
     function proposalIndexToCohort(uint256 proposalIndex) public view returns (Cohort) {
@@ -174,7 +175,7 @@ contract SecurityCouncilNomineeElectionGovernor is
     }
 
     function proposalIndexToDescription(uint256 proposalIndex) public pure returns (string memory) {
-        return string.concat("Nominee Selection #", StringsUpgradeable.toString(proposalIndex));
+        return string.concat("Nominee Election #", StringsUpgradeable.toString(proposalIndex));
     }
 
     function proposalIndexToProposalId(uint256 proposalIndex) public pure returns (uint256) {
