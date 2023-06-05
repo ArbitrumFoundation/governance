@@ -27,8 +27,8 @@ const secondsInFourYears = secondsInADay * (365 * 4 + 1); // Days in 4 years, in
 
 const chainIDToConfig: ChainIDToConfig = {
   42161: {
-    beneficiary: "", // TODO
-    startTimestamp: 0, // TODO
+    beneficiary: "0xd6c8a4e72584f24bd5517afed6c01d21477c17f6",
+    startTimestamp: 1679590871,
     vestingPeriodInSeconds: secondsInFourYears, 
     l2ArbitrumGovernor: mainnetDeployedContracts.l2CoreGoverner,
     l2GovProxyAdmin: mainnetDeployedContracts.l2ProxyAdmin,
@@ -54,6 +54,6 @@ interface DeployedWallets {
   [key: number]: string;
 }
 export const deployedWallets: DeployedWallets = {
-  42161: "",
+  42161: "0xCfc79FCD07929467a8E1925E06007de5F047513f",
   421613: "0x1ac5F3691B74c624f48E1f92eC14F46eE1790412",
 };
