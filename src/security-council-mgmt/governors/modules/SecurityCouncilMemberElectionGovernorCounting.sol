@@ -22,6 +22,10 @@ abstract contract AccountRankerUpgradeable is Initializable {
         return _candidates[round];
     }
 
+    function _isCandidatesListFull(uint256 round) internal view returns (bool) {
+        return _candidates[round].length == maxCandidates;
+    }
+
     function _getWeight(uint256 round, address account) internal view returns (uint256) {
         return _weights[round][account];
     }
@@ -100,6 +104,7 @@ abstract contract AccountRankerUpgradeable is Initializable {
     uint256[48] private __gap;
 }
 
+// todo: rename to SecurityCouncilMemberElectionGovernorCountingUpgradeable, and put the __gap at the end
 abstract contract SecurityCouncilMemberElectionGovernorCounting is Initializable, GovernorUpgradeable, AccountRankerUpgradeable {
     // todo: set these in initializer
     uint256 public fullWeightDurationNumerator; // 7 days
@@ -131,9 +136,9 @@ abstract contract SecurityCouncilMemberElectionGovernorCounting is Initializable
         return true;
     }
 
-    // the vote always succeeds, so we just return true
-    function _voteSucceeded(uint256) internal pure override returns (bool) {
-        return true;
+    // the vote succeeds if the top K candidates have been selected
+    function _voteSucceeded(uint256 proposalId) internal view override returns (bool) {
+        return _isCandidatesListFull(proposalId);
     }
     
     function _countVote(

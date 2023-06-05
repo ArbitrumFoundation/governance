@@ -118,6 +118,9 @@ contract SecurityCouncilNomineeElectionGovernor is
         if (numNominated < targetNomineeCount) {
             // todo: randomly select some number of members from current cohort to add to the nominees
             // nominees = ...
+
+            // require that the current SC cohort is full first? or don't, just run the random selection and it either succeeds or runs out of gas?
+            // then if for some reason it isn't, this function cannot be called until the SC appoints another member
         }
         else if (numBlacklisted > 0) {
             // there are exactly the right number of compliant nominees
