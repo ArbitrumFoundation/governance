@@ -9,7 +9,7 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/StringsUpgradeable.sol";
 
 import "../interfaces/ISecurityCouncilManager.sol";
-import "./modules/SecurityCouncilNomineeElectionGovernorCounting.sol";
+import "./modules/SecurityCouncilNomineeElectionGovernorCountingUpgradeable.sol";
 import "./modules/ArbitrumGovernorVotesQuorumFractionUpgradeable.sol";
 
 // handles phase 1 of security council elections (narrowing contenders down to a set of nominees)
@@ -17,12 +17,11 @@ contract SecurityCouncilNomineeElectionGovernor is
     Initializable,
     GovernorUpgradeable,
     GovernorVotesUpgradeable,
-    SecurityCouncilNomineeElectionGovernorCounting,
+    SecurityCouncilNomineeElectionGovernorCountingUpgradeable,
     ArbitrumGovernorVotesQuorumFractionUpgradeable,
     GovernorSettingsUpgradeable,
     OwnableUpgradeable
 {
-    // todo: set these in the constructor / initializer
     uint256 public targetNomineeCount;
     Cohort public firstCohort;
     uint256 public firstNominationStartTime;
@@ -44,6 +43,39 @@ contract SecurityCouncilNomineeElectionGovernor is
 
     // proposalId => blacklisted nominee count
     mapping(uint256 => uint256) public blacklistedNomineeCount;
+
+    constructor() {
+        _disableInitializers();
+    }
+
+    function initialize(
+        uint256 _targetNomineeCount,
+        Cohort _firstCohort,
+        uint256 _firstNominationStartTime,
+        uint256 _nominationFrequency,
+        uint256 _foundationBlacklistDuration,
+        address _foundation,
+        ISecurityCouncilManager _securityCouncilManager,
+        IVotesUpgradeable _token,
+        uint256 _quorumNumeratorValue,
+        uint256 _votingDelay,
+        uint256 _votingPeriod
+    ) public initializer {
+        __Governor_init("Security Council Nominee Election Governor");
+        __GovernorVotes_init(_token);
+        __SecurityCouncilNomineeElectionGovernorCounting_init();
+        __ArbitrumGovernorVotesQuorumFraction_init(_quorumNumeratorValue);
+        __GovernorSettings_init(_votingDelay, _votingPeriod, 0);
+
+        targetNomineeCount = _targetNomineeCount;
+        firstCohort = _firstCohort;
+        firstNominationStartTime = _firstNominationStartTime;
+        nominationFrequency = _nominationFrequency;
+        foundationBlacklistDuration = _foundationBlacklistDuration;
+        foundation = _foundation;
+        securityCouncilManager = _securityCouncilManager;
+    }
+
 
     modifier onlyFoundation {
         require(msg.sender == foundation, "Only the foundation can call this function");
@@ -123,7 +155,7 @@ contract SecurityCouncilNomineeElectionGovernor is
             // there are exactly the right number of compliant nominees
             // but some of the nominees have been blacklisted
             // we should remove the blacklisted nominees from SecurityCouncilNomineeElectionGovernorCounting's list
-            address[] memory maybeCompliantNominees = SecurityCouncilNomineeElectionGovernorCounting.nominees(proposalId);
+            address[] memory maybeCompliantNominees = SecurityCouncilNomineeElectionGovernorCountingUpgradeable.nominees(proposalId);
             nominees = new address[](targetNomineeCount);
 
             uint256 j = 0;
@@ -137,7 +169,7 @@ contract SecurityCouncilNomineeElectionGovernor is
         }
         else {
             // there are exactly the right number of compliant nominees and none have been blacklisted
-            nominees = SecurityCouncilNomineeElectionGovernorCounting.nominees(proposalId);
+            nominees = SecurityCouncilNomineeElectionGovernorCountingUpgradeable.nominees(proposalId);
         }
         
         // call the SecurityCouncilManager to switch out the security council members
