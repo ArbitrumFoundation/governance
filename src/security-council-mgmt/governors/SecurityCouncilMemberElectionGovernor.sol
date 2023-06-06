@@ -8,7 +8,7 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/StringsUpgradeable.sol";
 
 import "./modules/ArbitrumGovernorVotesQuorumFractionUpgradeable.sol";
-import "./modules/SecurityCouncilMemberElectionGovernorCounting.sol";
+import "./modules/SecurityCouncilMemberElectionGovernorCountingUpgradeable.sol";
 import "./SecurityCouncilNomineeElectionGovernor.sol";
 
 import "../SecurityCouncilManager.sol";
@@ -20,19 +20,42 @@ contract SecurityCouncilMemberElectionGovernor is
     Initializable,
     GovernorUpgradeable,
     GovernorVotesUpgradeable,
-    SecurityCouncilMemberElectionGovernorCounting,
-    ArbitrumGovernorVotesQuorumFractionUpgradeable,
+    SecurityCouncilMemberElectionGovernorCountingUpgradeable,
     GovernorSettingsUpgradeable,
     OwnableUpgradeable
 {
-    // todo:
-    // - initializer
-
     SecurityCouncilNomineeElectionGovernor public nomineeElectionGovernor;
     SecurityCouncilManager public securityCouncilManager;
 
     // maps MemberElection proposalId to NomineeElection proposalIndex (todo: name this better)
     mapping(uint256 => uint256) public proposalIdToNomineeElectionProposalIndex;
+
+    function initialize(
+        SecurityCouncilNomineeElectionGovernor _nomineeElectionGovernor,
+        SecurityCouncilManager _securityCouncilManager,
+        IVotesUpgradeable _token,
+        address _owner,
+        uint256 _votingDelay,
+        uint256 _votingPeriod,
+        uint256 _maxCandidates,
+        uint256 _fullWeightDurationNumerator,
+        uint256 _decreasingWeightDurationNumerator,
+        uint256 _durationDenominator
+    ) public initializer {
+        __Governor_init("SecurityCouncilMemberElectionGovernor");
+        __GovernorVotes_init(_token);
+        __SecurityCouncilMemberElectionGovernorCounting_init({
+            _maxCandidates: _maxCandidates,
+            _fullWeightDurationNumerator: _fullWeightDurationNumerator,
+            _decreasingWeightDurationNumerator: _decreasingWeightDurationNumerator,
+            _durationDenominator: _durationDenominator
+        });
+        __GovernorSettings_init(_votingDelay, _votingPeriod, 0);
+        _transferOwnership(_owner);
+
+        nomineeElectionGovernor = _nomineeElectionGovernor;
+        securityCouncilManager = _securityCouncilManager;
+    }
 
     modifier onlyNomineeElectionGovernor {
         require(msg.sender == address(nomineeElectionGovernor), "Only the nominee election governor can call this function");
@@ -61,6 +84,10 @@ contract SecurityCouncilMemberElectionGovernor is
     }
 
     function proposalThreshold() public pure override(GovernorSettingsUpgradeable, GovernorUpgradeable) returns (uint256) {
+        return 0;
+    }
+
+    function quorum(uint256) public pure override returns (uint256) {
         return 0;
     }
 

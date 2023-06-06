@@ -101,18 +101,29 @@ abstract contract AccountRankerUpgradeable is Initializable {
      * variables without shifting down storage in the inheritance chain.
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
      */
-    uint256[48] private __gap;
+    uint256[47] private __gap;
 }
 
-// todo: rename to SecurityCouncilMemberElectionGovernorCountingUpgradeable, and put the __gap at the end
-abstract contract SecurityCouncilMemberElectionGovernorCounting is Initializable, GovernorUpgradeable, AccountRankerUpgradeable {
-    // todo: set these in initializer
+abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is Initializable, GovernorUpgradeable, AccountRankerUpgradeable {
     uint256 public fullWeightDurationNumerator; // 7 days
     uint256 public decreasingWeightDurationNumerator; // 14 days
     uint256 public durationDenominator; // 21 days
 
     // proposalId => voter => tokens used
     mapping(uint256 => mapping(address => uint256)) public tokensUsed;
+
+    function __SecurityCouncilMemberElectionGovernorCounting_init(
+        uint256 _maxCandidates,
+        uint256 _fullWeightDurationNumerator,
+        uint256 _decreasingWeightDurationNumerator,
+        uint256 _durationDenominator
+    ) internal onlyInitializing {
+        __AccountRanker_init(_maxCandidates);
+
+        fullWeightDurationNumerator = _fullWeightDurationNumerator;
+        decreasingWeightDurationNumerator = _decreasingWeightDurationNumerator;
+        durationDenominator = _durationDenominator;
+    }
 
     function COUNTING_MODE() public pure virtual override returns (string memory) {
         return "TODO: ???";
@@ -203,4 +214,11 @@ abstract contract SecurityCouncilMemberElectionGovernorCounting is Initializable
     }
 
     function _isCompliantNominee(uint256 proposalId, address nominee) internal view virtual returns (bool);
+
+    /**
+     * @dev This empty reserved space is put in place to allow future versions to add new
+     * variables without shifting down storage in the inheritance chain.
+     * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
+     */
+    uint256[46] private __gap;
 }
