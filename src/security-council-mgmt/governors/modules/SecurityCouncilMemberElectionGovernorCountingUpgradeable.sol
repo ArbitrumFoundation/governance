@@ -105,9 +105,11 @@ abstract contract AccountRankerUpgradeable is Initializable {
 }
 
 abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is Initializable, GovernorUpgradeable, AccountRankerUpgradeable {
-    uint256 public fullWeightDurationNumerator; // 7 days
-    uint256 public decreasingWeightDurationNumerator; // 14 days
-    uint256 public durationDenominator; // 21 days
+    uint256 private constant WAD = 1e18;
+
+    uint256 public fullWeightDurationNumerator; // = 1 (7 days)
+    uint256 public decreasingWeightDurationNumerator; // = 2 (14 days)
+    uint256 public durationDenominator; // = 3 (21 days)
 
     // proposalId => voter => tokens used
     mapping(uint256 => mapping(address => uint256)) public tokensUsed;
@@ -189,8 +191,7 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is In
             return 0;
         }
 
-        uint256 wad = 1e18;
-        uint256 fullWeightDuration = wad * fullWeightDurationNumerator / durationDenominator * duration / wad;
+        uint256 fullWeightDuration = WAD * fullWeightDurationNumerator / durationDenominator * duration / WAD;
 
         uint256 decreasingWeightStartBlock = startBlock + fullWeightDuration;
 
@@ -200,11 +201,11 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is In
 
 
         // slope denominator
-        uint256 decreasingWeightDuration = wad * decreasingWeightDurationNumerator / durationDenominator * duration / wad;
+        uint256 decreasingWeightDuration = WAD * decreasingWeightDurationNumerator / durationDenominator * duration / WAD;
 
         // slope numerator is -tokens
 
-        uint256 decreaseAmount = wad * tokens / decreasingWeightDuration * (blockNumber - decreasingWeightStartBlock) / wad;
+        uint256 decreaseAmount = WAD * tokens / decreasingWeightDuration * (blockNumber - decreasingWeightStartBlock) / WAD;
 
         if (decreaseAmount >= tokens) {
             return 0;
