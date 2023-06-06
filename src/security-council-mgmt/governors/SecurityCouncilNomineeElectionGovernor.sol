@@ -12,6 +12,8 @@ import "../interfaces/ISecurityCouncilManager.sol";
 import "./modules/SecurityCouncilNomineeElectionGovernorCountingUpgradeable.sol";
 import "./modules/ArbitrumGovernorVotesQuorumFractionUpgradeable.sol";
 
+import "../SecurityCouncilMgmtUtils.sol";
+
 // handles phase 1 of security council elections (narrowing contenders down to a set of nominees)
 contract SecurityCouncilNomineeElectionGovernor is
     Initializable,
@@ -183,7 +185,10 @@ contract SecurityCouncilNomineeElectionGovernor is
         ProposalState state = state(proposalId);
         require(state == ProposalState.Active, "Proposal is not active");
 
-        // todo: check to make sure the contender is eligible (not part of the other cohort, etc.)
+        // check to make sure the contender is not part of the other cohort
+        Cohort cohort = proposalIndexToCohort(proposalId);
+        address[] memory oppositeCohortCurrentMembers = cohort == Cohort.MARCH ? securityCouncilManager.getSeptemberCohort() : securityCouncilManager.getMarchCohort();
+        require(!SecurityCouncilMgmtUtils.isInArray(account, oppositeCohortCurrentMembers), "Account is a member of the opposite cohort");
 
         contenders[proposalId][account] = true;
     }
