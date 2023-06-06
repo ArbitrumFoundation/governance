@@ -57,6 +57,7 @@ contract SecurityCouncilNomineeElectionGovernor is
         address _foundation,
         ISecurityCouncilManager _securityCouncilManager,
         IVotesUpgradeable _token,
+        address _owner,
         uint256 _quorumNumeratorValue,
         uint256 _votingDelay,
         uint256 _votingPeriod
@@ -66,6 +67,7 @@ contract SecurityCouncilNomineeElectionGovernor is
         __SecurityCouncilNomineeElectionGovernorCounting_init();
         __ArbitrumGovernorVotesQuorumFraction_init(_quorumNumeratorValue);
         __GovernorSettings_init(_votingDelay, _votingPeriod, 0);
+        _transferOwnership(_owner);
 
         targetNomineeCount = _targetNomineeCount;
         firstCohort = _firstCohort;
