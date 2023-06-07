@@ -130,6 +130,37 @@ contract SecurityCouncilNomineeElectionGovernor is
         proposalId = GovernorUpgradeable.propose(targets, values, calldatas, proposalIndexToDescription(proposalIndex));
     }
 
+    // assumes that the number of compliant nominees is less than or equal to the target number of nominees
+    function _determineCompliantNominees(uint256 proposalId, Cohort cohort, uint256 compliantNomineeCount, uint256 blacklistedNomineeCount_) internal view returns (address[] memory nominees) {
+        if (compliantNomineeCount < targetNomineeCount) {
+            // there are too few compliant nominees
+            // some may have been blacklisted
+            // we should filter out any blacklisted nominees and then randomly select some members from the current cohort to add to the list
+            address[] memory currentMembers = cohort == Cohort.SEPTEMBER ? securityCouncilManager.getSeptemberCohort() : securityCouncilManager.getMarchCohort();
+            address[] memory maybeCompliantNominees = SecurityCouncilNomineeElectionGovernorCountingUpgradeable.nominees(proposalId);
+            address[] memory compliantNominees;
+            if (blacklistedNomineeCount_ > 0) {
+                compliantNominees = SecurityCouncilMgmtUtils.filterAddressesWithBlacklist(maybeCompliantNominees, blacklisted[proposalId], blacklistedNomineeCount_);
+            }
+            else {
+                compliantNominees = maybeCompliantNominees;
+            }
+
+            nominees = SecurityCouncilMgmtUtils.randomAddToSet(currentMembers, compliantNominees, targetNomineeCount, uint256(blockhash(block.number - 1)));
+        }
+        else if (blacklistedNomineeCount_ > 0) {
+            // there are exactly the right number of compliant nominees
+            // but some of the nominees have been blacklisted
+            // we should remove the blacklisted nominees from SecurityCouncilNomineeElectionGovernorCounting's list
+            address[] memory maybeCompliantNominees = SecurityCouncilNomineeElectionGovernorCountingUpgradeable.nominees(proposalId);
+            nominees = SecurityCouncilMgmtUtils.filterAddressesWithBlacklist(maybeCompliantNominees, blacklisted[proposalId], blacklistedNomineeCount_);
+        }
+        else {
+            // there are exactly the right number of compliant nominees and none have been blacklisted
+            nominees = SecurityCouncilNomineeElectionGovernorCountingUpgradeable.nominees(proposalId);
+        }
+    }
+
     function _execute(
         uint256 proposalId,
         address[] memory /* targets */,
@@ -140,45 +171,22 @@ contract SecurityCouncilNomineeElectionGovernor is
         uint256 blacklistDeadline = proposalDeadline(proposalId) + foundationBlacklistDuration;
         require(block.number > blacklistDeadline, "Proposal is still in the blacklist period");
 
-        uint256 numBlacklisted = blacklistedNomineeCount[proposalId];
-        uint256 numNominated = nomineeCount(proposalId) - numBlacklisted;
+        uint256 blacklistedNomineeCount_ = blacklistedNomineeCount[proposalId];
+        uint256 compliantNomineeCount = nomineeCount(proposalId) - blacklistedNomineeCount_;
 
-        if (numNominated > targetNomineeCount) {
+        if (compliantNomineeCount > targetNomineeCount) {
             // todo:
             // call the SecurityCouncilMemberElectionGovernor to execute the election
             // the SecurityCouncilMemberElectionGovernor will call back into this contract to look up nominees
             return;
         }
 
-        address[] memory nominees;
-        if (numNominated < targetNomineeCount) {
-            // todo: randomly select some number of members from current cohort to add to the nominees
-            // nominees = ...
-        }
-        else if (numBlacklisted > 0) {
-            // there are exactly the right number of compliant nominees
-            // but some of the nominees have been blacklisted
-            // we should remove the blacklisted nominees from SecurityCouncilNomineeElectionGovernorCounting's list
-            address[] memory maybeCompliantNominees = SecurityCouncilNomineeElectionGovernorCountingUpgradeable.nominees(proposalId);
-            nominees = new address[](targetNomineeCount);
-
-            uint256 j = 0;
-            for (uint256 i = 0; i < maybeCompliantNominees.length; i++) {
-                address nominee = maybeCompliantNominees[i];
-                if (!blacklisted[proposalId][nominee]) {
-                    nominees[j] = nominee;
-                    j++;
-                }
-            }
-        }
-        else {
-            // there are exactly the right number of compliant nominees and none have been blacklisted
-            nominees = SecurityCouncilNomineeElectionGovernorCountingUpgradeable.nominees(proposalId);
-        }
+        uint256 proposalIndex = abi.decode(calldatas[0], (uint256));
+        Cohort cohort = proposalIndexToCohort(proposalIndex);
+        address[] memory nominees = _determineCompliantNominees(proposalId, cohort, compliantNomineeCount, blacklistedNomineeCount_);
         
         // call the SecurityCouncilManager to switch out the security council members
-        uint256 proposalIndex = abi.decode(calldatas[0], (uint256));
-        securityCouncilManager.executeElectionResult(nominees, proposalIndexToCohort(proposalIndex));
+        securityCouncilManager.executeElectionResult(nominees, cohort);
     }
 
     function addContender(uint256 proposalId, address account) external {
@@ -195,7 +203,7 @@ contract SecurityCouncilNomineeElectionGovernor is
 
     function blacklistNominee(uint256 proposalId, address account) external onlyFoundation {
         // todo: during what state(s) should this be allowed? ProposalState.Succeeded? ProposalState.Active or ProposalState.Succeeded?
-        // if this is allowed during ProposalState.Active, then SecurityCouncilNomineeElectionGovernorCounting should revert when someone tries to cast a vote for a blacklisted contender
+        require(isNominee(proposalId, account), "Account is not a nominee");
         blacklisted[proposalId][account] = true;
         blacklistedNomineeCount[proposalId]++;
     }
