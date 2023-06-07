@@ -9,20 +9,21 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/StringsUpgradeable.sol";
 
 import "../interfaces/ISecurityCouncilManager.sol";
-import "./modules/SecurityCouncilNomineeElectionGovernorCounting.sol";
+import "./modules/SecurityCouncilNomineeElectionGovernorCountingUpgradeable.sol";
 import "./modules/ArbitrumGovernorVotesQuorumFractionUpgradeable.sol";
+
+import "../SecurityCouncilMgmtUtils.sol";
 
 // handles phase 1 of security council elections (narrowing contenders down to a set of nominees)
 contract SecurityCouncilNomineeElectionGovernor is
     Initializable,
     GovernorUpgradeable,
     GovernorVotesUpgradeable,
-    SecurityCouncilNomineeElectionGovernorCounting,
+    SecurityCouncilNomineeElectionGovernorCountingUpgradeable,
     ArbitrumGovernorVotesQuorumFractionUpgradeable,
     GovernorSettingsUpgradeable,
     OwnableUpgradeable
 {
-    // todo: set these in the constructor / initializer
     uint256 public targetNomineeCount;
     Cohort public firstCohort;
     uint256 public firstNominationStartTime;
@@ -44,6 +45,41 @@ contract SecurityCouncilNomineeElectionGovernor is
 
     // proposalId => blacklisted nominee count
     mapping(uint256 => uint256) public blacklistedNomineeCount;
+
+    constructor() {
+        _disableInitializers();
+    }
+
+    function initialize(
+        uint256 _targetNomineeCount,
+        Cohort _firstCohort,
+        uint256 _firstNominationStartTime,
+        uint256 _nominationFrequency,
+        uint256 _foundationBlacklistDuration,
+        address _foundation,
+        ISecurityCouncilManager _securityCouncilManager,
+        IVotesUpgradeable _token,
+        address _owner,
+        uint256 _quorumNumeratorValue,
+        uint256 _votingDelay,
+        uint256 _votingPeriod
+    ) public initializer {
+        __Governor_init("Security Council Nominee Election Governor");
+        __GovernorVotes_init(_token);
+        __SecurityCouncilNomineeElectionGovernorCounting_init();
+        __ArbitrumGovernorVotesQuorumFraction_init(_quorumNumeratorValue);
+        __GovernorSettings_init(_votingDelay, _votingPeriod, 0);
+        _transferOwnership(_owner);
+
+        targetNomineeCount = _targetNomineeCount;
+        firstCohort = _firstCohort;
+        firstNominationStartTime = _firstNominationStartTime;
+        nominationFrequency = _nominationFrequency;
+        foundationBlacklistDuration = _foundationBlacklistDuration;
+        foundation = _foundation;
+        securityCouncilManager = _securityCouncilManager;
+    }
+
 
     modifier onlyFoundation {
         require(msg.sender == foundation, "Only the foundation can call this function");
@@ -94,6 +130,37 @@ contract SecurityCouncilNomineeElectionGovernor is
         proposalId = GovernorUpgradeable.propose(targets, values, calldatas, proposalIndexToDescription(proposalIndex));
     }
 
+    // assumes that the number of compliant nominees is less than or equal to the target number of nominees
+    function _determineCompliantNominees(uint256 proposalId, Cohort cohort, uint256 compliantNomineeCount, uint256 blacklistedNomineeCount_) internal view returns (address[] memory nominees) {
+        if (compliantNomineeCount < targetNomineeCount) {
+            // there are too few compliant nominees
+            // some may have been blacklisted
+            // we should filter out any blacklisted nominees and then randomly select some members from the current cohort to add to the list
+            address[] memory currentMembers = cohort == Cohort.SEPTEMBER ? securityCouncilManager.getSeptemberCohort() : securityCouncilManager.getMarchCohort();
+            address[] memory maybeCompliantNominees = SecurityCouncilNomineeElectionGovernorCountingUpgradeable.nominees(proposalId);
+            address[] memory compliantNominees;
+            if (blacklistedNomineeCount_ > 0) {
+                compliantNominees = SecurityCouncilMgmtUtils.filterAddressesWithBlacklist(maybeCompliantNominees, blacklisted[proposalId], blacklistedNomineeCount_);
+            }
+            else {
+                compliantNominees = maybeCompliantNominees;
+            }
+
+            nominees = SecurityCouncilMgmtUtils.randomAddToSet(currentMembers, compliantNominees, targetNomineeCount, uint256(blockhash(block.number - 1)));
+        }
+        else if (blacklistedNomineeCount_ > 0) {
+            // there are exactly the right number of compliant nominees
+            // but some of the nominees have been blacklisted
+            // we should remove the blacklisted nominees from SecurityCouncilNomineeElectionGovernorCounting's list
+            address[] memory maybeCompliantNominees = SecurityCouncilNomineeElectionGovernorCountingUpgradeable.nominees(proposalId);
+            nominees = SecurityCouncilMgmtUtils.filterAddressesWithBlacklist(maybeCompliantNominees, blacklisted[proposalId], blacklistedNomineeCount_);
+        }
+        else {
+            // there are exactly the right number of compliant nominees and none have been blacklisted
+            nominees = SecurityCouncilNomineeElectionGovernorCountingUpgradeable.nominees(proposalId);
+        }
+    }
+
     function _execute(
         uint256 proposalId,
         address[] memory /* targets */,
@@ -104,62 +171,39 @@ contract SecurityCouncilNomineeElectionGovernor is
         uint256 blacklistDeadline = proposalDeadline(proposalId) + foundationBlacklistDuration;
         require(block.number > blacklistDeadline, "Proposal is still in the blacklist period");
 
-        uint256 numBlacklisted = blacklistedNomineeCount[proposalId];
-        uint256 numNominated = nomineeCount(proposalId) - numBlacklisted;
+        uint256 blacklistedNomineeCount_ = blacklistedNomineeCount[proposalId];
+        uint256 compliantNomineeCount = nomineeCount(proposalId) - blacklistedNomineeCount_;
 
-        if (numNominated > targetNomineeCount) {
+        if (compliantNomineeCount > targetNomineeCount) {
             // todo:
             // call the SecurityCouncilMemberElectionGovernor to execute the election
             // the SecurityCouncilMemberElectionGovernor will call back into this contract to look up nominees
             return;
         }
 
-        address[] memory nominees;
-        if (numNominated < targetNomineeCount) {
-            // todo: randomly select some number of members from current cohort to add to the nominees
-            // nominees = ...
-
-            // require that the current SC cohort is full first? or don't, just run the random selection and it either succeeds or runs out of gas?
-            // then if for some reason it isn't, this function cannot be called until the SC appoints another member
-        }
-        else if (numBlacklisted > 0) {
-            // there are exactly the right number of compliant nominees
-            // but some of the nominees have been blacklisted
-            // we should remove the blacklisted nominees from SecurityCouncilNomineeElectionGovernorCounting's list
-            address[] memory maybeCompliantNominees = SecurityCouncilNomineeElectionGovernorCounting.nominees(proposalId);
-            nominees = new address[](targetNomineeCount);
-
-            uint256 j = 0;
-            for (uint256 i = 0; i < maybeCompliantNominees.length; i++) {
-                address nominee = maybeCompliantNominees[i];
-                if (!blacklisted[proposalId][nominee]) {
-                    nominees[j] = nominee;
-                    j++;
-                }
-            }
-        }
-        else {
-            // there are exactly the right number of compliant nominees and none have been blacklisted
-            nominees = SecurityCouncilNomineeElectionGovernorCounting.nominees(proposalId);
-        }
+        uint256 proposalIndex = abi.decode(calldatas[0], (uint256));
+        Cohort cohort = proposalIndexToCohort(proposalIndex);
+        address[] memory nominees = _determineCompliantNominees(proposalId, cohort, compliantNomineeCount, blacklistedNomineeCount_);
         
         // call the SecurityCouncilManager to switch out the security council members
-        uint256 proposalIndex = abi.decode(calldatas[0], (uint256));
-        securityCouncilManager.executeElectionResult(nominees, proposalIndexToCohort(proposalIndex));
+        securityCouncilManager.executeElectionResult(nominees, cohort);
     }
 
     function addContender(uint256 proposalId, address account) external {
         ProposalState state = state(proposalId);
         require(state == ProposalState.Active, "Proposal is not active");
 
-        // todo: check to make sure the contender is eligible (not part of the other cohort, etc.)
+        // check to make sure the contender is not part of the other cohort
+        Cohort cohort = proposalIndexToCohort(proposalId);
+        address[] memory oppositeCohortCurrentMembers = cohort == Cohort.MARCH ? securityCouncilManager.getSeptemberCohort() : securityCouncilManager.getMarchCohort();
+        require(!SecurityCouncilMgmtUtils.isInArray(account, oppositeCohortCurrentMembers), "Account is a member of the opposite cohort");
 
         contenders[proposalId][account] = true;
     }
 
     function blacklistNominee(uint256 proposalId, address account) external onlyFoundation {
         // todo: during what state(s) should this be allowed? ProposalState.Succeeded? ProposalState.Active or ProposalState.Succeeded?
-        // if this is allowed during ProposalState.Active, then SecurityCouncilNomineeElectionGovernorCounting should revert when someone tries to cast a vote for a blacklisted contender
+        require(isNominee(proposalId, account), "Account is not a nominee");
         blacklisted[proposalId][account] = true;
         blacklistedNomineeCount[proposalId]++;
     }

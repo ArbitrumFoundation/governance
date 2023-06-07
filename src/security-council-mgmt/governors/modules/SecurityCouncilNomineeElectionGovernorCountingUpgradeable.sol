@@ -3,7 +3,7 @@ pragma solidity 0.8.16;
 
 import "@openzeppelin/contracts-upgradeable/governance/GovernorUpgradeable.sol";
 
-abstract contract SecurityCouncilNomineeElectionGovernorCounting is Initializable, GovernorUpgradeable {
+abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is Initializable, GovernorUpgradeable {
     // todo: better name
     struct NomineeElectionState {
         mapping(address => uint256) tokensUsed;
@@ -13,6 +13,8 @@ abstract contract SecurityCouncilNomineeElectionGovernorCounting is Initializabl
 
     // proposalId => NomineeElectionState
     mapping(uint256 => NomineeElectionState) private _elections;
+
+    function __SecurityCouncilNomineeElectionGovernorCounting_init() internal onlyInitializing {}
 
     function COUNTING_MODE() public pure virtual override returns (string memory) {
         return "TODO: ???";
