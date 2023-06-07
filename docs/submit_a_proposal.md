@@ -42,7 +42,7 @@ Output will appear in logs and will be written to the [proposal JSON data](../sc
     - The on-chain proposal should have the same title and description as its corresponding [snapshot post](https://snapshot.org/#/arbitrumfoundation.eth/proposal/0x7203289844e807781e8d2ec110d4b97a79a29944cae06a52dbe315a16381a2ae).
 - **Proposal Action (step 6)**: 
     1. Select `Custom Action`
-    1. In the `Enter the Target Address` Field" use `0x4b075f1d7DcE6F480bf87e45df2F2e1B1A430184`, a contract ("AIP1Point1Target") deployed for AIP-1.1 
+    1. In the `Enter the Target Address` Field" use `0x9E43f733Da0445b35f038FB34a6Fb8C2947B984C`, a contract ("AIP1Point1Target") deployed for AIP-1.1 
     1. In the `Contract method` dropdown, select `effectuate`.
     1. For the `ETH`/ `value` field, use `0`.
         - _Explanation: AIP-1.1 technically doesn't require any on-chain execution. We use a designated contract anyway as a formality and for bookkeeping purposes_

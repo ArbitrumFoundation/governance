@@ -28,7 +28,7 @@ const secondsInFourYears = secondsInADay * (365 * 4 + 1); // Days in 4 years, in
 const chainIDToConfig: ChainIDToConfig = {
   42161: {
     beneficiary: "0xd6c8a4e72584f24bd5517afed6c01d21477c17f6",
-    startTimestamp: 1679590871,
+    startTimestamp: 1681754400,
     vestingPeriodInSeconds: secondsInFourYears, 
     l2ArbitrumGovernor: mainnetDeployedContracts.l2CoreGoverner,
     l2GovProxyAdmin: mainnetDeployedContracts.l2ProxyAdmin,
@@ -36,7 +36,7 @@ const chainIDToConfig: ChainIDToConfig = {
   421613: {
     beneficiary: "0xA4b1838cb086DDDAFA655F247716b502e87A0672", 
     startTimestamp: 1681929083,
-    vestingPeriodInSeconds: secondsInFourYears, // TODO
+    vestingPeriodInSeconds: secondsInFourYears,
     l2ArbitrumGovernor: goerliDeployedContracts.l2CoreGoverner,
     l2GovProxyAdmin: goerliDeployedContracts.l2ProxyAdmin,
   },
@@ -54,6 +54,6 @@ interface DeployedWallets {
   [key: number]: string;
 }
 export const deployedWallets: DeployedWallets = {
-  42161: "0xCfc79FCD07929467a8E1925E06007de5F047513f",
+  42161: "0x15533b77981cDa0F85c4F9a485237DF4285D6844",
   421613: "0x1ac5F3691B74c624f48E1f92eC14F46eE1790412",
 };
