@@ -86,26 +86,23 @@ contract L2SecurityCouncilMgmtFactoryTest is Test {
         address emSC = address(l2EmergencySecurityCouncilUpgradeExecutor.securityCouncil());
         assertEq(emSC, govChainEmergencySecurityCouncil, "Emergency SC set in SC upgrade exec");
 
-        assertEq(
+        assertTrue(
             l2EmergencySecurityCouncilUpgradeExecutor.hasRole(
                 l2EmergencySecurityCouncilUpgradeExecutor.UPDATOR_ROLE(), securityCouncilManagerAddr
             ),
-            true,
             "SecurityCouncilManagerAddr is updater for l2EmergencySecurityCouncilUpgradeExecutor"
         );
-        assertEq(
+        assertTrue(
             l2EmergencySecurityCouncilUpgradeExecutor.hasRole(
                 l2EmergencySecurityCouncilUpgradeExecutor.UPDATOR_ROLE(),
                 govChainEmergencySecurityCouncil
             ),
-            true,
             "govChainEmergencySecurityCouncil is updater for l2EmergencySecurityCouncilUpgradeExecutor"
         );
-        assertEq(
+        assertTrue(
             l2EmergencySecurityCouncilUpgradeExecutor.hasRole(
                 l2EmergencySecurityCouncilUpgradeExecutor.DEFAULT_ADMIN_ROLE(), l2UpgradeExecutor
             ),
-            true,
             "l2UpgradeExecutor is role admin for l2EmergencySecurityCouncilUpgradeExecutor"
         );
 
@@ -119,27 +116,25 @@ contract L2SecurityCouncilMgmtFactoryTest is Test {
         assertEq(
             noneMSC, govChainNonEmergencySecurityCouncil, "non emergency SC set in SC upgrade exec"
         );
-        assertEq(
+        assertTrue(
             l2NonEmergencySecurityCouncilUpgradeExecutor.hasRole(
                 l2NonEmergencySecurityCouncilUpgradeExecutor.UPDATOR_ROLE(),
                 securityCouncilManagerAddr
             ),
-            true,
             "SecurityCouncilManagerAddr is updater for l2NonEmergencySecurityCouncilUpgradeExecutor"
         );
-        assertEq(
+        (true, "asdf");
+        assertTrue(
             l2NonEmergencySecurityCouncilUpgradeExecutor.hasRole(
                 l2NonEmergencySecurityCouncilUpgradeExecutor.UPDATOR_ROLE(),
                 govChainNonEmergencySecurityCouncil
             ),
-            true,
             "govChainNonEmergencySecurityCouncil is updater for l2NonEmergencySecurityCouncilUpgradeExecutor"
         );
-        assertEq(
+        assertTrue(
             l2NonEmergencySecurityCouncilUpgradeExecutor.hasRole(
                 l2NonEmergencySecurityCouncilUpgradeExecutor.DEFAULT_ADMIN_ROLE(), l2UpgradeExecutor
             ),
-            true,
             "l2UpgradeExecutor is role admin for l2NonEmergencySecurityCouncilUpgradeExecuto"
         );
     }
