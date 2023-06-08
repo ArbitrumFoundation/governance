@@ -25,6 +25,7 @@ contract SecurityCouncilMemberRemoverGov is
     }
 
     /// @notice Initialize the contract
+    /// @dev this method does not include an initializer modifier; it calls its parent's initiaze method which itself presents repeated initialize calls
     /// @param _proposer The address that can propose a removal (9 of 12 emergency council)
     /// @param _securityCouncilManager The address of the security council manager
     /// @param _token The address of the governance token
@@ -46,7 +47,7 @@ contract SecurityCouncilMemberRemoverGov is
         uint256 _quorumNumerator,
         uint256 _proposalThreshold,
         uint64 _minPeriodAfterQuorum
-    ) external initializer {
+    ) external {
         require(
             _proposer != address(0), "SecurityCouncilMemberRemoverGov: non-zero proposer address"
         );
