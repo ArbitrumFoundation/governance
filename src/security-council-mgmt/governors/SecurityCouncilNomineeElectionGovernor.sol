@@ -199,7 +199,8 @@ contract SecurityCouncilNomineeElectionGovernor is
         require(state == ProposalState.Active, "Proposal is not active");
 
         // check to make sure the contender is not part of the other cohort
-        Cohort cohort = proposalIndexToCohort(proposalId);
+        uint256 proposalIndex = proposalIdToProposalIndex[proposalId];
+        Cohort cohort = proposalIndexToCohort(proposalIndex);
         address[] memory oppositeCohortCurrentMembers = cohort == Cohort.MARCH ? securityCouncilManager.getSeptemberCohort() : securityCouncilManager.getMarchCohort();
         require(!SecurityCouncilMgmtUtils.isInArray(account, oppositeCohortCurrentMembers), "Account is a member of the opposite cohort");
 
