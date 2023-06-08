@@ -31,9 +31,14 @@ contract L1SecurityCouncilMgmtFactory is Ownable {
     Step public step = Step.One;
     /// @notice Step One: Deploy L1SecurityCouncilUpgradeExecutor and L1SecurityCouncilUpdateRouter
     /// @param _proxyAdmin address of the proxy admin of L1 governance contracts
+    /// @param _l1UpgradeExecutor address of DAO's L1 updrade executor
     /// @param _l1SecurityCouncil address of the L1 emergency Security Council
 
-    function deployStep1(address _proxyAdmin, address _l1SecurityCouncil) external onlyOwner {
+    function deployStep1(
+        address _proxyAdmin,
+        address _l1UpgradeExecutor,
+        address _l1SecurityCouncil
+    ) external onlyOwner {
         require(step == Step.One, "L1SecurityCouncilMgmtFactory: step is not One");
         require(
             Address.isContract(_proxyAdmin),
@@ -61,8 +66,9 @@ contract L1SecurityCouncilMgmtFactory is Ownable {
             new SecurityCouncilUpgradeExecutorFactory();
         address _l1SecurityCouncilUpgradeExecutor = securityCouncilUpgradeExecutorFactory.deploy({
             securityCouncil: IGnosisSafe(_l1SecurityCouncil),
-            securityCouncilOwner: address(l1SecurityCouncilUpdateRouter), // Router is owner (can update members)
-            proxyAdmin: _proxyAdmin
+            securityCouncilUpdator: address(l1SecurityCouncilUpdateRouter), // Router is owner (can update members)
+            proxyAdmin: _proxyAdmin,
+            upgradeExecutorAdmin: _l1UpgradeExecutor
         });
         // save l1SecurityCouncilUpgradeExecutor for deploy step3
         l1SecurityCouncilUpgradeExecutor = _l1SecurityCouncilUpgradeExecutor;

@@ -13,13 +13,14 @@ contract SecurityCouncilUpgradeExecutorFactory is Ownable {
 
     /// @notice Deploys SecurityCouncilUpgradeExecutor contract for a given securiy council
     /// @param securityCouncil Security council contract address
-    /// @param securityCouncilOwner Security council owner address, which has affordance to update members
+    /// @param securityCouncilUpdator Security council updatr address, which has affordance to update members
     /// @param proxyAdmin Address for governance contract proxy admin for the target security council's chain
-    function deploy(IGnosisSafe securityCouncil, address securityCouncilOwner, address proxyAdmin)
-        external
-        onlyOwner
-        returns (address securityCouncilUpradeExecutorAddress)
-    {
+    function deploy(
+        IGnosisSafe securityCouncil,
+        address securityCouncilUpdator,
+        address upgradeExecutorAdmin,
+        address proxyAdmin
+    ) external onlyOwner returns (address securityCouncilUpradeExecutorAddress) {
         require(
             Address.isContract(address(securityCouncil)),
             "SecurityCouncilUpgradeExecutorFactory: securityCouncil is not a contract"
@@ -29,8 +30,12 @@ contract SecurityCouncilUpgradeExecutorFactory is Ownable {
             "SecurityCouncilUpgradeExecutorFactory: proxyAdmin is not a contract"
         );
         require(
-            securityCouncilOwner != address(0),
-            "SecurityCouncilUpgradeExecutorFactory: securityCouncilOwner is zero address"
+            securityCouncilUpdator != address(0),
+            "SecurityCouncilUpgradeExecutorFactory: securityCouncilUpdator is zero address"
+        );
+        require(
+            upgradeExecutorAdmin != address(0),
+            "SecurityCouncilUpgradeExecutorFactory: upgradeExecutorAdmin is zero address"
         );
 
         SecurityCouncilUpgradeExecutor securityCouncilUpgradeExecutorLogic =
@@ -43,7 +48,9 @@ contract SecurityCouncilUpgradeExecutorFactory is Ownable {
         );
         SecurityCouncilUpgradeExecutor securityCouncilUpgradeExecutor =
             SecurityCouncilUpgradeExecutor(address(proxy));
-        securityCouncilUpgradeExecutor.initialize(securityCouncil, securityCouncilOwner);
+        securityCouncilUpgradeExecutor.initialize(
+            securityCouncil, securityCouncilUpdator, upgradeExecutorAdmin
+        );
 
         emit SecurityCouncilUpgradeExecutorCreated(address(securityCouncilUpgradeExecutor));
         return address(securityCouncilUpgradeExecutor);
