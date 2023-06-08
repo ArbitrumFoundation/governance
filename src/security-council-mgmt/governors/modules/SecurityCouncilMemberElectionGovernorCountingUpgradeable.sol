@@ -4,34 +4,39 @@ pragma solidity 0.8.16;
 import "@openzeppelin/contracts-upgradeable/governance/GovernorUpgradeable.sol";
 
 // provides a way to keep track of the top K candidates for a given round
+// round is the proposalId
 abstract contract AccountRankerUpgradeable is Initializable {
-    // max number of candidates to track
+    /// @dev max number of candidates to track (6)
     uint256 private maxCandidates;
 
-    // maps round to list of top candidates
+    /// @dev round => list of top candidates
     mapping(uint256 => address[]) private _candidates;
 
-    // maps round to map of account to weight
+    /// @dev round => account => weight.
+    ///      weight is the number of tokens/votes cast for the account
     mapping(uint256 => mapping(address => uint256)) private _weights;
 
     function __AccountRanker_init(uint256 _maxCandidates) internal onlyInitializing {
         maxCandidates = _maxCandidates;
     }
 
+    /// @dev returns the list of top candidates for a given round
     function _getTopCandidates(uint256 round) internal view returns (address[] memory) {
         return _candidates[round];
     }
 
+    /// @dev returns true if the list of top candidates is full for a given round
     function _isCandidatesListFull(uint256 round) internal view returns (bool) {
         return _candidates[round].length == maxCandidates;
     }
 
+    /// @dev returns the weight of an account in a given round
     function _getWeight(uint256 round, address account) internal view returns (uint256) {
         return _weights[round][account];
     }
 
-    // increase the weight of an account in a given round
-    // update the list of top candidates for that round if necessary
+    /// @dev increases the weight of an account in a given round. 
+    ///      updates the list of top candidates for that round if necessary.
     function _increaseCandidateWeight(uint256 round, address account, uint256 weightToAdd) internal {
         address[] storage candidatesPtr = _candidates[round];
         mapping(address => uint256) storage weightsPtr = _weights[round];
