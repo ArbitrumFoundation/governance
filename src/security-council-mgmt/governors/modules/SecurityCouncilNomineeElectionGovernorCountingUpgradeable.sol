@@ -3,6 +3,7 @@ pragma solidity 0.8.16;
 
 import "@openzeppelin/contracts-upgradeable/governance/GovernorUpgradeable.sol";
 
+// counting module for nominee elections
 abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is Initializable, GovernorUpgradeable {
     // todo: better name
     struct NomineeElectionState {
@@ -20,7 +21,7 @@ abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is I
         return "TODO: ???";
     }
 
-    // returns true if the account has voted any amount for any contender
+    /// @notice returns true if the account has voted any amount for any contender in the proposal
     function hasVoted(
         uint256 proposalId, 
         address account
@@ -33,18 +34,23 @@ abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is I
         return _elections[proposalId].tokensUsed[account] > 0;
     }
 
-    // there is no minimum quorum for nominations, so we just return true
+    /// @dev there is no minimum quorum for nominations, so we just return true
     function _quorumReached(uint256) internal pure override returns (bool) {
         return true;
     }
 
-    // the vote always succeeds, so we just return true
+    /// @dev the vote always succeeds, so we just return true
     function _voteSucceeded(uint256) internal pure override returns (bool) {
         return true;
     }
 
-    // todo: rename candidate to contender everywhere, not just here
-    // generally make sure naming is consistent
+    /// @dev This function is responsible for counting votes when they are cast.
+    ///      If this vote pushes the candidate over the line, then the candidate is added to the nominees
+    ///      and only the necessary amount of tokens will be deducted from the voter. 
+    /// @param proposalId the id of the proposal
+    /// @param account the account that is casting the vote
+    /// @param weight the amount of vote that account held at time of snapshot
+    /// @param params abi encoded (candidate, tokens) where tokens is the amount of tokens the account is using to vote
     function _countVote(
         uint256 proposalId,
         address account,
@@ -89,18 +95,22 @@ abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is I
         }
     }
 
+    /// @notice Returns true if the candidate has enough votes to be a nominee
     function isNominee(uint256 proposalId, address candidate) public view returns (bool) {
         return _elections[proposalId].votes[candidate] >= quorum(proposalSnapshot(proposalId));
     }
 
+    /// @notice Returns the number of nominees for a given proposal
     function nomineeCount(uint256 proposalId) public view returns (uint256) {
         return _elections[proposalId].nominees.length;
     }
 
+    /// @notice Returns the list of nominees for a given proposal
     function nominees(uint256 proposalId) public view returns (address[] memory) {
         return _elections[proposalId].nominees;
     }
 
+    /// @dev Returns true if the candidate is eligible to be nominated
     function _isContender(uint256 proposalId, address candidate) internal view virtual returns (bool);
 
     /**
