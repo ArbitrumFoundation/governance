@@ -46,6 +46,9 @@ contract SecurityCouncilNomineeElectionGovernor is
     // proposalId => blacklisted nominee count
     mapping(uint256 => uint256) public blacklistedNomineeCount;
 
+    // proposalId => proposalIndex
+    mapping(uint256 => uint256) public proposalIdToProposalIndex;
+
     constructor() {
         _disableInitializers();
     }
@@ -122,12 +125,14 @@ contract SecurityCouncilNomineeElectionGovernor is
         proposalIndex = proposalCount;
         proposalCount++;
 
-        address[] memory targets = new address[](1);
-        uint256[] memory values = new uint256[](1);
-        bytes[] memory calldatas = new bytes[](1);
-        calldatas[0] = abi.encode(proposalIndex);
+        proposalId = GovernorUpgradeable.propose(
+            new address[](1), 
+            new uint256[](1), 
+            new bytes[](1), 
+            proposalIndexToDescription(proposalIndex)
+        );
 
-        proposalId = GovernorUpgradeable.propose(targets, values, calldatas, proposalIndexToDescription(proposalIndex));
+        proposalIdToProposalIndex[proposalId] = proposalIndex;
     }
 
     // assumes that the number of compliant nominees is less than or equal to the target number of nominees
@@ -165,7 +170,7 @@ contract SecurityCouncilNomineeElectionGovernor is
         uint256 proposalId,
         address[] memory /* targets */,
         uint256[] memory /* values */,
-        bytes[] memory calldatas,
+        bytes[] memory /* calldatas */,
         bytes32 /*descriptionHash*/
     ) internal virtual override {
         uint256 blacklistDeadline = proposalDeadline(proposalId) + foundationBlacklistDuration;
@@ -181,7 +186,7 @@ contract SecurityCouncilNomineeElectionGovernor is
             return;
         }
 
-        uint256 proposalIndex = abi.decode(calldatas[0], (uint256));
+        uint256 proposalIndex = proposalIdToProposalIndex[proposalId];
         Cohort cohort = proposalIndexToCohort(proposalIndex);
         address[] memory nominees = _determineCompliantNominees(proposalId, cohort, compliantNomineeCount, blacklistedNomineeCount_);
         
