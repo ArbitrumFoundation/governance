@@ -15,6 +15,8 @@ import "./modules/ArbitrumGovernorVotesQuorumFractionUpgradeable.sol";
 import "../SecurityCouncilMgmtUtils.sol";
 
 // handles phase 1 of security council elections (narrowing contenders down to a set of nominees)
+// note: this contract assumes that there can only be one proposalId with state Active or Succeeded at a time 
+// (easy to override state() to return `Expired` if they succeeded but haven't executed after some time)
 contract SecurityCouncilNomineeElectionGovernor is
     Initializable,
     GovernorUpgradeable,
@@ -61,11 +63,6 @@ contract SecurityCouncilNomineeElectionGovernor is
 
     /// @notice Number of blacklisted nominees per proposal
     mapping(uint256 => uint256) public blacklistedNomineeCount;
-
-    /// @notice Maps a proposalId to a proposalIndex
-    /// @dev    A proposal's index is the number of proposals that have been created before it.
-    ///         Knowing a proposal's index allows us to determine which cohort it is for.
-    mapping(uint256 => uint256) public proposalIdToProposalIndex;
 
     constructor() {
         _disableInitializers();
@@ -157,23 +154,18 @@ contract SecurityCouncilNomineeElectionGovernor is
 
     /// @notice Creates a new nominee election proposal. 
     ///         Can be called by anyone every `nominationFrequency` seconds.
-    /// @return proposalIndex The index of the proposal
     /// @return proposalId The id of the proposal
-    function createElection() external returns (uint256 proposalIndex, uint256 proposalId) {
+    function createElection() external returns (uint256 proposalId) {
         require(block.timestamp >= firstNominationStartTime + nominationFrequency * proposalCount, "Not enough time has passed since the last election");
-
-        proposalIndex = proposalCount;
-        proposalCount = proposalIndex + 1;
 
         proposalId = GovernorUpgradeable.propose(
             new address[](1),
             new uint256[](1),
             new bytes[](1),
-            proposalIndexToDescription(proposalIndex)
+            proposalIndexToDescription(proposalCount)
         );
 
-        // set the proposalIndex for the proposalId so we can look it up later
-        proposalIdToProposalIndex[proposalId] = proposalIndex;
+        proposalCount++;
     }
 
     /// @dev    Given some parameters, determines the list of compliant nominees after voting and blacklisting has ended.
@@ -241,8 +233,7 @@ contract SecurityCouncilNomineeElectionGovernor is
             return;
         }
 
-        uint256 proposalIndex = proposalIdToProposalIndex[proposalId];
-        Cohort cohort = proposalIndexToCohort(proposalIndex);
+        Cohort cohort = proposalIndexToCohort(proposalCount - 1);
         address[] memory nominees = _determineCompliantNominees(proposalId, cohort, compliantNomineeCount, blacklistedNomineeCount_);
         
         // call the SecurityCouncilManager to switch out the security council members
@@ -257,8 +248,7 @@ contract SecurityCouncilNomineeElectionGovernor is
         require(state == ProposalState.Active, "Proposal is not active");
 
         // check to make sure the contender is not part of the other cohort
-        uint256 proposalIndex = proposalIdToProposalIndex[proposalId];
-        Cohort cohort = proposalIndexToCohort(proposalIndex);
+        Cohort cohort = proposalIndexToCohort(proposalCount - 1);
         address[] memory oppositeCohortCurrentMembers = cohort == Cohort.MARCH ? securityCouncilManager.getSeptemberCohort() : securityCouncilManager.getMarchCohort();
         require(!SecurityCouncilMgmtUtils.isInArray(account, oppositeCohortCurrentMembers), "Account is a member of the opposite cohort");
 
