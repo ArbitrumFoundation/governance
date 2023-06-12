@@ -36,12 +36,12 @@ contract SecurityCouncilNomineeElectionGovernor is
     /// @notice Delay between elections (expressed in seconds)
     uint256 public nominationFrequency;
 
-    /// @notice Duration of the blacklist period (expressed in blocks)
-    /// @dev    This is the amount of time after voting ends that the foundation can blacklist noncompliant nominees
-    uint256 public foundationBlacklistDuration;
+    /// @notice Duration of the blacklist / nominee vetting period (expressed in blocks)
+    /// @dev    This is the amount of time after voting ends that the nomineeVetter can blacklist noncompliant nominees
+    uint256 public nomineeVettingDuration;
 
-    /// @notice Address of the foundation
-    address public foundation;
+    /// @notice Address responsible for blocking non compliant nominees
+    address public nomineeVetter;
 
     /// @notice Security council manager contract
     /// @dev    Used to execute the election result immediately if <= 6 compliant nominees are chosen
@@ -76,8 +76,8 @@ contract SecurityCouncilNomineeElectionGovernor is
     /// @param _firstCohort Cohort of the first election
     /// @param _firstNominationStartTime Timestamp of the first election
     /// @param _nominationFrequency Delay between elections (expressed in seconds)
-    /// @param _foundationBlacklistDuration Duration of the blacklist period (expressed in blocks)
-    /// @param _foundation Address of the foundation
+    /// @param _nomineeVettingDuration Duration of the blacklist period (expressed in blocks)
+    /// @param _nomineeVetter Address of the nominee vetter
     /// @param _securityCouncilManager Security council manager contract
     /// @param _token Token used for voting
     /// @param _owner Owner of the governor
@@ -89,8 +89,8 @@ contract SecurityCouncilNomineeElectionGovernor is
         Cohort _firstCohort,
         uint256 _firstNominationStartTime,
         uint256 _nominationFrequency,
-        uint256 _foundationBlacklistDuration,
-        address _foundation,
+        uint256 _nomineeVettingDuration,
+        address _nomineeVetter,
         ISecurityCouncilManager _securityCouncilManager,
         IVotesUpgradeable _token,
         address _owner,
@@ -109,15 +109,20 @@ contract SecurityCouncilNomineeElectionGovernor is
         firstCohort = _firstCohort;
         firstNominationStartTime = _firstNominationStartTime;
         nominationFrequency = _nominationFrequency;
-        foundationBlacklistDuration = _foundationBlacklistDuration;
-        foundation = _foundation;
+        nomineeVettingDuration = _nomineeVettingDuration;
+        nomineeVetter = _nomineeVetter;
         securityCouncilManager = _securityCouncilManager;
     }
 
-    /// @notice Allows the foundation to call certain functions
-    modifier onlyFoundation {
-        require(msg.sender == foundation, "Only the foundation can call this function");
+    /// @notice Allows the nominee vetter to call certain functions
+    modifier onlyNomineeVetter() {
+        require(msg.sender == nomineeVetter, "Only the nomineeVetter can call this function");
         _;
+    }
+
+    /// @notice Allows the owner to change the nomineeVetter
+    function setNomineeVetter(address _nomineeVetter) external onlyOwner {
+        nomineeVetter = _nomineeVetter;
     }
 
     /// @notice Allows the owner to make calls from the governor
@@ -224,8 +229,8 @@ contract SecurityCouncilNomineeElectionGovernor is
         bytes[] memory /* calldatas */,
         bytes32 /*descriptionHash*/
     ) internal virtual override {
-        uint256 blacklistDeadline = proposalDeadline(proposalId) + foundationBlacklistDuration;
-        require(block.number > blacklistDeadline, "Proposal is still in the blacklist period");
+        uint256 blacklistDeadline = proposalDeadline(proposalId) + nomineeVettingDuration;
+        require(block.number > blacklistDeadline, "Proposal is still in the nominee vetting period");
 
         uint256 blacklistedNomineeCount_ = blacklistedNomineeCount[proposalId];
         uint256 compliantNomineeCount = nomineeCount(proposalId) - blacklistedNomineeCount_;
@@ -261,8 +266,8 @@ contract SecurityCouncilNomineeElectionGovernor is
         contenders[proposalId][account] = true;
     }
 
-    /// @notice Allows the foundation to blacklist a noncompliant nominee.
-    function blacklistNominee(uint256 proposalId, address account) external onlyFoundation {
+    /// @notice Allows the nomineeVetter to blacklist a noncompliant nominee.
+    function blacklistNominee(uint256 proposalId, address account) external onlyNomineeVetter {
         // todo: during what state(s) should this be allowed? ProposalState.Succeeded? ProposalState.Active or ProposalState.Succeeded?
         require(isNominee(proposalId, account), "Account is not a nominee");
         blacklisted[proposalId][account] = true;
