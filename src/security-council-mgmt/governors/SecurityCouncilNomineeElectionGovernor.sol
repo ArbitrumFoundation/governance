@@ -229,8 +229,7 @@ contract SecurityCouncilNomineeElectionGovernor is
         bytes[] memory /* calldatas */,
         bytes32 /*descriptionHash*/
     ) internal virtual override {
-        uint256 blacklistDeadline = proposalDeadline(proposalId) + nomineeVettingDuration;
-        require(block.number > blacklistDeadline, "Proposal is still in the nominee vetting period");
+        require(block.number > proposalVettingDeadline(proposalId), "Proposal is still in the nominee vetting period");
 
         uint256 blacklistedNomineeCount_ = blacklistedNomineeCount[proposalId];
         uint256 compliantNomineeCount = nomineeCount(proposalId) - blacklistedNomineeCount_;
@@ -267,8 +266,11 @@ contract SecurityCouncilNomineeElectionGovernor is
     }
 
     /// @notice Allows the nomineeVetter to blacklist a noncompliant nominee.
+    /// @dev    Can be called only after a proposal has succeeded (voting has ended) and before the nominee vetting period has ended.
+    ///         Will revert if the provided account is not a nominee (had less than the required votes).
     function blacklistNominee(uint256 proposalId, address account) external onlyNomineeVetter {
-        // todo: during what state(s) should this be allowed? ProposalState.Succeeded? ProposalState.Active or ProposalState.Succeeded?
+        require(state(proposalId) == ProposalState.Succeeded, "Proposal has not succeeded");
+        require(block.number <= proposalVettingDeadline(proposalId), "Proposal is no longer in the nominee vetting period");
         require(isNominee(proposalId, account), "Account is not a nominee");
         blacklisted[proposalId][account] = true;
         blacklistedNomineeCount[proposalId]++;
@@ -279,6 +281,11 @@ contract SecurityCouncilNomineeElectionGovernor is
     /// @param  account The account to check
     function isCompliantNominee(uint256 proposalId, address account) external view returns (bool) {
         return isNominee(proposalId, account) && !blacklisted[proposalId][account];
+    }
+
+    /// @notice Returns the deadline for the nominee vetting period for a given `proposalId`
+    function proposalVettingDeadline(uint256 proposalId) public view returns (uint256) {
+        return proposalDeadline(proposalId) + nomineeVettingDuration;
     }
 
     /// @inheritdoc SecurityCouncilNomineeElectionGovernorCountingUpgradeable
