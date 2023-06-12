@@ -168,43 +168,6 @@ contract SecurityCouncilNomineeElectionGovernor is
         proposalCount++;
     }
 
-    /// @dev    Given some parameters, determines the list of compliant nominees after voting and blacklisting has ended.
-    ///         Assumes that the number of compliant nominees is <= the target number of nominees.
-    /// @param  proposalId The id of the proposal
-    /// @param  cohort The cohort of the proposal
-    /// @param  compliantNomineeCount The number of compliant nominees
-    /// @param  blacklistedNomineeCount_ The number of blacklisted nominees
-    /// @return nominees The list of compliant nominees for the proposal
-    function _determineCompliantNominees(uint256 proposalId, Cohort cohort, uint256 compliantNomineeCount, uint256 blacklistedNomineeCount_) internal view returns (address[] memory nominees) {
-        if (compliantNomineeCount < targetNomineeCount) {
-            // there are too few compliant nominees
-            // some may have been blacklisted
-            // we should filter out any blacklisted nominees and then randomly select some members from the current cohort to add to the list
-            address[] memory currentMembers = cohort == Cohort.SEPTEMBER ? securityCouncilManager.getSeptemberCohort() : securityCouncilManager.getMarchCohort();
-            address[] memory maybeCompliantNominees = SecurityCouncilNomineeElectionGovernorCountingUpgradeable.nominees(proposalId);
-            address[] memory compliantNominees;
-            if (blacklistedNomineeCount_ > 0) {
-                compliantNominees = SecurityCouncilMgmtUtils.filterAddressesWithBlacklist(maybeCompliantNominees, blacklisted[proposalId], blacklistedNomineeCount_);
-            }
-            else {
-                compliantNominees = maybeCompliantNominees;
-            }
-
-            nominees = SecurityCouncilMgmtUtils.randomAddToSet(currentMembers, compliantNominees, targetNomineeCount, uint256(blockhash(block.number - 1)));
-        }
-        else if (blacklistedNomineeCount_ > 0) {
-            // there are exactly the right number of compliant nominees
-            // but some of the nominees have been blacklisted
-            // we should remove the blacklisted nominees from SecurityCouncilNomineeElectionGovernorCounting's list
-            address[] memory maybeCompliantNominees = SecurityCouncilNomineeElectionGovernorCountingUpgradeable.nominees(proposalId);
-            nominees = SecurityCouncilMgmtUtils.filterAddressesWithBlacklist(maybeCompliantNominees, blacklisted[proposalId], blacklistedNomineeCount_);
-        }
-        else {
-            // there are exactly the right number of compliant nominees and none have been blacklisted
-            nominees = SecurityCouncilNomineeElectionGovernorCountingUpgradeable.nominees(proposalId);
-        }
-    }
-
     /// @dev    `GovernorUpgradeable` function to execute a proposal overridden to handle nominee elections.
     ///         Can be called by anyone via `execute` after voting and blacklisting periods have ended.
     ///         If the number of compliant nominees is > the target number of nominees, 
@@ -223,8 +186,7 @@ contract SecurityCouncilNomineeElectionGovernor is
     ) internal virtual override {
         require(block.number > proposalVettingDeadline(proposalId), "Proposal is still in the nominee vetting period");
 
-        uint256 blacklistedNomineeCount_ = blacklistedNomineeCount[proposalId];
-        uint256 compliantNomineeCount = nomineeCount(proposalId) - blacklistedNomineeCount_;
+        uint256 compliantNomineeCount = nomineeCount(proposalId) - blacklistedNomineeCount[proposalId];
 
         if (compliantNomineeCount > targetNomineeCount) {
             // todo:
@@ -234,10 +196,19 @@ contract SecurityCouncilNomineeElectionGovernor is
         }
 
         Cohort cohort = proposalIndexToCohort(proposalCount - 1);
-        address[] memory nominees = _determineCompliantNominees(proposalId, cohort, compliantNomineeCount, blacklistedNomineeCount_);
+        
+        address[] memory maybeCompliantNominees = SecurityCouncilNomineeElectionGovernorCountingUpgradeable.nominees(proposalId);
+        address[] memory compliantNominees = SecurityCouncilMgmtUtils.filterAddressesWithBlacklist(maybeCompliantNominees, blacklisted[proposalId]);
+
+        if (compliantNominees.length < targetNomineeCount) {
+            // there are too few compliant nominees
+            // we should randomly select some members from the current cohort to add to the list
+            address[] memory currentMembers = cohort == Cohort.SEPTEMBER ? securityCouncilManager.getSeptemberCohort() : securityCouncilManager.getMarchCohort();
+            compliantNominees = SecurityCouncilMgmtUtils.randomAddToSet(currentMembers, compliantNominees, targetNomineeCount, uint256(blockhash(block.number - 1)));
+        }
         
         // call the SecurityCouncilManager to switch out the security council members
-        securityCouncilManager.executeElectionResult(nominees, cohort);
+        securityCouncilManager.executeElectionResult(compliantNominees, cohort);
     }
 
     /// @notice Put up a contender for nomination. Must be called before a contender can receive votes.
