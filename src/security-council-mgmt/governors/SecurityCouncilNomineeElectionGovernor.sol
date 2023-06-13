@@ -113,7 +113,7 @@ contract SecurityCouncilNomineeElectionGovernor is
 
     /// @notice Allows the nominee vetter to call certain functions
     modifier onlyNomineeVetter() {
-        require(msg.sender == nomineeVetter, "Only the nomineeVetter can call this function");
+        require(msg.sender == nomineeVetter, "SecurityCouncilNomineeElectionGovernor: Only the nomineeVetter can call this function");
         _;
     }
 
@@ -142,7 +142,7 @@ contract SecurityCouncilNomineeElectionGovernor is
         bytes[] memory,
         string memory
     ) public virtual override returns (uint256) {
-        revert("Proposing is not allowed, call createElection instead");
+        revert("SecurityCouncilNomineeElectionGovernor: Proposing is not allowed, call createElection instead");
     }
 
     /// @notice Normally "the number of votes required in order for a voter to become a proposer." But in our case it is 0.
@@ -156,7 +156,7 @@ contract SecurityCouncilNomineeElectionGovernor is
     ///         Can be called by anyone every `nominationFrequency` seconds.
     /// @return proposalId The id of the proposal
     function createElection() external returns (uint256 proposalId) {
-        require(block.timestamp >= firstNominationStartTime + nominationFrequency * electionCount, "Not enough time has passed since the last election");
+        require(block.timestamp >= firstNominationStartTime + nominationFrequency * electionCount, "SecurityCouncilNomineeElectionGovernor: Not enough time has passed since the last election");
 
         proposalId = GovernorUpgradeable.propose(
             new address[](1),
@@ -184,7 +184,7 @@ contract SecurityCouncilNomineeElectionGovernor is
         bytes[] memory /* calldatas */,
         bytes32 /*descriptionHash*/
     ) internal virtual override {
-        require(block.number > proposalVettingDeadline(proposalId), "Proposal is still in the nominee vetting period");
+        require(block.number > proposalVettingDeadline(proposalId), "SecurityCouncilNomineeElectionGovernor: Proposal is still in the nominee vetting period");
 
         uint256 compliantNomineeCount = nomineeCount(proposalId) - blacklistedNomineeCount[proposalId];
 
@@ -216,12 +216,12 @@ contract SecurityCouncilNomineeElectionGovernor is
     ///         A contender cannot be a member of the opposite cohort.
     function addContender(uint256 proposalId, address account) external {
         ProposalState state = state(proposalId);
-        require(state == ProposalState.Active, "Proposal is not active");
+        require(state == ProposalState.Active, "SecurityCouncilNomineeElectionGovernor: Proposal is not active");
 
         // check to make sure the contender is not part of the other cohort
         Cohort cohort = electionIndexToCohort(electionCount - 1);
         address[] memory oppositeCohortCurrentMembers = cohort == Cohort.MARCH ? securityCouncilManager.getSeptemberCohort() : securityCouncilManager.getMarchCohort();
-        require(!SecurityCouncilMgmtUtils.isInArray(account, oppositeCohortCurrentMembers), "Account is a member of the opposite cohort");
+        require(!SecurityCouncilMgmtUtils.isInArray(account, oppositeCohortCurrentMembers), "SecurityCouncilNomineeElectionGovernor: Account is a member of the opposite cohort");
 
         contenders[proposalId][account] = true;
     }
@@ -230,9 +230,9 @@ contract SecurityCouncilNomineeElectionGovernor is
     /// @dev    Can be called only after a proposal has succeeded (voting has ended) and before the nominee vetting period has ended.
     ///         Will revert if the provided account is not a nominee (had less than the required votes).
     function blacklistNominee(uint256 proposalId, address account) external onlyNomineeVetter {
-        require(state(proposalId) == ProposalState.Succeeded, "Proposal has not succeeded");
-        require(block.number <= proposalVettingDeadline(proposalId), "Proposal is no longer in the nominee vetting period");
-        require(isNominee(proposalId, account), "Account is not a nominee");
+        require(state(proposalId) == ProposalState.Succeeded, "SecurityCouncilNomineeElectionGovernor: Proposal has not succeeded");
+        require(block.number <= proposalVettingDeadline(proposalId), "SecurityCouncilNomineeElectionGovernor: Proposal is no longer in the nominee vetting period");
+        require(isNominee(proposalId, account), "SecurityCouncilNomineeElectionGovernor: Account is not a nominee");
         blacklisted[proposalId][account] = true;
         blacklistedNomineeCount[proposalId]++;
     }

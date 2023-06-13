@@ -61,19 +61,19 @@ abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is I
         // let's say params is (address candidate, uint256 tokens)
         (address candidate, uint256 tokens) = abi.decode(params, (address, uint256));
 
-        require(_isContender(proposalId, candidate), "Candidate is not eligible");
+        require(_isContender(proposalId, candidate), "SecurityCouncilNomineeElectionGovernorCountingUpgradeable: Candidate is not eligible");
 
         NomineeElectionState storage election = _elections[proposalId];
 
         // weight is the number of tokens that account has at the time of the vote
         // make sure tokens + previously used tokens is less than or equal to weight
         uint256 previouslyUsedTokens = election.tokensUsed[account];
-        require(tokens + previouslyUsedTokens <= weight, "Not enough tokens to cast this vote");
+        require(tokens + previouslyUsedTokens <= weight, "SecurityCouncilNomineeElectionGovernorCountingUpgradeable: Not enough tokens to cast this vote");
 
         uint256 oldVotesForCandidate = election.votes[candidate];
         uint256 votesThreshold = quorum(proposalSnapshot(proposalId));
 
-        require(oldVotesForCandidate < votesThreshold, "Candidate already has enough votes");
+        require(oldVotesForCandidate < votesThreshold, "SecurityCouncilNomineeElectionGovernorCountingUpgradeable: Candidate already has enough votes");
 
         if (oldVotesForCandidate + tokens < votesThreshold) {
             // we didn't push the candidate over the line, so just add the tokens
