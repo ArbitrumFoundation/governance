@@ -107,7 +107,7 @@ contract SecurityCouncilUpgradeExecutor is
     /// @notice execute provided operation via gnosis safe's trusted  execTransactionFromModule entry point
     function _execFromModule(bytes memory data) internal {
         securityCouncil.execTransactionFromModule(
-            address(securityCouncil), 0, data, Enum.Operation.Call
+            address(securityCouncil), 0, data, OpEnum.Operation.Call
         );
     }
 }
