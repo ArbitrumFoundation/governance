@@ -22,15 +22,7 @@ abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is I
     }
 
     /// @notice returns true if the account has voted any amount for any contender in the proposal
-    function hasVoted(
-        uint256 proposalId, 
-        address account
-    ) 
-        public 
-        view 
-        override
-        returns (bool) 
-    {
+    function hasVoted(uint256 proposalId, address account) public view override returns (bool) {
         return _elections[proposalId].tokensUsed[account] > 0;
     }
 
@@ -68,12 +60,19 @@ abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is I
         // weight is the number of tokens that account has at the time of the vote
         // make sure tokens + previously used tokens is less than or equal to weight
         uint256 previouslyUsedTokens = election.tokensUsed[account];
-        require(tokens + previouslyUsedTokens <= weight, "SecurityCouncilNomineeElectionGovernorCountingUpgradeable: Not enough tokens to cast this vote");
+
+        require(
+            tokens + previouslyUsedTokens <= weight, 
+            "SecurityCouncilNomineeElectionGovernorCountingUpgradeable: Not enough tokens to cast this vote"
+        );
 
         uint256 oldVotesForCandidate = election.votes[candidate];
         uint256 votesThreshold = quorum(proposalSnapshot(proposalId));
 
-        require(oldVotesForCandidate < votesThreshold, "SecurityCouncilNomineeElectionGovernorCountingUpgradeable: Candidate already has enough votes");
+        require(
+            oldVotesForCandidate < votesThreshold, 
+            "SecurityCouncilNomineeElectionGovernorCountingUpgradeable: Candidate already has enough votes"
+        );
 
         if (oldVotesForCandidate + tokens < votesThreshold) {
             // we didn't push the candidate over the line, so just add the tokens

@@ -156,7 +156,10 @@ contract SecurityCouncilNomineeElectionGovernor is
     ///         Can be called by anyone every `nominationFrequency` seconds.
     /// @return proposalId The id of the proposal
     function createElection() external returns (uint256 proposalId) {
-        require(block.timestamp >= firstNominationStartTime + nominationFrequency * electionCount, "SecurityCouncilNomineeElectionGovernor: Not enough time has passed since the last election");
+        require(
+            block.timestamp >= firstNominationStartTime + nominationFrequency * electionCount, 
+            "SecurityCouncilNomineeElectionGovernor: Not enough time has passed since the last election"
+        );
 
         proposalId = GovernorUpgradeable.propose(
             new address[](1),
@@ -184,7 +187,10 @@ contract SecurityCouncilNomineeElectionGovernor is
         bytes[] memory /* calldatas */,
         bytes32 /*descriptionHash*/
     ) internal virtual override {
-        require(block.number > proposalVettingDeadline(proposalId), "SecurityCouncilNomineeElectionGovernor: Proposal is still in the nominee vetting period");
+        require(
+            block.number > proposalVettingDeadline(proposalId), 
+            "SecurityCouncilNomineeElectionGovernor: Proposal is still in the nominee vetting period"
+        );
 
         uint256 compliantNomineeCount = nomineeCount(proposalId) - blacklistedNomineeCount[proposalId];
 
@@ -198,13 +204,23 @@ contract SecurityCouncilNomineeElectionGovernor is
         Cohort cohort = electionIndexToCohort(electionCount - 1);
         
         address[] memory maybeCompliantNominees = SecurityCouncilNomineeElectionGovernorCountingUpgradeable.nominees(proposalId);
-        address[] memory compliantNominees = SecurityCouncilMgmtUtils.filterAddressesWithBlacklist(maybeCompliantNominees, blacklisted[proposalId]);
+        address[] memory compliantNominees = SecurityCouncilMgmtUtils.filterAddressesWithBlacklist(
+            maybeCompliantNominees, 
+            blacklisted[proposalId]
+        );
 
         if (compliantNominees.length < targetNomineeCount) {
             // there are too few compliant nominees
             // we should randomly select some members from the current cohort to add to the list
-            address[] memory currentMembers = cohort == Cohort.SEPTEMBER ? securityCouncilManager.getSeptemberCohort() : securityCouncilManager.getMarchCohort();
-            compliantNominees = SecurityCouncilMgmtUtils.randomAddToSet(currentMembers, compliantNominees, targetNomineeCount, uint256(blockhash(block.number - 1)));
+            address[] memory currentMembers = cohort == Cohort.SEPTEMBER ? 
+                securityCouncilManager.getSeptemberCohort() : securityCouncilManager.getMarchCohort();
+            
+            compliantNominees = SecurityCouncilMgmtUtils.randomAddToSet({
+                pickFrom: currentMembers,
+                addTo: compliantNominees,
+                targetLength: targetNomineeCount,
+                rng: uint256(blockhash(block.number - 1))
+            });
         }
         
         // call the SecurityCouncilManager to switch out the security council members
@@ -220,8 +236,14 @@ contract SecurityCouncilNomineeElectionGovernor is
 
         // check to make sure the contender is not part of the other cohort
         Cohort cohort = electionIndexToCohort(electionCount - 1);
-        address[] memory oppositeCohortCurrentMembers = cohort == Cohort.MARCH ? securityCouncilManager.getSeptemberCohort() : securityCouncilManager.getMarchCohort();
-        require(!SecurityCouncilMgmtUtils.isInArray(account, oppositeCohortCurrentMembers), "SecurityCouncilNomineeElectionGovernor: Account is a member of the opposite cohort");
+
+        address[] memory oppositeCohortCurrentMembers = cohort == Cohort.MARCH ? 
+            securityCouncilManager.getSeptemberCohort() : securityCouncilManager.getMarchCohort();
+
+        require(
+            !SecurityCouncilMgmtUtils.isInArray(account, oppositeCohortCurrentMembers), 
+            "SecurityCouncilNomineeElectionGovernor: Account is a member of the opposite cohort"
+        );
 
         contenders[proposalId][account] = true;
     }
@@ -230,9 +252,19 @@ contract SecurityCouncilNomineeElectionGovernor is
     /// @dev    Can be called only after a proposal has succeeded (voting has ended) and before the nominee vetting period has ended.
     ///         Will revert if the provided account is not a nominee (had less than the required votes).
     function blacklistNominee(uint256 proposalId, address account) external onlyNomineeVetter {
-        require(state(proposalId) == ProposalState.Succeeded, "SecurityCouncilNomineeElectionGovernor: Proposal has not succeeded");
-        require(block.number <= proposalVettingDeadline(proposalId), "SecurityCouncilNomineeElectionGovernor: Proposal is no longer in the nominee vetting period");
-        require(isNominee(proposalId, account), "SecurityCouncilNomineeElectionGovernor: Account is not a nominee");
+        require(
+            state(proposalId) == ProposalState.Succeeded, 
+            "SecurityCouncilNomineeElectionGovernor: Proposal has not succeeded"
+        );
+        require(
+            block.number <= proposalVettingDeadline(proposalId), 
+            "SecurityCouncilNomineeElectionGovernor: Proposal is no longer in the nominee vetting period"
+        );
+        require(
+            isNominee(proposalId, account), 
+            "SecurityCouncilNomineeElectionGovernor: Account is not a nominee"
+        );
+        
         blacklisted[proposalId][account] = true;
         blacklistedNomineeCount[proposalId]++;
     }
