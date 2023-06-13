@@ -11,6 +11,7 @@ struct Roles {
     address cohortUpdator;
     address memberAdder;
     address memberRemover;
+    address memberRotator;
 }
 
 struct TargetContracts {
