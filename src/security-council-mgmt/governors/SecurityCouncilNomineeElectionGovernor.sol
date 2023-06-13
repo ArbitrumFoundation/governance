@@ -38,8 +38,8 @@ contract SecurityCouncilNomineeElectionGovernor is
     /// @notice Delay between elections (expressed in seconds)
     uint256 public nominationFrequency;
 
-    /// @notice Duration of the blacklist / nominee vetting period (expressed in blocks)
-    /// @dev    This is the amount of time after voting ends that the nomineeVetter can blacklist noncompliant nominees
+    /// @notice Duration of the nominee vetting period (expressed in blocks)
+    /// @dev    This is the amount of time after voting ends that the nomineeVetter can exclude noncompliant nominees
     uint256 public nomineeVettingDuration;
 
     /// @notice Address responsible for blocking non compliant nominees
@@ -56,13 +56,13 @@ contract SecurityCouncilNomineeElectionGovernor is
     /// @dev    proposalId => contender => bool
     mapping(uint256 => mapping(address => bool)) public contenders;
 
-    /// @notice Blacklisted nominees per proposal
+    /// @notice Excluded nominees for each proposal
     /// @dev    Accounts can only be marked in this mapping if they have received enough votes to be a nominee.
     ///         proposalId => nominee => bool
-    mapping(uint256 => mapping(address => bool)) public blacklisted;
+    mapping(uint256 => mapping(address => bool)) public excluded;
 
-    /// @notice Number of blacklisted nominees per proposal
-    mapping(uint256 => uint256) public blacklistedNomineeCount;
+    /// @notice Number of excluded nominees per proposal
+    mapping(uint256 => uint256) public excludedNomineeCount;
 
     constructor() {
         _disableInitializers();
@@ -73,7 +73,7 @@ contract SecurityCouncilNomineeElectionGovernor is
     /// @param _firstCohort Cohort of the first election
     /// @param _firstNominationStartTime Timestamp of the first election
     /// @param _nominationFrequency Delay between elections (expressed in seconds)
-    /// @param _nomineeVettingDuration Duration of the blacklist period (expressed in blocks)
+    /// @param _nomineeVettingDuration Duration of the nominee vetting period (expressed in blocks)
     /// @param _nomineeVetter Address of the nominee vetter
     /// @param _securityCouncilManager Security council manager contract
     /// @param _token Token used for voting
@@ -172,7 +172,7 @@ contract SecurityCouncilNomineeElectionGovernor is
     }
 
     /// @dev    `GovernorUpgradeable` function to execute a proposal overridden to handle nominee elections.
-    ///         Can be called by anyone via `execute` after voting and blacklisting periods have ended.
+    ///         Can be called by anyone via `execute` after voting and nominee vetting periods have ended.
     ///         If the number of compliant nominees is > the target number of nominees, 
     ///         we move on to the next phase by calling the SecurityCouncilMemberElectionGovernor.
     ///         If the number of compliant nominees is == the target number of nominees,
@@ -192,7 +192,7 @@ contract SecurityCouncilNomineeElectionGovernor is
             "SecurityCouncilNomineeElectionGovernor: Proposal is still in the nominee vetting period"
         );
 
-        uint256 compliantNomineeCount = nomineeCount(proposalId) - blacklistedNomineeCount[proposalId];
+        uint256 compliantNomineeCount = nomineeCount(proposalId) - excludedNomineeCount[proposalId];
 
         if (compliantNomineeCount > targetNomineeCount) {
             // todo:
@@ -204,9 +204,9 @@ contract SecurityCouncilNomineeElectionGovernor is
         Cohort cohort = electionIndexToCohort(electionCount - 1);
         
         address[] memory maybeCompliantNominees = SecurityCouncilNomineeElectionGovernorCountingUpgradeable.nominees(proposalId);
-        address[] memory compliantNominees = SecurityCouncilMgmtUtils.filterAddressesWithBlacklist(
+        address[] memory compliantNominees = SecurityCouncilMgmtUtils.filterAddressesWithExcludeList(
             maybeCompliantNominees, 
-            blacklisted[proposalId]
+            excluded[proposalId]
         );
 
         if (compliantNominees.length < targetNomineeCount) {
@@ -248,10 +248,10 @@ contract SecurityCouncilNomineeElectionGovernor is
         contenders[proposalId][account] = true;
     }
 
-    /// @notice Allows the nomineeVetter to blacklist a noncompliant nominee.
+    /// @notice Allows the nomineeVetter to exclude a noncompliant nominee.
     /// @dev    Can be called only after a proposal has succeeded (voting has ended) and before the nominee vetting period has ended.
     ///         Will revert if the provided account is not a nominee (had less than the required votes).
-    function blacklistNominee(uint256 proposalId, address account) external onlyNomineeVetter {
+    function excludeNominee(uint256 proposalId, address account) external onlyNomineeVetter {
         require(
             state(proposalId) == ProposalState.Succeeded, 
             "SecurityCouncilNomineeElectionGovernor: Proposal has not succeeded"
@@ -264,16 +264,16 @@ contract SecurityCouncilNomineeElectionGovernor is
             isNominee(proposalId, account), 
             "SecurityCouncilNomineeElectionGovernor: Account is not a nominee"
         );
-        
-        blacklisted[proposalId][account] = true;
-        blacklistedNomineeCount[proposalId]++;
+
+        excluded[proposalId][account] = true;
+        excludedNomineeCount[proposalId]++;
     }
 
-    /// @notice returns true if the account is a nominee and has not been blacklisted
+    /// @notice returns true if the account is a nominee and has not been excluded
     /// @param  proposalId The id of the proposal
     /// @param  account The account to check
     function isCompliantNominee(uint256 proposalId, address account) external view returns (bool) {
-        return isNominee(proposalId, account) && !blacklisted[proposalId][account];
+        return isNominee(proposalId, account) && !excluded[proposalId][account];
     }
 
     /// @notice Returns the deadline for the nominee vetting period for a given `proposalId`
