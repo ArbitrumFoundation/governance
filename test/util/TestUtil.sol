@@ -15,4 +15,8 @@ library TestUtil {
     function deployStub() public returns (address) {
         return address(new StubContract());
     }
+
+    function arraysAreEqual(address[] memory arr1, address[] memory arr2) public returns (bool) {
+        return keccak256(abi.encodePacked(arr1)) == keccak256(abi.encodePacked(arr2));
+    }
 }

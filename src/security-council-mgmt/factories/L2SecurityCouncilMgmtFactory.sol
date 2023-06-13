@@ -115,9 +115,10 @@ contract L2SecurityCouncilMgmtFactory is Ownable {
 
         Roles memory roles = Roles({
             admin: dp.l2UpgradeExecutor,
-            cohortUpdator: dp._govChainEmergencySecurityCouncil,
+            cohortUpdator: address(0xdead), // TODO election contract
             memberAdder: dp._govChainEmergencySecurityCouncil,
-            memberRemover: address(securityCouncilMemberRemoverGov)
+            memberRemover: address(securityCouncilMemberRemoverGov),
+            memberRotator: dp._govChainEmergencySecurityCouncil
         });
 
         TargetContracts memory targetContracts = TargetContracts({

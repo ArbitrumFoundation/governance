@@ -15,10 +15,10 @@ import "../../src/security-council-mgmt/interfaces/IGnosisSafe.sol";
 contract L2SecurityCouncilMgmtFactoryTest is Test {
     address govChainEmergencySecurityCouncil;
     address govChainNonEmergencySecurityCouncil;
-    address l1SecurityCouncilUpdateRouter = address(1_111_123);
+    address l1SecurityCouncilUpdateRouter = address(11_111);
     address proxyAdmin;
-    address[] marchCohort;
-    address[] septemberCohort;
+    address[] marchCohort = [address(11_112)];
+    address[] septemberCohort = [address(11_113)];
     address l2UpgradeExecutor;
     address arbToken;
 
@@ -31,7 +31,7 @@ contract L2SecurityCouncilMgmtFactoryTest is Test {
     L2SecurityCouncilMgmtFactory fac;
     DeployParams deployParams;
 
-    address rando = address(1_111_456);
+    address rando = address(11_114);
 
     function setUp() public {
         govChainEmergencySecurityCouncil = TestUtil.deployStub();
@@ -69,7 +69,7 @@ contract L2SecurityCouncilMgmtFactoryTest is Test {
         ) = fac.deployStep2(deployParams);
     }
 
-    function testContractsDeployedAndInitialized() public {
+    function testEmergencySCExecDeployment() public {
         (
             address l2EmergencySecurityCouncilUpgradeExecutorAddr,
             address l2NonEmergencySecurityCouncilUpgradeExecutorAddr,
@@ -105,8 +105,16 @@ contract L2SecurityCouncilMgmtFactoryTest is Test {
             ),
             "l2UpgradeExecutor is role admin for l2EmergencySecurityCouncilUpgradeExecutor"
         );
+    }
 
-        // non-emergency SC upgrade exec initialization
+    function testNonEmergencySCExecDeployment() public {
+        (
+            address l2EmergencySecurityCouncilUpgradeExecutorAddr,
+            address l2NonEmergencySecurityCouncilUpgradeExecutorAddr,
+            address securityCouncilMemberRemoverGovAddr,
+            address securityCouncilManagerAddr
+        ) = fac.deployStep2(deployParams);
+
         SecurityCouncilUpgradeExecutor l2NonEmergencySecurityCouncilUpgradeExecutor =
             SecurityCouncilUpgradeExecutor(l2NonEmergencySecurityCouncilUpgradeExecutorAddr);
         vm.expectRevert("Initializable: contract is already initialized");
@@ -123,7 +131,6 @@ contract L2SecurityCouncilMgmtFactoryTest is Test {
             ),
             "SecurityCouncilManagerAddr is updater for l2NonEmergencySecurityCouncilUpgradeExecutor"
         );
-        (true, "asdf");
         assertTrue(
             l2NonEmergencySecurityCouncilUpgradeExecutor.hasRole(
                 l2NonEmergencySecurityCouncilUpgradeExecutor.UPDATOR_ROLE(),
@@ -136,6 +143,85 @@ contract L2SecurityCouncilMgmtFactoryTest is Test {
                 l2NonEmergencySecurityCouncilUpgradeExecutor.DEFAULT_ADMIN_ROLE(), l2UpgradeExecutor
             ),
             "l2UpgradeExecutor is role admin for l2NonEmergencySecurityCouncilUpgradeExecuto"
+        );
+    }
+
+    function testSecurityCouncilManagerDeployment() public {
+        (
+            address l2EmergencySecurityCouncilUpgradeExecutorAddr,
+            address l2NonEmergencySecurityCouncilUpgradeExecutorAddr,
+            address securityCouncilMemberRemoverGovAddr,
+            address securityCouncilManagerAddr
+        ) = fac.deployStep2(deployParams);
+        SecurityCouncilManager securityCouncilManager =
+            SecurityCouncilManager(securityCouncilManagerAddr);
+
+        assertTrue(
+            securityCouncilManager.hasRole(
+                securityCouncilManager.DEFAULT_ADMIN_ROLE(), l2UpgradeExecutor
+            ),
+            "DAO has admin role"
+        );
+        assertTrue(
+            securityCouncilManager.hasRole(
+                securityCouncilManager.MEMBER_ADDER_ROLE(), govChainEmergencySecurityCouncil
+            ),
+            "SecurityCouncilManager: emergency security council has adder role"
+        );
+        assertTrue(
+            securityCouncilManager.hasRole(
+                securityCouncilManager.MEMBER_ROTATOR_ROLE(), govChainEmergencySecurityCouncil
+            ),
+            "emergency security council has rotator role"
+        );
+        assertTrue(
+            securityCouncilManager.hasRole(
+                securityCouncilManager.MEMBER_REMOVER_ROLE(), securityCouncilMemberRemoverGovAddr
+            ),
+            "emergency security council has removal role"
+        );
+        // TODO test that election contract has cohort updator role
+
+        assertTrue(
+            TestUtil.arraysAreEqual(securityCouncilManager.getMarchCohort(), marchCohort),
+            "march cohort set"
+        );
+        assertTrue(
+            TestUtil.arraysAreEqual(securityCouncilManager.getSeptemberCohort(), septemberCohort),
+            "september cohort set"
+        );
+        TargetContracts memory tc = securityCouncilManager.getTargetContracts();
+        assertEq(
+            tc.govChainEmergencySecurityCouncilUpgradeExecutor,
+            l2EmergencySecurityCouncilUpgradeExecutorAddr,
+            "emergency SC set"
+        );
+        assertEq(
+            tc.govChainNonEmergencySecurityCouncilUpgradeExecutor,
+            l2NonEmergencySecurityCouncilUpgradeExecutorAddr,
+            "non emergency SC set"
+        );
+        assertEq(
+            tc.l1SecurityCouncilUpdateRouter, l1SecurityCouncilUpdateRouter, "l1update router set"
+        );
+    }
+
+    function testRemovalGovDeployment() public {
+        (
+            address l2EmergencySecurityCouncilUpgradeExecutorAddr,
+            address l2NonEmergencySecurityCouncilUpgradeExecutorAddr,
+            address securityCouncilMemberRemoverGovAddr,
+            address securityCouncilManagerAddr
+        ) = fac.deployStep2(deployParams);
+        SecurityCouncilMemberRemoverGov rg =
+            SecurityCouncilMemberRemoverGov(payable(securityCouncilMemberRemoverGovAddr));
+
+        assertTrue(
+            rg.hasRole(rg.PROPSER_ROLE(), govChainEmergencySecurityCouncil),
+            "emergency SC has removal role"
+        );
+        assertTrue(
+            rg.hasRole(rg.DEFAULT_ADMIN_ROLE(), l2UpgradeExecutor), "emergency SC has removal role"
         );
     }
 }
