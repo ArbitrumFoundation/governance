@@ -49,8 +49,8 @@ contract SecurityCouncilNomineeElectionGovernor is
     /// @dev    Used to execute the election result immediately if <= 6 compliant nominees are chosen
     ISecurityCouncilManager public securityCouncilManager;
 
-    /// @notice Number of proposals created
-    uint256 public proposalCount;
+    /// @notice Number of elections created
+    uint256 public electionCount;
 
     /// @notice Contenders up for nomination
     /// @dev    proposalId => contender => bool
@@ -156,16 +156,16 @@ contract SecurityCouncilNomineeElectionGovernor is
     ///         Can be called by anyone every `nominationFrequency` seconds.
     /// @return proposalId The id of the proposal
     function createElection() external returns (uint256 proposalId) {
-        require(block.timestamp >= firstNominationStartTime + nominationFrequency * proposalCount, "Not enough time has passed since the last election");
+        require(block.timestamp >= firstNominationStartTime + nominationFrequency * electionCount, "Not enough time has passed since the last election");
 
         proposalId = GovernorUpgradeable.propose(
             new address[](1),
             new uint256[](1),
             new bytes[](1),
-            proposalIndexToDescription(proposalCount)
+            electionIndexToDescription(electionCount)
         );
 
-        proposalCount++;
+        electionCount++;
     }
 
     /// @dev    `GovernorUpgradeable` function to execute a proposal overridden to handle nominee elections.
@@ -195,7 +195,7 @@ contract SecurityCouncilNomineeElectionGovernor is
             return;
         }
 
-        Cohort cohort = proposalIndexToCohort(proposalCount - 1);
+        Cohort cohort = electionIndexToCohort(electionCount - 1);
         
         address[] memory maybeCompliantNominees = SecurityCouncilNomineeElectionGovernorCountingUpgradeable.nominees(proposalId);
         address[] memory compliantNominees = SecurityCouncilMgmtUtils.filterAddressesWithBlacklist(maybeCompliantNominees, blacklisted[proposalId]);
@@ -219,7 +219,7 @@ contract SecurityCouncilNomineeElectionGovernor is
         require(state == ProposalState.Active, "Proposal is not active");
 
         // check to make sure the contender is not part of the other cohort
-        Cohort cohort = proposalIndexToCohort(proposalCount - 1);
+        Cohort cohort = electionIndexToCohort(electionCount - 1);
         address[] memory oppositeCohortCurrentMembers = cohort == Cohort.MARCH ? securityCouncilManager.getSeptemberCohort() : securityCouncilManager.getMarchCohort();
         require(!SecurityCouncilMgmtUtils.isInArray(account, oppositeCohortCurrentMembers), "Account is a member of the opposite cohort");
 
@@ -254,23 +254,23 @@ contract SecurityCouncilNomineeElectionGovernor is
         return contenders[proposalId][contender];
     }
 
-    /// @notice Returns the cohort for a given `proposalIndex`
-    function proposalIndexToCohort(uint256 proposalIndex) public view returns (Cohort) {
-        return Cohort((uint256(firstCohort) + proposalIndex) % 2);
+    /// @notice Returns the cohort for a given `electionIndex`
+    function electionIndexToCohort(uint256 electionIndex) public view returns (Cohort) {
+        return Cohort((uint256(firstCohort) + electionIndex) % 2);
     }
 
-    /// @notice Returns the description for a given `proposalIndex`
-    function proposalIndexToDescription(uint256 proposalIndex) public pure returns (string memory) {
-        return string.concat("Nominee Election #", StringsUpgradeable.toString(proposalIndex));
+    /// @notice Returns the description for a given `electionIndex`
+    function electionIndexToDescription(uint256 electionIndex) public pure returns (string memory) {
+        return string.concat("Nominee Election #", StringsUpgradeable.toString(electionIndex));
     }
 
-    /// @notice Returns the proposalId for a given `proposalIndex`
-    function proposalIndexToProposalId(uint256 proposalIndex) public pure returns (uint256) {
+    /// @notice Returns the proposalId for a given `electionIndex`
+    function electionIndexToProposalId(uint256 electionIndex) public pure returns (uint256) {
         return hashProposal(
             new address[](1), 
             new uint256[](1),
             new bytes[](1),
-            keccak256(bytes(proposalIndexToDescription(proposalIndex)))
+            keccak256(bytes(electionIndexToDescription(electionIndex)))
         );
     }
 }
