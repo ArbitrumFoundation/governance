@@ -16,7 +16,7 @@ import "../SecurityCouncilMgmtUtils.sol";
 
 // handles phase 1 of security council elections (narrowing contenders down to a set of nominees)
 // note: this contract assumes that there can only be one proposalId with state Active or Succeeded at a time 
-// (easy to override state() to return `Expired` if they succeeded but haven't executed after some time)
+// (easy to override state() to return `Expired` if a proposal succeeded but hasn't executed after some time)
 contract SecurityCouncilNomineeElectionGovernor is
     Initializable,
     GovernorUpgradeable,
@@ -282,8 +282,8 @@ contract SecurityCouncilNomineeElectionGovernor is
     }
 
     /// @inheritdoc SecurityCouncilNomineeElectionGovernorCountingUpgradeable
-    function _isContender(uint256 proposalId, address contender) internal view virtual override returns (bool) {
-        return contenders[proposalId][contender];
+    function _isContender(uint256 proposalId, address possibleContender) internal view virtual override returns (bool) {
+        return contenders[proposalId][possibleContender];
     }
 
     /// @notice Returns the cohort for a given `electionIndex`

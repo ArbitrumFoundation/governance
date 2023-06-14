@@ -106,8 +106,8 @@ abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is I
         return _elections[proposalId].nominees;
     }
 
-    /// @dev Returns true if the candidate is eligible to be nominated
-    function _isContender(uint256 proposalId, address candidate) internal view virtual returns (bool);
+    /// @dev Returns true if the account is a contender for the proposal
+    function _isContender(uint256 proposalId, address possibleContender) internal view virtual returns (bool);
 
     /**
      * @dev This empty reserved space is put in place to allow future versions to add new
