@@ -227,10 +227,10 @@ contract SecurityCouncilNomineeElectionGovernor is
         securityCouncilManager.executeElectionResult(compliantNominees, cohort);
     }
 
-    /// @notice Put up a contender for nomination. Must be called before a contender can receive votes.
+    /// @notice Put `msg.sender` up for nomination. Must be called before a contender can receive votes.
     /// @dev    Can be called only while a proposal is active (in voting phase)
     ///         A contender cannot be a member of the opposite cohort.
-    function addContender(uint256 proposalId, address account) external {
+    function addContender(uint256 proposalId) external {
         ProposalState state = state(proposalId);
         require(state == ProposalState.Active, "SecurityCouncilNomineeElectionGovernor: Proposal is not active");
 
@@ -241,11 +241,11 @@ contract SecurityCouncilNomineeElectionGovernor is
             securityCouncilManager.getSeptemberCohort() : securityCouncilManager.getMarchCohort();
 
         require(
-            !SecurityCouncilMgmtUtils.isInArray(account, oppositeCohortCurrentMembers), 
+            !SecurityCouncilMgmtUtils.isInArray(msg.sender, oppositeCohortCurrentMembers), 
             "SecurityCouncilNomineeElectionGovernor: Account is a member of the opposite cohort"
         );
 
-        contenders[proposalId][account] = true;
+        contenders[proposalId][msg.sender] = true;
     }
 
     /// @notice Allows the nomineeVetter to exclude a noncompliant nominee.
