@@ -64,6 +64,10 @@ contract SecurityCouncilNomineeElectionGovernor is
     /// @notice Number of excluded nominees per proposal
     mapping(uint256 => uint256) public excludedNomineeCount;
 
+    event NomineeVetterChanged(address indexed oldNomineeVetter, address indexed newNomineeVetter);
+    event ContenderAdded(uint256 indexed proposalId, address indexed contender);
+    event NomineeExcluded(uint256 indexed proposalId, address indexed nominee);
+
     constructor() {
         _disableInitializers();
     }
@@ -119,7 +123,9 @@ contract SecurityCouncilNomineeElectionGovernor is
 
     /// @notice Allows the owner to change the nomineeVetter
     function setNomineeVetter(address _nomineeVetter) external onlyOwner {
+        address oldNomineeVetter = nomineeVetter;
         nomineeVetter = _nomineeVetter;
+        emit NomineeVetterChanged(oldNomineeVetter, _nomineeVetter);
     }
 
     /// @notice Allows the owner to make calls from the governor
@@ -246,6 +252,8 @@ contract SecurityCouncilNomineeElectionGovernor is
         );
 
         contenders[proposalId][msg.sender] = true;
+
+        emit ContenderAdded(proposalId, msg.sender);
     }
 
     /// @notice Allows the nomineeVetter to exclude a noncompliant nominee.
@@ -267,6 +275,8 @@ contract SecurityCouncilNomineeElectionGovernor is
 
         excluded[proposalId][account] = true;
         excludedNomineeCount[proposalId]++;
+
+        emit NomineeExcluded(proposalId, account);
     }
 
     /// @notice returns true if the account is a nominee and has not been excluded
