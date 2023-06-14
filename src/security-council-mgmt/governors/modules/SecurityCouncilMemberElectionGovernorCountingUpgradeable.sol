@@ -168,7 +168,7 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is In
     ) internal virtual override {
         (address nominee, uint256 tokens) = abi.decode(params, (address, uint256));
 
-        require(_isCompliantNominee(proposalId, nominee), "Nominee is not compliant");
+        require(_isCompliantNomineeForMostRecentElection(nominee), "Nominee is not compliant");
 
         uint256 prevTokensUsed = tokensUsed[proposalId][account];
 
@@ -219,7 +219,7 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is In
         return tokens - decreaseAmount;
     }
 
-    function _isCompliantNominee(uint256 proposalId, address nominee) internal view virtual returns (bool);
+    function _isCompliantNomineeForMostRecentElection(address nominee) internal view virtual returns (bool);
 
     /**
      * @dev This empty reserved space is put in place to allow future versions to add new

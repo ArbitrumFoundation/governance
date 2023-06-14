@@ -279,11 +279,17 @@ contract SecurityCouncilNomineeElectionGovernor is
         emit NomineeExcluded(proposalId, account);
     }
 
-    /// @notice returns true if the account is a nominee and has not been excluded
+    /// @notice returns true if the account is a nominee for the given proposal and has not been excluded
     /// @param  proposalId The id of the proposal
     /// @param  account The account to check
-    function isCompliantNominee(uint256 proposalId, address account) external view returns (bool) {
+    function isCompliantNominee(uint256 proposalId, address account) public view returns (bool) {
         return isNominee(proposalId, account) && !excluded[proposalId][account];
+    }
+
+    /// @notice returns true if the account is a nominee for the most recent election and has not been excluded
+    /// @param  account The account to check
+    function isCompliantNomineeForMostRecentElection(address account) external view returns (bool) {
+        return isCompliantNominee(electionIndexToProposalId(electionCount - 1), account);
     }
 
     /// @notice Returns the deadline for the nominee vetting period for a given `proposalId`
@@ -299,6 +305,10 @@ contract SecurityCouncilNomineeElectionGovernor is
     /// @notice Returns the cohort for a given `electionIndex`
     function electionIndexToCohort(uint256 electionIndex) public view returns (Cohort) {
         return Cohort((uint256(firstCohort) + electionIndex) % 2);
+    }
+
+    function cohortOfMostRecentElection() external view returns (Cohort) {
+        return electionIndexToCohort(electionCount - 1);
     }
 
     /// @notice Returns the description for a given `electionIndex`

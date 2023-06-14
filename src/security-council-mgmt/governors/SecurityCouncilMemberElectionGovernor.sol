@@ -16,6 +16,8 @@ import "../SecurityCouncilManager.sol";
 
 // narrows a set of nominees to a set of 6 members
 // proposals are created by the NomineeElectionGovernor
+// this contract assumes that any active proposal corresponds to the last NomineeElectionGovernor election
+// we may want to override state() such that a successful proposal expires if it isn't executed after some time
 contract SecurityCouncilMemberElectionGovernor is
     Initializable,
     GovernorUpgradeable,
@@ -27,9 +29,6 @@ contract SecurityCouncilMemberElectionGovernor is
     SecurityCouncilNomineeElectionGovernor public nomineeElectionGovernor;
     SecurityCouncilManager public securityCouncilManager;
 
-    // maps MemberElection proposalId to NomineeElection proposalIndex (todo: name this better)
-    mapping(uint256 => uint256) public proposalIdToNomineeElectionProposalIndex;
-
     function initialize(
         SecurityCouncilNomineeElectionGovernor _nomineeElectionGovernor,
         SecurityCouncilManager _securityCouncilManager,
@@ -37,7 +36,7 @@ contract SecurityCouncilMemberElectionGovernor is
         address _owner,
         uint256 _votingDelay,
         uint256 _votingPeriod,
-        uint256 _maxCandidates,
+        uint256 _maxNominees,
         uint256 _fullWeightDurationNumerator,
         uint256 _decreasingWeightDurationNumerator,
         uint256 _durationDenominator
@@ -45,7 +44,7 @@ contract SecurityCouncilMemberElectionGovernor is
         __Governor_init("SecurityCouncilMemberElectionGovernor");
         __GovernorVotes_init(_token);
         __SecurityCouncilMemberElectionGovernorCounting_init({
-            _maxCandidates: _maxCandidates,
+            _maxNominees: _maxNominees,
             _fullWeightDurationNumerator: _fullWeightDurationNumerator,
             _decreasingWeightDurationNumerator: _decreasingWeightDurationNumerator,
             _durationDenominator: _durationDenominator
@@ -91,15 +90,13 @@ contract SecurityCouncilMemberElectionGovernor is
         return 0;
     }
 
-    function proposeFromNomineeElectionGovernor(uint256 nomineeElectionProposalIndex) external onlyNomineeElectionGovernor {
-        uint256 proposalId = GovernorUpgradeable.propose(
+    function proposeFromNomineeElectionGovernor() external onlyNomineeElectionGovernor {
+        GovernorUpgradeable.propose(
             new address[](1),
             new uint256[](1),
             new bytes[](1),
-            proposalIndexToDescription(nomineeElectionProposalIndex)
+            nomineeElectionIndexToDescription(nomineeElectionGovernor.electionCount() - 1)
         );
-
-        proposalIdToNomineeElectionProposalIndex[proposalId] = nomineeElectionProposalIndex;
     }
 
     function _execute(
@@ -109,24 +106,20 @@ contract SecurityCouncilMemberElectionGovernor is
         bytes[] memory /* calldatas */,
         bytes32 /* descriptionHash */
     ) internal override {
-        uint256 nomineeElectionProposalIndex = proposalIdToNomineeElectionProposalIndex[proposalId];
-        Cohort cohort = nomineeElectionGovernor.proposalIndexToCohort(nomineeElectionProposalIndex);
-
         // we know that the list is full because we checked it in _voteSucceeded
-        address[] memory newMembers = _getTopCandidates(proposalId);
-
-        securityCouncilManager.executeElectionResult(newMembers, cohort);
+        securityCouncilManager.executeElectionResult({
+            _newCohort: _getTopNominees(proposalId),
+            _cohort: nomineeElectionGovernor.cohortOfMostRecentElection()
+        });
     }
 
-    function proposalIndexToDescription(uint256 proposalIndex) public pure returns (string memory) {
-        return string.concat("Member Election for Nominee Election #", StringsUpgradeable.toString(proposalIndex));
+    function nomineeElectionIndexToDescription(uint256 electionIndex) public pure returns (string memory) {
+        return string.concat("Member Election for Nominee Election #", StringsUpgradeable.toString(electionIndex));
     }
 
-    // proposalId is the id of the member election proposal (this contract)
-    // we need to map the proposalId to the nominee election proposalId
-    function _isCompliantNominee(uint256 proposalId, address nominee) internal view override returns (bool) {
-        uint256 nomineeElectionProposalIndex = proposalIdToNomineeElectionProposalIndex[proposalId];
-        uint256 nomineeElectionProposalId = nomineeElectionGovernor.proposalIndexToProposalId(nomineeElectionProposalIndex);
-        return nomineeElectionGovernor.isCompliantNominee(nomineeElectionProposalId, nominee);
+    /// @dev returns true if the nominee is compliant
+    ///      checks the SecurityCouncilNomineeElectionGovernor to see if the account is a compliant nominee of the most recent nominee election
+    function _isCompliantNomineeForMostRecentElection(address nominee) internal view override returns (bool) {
+        return nomineeElectionGovernor.isCompliantNomineeForMostRecentElection(nominee);
     }
 }
