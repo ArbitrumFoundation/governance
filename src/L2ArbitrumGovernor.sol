@@ -164,7 +164,6 @@ contract L2ArbitrumGovernor is
     function state(uint256 proposalId)
         public
         view
-        virtual
         override(GovernorUpgradeable, GovernorTimelockControlUpgradeable)
         returns (ProposalState)
     {
@@ -202,7 +201,7 @@ contract L2ArbitrumGovernor is
         uint256[] memory values,
         bytes[] memory calldatas,
         bytes32 descriptionHash
-    ) internal virtual override(GovernorUpgradeable, GovernorTimelockControlUpgradeable) {
+    ) internal override(GovernorUpgradeable, GovernorTimelockControlUpgradeable) {
         GovernorTimelockControlUpgradeable._execute(
             proposalId, targets, values, calldatas, descriptionHash
         );
@@ -215,7 +214,6 @@ contract L2ArbitrumGovernor is
         bytes32 descriptionHash
     )
         internal
-        virtual
         override(GovernorUpgradeable, GovernorTimelockControlUpgradeable)
         returns (uint256)
     {

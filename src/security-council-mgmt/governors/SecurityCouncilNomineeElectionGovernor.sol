@@ -15,6 +15,8 @@ import "./modules/ArbitrumGovernorVotesQuorumFractionUpgradeable.sol";
 import "../SecurityCouncilMgmtUtils.sol";
 
 // handles phase 1 of security council elections (narrowing contenders down to a set of nominees)
+// note: this contract assumes that there can only be one proposalId with state Active or Succeeded at a time 
+// (easy to override state() to return `Expired` if a proposal succeeded but hasn't executed after some time)
 contract SecurityCouncilNomineeElectionGovernor is
     Initializable,
     GovernorUpgradeable,
@@ -36,36 +38,35 @@ contract SecurityCouncilNomineeElectionGovernor is
     /// @notice Delay between elections (expressed in seconds)
     uint256 public nominationFrequency;
 
-    /// @notice Duration of the blacklist period (expressed in blocks)
-    /// @dev    This is the amount of time after voting ends that the foundation can blacklist noncompliant nominees
-    uint256 public foundationBlacklistDuration;
+    /// @notice Duration of the nominee vetting period (expressed in blocks)
+    /// @dev    This is the amount of time after voting ends that the nomineeVetter can exclude noncompliant nominees
+    uint256 public nomineeVettingDuration;
 
-    /// @notice Address of the foundation
-    address public foundation;
+    /// @notice Address responsible for blocking non compliant nominees
+    address public nomineeVetter;
 
     /// @notice Security council manager contract
     /// @dev    Used to execute the election result immediately if <= 6 compliant nominees are chosen
     ISecurityCouncilManager public securityCouncilManager;
 
-    /// @notice Number of proposals created
-    uint256 public proposalCount;
+    /// @notice Number of elections created
+    uint256 public electionCount;
 
     /// @notice Contenders up for nomination
     /// @dev    proposalId => contender => bool
     mapping(uint256 => mapping(address => bool)) public contenders;
 
-    /// @notice Blacklisted nominees per proposal
+    /// @notice Excluded nominees for each proposal
     /// @dev    Accounts can only be marked in this mapping if they have received enough votes to be a nominee.
     ///         proposalId => nominee => bool
-    mapping(uint256 => mapping(address => bool)) public blacklisted;
+    mapping(uint256 => mapping(address => bool)) public excluded;
 
-    /// @notice Number of blacklisted nominees per proposal
-    mapping(uint256 => uint256) public blacklistedNomineeCount;
+    /// @notice Number of excluded nominees per proposal
+    mapping(uint256 => uint256) public excludedNomineeCount;
 
-    /// @notice Maps a proposalId to a proposalIndex
-    /// @dev    A proposal's index is the number of proposals that have been created before it.
-    ///         Knowing a proposal's index allows us to determine which cohort it is for.
-    mapping(uint256 => uint256) public proposalIdToProposalIndex;
+    event NomineeVetterChanged(address indexed oldNomineeVetter, address indexed newNomineeVetter);
+    event ContenderAdded(uint256 indexed proposalId, address indexed contender);
+    event NomineeExcluded(uint256 indexed proposalId, address indexed nominee);
 
     constructor() {
         _disableInitializers();
@@ -76,8 +77,8 @@ contract SecurityCouncilNomineeElectionGovernor is
     /// @param _firstCohort Cohort of the first election
     /// @param _firstNominationStartTime Timestamp of the first election
     /// @param _nominationFrequency Delay between elections (expressed in seconds)
-    /// @param _foundationBlacklistDuration Duration of the blacklist period (expressed in blocks)
-    /// @param _foundation Address of the foundation
+    /// @param _nomineeVettingDuration Duration of the nominee vetting period (expressed in blocks)
+    /// @param _nomineeVetter Address of the nominee vetter
     /// @param _securityCouncilManager Security council manager contract
     /// @param _token Token used for voting
     /// @param _owner Owner of the governor
@@ -89,8 +90,8 @@ contract SecurityCouncilNomineeElectionGovernor is
         Cohort _firstCohort,
         uint256 _firstNominationStartTime,
         uint256 _nominationFrequency,
-        uint256 _foundationBlacklistDuration,
-        address _foundation,
+        uint256 _nomineeVettingDuration,
+        address _nomineeVetter,
         ISecurityCouncilManager _securityCouncilManager,
         IVotesUpgradeable _token,
         address _owner,
@@ -109,15 +110,22 @@ contract SecurityCouncilNomineeElectionGovernor is
         firstCohort = _firstCohort;
         firstNominationStartTime = _firstNominationStartTime;
         nominationFrequency = _nominationFrequency;
-        foundationBlacklistDuration = _foundationBlacklistDuration;
-        foundation = _foundation;
+        nomineeVettingDuration = _nomineeVettingDuration;
+        nomineeVetter = _nomineeVetter;
         securityCouncilManager = _securityCouncilManager;
     }
 
-    /// @notice Allows the foundation to call certain functions
-    modifier onlyFoundation {
-        require(msg.sender == foundation, "Only the foundation can call this function");
+    /// @notice Allows the nominee vetter to call certain functions
+    modifier onlyNomineeVetter() {
+        require(msg.sender == nomineeVetter, "SecurityCouncilNomineeElectionGovernor: Only the nomineeVetter can call this function");
         _;
+    }
+
+    /// @notice Allows the owner to change the nomineeVetter
+    function setNomineeVetter(address _nomineeVetter) external onlyOwner {
+        address oldNomineeVetter = nomineeVetter;
+        nomineeVetter = _nomineeVetter;
+        emit NomineeVetterChanged(oldNomineeVetter, _nomineeVetter);
     }
 
     /// @notice Allows the owner to make calls from the governor
@@ -140,7 +148,7 @@ contract SecurityCouncilNomineeElectionGovernor is
         bytes[] memory,
         string memory
     ) public virtual override returns (uint256) {
-        revert("Proposing is not allowed, call createElection instead");
+        revert("SecurityCouncilNomineeElectionGovernor: Proposing is not allowed, call createElection instead");
     }
 
     /// @notice Normally "the number of votes required in order for a voter to become a proposer." But in our case it is 0.
@@ -152,64 +160,25 @@ contract SecurityCouncilNomineeElectionGovernor is
 
     /// @notice Creates a new nominee election proposal. 
     ///         Can be called by anyone every `nominationFrequency` seconds.
-    /// @return proposalIndex The index of the proposal
     /// @return proposalId The id of the proposal
-    function createElection() external returns (uint256 proposalIndex, uint256 proposalId) {
-        require(block.timestamp >= firstNominationStartTime + nominationFrequency * proposalCount, "Not enough time has passed since the last election");
-
-        proposalIndex = proposalCount;
-        proposalCount = proposalIndex + 1;
+    function createElection() external returns (uint256 proposalId) {
+        require(
+            block.timestamp >= firstNominationStartTime + nominationFrequency * electionCount, 
+            "SecurityCouncilNomineeElectionGovernor: Not enough time has passed since the last election"
+        );
 
         proposalId = GovernorUpgradeable.propose(
             new address[](1),
             new uint256[](1),
             new bytes[](1),
-            proposalIndexToDescription(proposalIndex)
+            electionIndexToDescription(electionCount)
         );
 
-        // set the proposalIndex for the proposalId so we can look it up later
-        proposalIdToProposalIndex[proposalId] = proposalIndex;
-    }
-
-    /// @dev    Given some parameters, determines the list of compliant nominees after voting and blacklisting has ended.
-    ///         Assumes that the number of compliant nominees is <= the target number of nominees.
-    /// @param  proposalId The id of the proposal
-    /// @param  cohort The cohort of the proposal
-    /// @param  compliantNomineeCount The number of compliant nominees
-    /// @param  blacklistedNomineeCount_ The number of blacklisted nominees
-    /// @return nominees The list of compliant nominees for the proposal
-    function _determineCompliantNominees(uint256 proposalId, Cohort cohort, uint256 compliantNomineeCount, uint256 blacklistedNomineeCount_) internal view returns (address[] memory nominees) {
-        if (compliantNomineeCount < targetNomineeCount) {
-            // there are too few compliant nominees
-            // some may have been blacklisted
-            // we should filter out any blacklisted nominees and then randomly select some members from the current cohort to add to the list
-            address[] memory currentMembers = cohort == Cohort.SEPTEMBER ? securityCouncilManager.getSeptemberCohort() : securityCouncilManager.getMarchCohort();
-            address[] memory maybeCompliantNominees = SecurityCouncilNomineeElectionGovernorCountingUpgradeable.nominees(proposalId);
-            address[] memory compliantNominees;
-            if (blacklistedNomineeCount_ > 0) {
-                compliantNominees = SecurityCouncilMgmtUtils.filterAddressesWithBlacklist(maybeCompliantNominees, blacklisted[proposalId], blacklistedNomineeCount_);
-            }
-            else {
-                compliantNominees = maybeCompliantNominees;
-            }
-
-            nominees = SecurityCouncilMgmtUtils.randomAddToSet(currentMembers, compliantNominees, targetNomineeCount, uint256(blockhash(block.number - 1)));
-        }
-        else if (blacklistedNomineeCount_ > 0) {
-            // there are exactly the right number of compliant nominees
-            // but some of the nominees have been blacklisted
-            // we should remove the blacklisted nominees from SecurityCouncilNomineeElectionGovernorCounting's list
-            address[] memory maybeCompliantNominees = SecurityCouncilNomineeElectionGovernorCountingUpgradeable.nominees(proposalId);
-            nominees = SecurityCouncilMgmtUtils.filterAddressesWithBlacklist(maybeCompliantNominees, blacklisted[proposalId], blacklistedNomineeCount_);
-        }
-        else {
-            // there are exactly the right number of compliant nominees and none have been blacklisted
-            nominees = SecurityCouncilNomineeElectionGovernorCountingUpgradeable.nominees(proposalId);
-        }
+        electionCount++;
     }
 
     /// @dev    `GovernorUpgradeable` function to execute a proposal overridden to handle nominee elections.
-    ///         Can be called by anyone via `execute` after voting and blacklisting periods have ended.
+    ///         Can be called by anyone via `execute` after voting and nominee vetting periods have ended.
     ///         If the number of compliant nominees is > the target number of nominees, 
     ///         we move on to the next phase by calling the SecurityCouncilMemberElectionGovernor.
     ///         If the number of compliant nominees is == the target number of nominees,
@@ -224,11 +193,12 @@ contract SecurityCouncilNomineeElectionGovernor is
         bytes[] memory /* calldatas */,
         bytes32 /*descriptionHash*/
     ) internal virtual override {
-        uint256 blacklistDeadline = proposalDeadline(proposalId) + foundationBlacklistDuration;
-        require(block.number > blacklistDeadline, "Proposal is still in the blacklist period");
+        require(
+            block.number > proposalVettingDeadline(proposalId), 
+            "SecurityCouncilNomineeElectionGovernor: Proposal is still in the nominee vetting period"
+        );
 
-        uint256 blacklistedNomineeCount_ = blacklistedNomineeCount[proposalId];
-        uint256 compliantNomineeCount = nomineeCount(proposalId) - blacklistedNomineeCount_;
+        uint256 compliantNomineeCount = nomineeCount(proposalId) - excludedNomineeCount[proposalId];
 
         if (compliantNomineeCount > targetNomineeCount) {
             // todo:
@@ -237,67 +207,112 @@ contract SecurityCouncilNomineeElectionGovernor is
             return;
         }
 
-        uint256 proposalIndex = proposalIdToProposalIndex[proposalId];
-        Cohort cohort = proposalIndexToCohort(proposalIndex);
-        address[] memory nominees = _determineCompliantNominees(proposalId, cohort, compliantNomineeCount, blacklistedNomineeCount_);
+        Cohort cohort = electionIndexToCohort(electionCount - 1);
+        
+        address[] memory maybeCompliantNominees = SecurityCouncilNomineeElectionGovernorCountingUpgradeable.nominees(proposalId);
+        address[] memory compliantNominees = SecurityCouncilMgmtUtils.filterAddressesWithExcludeList(
+            maybeCompliantNominees, 
+            excluded[proposalId]
+        );
+
+        if (compliantNominees.length < targetNomineeCount) {
+            // there are too few compliant nominees
+            // we should randomly select some members from the current cohort to add to the list
+            address[] memory currentMembers = cohort == Cohort.SEPTEMBER ? 
+                securityCouncilManager.getSeptemberCohort() : securityCouncilManager.getMarchCohort();
+            
+            compliantNominees = SecurityCouncilMgmtUtils.randomAddToSet({
+                pickFrom: currentMembers,
+                addTo: compliantNominees,
+                targetLength: targetNomineeCount,
+                rng: uint256(blockhash(block.number - 1))
+            });
+        }
         
         // call the SecurityCouncilManager to switch out the security council members
-        securityCouncilManager.executeElectionResult(nominees, cohort);
+        securityCouncilManager.executeElectionResult(compliantNominees, cohort);
     }
 
-    /// @notice Put up a contender for nomination. Must be called before a contender can receive votes.
+    /// @notice Put `msg.sender` up for nomination. Must be called before a contender can receive votes.
     /// @dev    Can be called only while a proposal is active (in voting phase)
     ///         A contender cannot be a member of the opposite cohort.
-    function addContender(uint256 proposalId, address account) external {
+    function addContender(uint256 proposalId) external {
         ProposalState state = state(proposalId);
-        require(state == ProposalState.Active, "Proposal is not active");
+        require(state == ProposalState.Active, "SecurityCouncilNomineeElectionGovernor: Proposal is not active");
 
         // check to make sure the contender is not part of the other cohort
-        uint256 proposalIndex = proposalIdToProposalIndex[proposalId];
-        Cohort cohort = proposalIndexToCohort(proposalIndex);
-        address[] memory oppositeCohortCurrentMembers = cohort == Cohort.MARCH ? securityCouncilManager.getSeptemberCohort() : securityCouncilManager.getMarchCohort();
-        require(!SecurityCouncilMgmtUtils.isInArray(account, oppositeCohortCurrentMembers), "Account is a member of the opposite cohort");
+        Cohort cohort = electionIndexToCohort(electionCount - 1);
 
-        contenders[proposalId][account] = true;
+        address[] memory oppositeCohortCurrentMembers = cohort == Cohort.MARCH ? 
+            securityCouncilManager.getSeptemberCohort() : securityCouncilManager.getMarchCohort();
+
+        require(
+            !SecurityCouncilMgmtUtils.isInArray(msg.sender, oppositeCohortCurrentMembers), 
+            "SecurityCouncilNomineeElectionGovernor: Account is a member of the opposite cohort"
+        );
+
+        contenders[proposalId][msg.sender] = true;
+
+        emit ContenderAdded(proposalId, msg.sender);
     }
 
-    /// @notice Allows the foundation to blacklist a noncompliant nominee.
-    function blacklistNominee(uint256 proposalId, address account) external onlyFoundation {
-        // todo: during what state(s) should this be allowed? ProposalState.Succeeded? ProposalState.Active or ProposalState.Succeeded?
-        require(isNominee(proposalId, account), "Account is not a nominee");
-        blacklisted[proposalId][account] = true;
-        blacklistedNomineeCount[proposalId]++;
+    /// @notice Allows the nomineeVetter to exclude a noncompliant nominee.
+    /// @dev    Can be called only after a proposal has succeeded (voting has ended) and before the nominee vetting period has ended.
+    ///         Will revert if the provided account is not a nominee (had less than the required votes).
+    function excludeNominee(uint256 proposalId, address account) external onlyNomineeVetter {
+        require(
+            state(proposalId) == ProposalState.Succeeded, 
+            "SecurityCouncilNomineeElectionGovernor: Proposal has not succeeded"
+        );
+        require(
+            block.number <= proposalVettingDeadline(proposalId), 
+            "SecurityCouncilNomineeElectionGovernor: Proposal is no longer in the nominee vetting period"
+        );
+        require(
+            isNominee(proposalId, account), 
+            "SecurityCouncilNomineeElectionGovernor: Account is not a nominee"
+        );
+
+        excluded[proposalId][account] = true;
+        excludedNomineeCount[proposalId]++;
+
+        emit NomineeExcluded(proposalId, account);
     }
 
-    /// @notice returns true if the account is a nominee and has not been blacklisted
+    /// @notice returns true if the account is a nominee and has not been excluded
     /// @param  proposalId The id of the proposal
     /// @param  account The account to check
     function isCompliantNominee(uint256 proposalId, address account) external view returns (bool) {
-        return isNominee(proposalId, account) && !blacklisted[proposalId][account];
+        return isNominee(proposalId, account) && !excluded[proposalId][account];
+    }
+
+    /// @notice Returns the deadline for the nominee vetting period for a given `proposalId`
+    function proposalVettingDeadline(uint256 proposalId) public view returns (uint256) {
+        return proposalDeadline(proposalId) + nomineeVettingDuration;
     }
 
     /// @inheritdoc SecurityCouncilNomineeElectionGovernorCountingUpgradeable
-    function _isContender(uint256 proposalId, address contender) internal view virtual override returns (bool) {
-        return contenders[proposalId][contender];
+    function _isContender(uint256 proposalId, address possibleContender) internal view virtual override returns (bool) {
+        return contenders[proposalId][possibleContender];
     }
 
-    /// @notice Returns the cohort for a given `proposalIndex`
-    function proposalIndexToCohort(uint256 proposalIndex) public view returns (Cohort) {
-        return Cohort((uint256(firstCohort) + proposalIndex) % 2);
+    /// @notice Returns the cohort for a given `electionIndex`
+    function electionIndexToCohort(uint256 electionIndex) public view returns (Cohort) {
+        return Cohort((uint256(firstCohort) + electionIndex) % 2);
     }
 
-    /// @notice Returns the description for a given `proposalIndex`
-    function proposalIndexToDescription(uint256 proposalIndex) public pure returns (string memory) {
-        return string.concat("Nominee Election #", StringsUpgradeable.toString(proposalIndex));
+    /// @notice Returns the description for a given `electionIndex`
+    function electionIndexToDescription(uint256 electionIndex) public pure returns (string memory) {
+        return string.concat("Nominee Election #", StringsUpgradeable.toString(electionIndex));
     }
 
-    /// @notice Returns the proposalId for a given `proposalIndex`
-    function proposalIndexToProposalId(uint256 proposalIndex) public pure returns (uint256) {
+    /// @notice Returns the proposalId for a given `electionIndex`
+    function electionIndexToProposalId(uint256 electionIndex) public pure returns (uint256) {
         return hashProposal(
             new address[](1), 
             new uint256[](1),
             new bytes[](1),
-            keccak256(bytes(proposalIndexToDescription(proposalIndex)))
+            keccak256(bytes(electionIndexToDescription(electionIndex)))
         );
     }
 }

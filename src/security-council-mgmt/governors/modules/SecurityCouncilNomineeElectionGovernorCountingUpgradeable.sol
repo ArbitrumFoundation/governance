@@ -7,8 +7,8 @@ import "@openzeppelin/contracts-upgradeable/governance/GovernorUpgradeable.sol";
 abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is Initializable, GovernorUpgradeable {
     // todo: better name
     struct NomineeElectionState {
-        mapping(address => uint256) tokensUsed;
-        mapping(address => uint256) votes;
+        mapping(address => uint256) votesUsed;
+        mapping(address => uint256) votesReceived;
         address[] nominees;
     }
 
@@ -22,16 +22,8 @@ abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is I
     }
 
     /// @notice returns true if the account has voted any amount for any contender in the proposal
-    function hasVoted(
-        uint256 proposalId, 
-        address account
-    ) 
-        public 
-        view 
-        override
-        returns (bool) 
-    {
-        return _elections[proposalId].tokensUsed[account] > 0;
+    function hasVoted(uint256 proposalId, address account) public view override returns (bool) {
+        return _elections[proposalId].votesUsed[account] > 0;
     }
 
     /// @dev there is no minimum quorum for nominations, so we just return true
@@ -46,11 +38,11 @@ abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is I
 
     /// @dev This function is responsible for counting votes when they are cast.
     ///      If this vote pushes the candidate over the line, then the candidate is added to the nominees
-    ///      and only the necessary amount of tokens will be deducted from the voter. 
+    ///      and only the necessary amount of votes will be deducted from the voter. 
     /// @param proposalId the id of the proposal
     /// @param account the account that is casting the vote
     /// @param weight the amount of vote that account held at time of snapshot
-    /// @param params abi encoded (candidate, tokens) where tokens is the amount of tokens the account is using to vote
+    /// @param params abi encoded (candidate, votes) where votes is the amount of votes the account is using for this candidate
     function _countVote(
         uint256 proposalId,
         address account,
@@ -58,35 +50,39 @@ abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is I
         uint256 weight,
         bytes memory params
     ) internal virtual override {
-        // let's say params is (address candidate, uint256 tokens)
-        (address candidate, uint256 tokens) = abi.decode(params, (address, uint256));
+        // let's say params is (address candidate, uint256 votes)
+        (address candidate, uint256 votes) = abi.decode(params, (address, uint256));
 
-        require(_isContender(proposalId, candidate), "Candidate is not eligible");
+        require(_isContender(proposalId, candidate), "SecurityCouncilNomineeElectionGovernorCountingUpgradeable: Candidate is not eligible");
+
+        require(
+            !isNominee(proposalId, candidate), 
+            "SecurityCouncilNomineeElectionGovernorCountingUpgradeable: Candidate already has enough votes"
+        );
 
         NomineeElectionState storage election = _elections[proposalId];
+        uint256 prevVotesUsed = election.votesUsed[account];
 
-        // weight is the number of tokens that account has at the time of the vote
-        // make sure tokens + previously used tokens is less than or equal to weight
-        uint256 previouslyUsedTokens = election.tokensUsed[account];
-        require(tokens + previouslyUsedTokens <= weight, "Not enough tokens to cast this vote");
+        require(
+            votes + prevVotesUsed <= weight, 
+            "SecurityCouncilNomineeElectionGovernorCountingUpgradeable: Not enough tokens to cast this vote"
+        );
 
-        uint256 oldVotesForCandidate = election.votes[candidate];
+        uint256 prevVotesReceived = election.votesReceived[candidate];
         uint256 votesThreshold = quorum(proposalSnapshot(proposalId));
 
-        require(oldVotesForCandidate < votesThreshold, "Candidate already has enough votes");
-
-        if (oldVotesForCandidate + tokens < votesThreshold) {
-            // we didn't push the candidate over the line, so just add the tokens
-            election.tokensUsed[account] = previouslyUsedTokens + tokens;
-            election.votes[candidate] = oldVotesForCandidate + tokens;
+        if (prevVotesReceived + votes < votesThreshold) {
+            // we didn't push the candidate over the line, so just add the votes
+            election.votesUsed[account] = prevVotesUsed + votes;
+            election.votesReceived[candidate] = prevVotesReceived + votes;
         }
         else {
             // we pushed the candidate over the line
-            // we should only give the candidate enough tokens to get to the line so that we don't waste tokens
-            uint256 tokensNeeded = votesThreshold - oldVotesForCandidate;
+            // we should only give the candidate enough votes to get to the line so that we don't waste votes
+            uint256 votesNeeded = votesThreshold - prevVotesReceived;
 
-            election.tokensUsed[account] = previouslyUsedTokens + tokensNeeded;
-            election.votes[candidate] = oldVotesForCandidate + tokensNeeded;
+            election.votesUsed[account] = prevVotesUsed + votesNeeded;
+            election.votesReceived[candidate] = prevVotesReceived + votesNeeded;
 
             // push the candidate to the nominees
             election.nominees.push(candidate);
@@ -97,7 +93,7 @@ abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is I
 
     /// @notice Returns true if the candidate has enough votes to be a nominee
     function isNominee(uint256 proposalId, address candidate) public view returns (bool) {
-        return _elections[proposalId].votes[candidate] >= quorum(proposalSnapshot(proposalId));
+        return _elections[proposalId].votesReceived[candidate] >= quorum(proposalSnapshot(proposalId));
     }
 
     /// @notice Returns the number of nominees for a given proposal
@@ -110,8 +106,8 @@ abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is I
         return _elections[proposalId].nominees;
     }
 
-    /// @dev Returns true if the candidate is eligible to be nominated
-    function _isContender(uint256 proposalId, address candidate) internal view virtual returns (bool);
+    /// @dev Returns true if the account is a contender for the proposal
+    function _isContender(uint256 proposalId, address possibleContender) internal view virtual returns (bool);
 
     /**
      * @dev This empty reserved space is put in place to allow future versions to add new

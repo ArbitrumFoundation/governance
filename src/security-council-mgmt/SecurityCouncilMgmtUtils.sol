@@ -42,18 +42,22 @@ library SecurityCouncilMgmtUtils {
         }
     }
 
-    // filters an array of addresses by removing any addresses that are in the blacklist
-    // there must be exactly `blacklistLength` number of blacklisted addresses in the input array
-    function filterAddressesWithBlacklist(address[] memory input, mapping(address => bool) storage blacklist, uint256 blacklistLength) internal view returns (address[] memory) {
-        address[] memory output = new address[](input.length - blacklistLength);
+    // filters an array of addresses by removing any addresses that are in the excludeList
+    function filterAddressesWithExcludeList(address[] memory input, mapping(address => bool) storage excludeList) internal view returns (address[] memory) {
+        address[] memory intermediate = new address[](input.length);
+        uint256 intermediateLength = 0;
 
-        uint256 j = 0;
         for (uint256 i = 0; i < input.length; i++) {
             address nominee = input[i];
-            if (!blacklist[nominee]) {
-                output[j] = nominee;
-                j++;
+            if (!excludeList[nominee]) {
+                intermediate[intermediateLength] = nominee;
+                intermediateLength++;
             }
+        }
+
+        address[] memory output = new address[](intermediateLength);
+        for (uint256 i = 0; i < intermediateLength; i++) {
+            output[i] = intermediate[i];
         }
 
         return output;
