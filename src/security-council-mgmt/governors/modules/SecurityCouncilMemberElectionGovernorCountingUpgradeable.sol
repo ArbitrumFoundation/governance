@@ -3,31 +3,31 @@ pragma solidity 0.8.16;
 
 import "@openzeppelin/contracts-upgradeable/governance/GovernorUpgradeable.sol";
 
-// provides a way to keep track of the top K candidates for a given round
+// provides a way to keep track of the top K nominees for a given round
 // round is the proposalId
 abstract contract AccountRankerUpgradeable is Initializable {
-    /// @dev max number of candidates to track (6)
-    uint256 private maxCandidates;
+    /// @dev max number of nominees to track (6)
+    uint256 private maxNominees;
 
-    /// @dev round => list of top candidates
-    mapping(uint256 => address[]) private _candidates;
+    /// @dev round => list of top nominees in descending order by weight
+    mapping(uint256 => address[]) private _nominees;
 
     /// @dev round => account => weight.
     ///      weight is the number of tokens/votes cast for the account
     mapping(uint256 => mapping(address => uint256)) private _weights;
 
-    function __AccountRanker_init(uint256 _maxCandidates) internal onlyInitializing {
-        maxCandidates = _maxCandidates;
+    function __AccountRanker_init(uint256 _maxNominees) internal onlyInitializing {
+        maxNominees = _maxNominees;
     }
 
-    /// @dev returns the list of top candidates for a given round
-    function _getTopCandidates(uint256 round) internal view returns (address[] memory) {
-        return _candidates[round];
+    /// @dev returns the list of top nominees for a given round
+    function _getTopNominees(uint256 round) internal view returns (address[] memory) {
+        return _nominees[round];
     }
 
-    /// @dev returns true if the list of top candidates is full for a given round
-    function _isCandidatesListFull(uint256 round) internal view returns (bool) {
-        return _candidates[round].length == maxCandidates;
+    /// @dev returns true if the list of top nominees is full for a given round
+    function _isNomineesListFull(uint256 round) internal view returns (bool) {
+        return _nominees[round].length == maxNominees;
     }
 
     /// @dev returns the weight of an account in a given round
@@ -36,9 +36,9 @@ abstract contract AccountRankerUpgradeable is Initializable {
     }
 
     /// @dev increases the weight of an account in a given round. 
-    ///      updates the list of top candidates for that round if necessary.
-    function _increaseCandidateWeight(uint256 round, address account, uint256 weightToAdd) internal {
-        address[] storage candidatesPtr = _candidates[round];
+    ///      updates the list of top nominees for that round if necessary.
+    function _increaseNomineeWeight(uint256 round, address account, uint256 weightToAdd) internal {
+        address[] storage nomineesPtr = _nominees[round];
         mapping(address => uint256) storage weightsPtr = _weights[round];
 
         uint256 oldWeight = weightsPtr[account];
@@ -49,22 +49,22 @@ abstract contract AccountRankerUpgradeable is Initializable {
 
         // check to see if the account is already in the top K
         uint256 previousIndexOfAccount = type(uint256).max;
-        // todo: can probably just skip this loop if the oldWeight is less than the weight of the last candidate
-        for (uint256 i = 0; i < candidatesPtr.length; i++) {
-            if (candidatesPtr[i] == account) {
+        // todo: can probably just skip this loop if the oldWeight is less than the weight of the last nominee
+        for (uint256 i = 0; i < nomineesPtr.length; i++) {
+            if (nomineesPtr[i] == account) {
                 previousIndexOfAccount = i;
                 break;
             }
         }
 
         // if the array is not max length yet, and account is not already in the list, just add the account to the end
-        if (previousIndexOfAccount == type(uint256).max && candidatesPtr.length < maxCandidates) {
-            candidatesPtr.push(account);
-            previousIndexOfAccount = candidatesPtr.length - 1;
+        if (previousIndexOfAccount == type(uint256).max && nomineesPtr.length < maxNominees) {
+            nomineesPtr.push(account);
+            previousIndexOfAccount = nomineesPtr.length - 1;
         }
         // if the array is max length already, and account is not already in the list, set the previousIndexOfAccount to the length of the array
         else if (previousIndexOfAccount == type(uint256).max) {
-            previousIndexOfAccount = candidatesPtr.length;
+            previousIndexOfAccount = nomineesPtr.length;
         }
 
         if (previousIndexOfAccount == 0) {
@@ -75,20 +75,20 @@ abstract contract AccountRankerUpgradeable is Initializable {
         // start with the account's index - 1 and move to the left, shifting things down to the right until we find the appropriate spot
         uint256 j = previousIndexOfAccount - 1;
         while(true) {
-            address candidate = candidatesPtr[j];
-            if (newWeight > weightsPtr[candidate]) {
-                // the account's weight is greater than the candidate we are looking at
-                // we should move candidate down the list by one (unless they are already at the bottom)
-                if (j != candidatesPtr.length - 1) {
-                    candidatesPtr[j + 1] = candidate;
+            address nominee = nomineesPtr[j];
+            if (newWeight > weightsPtr[nominee]) {
+                // the account's weight is greater than the nominee we are looking at
+                // we should move nominee down the list by one (unless they are already at the bottom)
+                if (j != nomineesPtr.length - 1) {
+                    nomineesPtr[j + 1] = nominee;
                 }
             }
             else {
-                // the account's weight is less than or equal to the candidate we are looking at
+                // the account's weight is less than or equal to the nominee we are looking at
                 // if we are at the bottom of the list, then return
-                // if we are not, then we should place the account just to the right of the candidate we are looking at and return
-                if (j != candidatesPtr.length - 1) {
-                    candidatesPtr[j + 1] = account;
+                // if we are not, then we should place the account just to the right of the nominee we are looking at and return
+                if (j != nomineesPtr.length - 1) {
+                    nomineesPtr[j + 1] = account;
                 }
                 return;
             }
@@ -98,7 +98,7 @@ abstract contract AccountRankerUpgradeable is Initializable {
         }
 
         // if we get here, we have passed the end of the list, so we should place the account at the beginning
-        candidatesPtr[0] = account;
+        nomineesPtr[0] = account;
     }
 
     /**
@@ -120,12 +120,12 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is In
     mapping(uint256 => mapping(address => uint256)) public tokensUsed;
 
     function __SecurityCouncilMemberElectionGovernorCounting_init(
-        uint256 _maxCandidates,
+        uint256 _maxNominees,
         uint256 _fullWeightDurationNumerator,
         uint256 _decreasingWeightDurationNumerator,
         uint256 _durationDenominator
     ) internal onlyInitializing {
-        __AccountRanker_init(_maxCandidates);
+        __AccountRanker_init(_maxNominees);
 
         fullWeightDurationNumerator = _fullWeightDurationNumerator;
         decreasingWeightDurationNumerator = _decreasingWeightDurationNumerator;
@@ -154,9 +154,9 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is In
         return true;
     }
 
-    // the vote succeeds if the top K candidates have been selected
+    // the vote succeeds if the top K nominees have been selected
     function _voteSucceeded(uint256 proposalId) internal view override returns (bool) {
-        return _isCandidatesListFull(proposalId);
+        return _isNomineesListFull(proposalId);
     }
     
     function _countVote(
@@ -175,7 +175,7 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is In
         require(prevTokensUsed + tokens <= weight, "Cannot use more tokens than available");
 
         tokensUsed[proposalId][account] = prevTokensUsed + tokens;
-        _increaseCandidateWeight(proposalId, nominee, tokensToWeight(proposalId, block.number, tokens));
+        _increaseNomineeWeight(proposalId, nominee, tokensToWeight(proposalId, block.number, tokens));
     }
 
     function tokensToWeight(uint256 proposalId, uint256 blockNumber, uint256 tokens) public view returns (uint256) {
