@@ -3,6 +3,8 @@ pragma solidity 0.8.16;
 
 import "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorVotesQuorumFractionUpgradeable.sol";
 
+/// @title ArbitrumGovernorVotesQuorumFractionUpgradeable
+/// @notice GovernorVotesQuorumFractionUpgradeable with a quorum that excludes a special address
 abstract contract ArbitrumGovernorVotesQuorumFractionUpgradeable is Initializable, GovernorVotesQuorumFractionUpgradeable {
     /// @notice address for which votes will not be counted toward quorum
     /// @dev    A portion of the Arbitrum tokens will be held by entities (eg the treasury) that

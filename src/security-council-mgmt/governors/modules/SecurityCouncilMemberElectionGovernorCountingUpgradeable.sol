@@ -3,8 +3,8 @@ pragma solidity 0.8.16;
 
 import "@openzeppelin/contracts-upgradeable/governance/GovernorUpgradeable.sol";
 
-// provides a way to keep track of the top K nominees for a given round
-// round is the proposalId
+/// @title AccountRankerUpgradeable
+/// @notice Keeps track of the top K nominees for a given round (proposalId) and their weights
 abstract contract AccountRankerUpgradeable is Initializable {
     /// @dev max number of nominees to track (6)
     uint256 private maxNominees;
@@ -109,16 +109,28 @@ abstract contract AccountRankerUpgradeable is Initializable {
     uint256[47] private __gap;
 }
 
+/// @title  SecurityCouncilMemberElectionGovernorCountingUpgradeable
+/// @notice Counting module for the SecurityCouncilMemberElectionGovernor. 
+///         Voters can spread their votes across multiple nominees.
+///         Implements linearly decreasing voting weights over time.
+///         Uses AccountRankerUpgradeable to keep track of the top K nominees and their weights (where K is the number of nominees we want to select to become members).
 abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is Initializable, GovernorUpgradeable, AccountRankerUpgradeable {
     uint256 private constant WAD = 1e18;
 
+    /// @notice Numerator for the duration of full weight voting
     uint256 public fullWeightDurationNumerator; // = 1 (7 days)
+    /// @notice Numerator for the duration of decreasing weight voting
     uint256 public decreasingWeightDurationNumerator; // = 2 (14 days)
+    /// @notice Denominator for the total duration of voting
     uint256 public durationDenominator; // = 3 (21 days)
 
-    // proposalId => voter => votes used
+    /// @notice Keeps track of the number of votes used by each account for each proposal
     mapping(uint256 => mapping(address => uint256)) public votesUsed;
 
+    /// @param _maxNominees The maximum number of nominees to track
+    /// @param _fullWeightDurationNumerator Numerator for the duration of full weight voting
+    /// @param _decreasingWeightDurationNumerator Numerator for the duration of decreasing weight voting
+    /// @param _durationDenominator Denominator for the total duration of voting
     function __SecurityCouncilMemberElectionGovernorCounting_init(
         uint256 _maxNominees,
         uint256 _fullWeightDurationNumerator,
@@ -136,7 +148,7 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is In
         return "TODO: ???";
     }
 
-    // returns true if the account has voted any amount for any nominee
+    /// @notice Returns true if the account has voted any amount for any nominee in the proposal
     function hasVoted(
         uint256 proposalId, 
         address account
@@ -149,16 +161,25 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is In
         return votesUsed[proposalId][account] > 0;
     }
 
-    // there is no minimum quorum for nominations, so we just return true
+    /// @notice Returns true, since there is no minimum quorum
     function _quorumReached(uint256) internal pure override returns (bool) {
         return true;
     }
 
-    // the vote succeeds if the top K nominees have been selected
+    /// @notice Returns true if votes have been cast for at least K nominees
     function _voteSucceeded(uint256 proposalId) internal view override returns (bool) {
         return _isNomineesListFull(proposalId);
     }
     
+    /// @notice Register a vote by some account for a proposal. 
+    /// @dev    Reverts if the account does not have enough votes.
+    ///         Reverts if the possibleNominee is not a compliant nominee of the most recent election.
+    ///         Weight of the vote is determined using the votesToWeight function.
+    ///         Finally, the weight of the vote is added to the weight of the possibleNominee and the top K nominees are updated if necessary.
+    /// @param  proposalId The id of the proposal
+    /// @param  account The account that is voting
+    /// @param  weight The amount of votes that account had at the time of the proposal snapshot
+    /// @param  params Abi encoded (address possibleNominee, uint256 votes) 
     function _countVote(
         uint256 proposalId,
         address account,
@@ -166,18 +187,21 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is In
         uint256 weight,
         bytes memory params
     ) internal virtual override {
-        (address nominee, uint256 votes) = abi.decode(params, (address, uint256));
+        (address possibleNominee, uint256 votes) = abi.decode(params, (address, uint256));
 
-        require(_isCompliantNomineeForMostRecentElection(nominee), "Nominee is not compliant");
+        require(_isCompliantNomineeForMostRecentElection(possibleNominee), "Nominee is not compliant");
 
         uint256 prevVotesUsed = votesUsed[proposalId][account];
 
         require(prevVotesUsed + votes <= weight, "Cannot use more votes than available");
 
         votesUsed[proposalId][account] = prevVotesUsed + votes;
-        _increaseNomineeWeight(proposalId, nominee, votesToWeight(proposalId, block.number, votes));
+
+        _increaseNomineeWeight(proposalId, possibleNominee, votesToWeight(proposalId, block.number, votes));
     }
 
+    /// @notice Returns the weight of a vote for a given proposal, block number, and number of votes.
+    /// @dev    Uses a piecewise linear function to determine the weight of a vote.
     function votesToWeight(uint256 proposalId, uint256 blockNumber, uint256 votes) public view returns (uint256) {
         // Votes cast before T+14 days will have 100% weight. 
         // Votes cast between T+14 days and T+28 days will have weight based on the time of casting, 
@@ -219,6 +243,7 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is In
         return votes - decreaseAmount;
     }
 
+    /// @dev Returns true if the possibleNominee is a compliant nominee for the most recent election
     function _isCompliantNomineeForMostRecentElection(address possibleNominee) internal view virtual returns (bool);
 
     /**

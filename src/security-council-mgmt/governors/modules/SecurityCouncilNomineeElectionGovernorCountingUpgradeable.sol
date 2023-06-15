@@ -3,7 +3,10 @@ pragma solidity 0.8.16;
 
 import "@openzeppelin/contracts-upgradeable/governance/GovernorUpgradeable.sol";
 
-// counting module for nominee elections
+/// @title  SecurityCouncilNomineeElectionGovernorCountingUpgradeable
+/// @notice Counting module for the SecurityCouncilNomineeElectionGovernor
+///         Keeps track of all contenders that receive enough votes to be a nominee
+///         Voters can spread votes across multiple contenders
 abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is Initializable, GovernorUpgradeable {
     // todo: better name
     struct NomineeElectionState {

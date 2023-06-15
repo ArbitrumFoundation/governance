@@ -11,13 +11,15 @@ import "./modules/ArbitrumGovernorVotesQuorumFractionUpgradeable.sol";
 import "./modules/SecurityCouncilMemberElectionGovernorCountingUpgradeable.sol";
 import "./SecurityCouncilNomineeElectionGovernor.sol";
 
-import "../SecurityCouncilManager.sol";
+import "../interfaces/ISecurityCouncilManager.sol";
 
-
-// narrows a set of nominees to a set of 6 members
-// proposals are created by the NomineeElectionGovernor
-// this contract assumes that any active proposal corresponds to the last NomineeElectionGovernor election
+// this contract assumes that any active or successful proposal corresponds to the last NomineeElectionGovernor election
 // we may want to override state() such that a successful proposal expires if it isn't executed after some time
+
+/// @title  SecurityCouncilMemberElectionGovernor
+/// @notice Narrows a set of nominees down to a set of members.
+/// @dev    Proposals are created by the SecurityCouncilNomineeElectionGovernor. 
+///         This governor is responsible for executing the final election result by calling the SecurityCouncilManager.
 contract SecurityCouncilMemberElectionGovernor is
     Initializable,
     GovernorUpgradeable,
@@ -26,12 +28,25 @@ contract SecurityCouncilMemberElectionGovernor is
     GovernorSettingsUpgradeable,
     OwnableUpgradeable
 {
+    /// @notice The SecurityCouncilNomineeElectionGovernor that creates proposals for this governor and contains the list of compliant nominees
     SecurityCouncilNomineeElectionGovernor public nomineeElectionGovernor;
-    SecurityCouncilManager public securityCouncilManager;
 
+    /// @notice The SecurityCouncilManager that will execute the election result
+    ISecurityCouncilManager public securityCouncilManager;
+
+    /// @param _nomineeElectionGovernor The SecurityCouncilNomineeElectionGovernor
+    /// @param _securityCouncilManager The SecurityCouncilManager
+    /// @param _token The token used for voting
+    /// @param _owner The owner of the governor
+    /// @param _votingDelay The delay before voting on a proposal may take place, once proposed
+    /// @param _votingPeriod The duration of voting on a proposal
+    /// @param _maxNominees The maximum number of nominees that can become members
+    /// @param _fullWeightDurationNumerator Numerator for the duration of full weight voting
+    /// @param _decreasingWeightDurationNumerator Numerator for the duration of decreasing weight voting
+    /// @param _durationDenominator Denominator for the duration of full and decreasing weight voting
     function initialize(
         SecurityCouncilNomineeElectionGovernor _nomineeElectionGovernor,
-        SecurityCouncilManager _securityCouncilManager,
+        ISecurityCouncilManager _securityCouncilManager,
         IVotesUpgradeable _token,
         address _owner,
         uint256 _votingDelay,
@@ -72,7 +87,9 @@ contract SecurityCouncilMemberElectionGovernor is
         AddressUpgradeable.functionCallWithValue(target, data, value);
     }
 
-    // override propose to revert
+    /// @notice Always reverts.
+    /// @dev    `GovernorUpgradeable` function to create a proposal overridden to just revert. 
+    ///         We only want proposals to be created via `proposeFromNomineeElectionGovernor`.
     function propose(
         address[] memory,
         uint256[] memory,
@@ -82,14 +99,19 @@ contract SecurityCouncilMemberElectionGovernor is
         revert("Proposing is not allowed, call proposeFromNomineeElectionGovernor instead");
     }
 
+    /// @notice Normally "the number of votes required in order for a voter to become a proposer." But in our case it is 0.
+    /// @dev    Since we only want proposals to be created via `proposeFromNomineeElectionGovernor`, we set the proposal threshold to 0.
+    ///         `proposeFromNomineeElectionGovernor` determines the rules for creating a proposal.
     function proposalThreshold() public pure override(GovernorSettingsUpgradeable, GovernorUpgradeable) returns (uint256) {
         return 0;
     }
 
+    /// @notice Quorum is always 0.
     function quorum(uint256) public pure override returns (uint256) {
         return 0;
     }
 
+    /// @notice Creates a new member election proposal from the most recent nominee election.
     function proposeFromNomineeElectionGovernor() external onlyNomineeElectionGovernor {
         GovernorUpgradeable.propose(
             new address[](1),
@@ -99,6 +121,9 @@ contract SecurityCouncilMemberElectionGovernor is
         );
     }
 
+    /// @dev    `GovernorUpgradeable` function to execute a proposal overridden to handle nominee elections.
+    ///         We know that _getTopNominees will return a full list of nominees because we checked it in _voteSucceeded.
+    ///         Calls `SecurityCouncilManager.executeElectionResult` with the list of nominees.
     function _execute(
         uint256 proposalId,
         address[] memory /* targets */,
@@ -113,6 +138,7 @@ contract SecurityCouncilMemberElectionGovernor is
         });
     }
 
+    /// @notice Returns the description of a proposal given the nominee election index.
     function nomineeElectionIndexToDescription(uint256 electionIndex) public pure returns (string memory) {
         return string.concat("Member Election for Nominee Election #", StringsUpgradeable.toString(electionIndex));
     }

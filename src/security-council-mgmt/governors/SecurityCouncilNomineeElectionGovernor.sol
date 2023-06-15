@@ -14,9 +14,11 @@ import "./modules/ArbitrumGovernorVotesQuorumFractionUpgradeable.sol";
 
 import "../SecurityCouncilMgmtUtils.sol";
 
-// handles phase 1 of security council elections (narrowing contenders down to a set of nominees)
 // note: this contract assumes that there can only be one proposalId with state Active or Succeeded at a time 
 // (easy to override state() to return `Expired` if a proposal succeeded but hasn't executed after some time)
+
+/// @title SecurityCouncilNomineeElectionGovernor
+/// @notice Governor contract for selecting Security Council Nominees (phase 1 of the Security Council election process). 
 contract SecurityCouncilNomineeElectionGovernor is
     Initializable,
     GovernorUpgradeable,
