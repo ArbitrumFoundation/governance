@@ -13,7 +13,7 @@ abstract contract AccountRankerUpgradeable is Initializable {
     mapping(uint256 => address[]) private _nominees;
 
     /// @dev round => account => weight.
-    ///      weight is the number of tokens/votes cast for the account
+    ///      weight is the voting weight cast for the account
     mapping(uint256 => mapping(address => uint256)) private _weights;
 
     function __AccountRanker_init(uint256 _maxNominees) internal onlyInitializing {
@@ -116,8 +116,8 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is In
     uint256 public decreasingWeightDurationNumerator; // = 2 (14 days)
     uint256 public durationDenominator; // = 3 (21 days)
 
-    // proposalId => voter => tokens used
-    mapping(uint256 => mapping(address => uint256)) public tokensUsed;
+    // proposalId => voter => votes used
+    mapping(uint256 => mapping(address => uint256)) public votesUsed;
 
     function __SecurityCouncilMemberElectionGovernorCounting_init(
         uint256 _maxNominees,
@@ -146,7 +146,7 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is In
         override
         returns (bool) 
     {
-        return tokensUsed[proposalId][account] > 0;
+        return votesUsed[proposalId][account] > 0;
     }
 
     // there is no minimum quorum for nominations, so we just return true
@@ -166,19 +166,19 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is In
         uint256 weight,
         bytes memory params
     ) internal virtual override {
-        (address nominee, uint256 tokens) = abi.decode(params, (address, uint256));
+        (address nominee, uint256 votes) = abi.decode(params, (address, uint256));
 
         require(_isCompliantNomineeForMostRecentElection(nominee), "Nominee is not compliant");
 
-        uint256 prevTokensUsed = tokensUsed[proposalId][account];
+        uint256 prevVotesUsed = votesUsed[proposalId][account];
 
-        require(prevTokensUsed + tokens <= weight, "Cannot use more tokens than available");
+        require(prevVotesUsed + votes <= weight, "Cannot use more votes than available");
 
-        tokensUsed[proposalId][account] = prevTokensUsed + tokens;
-        _increaseNomineeWeight(proposalId, nominee, tokensToWeight(proposalId, block.number, tokens));
+        votesUsed[proposalId][account] = prevVotesUsed + votes;
+        _increaseNomineeWeight(proposalId, nominee, votesToWeight(proposalId, block.number, votes));
     }
 
-    function tokensToWeight(uint256 proposalId, uint256 blockNumber, uint256 tokens) public view returns (uint256) {
+    function votesToWeight(uint256 proposalId, uint256 blockNumber, uint256 votes) public view returns (uint256) {
         // Votes cast before T+14 days will have 100% weight. 
         // Votes cast between T+14 days and T+28 days will have weight based on the time of casting, 
         // decreasing linearly with time, with 100% weight at T+14 days, decreasing linearly to 0% weight at T+28 days.
@@ -201,22 +201,22 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is In
         uint256 decreasingWeightStartBlock = startBlock + fullWeightDuration;
 
         if (blockNumber <= decreasingWeightStartBlock) {
-            return tokens;
+            return votes;
         }
 
 
         // slope denominator
         uint256 decreasingWeightDuration = WAD * decreasingWeightDurationNumerator / durationDenominator * duration / WAD;
 
-        // slope numerator is -tokens
+        // slope numerator is -votes
 
-        uint256 decreaseAmount = WAD * tokens / decreasingWeightDuration * (blockNumber - decreasingWeightStartBlock) / WAD;
+        uint256 decreaseAmount = WAD * votes / decreasingWeightDuration * (blockNumber - decreasingWeightStartBlock) / WAD;
 
-        if (decreaseAmount >= tokens) {
+        if (decreaseAmount >= votes) {
             return 0;
         }
 
-        return tokens - decreaseAmount;
+        return votes - decreaseAmount;
     }
 
     function _isCompliantNomineeForMostRecentElection(address nominee) internal view virtual returns (bool);
