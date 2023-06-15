@@ -38,7 +38,6 @@ contract SecurityCouncilMemberElectionGovernor is
     /// @param _securityCouncilManager The SecurityCouncilManager
     /// @param _token The token used for voting
     /// @param _owner The owner of the governor
-    /// @param _votingDelay The delay before voting on a proposal may take place, once proposed
     /// @param _votingPeriod The duration of voting on a proposal
     /// @param _maxNominees The maximum number of nominees that can become members
     /// @param _fullWeightDurationNumerator Numerator for the duration of full weight voting
@@ -49,7 +48,6 @@ contract SecurityCouncilMemberElectionGovernor is
         ISecurityCouncilManager _securityCouncilManager,
         IVotesUpgradeable _token,
         address _owner,
-        uint256 _votingDelay,
         uint256 _votingPeriod,
         uint256 _maxNominees,
         uint256 _fullWeightDurationNumerator,
@@ -64,7 +62,7 @@ contract SecurityCouncilMemberElectionGovernor is
             _decreasingWeightDurationNumerator: _decreasingWeightDurationNumerator,
             _durationDenominator: _durationDenominator
         });
-        __GovernorSettings_init(_votingDelay, _votingPeriod, 0);
+        __GovernorSettings_init(0, _votingPeriod, 0);
         _transferOwnership(_owner);
 
         nomineeElectionGovernor = _nomineeElectionGovernor;
