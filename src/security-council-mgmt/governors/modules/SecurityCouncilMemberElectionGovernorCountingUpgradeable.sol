@@ -219,7 +219,7 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is In
         return votes - decreaseAmount;
     }
 
-    function _isCompliantNomineeForMostRecentElection(address nominee) internal view virtual returns (bool);
+    function _isCompliantNomineeForMostRecentElection(address possibleNominee) internal view virtual returns (bool);
 
     /**
      * @dev This empty reserved space is put in place to allow future versions to add new

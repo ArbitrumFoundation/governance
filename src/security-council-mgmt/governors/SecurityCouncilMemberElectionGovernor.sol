@@ -117,9 +117,9 @@ contract SecurityCouncilMemberElectionGovernor is
         return string.concat("Member Election for Nominee Election #", StringsUpgradeable.toString(electionIndex));
     }
 
-    /// @dev returns true if the nominee is compliant
+    /// @dev returns true if the account is a compliant nominee.
     ///      checks the SecurityCouncilNomineeElectionGovernor to see if the account is a compliant nominee of the most recent nominee election
-    function _isCompliantNomineeForMostRecentElection(address nominee) internal view override returns (bool) {
-        return nomineeElectionGovernor.isCompliantNomineeForMostRecentElection(nominee);
+    function _isCompliantNomineeForMostRecentElection(address possibleNominee) internal view override returns (bool) {
+        return nomineeElectionGovernor.isCompliantNomineeForMostRecentElection(possibleNominee);
     }
 }
