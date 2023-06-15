@@ -127,6 +127,14 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is In
     /// @notice Keeps track of the number of votes used by each account for each proposal
     mapping(uint256 => mapping(address => uint256)) public votesUsed;
 
+    event VoteCastForNominee(
+        address indexed voter,
+        uint256 proposalId,
+        address indexed nominee,
+        uint256 votes,
+        uint256 weight
+    );
+
     /// @param _maxNominees The maximum number of nominees to track
     /// @param _fullWeightDurationNumerator Numerator for the duration of full weight voting
     /// @param _decreasingWeightDurationNumerator Numerator for the duration of decreasing weight voting
@@ -178,13 +186,13 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is In
     ///         Finally, the weight of the vote is added to the weight of the possibleNominee and the top K nominees are updated if necessary.
     /// @param  proposalId The id of the proposal
     /// @param  account The account that is voting
-    /// @param  weight The amount of votes that account had at the time of the proposal snapshot
+    /// @param  availableVotes The amount of votes that account had at the time of the proposal snapshot
     /// @param  params Abi encoded (address possibleNominee, uint256 votes) 
     function _countVote(
         uint256 proposalId,
         address account,
         uint8,
-        uint256 weight,
+        uint256 availableVotes,
         bytes memory params
     ) internal virtual override {
         (address possibleNominee, uint256 votes) = abi.decode(params, (address, uint256));
@@ -197,13 +205,16 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is In
         uint256 prevVotesUsed = votesUsed[proposalId][account];
 
         require(
-            prevVotesUsed + votes <= weight, 
+            prevVotesUsed + votes <= availableVotes, 
             "SecurityCouncilMemberElectionGovernorCountingUpgradeable: Cannot use more votes than available"
         );
 
         votesUsed[proposalId][account] = prevVotesUsed + votes;
 
-        _increaseNomineeWeight(proposalId, possibleNominee, votesToWeight(proposalId, block.number, votes));
+        uint256 weight = votesToWeight(proposalId, block.number, votes);
+        _increaseNomineeWeight(proposalId, possibleNominee, weight);
+
+        emit VoteCastForNominee(account, proposalId, possibleNominee, votes, weight);
     }
 
     /// @notice Returns the weight of a vote for a given proposal, block number, and number of votes.
