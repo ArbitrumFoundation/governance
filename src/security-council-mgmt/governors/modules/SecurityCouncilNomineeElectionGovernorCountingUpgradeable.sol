@@ -18,6 +18,16 @@ abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is I
     // proposalId => NomineeElectionState
     mapping(uint256 => NomineeElectionState) private _elections;
 
+    // would this be more useful if reason was included?
+    event VoteCastForContender(
+        uint256 indexed proposalId,
+        address indexed voter,
+        address indexed contender,
+        uint256 votes
+    );
+
+    event NewNominee(uint256 indexed proposalId, address indexed nominee);
+
     function __SecurityCouncilNomineeElectionGovernorCounting_init() internal onlyInitializing {}
 
     function COUNTING_MODE() public pure virtual override returns (string memory) {
@@ -74,6 +84,8 @@ abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is I
         uint256 prevVotesReceived = election.votesReceived[candidate];
         uint256 votesThreshold = quorum(proposalSnapshot(proposalId));
 
+        emit VoteCastForContender(proposalId, account, candidate, votes);
+
         if (prevVotesReceived + votes < votesThreshold) {
             // we didn't push the candidate over the line, so just add the votes
             election.votesUsed[account] = prevVotesUsed + votes;
@@ -89,8 +101,8 @@ abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is I
 
             // push the candidate to the nominees
             election.nominees.push(candidate);
-
-            // emit some event like NewNominee(proposalId, candidate);
+            
+            emit NewNominee(proposalId, candidate);
         }
     }
 

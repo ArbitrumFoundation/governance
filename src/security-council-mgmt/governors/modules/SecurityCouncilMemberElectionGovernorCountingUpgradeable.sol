@@ -127,9 +127,10 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is In
     /// @notice Keeps track of the number of votes used by each account for each proposal
     mapping(uint256 => mapping(address => uint256)) public votesUsed;
 
+    // would this be more useful if reason was included?
     event VoteCastForNominee(
         address indexed voter,
-        uint256 proposalId,
+        uint256 indexed proposalId,
         address indexed nominee,
         uint256 votes,
         uint256 weight
