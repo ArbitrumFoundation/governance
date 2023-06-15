@@ -8,6 +8,8 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 import "@openzeppelin/contracts-upgradeable/utils/StringsUpgradeable.sol";
 
+import "./SecurityCouncilMemberElectionGovernor.sol";
+
 import "../interfaces/ISecurityCouncilManager.sol";
 import "./modules/SecurityCouncilNomineeElectionGovernorCountingUpgradeable.sol";
 import "./modules/ArbitrumGovernorVotesQuorumFractionUpgradeable.sol";
@@ -50,6 +52,9 @@ contract SecurityCouncilNomineeElectionGovernor is
     /// @notice Security council manager contract
     /// @dev    Used to execute the election result immediately if <= 6 compliant nominees are chosen
     ISecurityCouncilManager public securityCouncilManager;
+
+    /// @notice Security council member election governor contract
+    SecurityCouncilMemberElectionGovernor public securityCouncilMemberElectionGovernor;
 
     /// @notice Number of elections created
     uint256 public electionCount;
@@ -95,6 +100,7 @@ contract SecurityCouncilNomineeElectionGovernor is
         uint256 _nomineeVettingDuration,
         address _nomineeVetter,
         ISecurityCouncilManager _securityCouncilManager,
+        SecurityCouncilMemberElectionGovernor _securityCouncilMemberElectionGovernor,
         IVotesUpgradeable _token,
         address _owner,
         uint256 _quorumNumeratorValue,
@@ -115,6 +121,7 @@ contract SecurityCouncilNomineeElectionGovernor is
         nomineeVettingDuration = _nomineeVettingDuration;
         nomineeVetter = _nomineeVetter;
         securityCouncilManager = _securityCouncilManager;
+        securityCouncilMemberElectionGovernor = _securityCouncilMemberElectionGovernor;
     }
 
     /// @notice Allows the nominee vetter to call certain functions
@@ -203,9 +210,8 @@ contract SecurityCouncilNomineeElectionGovernor is
         uint256 compliantNomineeCount = nomineeCount(proposalId) - excludedNomineeCount[proposalId];
 
         if (compliantNomineeCount > targetNomineeCount) {
-            // todo:
-            // call the SecurityCouncilMemberElectionGovernor to execute the election
-            // the SecurityCouncilMemberElectionGovernor will call back into this contract to look up nominees
+            // call the SecurityCouncilMemberElectionGovernor to start the next phase of the election
+            securityCouncilMemberElectionGovernor.proposeFromNomineeElectionGovernor();
             return;
         }
 
