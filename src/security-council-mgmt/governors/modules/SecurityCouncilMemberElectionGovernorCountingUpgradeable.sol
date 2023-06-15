@@ -189,11 +189,17 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is In
     ) internal virtual override {
         (address possibleNominee, uint256 votes) = abi.decode(params, (address, uint256));
 
-        require(_isCompliantNomineeForMostRecentElection(possibleNominee), "Nominee is not compliant");
+        require(
+            _isCompliantNomineeForMostRecentElection(possibleNominee), 
+            "SecurityCouncilMemberElectionGovernorCountingUpgradeable: Nominee is not compliant"
+        );
 
         uint256 prevVotesUsed = votesUsed[proposalId][account];
 
-        require(prevVotesUsed + votes <= weight, "Cannot use more votes than available");
+        require(
+            prevVotesUsed + votes <= weight, 
+            "SecurityCouncilMemberElectionGovernorCountingUpgradeable: Cannot use more votes than available"
+        );
 
         votesUsed[proposalId][account] = prevVotesUsed + votes;
 

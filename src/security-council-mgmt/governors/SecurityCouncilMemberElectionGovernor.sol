@@ -70,7 +70,7 @@ contract SecurityCouncilMemberElectionGovernor is
     }
 
     modifier onlyNomineeElectionGovernor {
-        require(msg.sender == address(nomineeElectionGovernor), "Only the nominee election governor can call this function");
+        require(msg.sender == address(nomineeElectionGovernor), "SecurityCouncilMemberElectionGovernor: Only the nominee election governor can call this function");
         _;
     }
 
@@ -94,7 +94,7 @@ contract SecurityCouncilMemberElectionGovernor is
         bytes[] memory,
         string memory
     ) public virtual override returns (uint256) {
-        revert("Proposing is not allowed, call proposeFromNomineeElectionGovernor instead");
+        revert("SecurityCouncilMemberElectionGovernor: Proposing is not allowed, call proposeFromNomineeElectionGovernor instead");
     }
 
     /// @notice Normally "the number of votes required in order for a voter to become a proposer." But in our case it is 0.
