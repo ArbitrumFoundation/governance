@@ -183,11 +183,13 @@ contract L2SecurityCouncilMgmtFactoryTest is Test {
         // TODO test that election contract has cohort updator role
 
         assertTrue(
-            TestUtil.arraysAreEqual(securityCouncilManager.getMarchCohort(), marchCohort),
+            TestUtil.areAddressArraysEqual(securityCouncilManager.getMarchCohort(), marchCohort),
             "march cohort set"
         );
         assertTrue(
-            TestUtil.arraysAreEqual(securityCouncilManager.getSeptemberCohort(), septemberCohort),
+            TestUtil.areAddressArraysEqual(
+                securityCouncilManager.getSeptemberCohort(), septemberCohort
+            ),
             "september cohort set"
         );
         TargetContracts memory tc = securityCouncilManager.getTargetContracts();
