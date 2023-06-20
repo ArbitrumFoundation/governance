@@ -42,7 +42,6 @@ contract SecurityCouncilNomineeElectionGovernor is
     /// @param token Token used for voting
     /// @param owner Owner of the governor
     /// @param quorumNumeratorValue Numerator of the quorum fraction (0.2% = 20)
-    /// @param votingDelay Delay before voting starts (expressed in blocks)
     /// @param votingPeriod Duration of the voting period (expressed in blocks)
     struct InitParams {
         uint256 targetNomineeCount;
@@ -56,7 +55,6 @@ contract SecurityCouncilNomineeElectionGovernor is
         IVotesUpgradeable token;
         address owner;
         uint256 quorumNumeratorValue;
-        uint256 votingDelay;
         uint256 votingPeriod;
     }
 
@@ -116,7 +114,7 @@ contract SecurityCouncilNomineeElectionGovernor is
         __GovernorVotes_init(params.token);
         __SecurityCouncilNomineeElectionGovernorCounting_init();
         __ArbitrumGovernorVotesQuorumFraction_init(params.quorumNumeratorValue);
-        __GovernorSettings_init(params.votingDelay, params.votingPeriod, 0);
+        __GovernorSettings_init(0, params.votingPeriod, 0); // votingDelay and proposalThreshold are set to 0
         _transferOwnership(params.owner);
 
         targetNomineeCount = params.targetNomineeCount;
