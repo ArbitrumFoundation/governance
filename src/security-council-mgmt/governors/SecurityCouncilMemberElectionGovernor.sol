@@ -119,6 +119,11 @@ contract SecurityCouncilMemberElectionGovernor is
         );
     }
 
+    /// @notice Calls the securityCouncilManager to execute the election result.
+    function executeElectionResult(address[] memory _newCohort, Cohort _cohort) external onlyNomineeElectionGovernor {
+        securityCouncilManager.executeElectionResult(_newCohort, _cohort);
+    }
+
     /// @dev    `GovernorUpgradeable` function to execute a proposal overridden to handle nominee elections.
     ///         We know that _getTopNominees will return a full list of nominees because we checked it in _voteSucceeded.
     ///         Calls `SecurityCouncilManager.executeElectionResult` with the list of nominees.

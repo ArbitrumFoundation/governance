@@ -29,7 +29,38 @@ contract SecurityCouncilNomineeElectionGovernor is
     ArbitrumGovernorVotesQuorumFractionUpgradeable,
     GovernorSettingsUpgradeable,
     OwnableUpgradeable
-{
+{   
+    // todo: these parameters could be reordered to make more sense
+    /// @notice parameters for `initialize`
+    /// @param targetNomineeCount The target number of nominees to elect (6)
+    /// @param firstCohort Cohort of the first election
+    /// @param firstNominationStartTime Timestamp of the first election
+    /// @param nominationFrequency Delay between elections (expressed in seconds)
+    /// @param nomineeVettingDuration Duration of the nominee vetting period (expressed in blocks)
+    /// @param nomineeVetter Address of the nominee vetter
+    /// @param securityCouncilManager Security council manager contract
+    /// @param token Token used for voting
+    /// @param owner Owner of the governor
+    /// @param quorumNumeratorValue Numerator of the quorum fraction (0.2% = 20)
+    /// @param votingDelay Delay before voting starts (expressed in blocks)
+    /// @param votingPeriod Duration of the voting period (expressed in blocks)
+    struct InitParams {
+        uint256 targetNomineeCount;
+        Cohort firstCohort;
+        uint256 firstNominationStartTime;
+        uint256 nominationFrequency;
+        uint256 nomineeVettingDuration;
+        address nomineeVetter;
+        ISecurityCouncilManager securityCouncilManager;
+        SecurityCouncilMemberElectionGovernor securityCouncilMemberElectionGovernor;
+        IVotesUpgradeable token;
+        address owner;
+        uint256 quorumNumeratorValue;
+        uint256 votingDelay;
+        uint256 votingPeriod;
+    }
+
+
     /// @notice The target number of nominees to elect (6)
     uint256 public targetNomineeCount;
 
@@ -79,49 +110,23 @@ contract SecurityCouncilNomineeElectionGovernor is
         _disableInitializers();
     }
 
-    // todo: these parameters could be reordered to make more sense
-    /// @param _targetNomineeCount The target number of nominees to elect (6)
-    /// @param _firstCohort Cohort of the first election
-    /// @param _firstNominationStartTime Timestamp of the first election
-    /// @param _nominationFrequency Delay between elections (expressed in seconds)
-    /// @param _nomineeVettingDuration Duration of the nominee vetting period (expressed in blocks)
-    /// @param _nomineeVetter Address of the nominee vetter
-    /// @param _securityCouncilManager Security council manager contract
-    /// @param _token Token used for voting
-    /// @param _owner Owner of the governor
-    /// @param _quorumNumeratorValue Numerator of the quorum fraction (0.2% = 20)
-    /// @param _votingDelay Delay before voting starts (expressed in blocks)
-    /// @param _votingPeriod Duration of the voting period (expressed in blocks)
-    function initialize(
-        uint256 _targetNomineeCount,
-        Cohort _firstCohort,
-        uint256 _firstNominationStartTime,
-        uint256 _nominationFrequency,
-        uint256 _nomineeVettingDuration,
-        address _nomineeVetter,
-        ISecurityCouncilManager _securityCouncilManager,
-        SecurityCouncilMemberElectionGovernor _securityCouncilMemberElectionGovernor,
-        IVotesUpgradeable _token,
-        address _owner,
-        uint256 _quorumNumeratorValue,
-        uint256 _votingDelay,
-        uint256 _votingPeriod
-    ) public initializer {
+    /// @notice Initializes the governor
+    function initialize(InitParams memory params) public initializer {
         __Governor_init("Security Council Nominee Election Governor");
-        __GovernorVotes_init(_token);
+        __GovernorVotes_init(params.token);
         __SecurityCouncilNomineeElectionGovernorCounting_init();
-        __ArbitrumGovernorVotesQuorumFraction_init(_quorumNumeratorValue);
-        __GovernorSettings_init(_votingDelay, _votingPeriod, 0);
-        _transferOwnership(_owner);
+        __ArbitrumGovernorVotesQuorumFraction_init(params.quorumNumeratorValue);
+        __GovernorSettings_init(params.votingDelay, params.votingPeriod, 0);
+        _transferOwnership(params.owner);
 
-        targetNomineeCount = _targetNomineeCount;
-        firstCohort = _firstCohort;
-        firstNominationStartTime = _firstNominationStartTime;
-        nominationFrequency = _nominationFrequency;
-        nomineeVettingDuration = _nomineeVettingDuration;
-        nomineeVetter = _nomineeVetter;
-        securityCouncilManager = _securityCouncilManager;
-        securityCouncilMemberElectionGovernor = _securityCouncilMemberElectionGovernor;
+        targetNomineeCount = params.targetNomineeCount;
+        firstCohort = params.firstCohort;
+        firstNominationStartTime = params.firstNominationStartTime;
+        nominationFrequency = params.nominationFrequency;
+        nomineeVettingDuration = params.nomineeVettingDuration;
+        nomineeVetter = params.nomineeVetter;
+        securityCouncilManager = params.securityCouncilManager;
+        securityCouncilMemberElectionGovernor = params.securityCouncilMemberElectionGovernor;
     }
 
     /// @notice Allows the nominee vetter to call certain functions
@@ -237,8 +242,8 @@ contract SecurityCouncilNomineeElectionGovernor is
             });
         }
         
-        // call the SecurityCouncilManager to switch out the security council members
-        securityCouncilManager.executeElectionResult(compliantNominees, cohort);
+        // tell the securityCouncilMemberElectionGovernor to call the SecurityCouncilManager to switch out the security council members
+        securityCouncilMemberElectionGovernor.executeElectionResult(compliantNominees, cohort);
     }
 
     /// @notice Put `msg.sender` up for nomination. Must be called before a contender can receive votes.
