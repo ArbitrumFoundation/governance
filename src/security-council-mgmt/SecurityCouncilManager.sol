@@ -58,10 +58,13 @@ contract SecurityCouncilManager is
         septemberCohort = _septemberCohort;
         // TODO: ensure march + september cohort = all signers?
         _grantRole(DEFAULT_ADMIN_ROLE, _roles.admin);
-        _grantRole(ELECTION_EXECUTOR_ROLE, _roles.cohortUpdator);
         _grantRole(MEMBER_ADDER_ROLE, _roles.memberAdder);
         _grantRole(MEMBER_REMOVER_ROLE, _roles.memberRemover);
         _grantRole(MEMBER_ROTATOR_ROLE, _roles.memberRotator);
+
+        for (uint256 i = 0; i < _roles.cohortUpdator.length; i++) {
+            _grantRole(ELECTION_EXECUTOR_ROLE, _roles.cohortUpdator[i]);
+        }
 
         _setTargetContracts(_targetContracts);
     }
