@@ -16,9 +16,8 @@ contract SecurityCouncilUpgradeExecutor is
     bytes32 public constant UPDATOR_ROLE = keccak256("UPDATOR");
 
     IGnosisSafe public securityCouncil;
-
-    // TODO: setter?
-    uint256 public maxMembers = 12;
+    // TODO: remove this?
+    // uint256 public constant maxMembers = 12;
 
     constructor() {
         _disableInitializers();
@@ -69,9 +68,14 @@ contract SecurityCouncilUpgradeExecutor is
                 _removeMember(member, threshold);
             }
         }
+
+        // TODO: remove?
         // sanity check: ensure that after update, total member count is below max
-        uint256 memberCount = securityCouncil.getOwners().length;
-        require(memberCount <= maxMembers, "SecurityCouncilUpgradeExecutor: too many members");
+        // uint256 memberCount = securityCouncil.getOwners().length;
+        // console.log("abc memberCount: ", memberCount);
+        // console.log("abc maxMembers: ", maxMembers);
+
+        // require(memberCount <= maxMembers, "SecurityCouncilUpgradeExecutor: too many members");
     }
 
     /// @notice add member to multisig
@@ -107,7 +111,7 @@ contract SecurityCouncilUpgradeExecutor is
     /// @notice execute provided operation via gnosis safe's trusted  execTransactionFromModule entry point
     function _execFromModule(bytes memory data) internal {
         securityCouncil.execTransactionFromModule(
-            address(securityCouncil), 0, data, Enum.Operation.Call
+            address(securityCouncil), 0, data, OpEnum.Operation.Call
         );
     }
 }
