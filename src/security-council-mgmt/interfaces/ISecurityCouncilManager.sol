@@ -8,7 +8,7 @@ enum Cohort {
 
 struct Roles {
     address admin;
-    address[] cohortUpdator;
+    address[] cohortUpdators;
     address memberAdder;
     address memberRemover;
     address memberRotator;

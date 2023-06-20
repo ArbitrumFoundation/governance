@@ -62,8 +62,8 @@ contract SecurityCouncilManager is
         _grantRole(MEMBER_REMOVER_ROLE, _roles.memberRemover);
         _grantRole(MEMBER_ROTATOR_ROLE, _roles.memberRotator);
 
-        for (uint256 i = 0; i < _roles.cohortUpdator.length; i++) {
-            _grantRole(ELECTION_EXECUTOR_ROLE, _roles.cohortUpdator[i]);
+        for (uint256 i = 0; i < _roles.cohortUpdators.length; i++) {
+            _grantRole(ELECTION_EXECUTOR_ROLE, _roles.cohortUpdators[i]);
         }
 
         _setTargetContracts(_targetContracts);
