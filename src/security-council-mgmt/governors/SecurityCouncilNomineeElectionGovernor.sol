@@ -237,8 +237,8 @@ contract SecurityCouncilNomineeElectionGovernor is
             });
         }
         
-        // call the SecurityCouncilManager to switch out the security council members
-        securityCouncilManager.executeElectionResult(compliantNominees, cohort);
+        // tell the securityCouncilMemberElectionGovernor to call the SecurityCouncilManager to switch out the security council members
+        securityCouncilMemberElectionGovernor.executeElectionResult(compliantNominees, cohort);
     }
 
     /// @notice Put `msg.sender` up for nomination. Must be called before a contender can receive votes.
