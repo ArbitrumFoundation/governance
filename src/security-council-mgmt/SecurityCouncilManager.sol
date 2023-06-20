@@ -31,7 +31,7 @@ contract SecurityCouncilManager is
     bytes32 public constant MEMBER_ROTATOR_ROLE = keccak256("MEMBER_ROTATOR");
     bytes32 public constant MEMBER_REMOVER_ROLE = keccak256("MEMBER_REMOVER");
 
-    TargetContracts targetContracts;
+    TargetContracts public targetContracts;
 
     event TargetContractsSet(
         address indexed govChainEmergencySecurityCouncilUpgradeExecutor,
@@ -258,6 +258,10 @@ contract SecurityCouncilManager is
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
         _setTargetContracts(_targetContracts);
+    }
+
+    function getTargetContracts() external view returns (TargetContracts memory) {
+        return targetContracts;
     }
 
     /// @param _targetContracts new target contract addresses

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.16;
 
-abstract contract Enum {
+abstract contract OpEnum {
     enum Operation {
         Call,
         DelegateCall
@@ -22,6 +22,6 @@ interface IGnosisSafe {
         address to,
         uint256 value,
         bytes memory data,
-        Enum.Operation operation
+        OpEnum.Operation operation
     ) external virtual returns (bool success);
 }
