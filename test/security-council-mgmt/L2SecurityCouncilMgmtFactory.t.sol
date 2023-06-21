@@ -265,7 +265,7 @@ contract L2SecurityCouncilMgmtFactoryTest is Test {
         
         SecurityCouncilMemberElectionGovernor memberElectionGovernor = deployed.memberElectionGovernor;
 
-        // assertEq(memberElectionGovernor.maxNominees(), marchCohort.length, "maxNominees set");
+        assertEq(memberElectionGovernor.maxNominees(), marchCohort.length, "maxNominees set");
         assertEq(
             address(memberElectionGovernor.nomineeElectionGovernor()), 
             address(deployed.nomineeElectionGovernor), 
