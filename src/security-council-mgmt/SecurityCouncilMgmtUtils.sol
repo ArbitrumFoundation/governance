@@ -43,7 +43,10 @@ library SecurityCouncilMgmtUtils {
     }
 
     // filters an array of addresses by removing any addresses that are in the excludeList
-    function filterAddressesWithExcludeList(address[] memory input, mapping(address => bool) storage excludeList) internal view returns (address[] memory) {
+    function filterAddressesWithExcludeList(
+        address[] memory input,
+        mapping(address => bool) storage excludeList
+    ) internal view returns (address[] memory) {
         address[] memory intermediate = new address[](input.length);
         uint256 intermediateLength = 0;
 
@@ -63,7 +66,12 @@ library SecurityCouncilMgmtUtils {
         return output;
     }
 
-    function randomAddToSet(address[] memory pickFrom, address[] memory addTo, uint256 targetLength, uint256 rng) internal pure returns (address[] memory result) {
+    function randomAddToSet(
+        address[] memory pickFrom,
+        address[] memory addTo,
+        uint256 targetLength,
+        uint256 rng
+    ) internal pure returns (address[] memory result) {
         result = new address[](targetLength);
 
         // add what is already in the addTo list
