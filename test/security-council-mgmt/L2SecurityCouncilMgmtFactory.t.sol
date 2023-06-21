@@ -30,17 +30,17 @@ contract L2SecurityCouncilMgmtFactoryTest is Test {
     uint64 removalGovMinPeriodAfterQuorum = uint64(6);
 
     // todo: set these to something meaningful for testing. for now just to compile
-    Cohort firstCohort;
-    uint256 firstNominationStartTime;
-    uint256 nominationFrequency;
-    uint256 nomineeVettingDuration;
-    address nomineeVetter;
-    uint256 nomineeQuorumNumerator;
-    uint256 nomineeVotingPeriod;
-    uint256 memberVotingPeriod;
-    uint256 memberFullWeightDurationNumerator;
-    uint256 memberDecreasingWeightDurationNumerator;
-    uint256 memberDurationDenominator;
+    Cohort firstCohort = Cohort.SEPTEMBER;
+    uint256 firstNominationStartTime = 7;
+    uint256 nominationFrequency = 8;
+    uint256 nomineeVettingDuration = 9;
+    address nomineeVetter = address(11_114);
+    uint256 nomineeQuorumNumerator = 10;
+    uint256 nomineeVotingPeriod = 11;
+    uint256 memberVotingPeriod = 12;
+    uint256 memberFullWeightDurationNumerator = 13;
+    uint256 memberDecreasingWeightDurationNumerator = 14;
+    uint256 memberDurationDenominator = memberFullWeightDurationNumerator + memberDecreasingWeightDurationNumerator;
 
     L2SecurityCouncilMgmtFactory fac;
     DeployParams deployParams;
@@ -228,6 +228,71 @@ contract L2SecurityCouncilMgmtFactoryTest is Test {
         );
         assertTrue(
             rg.hasRole(rg.DEFAULT_ADMIN_ROLE(), l2UpgradeExecutor), "emergency SC has removal role"
+        );
+    }
+
+    function testNomineeElectionGovDeployment() public {
+        L2SecurityCouncilMgmtFactory.DeployedContracts memory deployed =
+            fac.deployStep2(deployParams);
+        
+        SecurityCouncilNomineeElectionGovernor nomineeElectionGovernor = deployed.nomineeElectionGovernor;
+
+        assertEq(nomineeElectionGovernor.targetNomineeCount(), marchCohort.length, "targetNomineeCount set");
+        assertTrue(nomineeElectionGovernor.firstCohort() == firstCohort, "firstCohort set");
+        assertEq(nomineeElectionGovernor.firstNominationStartTime(), firstNominationStartTime, "firstNominationStartTime set");
+        assertEq(nomineeElectionGovernor.nominationFrequency(), nominationFrequency, "nominationFrequency set");
+        assertEq(nomineeElectionGovernor.nomineeVettingDuration(), nomineeVettingDuration, "nomineeVettingDuration set");
+        assertEq(nomineeElectionGovernor.nomineeVetter(), nomineeVetter, "nomineeVetter set");
+        assertEq(
+            address(nomineeElectionGovernor.securityCouncilManager()), 
+            address(deployed.securityCouncilManager), 
+            "securityCouncilManager set"
+        );
+        assertEq(address(nomineeElectionGovernor.token()), arbToken, "token set");
+        assertEq(nomineeElectionGovernor.owner(), l2UpgradeExecutor, "owner set");
+        assertEq(nomineeElectionGovernor.votingPeriod(), nomineeVotingPeriod, "votingPeriod set");
+        assertEq(
+            address(nomineeElectionGovernor.securityCouncilMemberElectionGovernor()), 
+            address(deployed.memberElectionGovernor), 
+            "securityCouncilMemberElectionGovernor set"
+        );
+        assertEq(nomineeElectionGovernor.quorumNumerator(), nomineeQuorumNumerator, "quorumNumeratorValue set");
+    }
+
+    function testMemberElectionGovDeployment() public {
+        L2SecurityCouncilMgmtFactory.DeployedContracts memory deployed =
+            fac.deployStep2(deployParams);
+        
+        SecurityCouncilMemberElectionGovernor memberElectionGovernor = deployed.memberElectionGovernor;
+
+        // assertEq(memberElectionGovernor.maxNominees(), marchCohort.length, "maxNominees set");
+        assertEq(
+            address(memberElectionGovernor.nomineeElectionGovernor()), 
+            address(deployed.nomineeElectionGovernor), 
+            "nomineeElectionGovernor set"
+        );
+        assertEq(
+            address(memberElectionGovernor.securityCouncilManager()), 
+            address(deployed.securityCouncilManager), 
+            "securityCouncilManager set"
+        );
+        assertEq(address(memberElectionGovernor.token()), arbToken, "token set");
+        assertEq(memberElectionGovernor.owner(), l2UpgradeExecutor, "owner set");
+        assertEq(memberElectionGovernor.votingPeriod(), memberVotingPeriod, "votingPeriod set");
+        assertEq(
+            memberElectionGovernor.fullWeightDurationNumerator(), 
+            memberFullWeightDurationNumerator, 
+            "fullWeightDurationNumerator set"
+        );
+        assertEq(
+            memberElectionGovernor.decreasingWeightDurationNumerator(), 
+            memberDecreasingWeightDurationNumerator, 
+            "decreasingWeightDurationNumerator set"
+        );
+        assertEq(
+            memberElectionGovernor.durationDenominator(), 
+            memberDurationDenominator, 
+            "durationDenominator set"
         );
     }
 }
