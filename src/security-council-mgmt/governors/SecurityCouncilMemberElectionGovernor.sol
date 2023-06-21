@@ -62,10 +62,10 @@ contract SecurityCouncilMemberElectionGovernor is
         __Governor_init("SecurityCouncilMemberElectionGovernor");
         __GovernorVotes_init(_token);
         __SecurityCouncilMemberElectionGovernorCounting_init({
-            _maxNominees: _maxNominees,
-            _fullWeightDurationNumerator: _fullWeightDurationNumerator,
-            _decreasingWeightDurationNumerator: _decreasingWeightDurationNumerator,
-            _durationDenominator: _durationDenominator
+            maxNominees: _maxNominees,
+            fullWeightDurationNumerator: _fullWeightDurationNumerator,
+            decreasingWeightDurationNumerator: _decreasingWeightDurationNumerator,
+            durationDenominator: _durationDenominator
         });
         __GovernorSettings_init(0, _votingPeriod, 0);
         _transferOwnership(_owner);

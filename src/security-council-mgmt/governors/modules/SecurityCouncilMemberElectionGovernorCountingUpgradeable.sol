@@ -118,14 +118,14 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is In
     uint256 private constant WAD = 1e18;
 
     /// @notice Numerator for the duration of full weight voting
-    uint256 public fullWeightDurationNumerator; // = 1 (7 days)
+    uint256 private _fullWeightDurationNumerator; // = 1 (7 days)
     /// @notice Numerator for the duration of decreasing weight voting
-    uint256 public decreasingWeightDurationNumerator; // = 2 (14 days)
+    uint256 private _decreasingWeightDurationNumerator; // = 2 (14 days)
     /// @notice Denominator for the total duration of voting
-    uint256 public durationDenominator; // = 3 (21 days)
+    uint256 private _durationDenominator; // = 3 (21 days)
 
     /// @notice Keeps track of the number of votes used by each account for each proposal
-    mapping(uint256 => mapping(address => uint256)) public votesUsed;
+    mapping(uint256 => mapping(address => uint256)) private _votesUsed;
 
     // would this be more useful if reason was included?
     event VoteCastForNominee(
@@ -136,21 +136,21 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is In
         uint256 weight
     );
 
-    /// @param _maxNominees The maximum number of nominees to track
-    /// @param _fullWeightDurationNumerator Numerator for the duration of full weight voting
-    /// @param _decreasingWeightDurationNumerator Numerator for the duration of decreasing weight voting
-    /// @param _durationDenominator Denominator for the total duration of voting
+    /// @param maxNominees The maximum number of nominees to track
+    /// @param fullWeightDurationNumerator Numerator for the duration of full weight voting
+    /// @param decreasingWeightDurationNumerator Numerator for the duration of decreasing weight voting
+    /// @param durationDenominator Denominator for the total duration of voting
     function __SecurityCouncilMemberElectionGovernorCounting_init(
-        uint256 _maxNominees,
-        uint256 _fullWeightDurationNumerator,
-        uint256 _decreasingWeightDurationNumerator,
-        uint256 _durationDenominator
+        uint256 maxNominees,
+        uint256 fullWeightDurationNumerator,
+        uint256 decreasingWeightDurationNumerator,
+        uint256 durationDenominator
     ) internal onlyInitializing {
-        __AccountRanker_init(_maxNominees);
+        __AccountRanker_init(maxNominees);
 
-        fullWeightDurationNumerator = _fullWeightDurationNumerator;
-        decreasingWeightDurationNumerator = _decreasingWeightDurationNumerator;
-        durationDenominator = _durationDenominator;
+        _fullWeightDurationNumerator = fullWeightDurationNumerator;
+        _decreasingWeightDurationNumerator = decreasingWeightDurationNumerator;
+        _durationDenominator = durationDenominator;
     }
 
     function COUNTING_MODE() public pure virtual override returns (string memory) {
@@ -167,7 +167,7 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is In
         override
         returns (bool) 
     {
-        return votesUsed[proposalId][account] > 0;
+        return _votesUsed[proposalId][account] > 0;
     }
 
     /// @notice Returns true, since there is no minimum quorum
@@ -203,14 +203,14 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is In
             "SecurityCouncilMemberElectionGovernorCountingUpgradeable: Nominee is not compliant"
         );
 
-        uint256 prevVotesUsed = votesUsed[proposalId][account];
+        uint256 prevVotesUsed = _votesUsed[proposalId][account];
 
         require(
             prevVotesUsed + votes <= availableVotes, 
             "SecurityCouncilMemberElectionGovernorCountingUpgradeable: Cannot use more votes than available"
         );
 
-        votesUsed[proposalId][account] = prevVotesUsed + votes;
+        _votesUsed[proposalId][account] = prevVotesUsed + votes;
 
         uint256 weight = votesToWeight(proposalId, block.number, votes);
         _increaseNomineeWeight(proposalId, possibleNominee, weight);
@@ -238,7 +238,7 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is In
             return 0;
         }
 
-        uint256 fullWeightDuration = WAD * fullWeightDurationNumerator / durationDenominator * duration / WAD;
+        uint256 fullWeightDuration = WAD * _fullWeightDurationNumerator / _durationDenominator * duration / WAD;
 
         uint256 decreasingWeightStartBlock = startBlock + fullWeightDuration;
 
@@ -248,7 +248,7 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is In
 
 
         // slope denominator
-        uint256 decreasingWeightDuration = WAD * decreasingWeightDurationNumerator / durationDenominator * duration / WAD;
+        uint256 decreasingWeightDuration = WAD * _decreasingWeightDurationNumerator / _durationDenominator * duration / WAD;
 
         // slope numerator is -votes
 
