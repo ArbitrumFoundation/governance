@@ -4,42 +4,42 @@ pragma solidity 0.8.16;
 import "@openzeppelin/contracts-upgradeable/governance/GovernorUpgradeable.sol";
 
 /// @title AccountRankerUpgradeable
-/// @notice Keeps track of the top K nominees for a given round (proposalId) and their weights
+/// @notice Keeps track of the top K nominees for a given proposalId and their weights
 abstract contract AccountRankerUpgradeable is Initializable {
     /// @dev max number of nominees to track (6)
-    uint256 public maxNominees;
+    uint256 private _maxNominees;
 
-    /// @dev round => list of top nominees in descending order by weight
+    /// @dev proposalId => list of top nominees in descending order by weight
     mapping(uint256 => address[]) private _nominees;
 
-    /// @dev round => account => weight.
+    /// @dev proposalId => account => weight.
     ///      weight is the voting weight cast for the account
     mapping(uint256 => mapping(address => uint256)) private _weights;
 
-    function __AccountRanker_init(uint256 _maxNominees) internal onlyInitializing {
-        maxNominees = _maxNominees;
+    function __AccountRanker_init(uint256 maxNominees) internal onlyInitializing {
+        _maxNominees = maxNominees;
     }
 
-    /// @dev returns the list of top nominees for a given round
-    function _getTopNominees(uint256 round) internal view returns (address[] memory) {
-        return _nominees[round];
+    /// @dev returns the list of top nominees for a given proposalId
+    function _getTopNominees(uint256 proposalId) internal view returns (address[] memory) {
+        return _nominees[proposalId];
     }
 
-    /// @dev returns true if the list of top nominees is full for a given round
-    function _isNomineesListFull(uint256 round) internal view returns (bool) {
-        return _nominees[round].length == maxNominees;
+    /// @dev returns true if the list of top nominees is full for a given proposalId
+    function _isNomineesListFull(uint256 proposalId) internal view returns (bool) {
+        return _nominees[proposalId].length == _maxNominees;
     }
 
-    /// @dev returns the weight of an account in a given round
-    function _getWeight(uint256 round, address account) internal view returns (uint256) {
-        return _weights[round][account];
+    /// @dev returns the weight of an account in a given proposalId
+    function _getWeight(uint256 proposalId, address account) internal view returns (uint256) {
+        return _weights[proposalId][account];
     }
 
-    /// @dev increases the weight of an account in a given round. 
-    ///      updates the list of top nominees for that round if necessary.
-    function _increaseNomineeWeight(uint256 round, address account, uint256 weightToAdd) internal {
-        address[] storage nomineesPtr = _nominees[round];
-        mapping(address => uint256) storage weightsPtr = _weights[round];
+    /// @dev increases the weight of an account in a given proposalId. 
+    ///      updates the list of top nominees for that proposalId if necessary.
+    function _increaseNomineeWeight(uint256 proposalId, address account, uint256 weightToAdd) internal {
+        address[] storage nomineesPtr = _nominees[proposalId];
+        mapping(address => uint256) storage weightsPtr = _weights[proposalId];
 
         uint256 oldWeight = weightsPtr[account];
         uint256 newWeight = oldWeight + weightToAdd;
@@ -58,7 +58,7 @@ abstract contract AccountRankerUpgradeable is Initializable {
         }
 
         // if the array is not max length yet, and account is not already in the list, just add the account to the end
-        if (previousIndexOfAccount == type(uint256).max && nomineesPtr.length < maxNominees) {
+        if (previousIndexOfAccount == type(uint256).max && nomineesPtr.length < _maxNominees) {
             nomineesPtr.push(account);
             previousIndexOfAccount = nomineesPtr.length - 1;
         }
