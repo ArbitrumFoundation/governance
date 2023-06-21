@@ -28,6 +28,20 @@ contract L2SecurityCouncilMgmtFactoryTest is Test {
     uint256 removalGovQuorumNumerator = uint256(4);
     uint256 removalGovProposalThreshold = uint256(5);
     uint64 removalGovMinPeriodAfterQuorum = uint64(6);
+
+    // todo: set these to something meaningful for testing. for now just to compile
+    Cohort firstCohort;
+    uint256 firstNominationStartTime;
+    uint256 nominationFrequency;
+    uint256 nomineeVettingDuration;
+    address nomineeVetter;
+    uint256 nomineeQuorumNumerator;
+    uint256 nomineeVotingPeriod;
+    uint256 memberVotingPeriod;
+    uint256 memberFullWeightDurationNumerator;
+    uint256 memberDecreasingWeightDurationNumerator;
+    uint256 memberDurationDenominator;
+
     L2SecurityCouncilMgmtFactory fac;
     DeployParams deployParams;
 
@@ -54,32 +68,35 @@ contract L2SecurityCouncilMgmtFactoryTest is Test {
             _removalGovVotingPeriod: removalGovVotingPeriod,
             _removalGovQuorumNumerator: removalGovQuorumNumerator,
             _removalGovProposalThreshold: removalGovProposalThreshold,
-            _removalGovMinPeriodAfterQuorum: removalGovMinPeriodAfterQuorum
+            _removalGovMinPeriodAfterQuorum: removalGovMinPeriodAfterQuorum,
+            firstCohort: firstCohort,
+            firstNominationStartTime: firstNominationStartTime,
+            nominationFrequency: nominationFrequency,
+            nomineeVettingDuration: nomineeVettingDuration,
+            nomineeVetter: nomineeVetter,
+            nomineeQuorumNumerator: nomineeQuorumNumerator,
+            nomineeVotingPeriod: nomineeVotingPeriod,
+            memberVotingPeriod: memberVotingPeriod,
+            memberFullWeightDurationNumerator: memberFullWeightDurationNumerator,
+            memberDecreasingWeightDurationNumerator: memberDecreasingWeightDurationNumerator,
+            memberDurationDenominator: memberDurationDenominator
         });
     }
 
     function testOnlyOwnerCanDeploy() public {
         vm.prank(rando);
         vm.expectRevert("Ownable: caller is not the owner");
-        (
-            address l2EmergencySecurityCouncilUpgradeExecutor,
-            address l2NonEmergencySecurityCouncilUpgradeExecutor,
-            address securityCouncilMemberRemoverGov,
-            address securityCouncilManager
-        ) = fac.deployStep2(deployParams);
+        L2SecurityCouncilMgmtFactory.DeployedContracts memory deployed =
+            fac.deployStep2(deployParams);
     }
 
     function testEmergencySCExecDeployment() public {
-        (
-            address l2EmergencySecurityCouncilUpgradeExecutorAddr,
-            address l2NonEmergencySecurityCouncilUpgradeExecutorAddr,
-            address securityCouncilMemberRemoverGovAddr,
-            address securityCouncilManagerAddr
-        ) = fac.deployStep2(deployParams);
+        L2SecurityCouncilMgmtFactory.DeployedContracts memory deployed =
+            fac.deployStep2(deployParams);
 
         // emergency SC upgrade exec initialization
         SecurityCouncilUpgradeExecutor l2EmergencySecurityCouncilUpgradeExecutor =
-            SecurityCouncilUpgradeExecutor(l2EmergencySecurityCouncilUpgradeExecutorAddr);
+            SecurityCouncilUpgradeExecutor(deployed.l2EmergencySecurityCouncilUpgradeExecutor);
         vm.expectRevert("Initializable: contract is already initialized");
         l2EmergencySecurityCouncilUpgradeExecutor.initialize(IGnosisSafe(rando), rando, rando);
 
@@ -88,7 +105,7 @@ contract L2SecurityCouncilMgmtFactoryTest is Test {
 
         assertTrue(
             l2EmergencySecurityCouncilUpgradeExecutor.hasRole(
-                l2EmergencySecurityCouncilUpgradeExecutor.UPDATOR_ROLE(), securityCouncilManagerAddr
+                l2EmergencySecurityCouncilUpgradeExecutor.UPDATOR_ROLE(), address(deployed.securityCouncilManager)
             ),
             "SecurityCouncilManagerAddr is updater for l2EmergencySecurityCouncilUpgradeExecutor"
         );
@@ -108,15 +125,11 @@ contract L2SecurityCouncilMgmtFactoryTest is Test {
     }
 
     function testNonEmergencySCExecDeployment() public {
-        (
-            address l2EmergencySecurityCouncilUpgradeExecutorAddr,
-            address l2NonEmergencySecurityCouncilUpgradeExecutorAddr,
-            address securityCouncilMemberRemoverGovAddr,
-            address securityCouncilManagerAddr
-        ) = fac.deployStep2(deployParams);
+        L2SecurityCouncilMgmtFactory.DeployedContracts memory deployed =
+            fac.deployStep2(deployParams);
 
         SecurityCouncilUpgradeExecutor l2NonEmergencySecurityCouncilUpgradeExecutor =
-            SecurityCouncilUpgradeExecutor(l2NonEmergencySecurityCouncilUpgradeExecutorAddr);
+            SecurityCouncilUpgradeExecutor(deployed.l2NonEmergencySecurityCouncilUpgradeExecutor);
         vm.expectRevert("Initializable: contract is already initialized");
         l2NonEmergencySecurityCouncilUpgradeExecutor.initialize(IGnosisSafe(rando), rando, rando);
 
@@ -127,7 +140,7 @@ contract L2SecurityCouncilMgmtFactoryTest is Test {
         assertTrue(
             l2NonEmergencySecurityCouncilUpgradeExecutor.hasRole(
                 l2NonEmergencySecurityCouncilUpgradeExecutor.UPDATOR_ROLE(),
-                securityCouncilManagerAddr
+                address(deployed.securityCouncilManager)
             ),
             "SecurityCouncilManagerAddr is updater for l2NonEmergencySecurityCouncilUpgradeExecutor"
         );
@@ -147,14 +160,9 @@ contract L2SecurityCouncilMgmtFactoryTest is Test {
     }
 
     function testSecurityCouncilManagerDeployment() public {
-        (
-            address l2EmergencySecurityCouncilUpgradeExecutorAddr,
-            address l2NonEmergencySecurityCouncilUpgradeExecutorAddr,
-            address securityCouncilMemberRemoverGovAddr,
-            address securityCouncilManagerAddr
-        ) = fac.deployStep2(deployParams);
-        SecurityCouncilManager securityCouncilManager =
-            SecurityCouncilManager(securityCouncilManagerAddr);
+        L2SecurityCouncilMgmtFactory.DeployedContracts memory deployed =
+            fac.deployStep2(deployParams);
+        SecurityCouncilManager securityCouncilManager = SecurityCouncilManager(address(deployed.securityCouncilManager));
 
         assertTrue(
             securityCouncilManager.hasRole(
@@ -176,7 +184,7 @@ contract L2SecurityCouncilMgmtFactoryTest is Test {
         );
         assertTrue(
             securityCouncilManager.hasRole(
-                securityCouncilManager.MEMBER_REMOVER_ROLE(), securityCouncilMemberRemoverGovAddr
+                securityCouncilManager.MEMBER_REMOVER_ROLE(), address(deployed.securityCouncilMemberRemoverGov)
             ),
             "emergency security council has removal role"
         );
@@ -195,12 +203,12 @@ contract L2SecurityCouncilMgmtFactoryTest is Test {
         TargetContracts memory tc = securityCouncilManager.getTargetContracts();
         assertEq(
             tc.govChainEmergencySecurityCouncilUpgradeExecutor,
-            l2EmergencySecurityCouncilUpgradeExecutorAddr,
+            address(deployed.l2EmergencySecurityCouncilUpgradeExecutor),
             "emergency SC set"
         );
         assertEq(
             tc.govChainNonEmergencySecurityCouncilUpgradeExecutor,
-            l2NonEmergencySecurityCouncilUpgradeExecutorAddr,
+            address(deployed.l2NonEmergencySecurityCouncilUpgradeExecutor),
             "non emergency SC set"
         );
         assertEq(
@@ -209,14 +217,10 @@ contract L2SecurityCouncilMgmtFactoryTest is Test {
     }
 
     function testRemovalGovDeployment() public {
-        (
-            address l2EmergencySecurityCouncilUpgradeExecutorAddr,
-            address l2NonEmergencySecurityCouncilUpgradeExecutorAddr,
-            address securityCouncilMemberRemoverGovAddr,
-            address securityCouncilManagerAddr
-        ) = fac.deployStep2(deployParams);
+        L2SecurityCouncilMgmtFactory.DeployedContracts memory deployed =
+            fac.deployStep2(deployParams);
         SecurityCouncilMemberRemoverGov rg =
-            SecurityCouncilMemberRemoverGov(payable(securityCouncilMemberRemoverGovAddr));
+            SecurityCouncilMemberRemoverGov(payable(address(deployed.securityCouncilMemberRemoverGov)));
 
         assertTrue(
             rg.hasRole(rg.PROPSER_ROLE(), govChainEmergencySecurityCouncil),
