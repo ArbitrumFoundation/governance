@@ -54,6 +54,11 @@ contract SecurityCouncilMemberElectionGovernor is
         uint256 _decreasingWeightDurationNumerator,
         uint256 _durationDenominator
     ) public initializer {
+        require(
+            _fullWeightDurationNumerator + _decreasingWeightDurationNumerator == _durationDenominator, 
+            "SecurityCouncilMemberElectionGovernor: Sum of numerators must equal the denominator"
+        );
+
         __Governor_init("SecurityCouncilMemberElectionGovernor");
         __GovernorVotes_init(_token);
         __SecurityCouncilMemberElectionGovernorCounting_init({
