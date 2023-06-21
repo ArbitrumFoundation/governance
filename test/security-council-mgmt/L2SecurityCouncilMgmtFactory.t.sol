@@ -186,6 +186,13 @@ contract L2SecurityCouncilMgmtFactoryTest is Test {
             securityCouncilManager.hasRole(
                 securityCouncilManager.MEMBER_REMOVER_ROLE(), address(deployed.securityCouncilMemberRemoverGov)
             ),
+            "removal gov has removal role"
+        );
+
+        assertTrue(
+            securityCouncilManager.hasRole(
+                securityCouncilManager.MEMBER_REMOVER_ROLE(), address(govChainEmergencySecurityCouncil)
+            ),
             "emergency security council has removal role"
         );
         // TODO test that election contract has cohort updator role

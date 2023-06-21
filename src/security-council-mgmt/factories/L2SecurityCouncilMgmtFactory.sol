@@ -154,12 +154,15 @@ contract L2SecurityCouncilMgmtFactory is Ownable {
                 )
             )
         );
+        address[] memory memberRemovers = new address[](2);
+        memberRemovers[0]  = dp._govChainEmergencySecurityCouncil;
+        memberRemovers[1] = address(deployedContracts.securityCouncilMemberRemoverGov);
 
         Roles memory roles = Roles({
             admin: dp.l2UpgradeExecutor,
             cohortUpdator: address(deployedContracts.memberElectionGovernor),
             memberAdder: dp._govChainEmergencySecurityCouncil,
-            memberRemover: address(deployedContracts.securityCouncilMemberRemoverGov),
+            memberRemovers: memberRemovers,
             memberRotator: dp._govChainEmergencySecurityCouncil
         });
 
