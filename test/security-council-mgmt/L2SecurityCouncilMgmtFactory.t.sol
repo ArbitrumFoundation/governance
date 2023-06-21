@@ -28,6 +28,20 @@ contract L2SecurityCouncilMgmtFactoryTest is Test {
     uint256 removalGovQuorumNumerator = uint256(4);
     uint256 removalGovProposalThreshold = uint256(5);
     uint64 removalGovMinPeriodAfterQuorum = uint64(6);
+
+    // todo: set these to something meaningful for testing. for now just to compile
+    Cohort firstCohort = Cohort.SEPTEMBER;
+    uint256 firstNominationStartTime = 7;
+    uint256 nominationFrequency = 8;
+    uint256 nomineeVettingDuration = 9;
+    address nomineeVetter = address(11_114);
+    uint256 nomineeQuorumNumerator = 10;
+    uint256 nomineeVotingPeriod = 11;
+    uint256 memberVotingPeriod = 12;
+    uint256 memberFullWeightDurationNumerator = 13;
+    uint256 memberDecreasingWeightDurationNumerator = 14;
+    uint256 memberDurationDenominator = memberFullWeightDurationNumerator + memberDecreasingWeightDurationNumerator;
+
     L2SecurityCouncilMgmtFactory fac;
     DeployParams deployParams;
 
@@ -54,32 +68,35 @@ contract L2SecurityCouncilMgmtFactoryTest is Test {
             _removalGovVotingPeriod: removalGovVotingPeriod,
             _removalGovQuorumNumerator: removalGovQuorumNumerator,
             _removalGovProposalThreshold: removalGovProposalThreshold,
-            _removalGovMinPeriodAfterQuorum: removalGovMinPeriodAfterQuorum
+            _removalGovMinPeriodAfterQuorum: removalGovMinPeriodAfterQuorum,
+            firstCohort: firstCohort,
+            firstNominationStartTime: firstNominationStartTime,
+            nominationFrequency: nominationFrequency,
+            nomineeVettingDuration: nomineeVettingDuration,
+            nomineeVetter: nomineeVetter,
+            nomineeQuorumNumerator: nomineeQuorumNumerator,
+            nomineeVotingPeriod: nomineeVotingPeriod,
+            memberVotingPeriod: memberVotingPeriod,
+            memberFullWeightDurationNumerator: memberFullWeightDurationNumerator,
+            memberDecreasingWeightDurationNumerator: memberDecreasingWeightDurationNumerator,
+            memberDurationDenominator: memberDurationDenominator
         });
     }
 
     function testOnlyOwnerCanDeploy() public {
         vm.prank(rando);
         vm.expectRevert("Ownable: caller is not the owner");
-        (
-            address l2EmergencySecurityCouncilUpgradeExecutor,
-            address l2NonEmergencySecurityCouncilUpgradeExecutor,
-            address securityCouncilMemberRemoverGov,
-            address securityCouncilManager
-        ) = fac.deployStep2(deployParams);
+        L2SecurityCouncilMgmtFactory.DeployedContracts memory deployed =
+            fac.deployStep2(deployParams);
     }
 
     function testEmergencySCExecDeployment() public {
-        (
-            address l2EmergencySecurityCouncilUpgradeExecutorAddr,
-            address l2NonEmergencySecurityCouncilUpgradeExecutorAddr,
-            address securityCouncilMemberRemoverGovAddr,
-            address securityCouncilManagerAddr
-        ) = fac.deployStep2(deployParams);
+        L2SecurityCouncilMgmtFactory.DeployedContracts memory deployed =
+            fac.deployStep2(deployParams);
 
         // emergency SC upgrade exec initialization
         SecurityCouncilUpgradeExecutor l2EmergencySecurityCouncilUpgradeExecutor =
-            SecurityCouncilUpgradeExecutor(l2EmergencySecurityCouncilUpgradeExecutorAddr);
+            SecurityCouncilUpgradeExecutor(deployed.l2EmergencySecurityCouncilUpgradeExecutor);
         vm.expectRevert("Initializable: contract is already initialized");
         l2EmergencySecurityCouncilUpgradeExecutor.initialize(IGnosisSafe(rando), rando, rando);
 
@@ -88,7 +105,7 @@ contract L2SecurityCouncilMgmtFactoryTest is Test {
 
         assertTrue(
             l2EmergencySecurityCouncilUpgradeExecutor.hasRole(
-                l2EmergencySecurityCouncilUpgradeExecutor.UPDATOR_ROLE(), securityCouncilManagerAddr
+                l2EmergencySecurityCouncilUpgradeExecutor.UPDATOR_ROLE(), address(deployed.securityCouncilManager)
             ),
             "SecurityCouncilManagerAddr is updater for l2EmergencySecurityCouncilUpgradeExecutor"
         );
@@ -108,15 +125,11 @@ contract L2SecurityCouncilMgmtFactoryTest is Test {
     }
 
     function testNonEmergencySCExecDeployment() public {
-        (
-            address l2EmergencySecurityCouncilUpgradeExecutorAddr,
-            address l2NonEmergencySecurityCouncilUpgradeExecutorAddr,
-            address securityCouncilMemberRemoverGovAddr,
-            address securityCouncilManagerAddr
-        ) = fac.deployStep2(deployParams);
+        L2SecurityCouncilMgmtFactory.DeployedContracts memory deployed =
+            fac.deployStep2(deployParams);
 
         SecurityCouncilUpgradeExecutor l2NonEmergencySecurityCouncilUpgradeExecutor =
-            SecurityCouncilUpgradeExecutor(l2NonEmergencySecurityCouncilUpgradeExecutorAddr);
+            SecurityCouncilUpgradeExecutor(deployed.l2NonEmergencySecurityCouncilUpgradeExecutor);
         vm.expectRevert("Initializable: contract is already initialized");
         l2NonEmergencySecurityCouncilUpgradeExecutor.initialize(IGnosisSafe(rando), rando, rando);
 
@@ -127,7 +140,7 @@ contract L2SecurityCouncilMgmtFactoryTest is Test {
         assertTrue(
             l2NonEmergencySecurityCouncilUpgradeExecutor.hasRole(
                 l2NonEmergencySecurityCouncilUpgradeExecutor.UPDATOR_ROLE(),
-                securityCouncilManagerAddr
+                address(deployed.securityCouncilManager)
             ),
             "SecurityCouncilManagerAddr is updater for l2NonEmergencySecurityCouncilUpgradeExecutor"
         );
@@ -147,14 +160,9 @@ contract L2SecurityCouncilMgmtFactoryTest is Test {
     }
 
     function testSecurityCouncilManagerDeployment() public {
-        (
-            address l2EmergencySecurityCouncilUpgradeExecutorAddr,
-            address l2NonEmergencySecurityCouncilUpgradeExecutorAddr,
-            address securityCouncilMemberRemoverGovAddr,
-            address securityCouncilManagerAddr
-        ) = fac.deployStep2(deployParams);
-        SecurityCouncilManager securityCouncilManager =
-            SecurityCouncilManager(securityCouncilManagerAddr);
+        L2SecurityCouncilMgmtFactory.DeployedContracts memory deployed =
+            fac.deployStep2(deployParams);
+        SecurityCouncilManager securityCouncilManager = SecurityCouncilManager(address(deployed.securityCouncilManager));
 
         assertTrue(
             securityCouncilManager.hasRole(
@@ -176,7 +184,7 @@ contract L2SecurityCouncilMgmtFactoryTest is Test {
         );
         assertTrue(
             securityCouncilManager.hasRole(
-                securityCouncilManager.MEMBER_REMOVER_ROLE(), securityCouncilMemberRemoverGovAddr
+                securityCouncilManager.MEMBER_REMOVER_ROLE(), address(deployed.securityCouncilMemberRemoverGov)
             ),
             "emergency security council has removal role"
         );
@@ -195,12 +203,12 @@ contract L2SecurityCouncilMgmtFactoryTest is Test {
         TargetContracts memory tc = securityCouncilManager.getTargetContracts();
         assertEq(
             tc.govChainEmergencySecurityCouncilUpgradeExecutor,
-            l2EmergencySecurityCouncilUpgradeExecutorAddr,
+            address(deployed.l2EmergencySecurityCouncilUpgradeExecutor),
             "emergency SC set"
         );
         assertEq(
             tc.govChainNonEmergencySecurityCouncilUpgradeExecutor,
-            l2NonEmergencySecurityCouncilUpgradeExecutorAddr,
+            address(deployed.l2NonEmergencySecurityCouncilUpgradeExecutor),
             "non emergency SC set"
         );
         assertEq(
@@ -209,14 +217,10 @@ contract L2SecurityCouncilMgmtFactoryTest is Test {
     }
 
     function testRemovalGovDeployment() public {
-        (
-            address l2EmergencySecurityCouncilUpgradeExecutorAddr,
-            address l2NonEmergencySecurityCouncilUpgradeExecutorAddr,
-            address securityCouncilMemberRemoverGovAddr,
-            address securityCouncilManagerAddr
-        ) = fac.deployStep2(deployParams);
+        L2SecurityCouncilMgmtFactory.DeployedContracts memory deployed =
+            fac.deployStep2(deployParams);
         SecurityCouncilMemberRemoverGov rg =
-            SecurityCouncilMemberRemoverGov(payable(securityCouncilMemberRemoverGovAddr));
+            SecurityCouncilMemberRemoverGov(payable(address(deployed.securityCouncilMemberRemoverGov)));
 
         assertTrue(
             rg.hasRole(rg.PROPSER_ROLE(), govChainEmergencySecurityCouncil),
@@ -224,6 +228,71 @@ contract L2SecurityCouncilMgmtFactoryTest is Test {
         );
         assertTrue(
             rg.hasRole(rg.DEFAULT_ADMIN_ROLE(), l2UpgradeExecutor), "emergency SC has removal role"
+        );
+    }
+
+    function testNomineeElectionGovDeployment() public {
+        L2SecurityCouncilMgmtFactory.DeployedContracts memory deployed =
+            fac.deployStep2(deployParams);
+        
+        SecurityCouncilNomineeElectionGovernor nomineeElectionGovernor = deployed.nomineeElectionGovernor;
+
+        assertEq(nomineeElectionGovernor.targetNomineeCount(), marchCohort.length, "targetNomineeCount set");
+        assertTrue(nomineeElectionGovernor.firstCohort() == firstCohort, "firstCohort set");
+        assertEq(nomineeElectionGovernor.firstNominationStartTime(), firstNominationStartTime, "firstNominationStartTime set");
+        assertEq(nomineeElectionGovernor.nominationFrequency(), nominationFrequency, "nominationFrequency set");
+        assertEq(nomineeElectionGovernor.nomineeVettingDuration(), nomineeVettingDuration, "nomineeVettingDuration set");
+        assertEq(nomineeElectionGovernor.nomineeVetter(), nomineeVetter, "nomineeVetter set");
+        assertEq(
+            address(nomineeElectionGovernor.securityCouncilManager()), 
+            address(deployed.securityCouncilManager), 
+            "securityCouncilManager set"
+        );
+        assertEq(address(nomineeElectionGovernor.token()), arbToken, "token set");
+        assertEq(nomineeElectionGovernor.owner(), l2UpgradeExecutor, "owner set");
+        assertEq(nomineeElectionGovernor.votingPeriod(), nomineeVotingPeriod, "votingPeriod set");
+        assertEq(
+            address(nomineeElectionGovernor.securityCouncilMemberElectionGovernor()), 
+            address(deployed.memberElectionGovernor), 
+            "securityCouncilMemberElectionGovernor set"
+        );
+        assertEq(nomineeElectionGovernor.quorumNumerator(), nomineeQuorumNumerator, "quorumNumeratorValue set");
+    }
+
+    function testMemberElectionGovDeployment() public {
+        L2SecurityCouncilMgmtFactory.DeployedContracts memory deployed =
+            fac.deployStep2(deployParams);
+        
+        SecurityCouncilMemberElectionGovernor memberElectionGovernor = deployed.memberElectionGovernor;
+
+        assertEq(memberElectionGovernor.maxNominees(), marchCohort.length, "maxNominees set");
+        assertEq(
+            address(memberElectionGovernor.nomineeElectionGovernor()), 
+            address(deployed.nomineeElectionGovernor), 
+            "nomineeElectionGovernor set"
+        );
+        assertEq(
+            address(memberElectionGovernor.securityCouncilManager()), 
+            address(deployed.securityCouncilManager), 
+            "securityCouncilManager set"
+        );
+        assertEq(address(memberElectionGovernor.token()), arbToken, "token set");
+        assertEq(memberElectionGovernor.owner(), l2UpgradeExecutor, "owner set");
+        assertEq(memberElectionGovernor.votingPeriod(), memberVotingPeriod, "votingPeriod set");
+        assertEq(
+            memberElectionGovernor.fullWeightDurationNumerator(), 
+            memberFullWeightDurationNumerator, 
+            "fullWeightDurationNumerator set"
+        );
+        assertEq(
+            memberElectionGovernor.decreasingWeightDurationNumerator(), 
+            memberDecreasingWeightDurationNumerator, 
+            "decreasingWeightDurationNumerator set"
+        );
+        assertEq(
+            memberElectionGovernor.durationDenominator(), 
+            memberDurationDenominator, 
+            "durationDenominator set"
         );
     }
 }
