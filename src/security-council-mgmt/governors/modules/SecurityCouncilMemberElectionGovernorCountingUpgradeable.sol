@@ -7,7 +7,7 @@ import "@openzeppelin/contracts-upgradeable/governance/GovernorUpgradeable.sol";
 /// @notice Keeps track of the top K nominees for a given round (proposalId) and their weights
 abstract contract AccountRankerUpgradeable is Initializable {
     /// @dev max number of nominees to track (6)
-    uint256 private maxNominees;
+    uint256 public maxNominees;
 
     /// @dev round => list of top nominees in descending order by weight
     mapping(uint256 => address[]) private _nominees;
