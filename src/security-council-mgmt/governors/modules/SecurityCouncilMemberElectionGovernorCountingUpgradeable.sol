@@ -142,20 +142,20 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is In
     );
 
     /// @param maxNominees The maximum number of nominees to track
-    /// @param fullWeightDurationNumerator Numerator for the duration of full weight voting
-    /// @param decreasingWeightDurationNumerator Numerator for the duration of decreasing weight voting
-    /// @param durationDenominator Denominator for the total duration of voting
+    /// @param initialFullWeightDurationNumerator Numerator for the duration of full weight voting
+    /// @param initialDecreasingWeightDurationNumerator Numerator for the duration of decreasing weight voting
+    /// @param initialDurationDenominator Denominator for the total duration of voting
     function __SecurityCouncilMemberElectionGovernorCounting_init(
         uint256 maxNominees,
-        uint256 fullWeightDurationNumerator,
-        uint256 decreasingWeightDurationNumerator,
-        uint256 durationDenominator
+        uint256 initialFullWeightDurationNumerator,
+        uint256 initialDecreasingWeightDurationNumerator,
+        uint256 initialDurationDenominator
     ) internal onlyInitializing {
         __AccountRanker_init(maxNominees);
 
-        _fullWeightDurationNumerator = fullWeightDurationNumerator;
-        _decreasingWeightDurationNumerator = decreasingWeightDurationNumerator;
-        _durationDenominator = durationDenominator;
+        _fullWeightDurationNumerator = initialFullWeightDurationNumerator;
+        _decreasingWeightDurationNumerator = initialDecreasingWeightDurationNumerator;
+        _durationDenominator = initialDurationDenominator;
     }
 
     /// @notice Returns the numerator for the duration of decreasing weight voting

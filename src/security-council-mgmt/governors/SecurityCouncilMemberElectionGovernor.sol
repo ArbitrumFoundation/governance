@@ -63,9 +63,9 @@ contract SecurityCouncilMemberElectionGovernor is
         __GovernorVotes_init(_token);
         __SecurityCouncilMemberElectionGovernorCounting_init({
             maxNominees: _maxNominees,
-            fullWeightDurationNumerator: _fullWeightDurationNumerator,
-            decreasingWeightDurationNumerator: _decreasingWeightDurationNumerator,
-            durationDenominator: _durationDenominator
+            initialFullWeightDurationNumerator: _fullWeightDurationNumerator,
+            initialDecreasingWeightDurationNumerator: _decreasingWeightDurationNumerator,
+            initialDurationDenominator: _durationDenominator
         });
         __GovernorSettings_init(0, _votingPeriod, 0);
         _transferOwnership(_owner);
