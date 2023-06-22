@@ -5,7 +5,6 @@ import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "@arbitrum/nitro-contracts/src/precompiles/ArbSys.sol";
-import "./interfaces/ISecurityCouncilUpgradeExectutor.sol";
 import "./interfaces/IL1SecurityCouncilUpdateRouter.sol";
 import "./SecurityCouncilMgmtUtils.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
@@ -31,13 +30,9 @@ contract SecurityCouncilManager is
     bytes32 public constant MEMBER_ROTATOR_ROLE = keccak256("MEMBER_ROTATOR");
     bytes32 public constant MEMBER_REMOVER_ROLE = keccak256("MEMBER_REMOVER");
 
-    TargetContracts public targetContracts;
+    address public l1SecurityCouncilUpdateRouter;
 
-    event TargetContractsSet(
-        address indexed govChainEmergencySecurityCouncilUpgradeExecutor,
-        address indexed govChainNonEmergencySecurityCouncilUpgradeExecutor,
-        address indexed l1SecurityCouncilUpdateRouter
-    );
+    event L1SecurityCouncilUpdateRouterSet(address indexed l1SecurityCouncilUpdateRouter);
     event ElectionResultHandled(address[] newCohort, Cohort indexed cohort);
     event MemberAdded(address indexed newMember, Cohort indexed cohort);
     event MemberRemoved(address indexed member, Cohort indexed cohort);
@@ -52,7 +47,7 @@ contract SecurityCouncilManager is
         address[] memory _marchCohort,
         address[] memory _septemberCohort,
         Roles memory _roles,
-        TargetContracts memory _targetContracts
+        address _l1SecurityCouncilUpdateRouter
     ) external initializer {
         marchCohort = _marchCohort;
         septemberCohort = _septemberCohort;
@@ -65,7 +60,7 @@ contract SecurityCouncilManager is
         }
         _grantRole(MEMBER_ROTATOR_ROLE, _roles.memberRotator);
 
-        _setTargetContracts(_targetContracts);
+        _setL1SecurityCouncilUpdateRouter(_l1SecurityCouncilUpdateRouter);
     }
 
     /// @notice callable only by Election Governer. Updates cohort in this contract's state and triggers dispatch.
@@ -233,59 +228,32 @@ contract SecurityCouncilManager is
         // A candidate new be relected, which case they appear in both the arrays; removing and re-added is a no-op. We instead remove them from both arrays; this simplifies the logic of updating them in the gnosis safes.
         (address[] memory newMembers, address[] memory oldMembers) =
             SecurityCouncilMgmtUtils.removeSharedAddresses(_membersToAdd, _membersToRemove);
-
-        // update 9 of 12 gov-chain council directly
-        ISecurityCouncilUpgradeExectutor(
-            targetContracts.govChainEmergencySecurityCouncilUpgradeExecutor
-        ).updateMembers(newMembers, oldMembers);
-
-        // update 7 of 12 gov-chain council directly
-        ISecurityCouncilUpgradeExectutor(
-            targetContracts.govChainNonEmergencySecurityCouncilUpgradeExecutor
-        ).updateMembers(newMembers, oldMembers);
-
         // Initiate L2 to L1 message to handle updating remaining secuirity councils
         bytes memory data = abi.encodeWithSelector(
             IL1SecurityCouncilUpdateRouter.handleUpdateMembers.selector, newMembers, oldMembers
         );
         ArbSys(0x0000000000000000000000000000000000000064).sendTxToL1(
-            targetContracts.l1SecurityCouncilUpdateRouter, data
+            l1SecurityCouncilUpdateRouter, data
         );
     }
 
-    /// @notice admin can update gov chain security councils address and l1SecurityCouncilUpdateRouter address
-    /// @param _targetContracts new target contract addresses
-    function setTargetContracts(TargetContracts memory _targetContracts)
+    /// @notice admin can update the l1SecurityCouncilUpdateRouter address
+    /// @param _l1SecurityCouncilUpdateRouter  new  l1SecurityCouncilUpdateRouter addresses
+    function setL1SecurityCouncilUpdateRouter(address _l1SecurityCouncilUpdateRouter)
         external
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
-        _setTargetContracts(_targetContracts);
+        _setL1SecurityCouncilUpdateRouter(_l1SecurityCouncilUpdateRouter);
     }
 
-    function getTargetContracts() external view returns (TargetContracts memory) {
-        return targetContracts;
-    }
-
-    /// @param _targetContracts new target contract addresses
-    function _setTargetContracts(TargetContracts memory _targetContracts) internal {
+    /// @param _l1SecurityCouncilUpdateRouter new  l1SecurityCouncilUpdateRouter addresses
+    function _setL1SecurityCouncilUpdateRouter(address _l1SecurityCouncilUpdateRouter) internal {
         require(
-            Address.isContract(_targetContracts.govChainEmergencySecurityCouncilUpgradeExecutor),
-            "SecurityCouncilManager: invalid govChainEmergencySecurityCouncilUpgradeExecutor"
-        );
-        require(
-            Address.isContract(_targetContracts.govChainNonEmergencySecurityCouncilUpgradeExecutor),
-            "SecurityCouncilManager: invalid govChainNonEmergencySecurityCouncilUpgradeExecutor"
-        );
-        require(
-            _targetContracts.l1SecurityCouncilUpdateRouter != address(0),
+            _l1SecurityCouncilUpdateRouter != address(0),
             "SecurityCouncilManager: invalid l1SecurityCouncilUpdateRouter"
         );
-        targetContracts = _targetContracts;
-        emit TargetContractsSet(
-            _targetContracts.govChainEmergencySecurityCouncilUpgradeExecutor,
-            _targetContracts.govChainNonEmergencySecurityCouncilUpgradeExecutor,
-            _targetContracts.l1SecurityCouncilUpdateRouter
-        );
+        l1SecurityCouncilUpdateRouter = _l1SecurityCouncilUpdateRouter;
+        emit L1SecurityCouncilUpdateRouterSet(l1SecurityCouncilUpdateRouter);
     }
 
     function getMarchCohort() external view returns (address[] memory) {
