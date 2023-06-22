@@ -3,36 +3,46 @@ pragma solidity 0.8.16;
 
 import "./interfaces/ISecurityCouncilUpgradeExectutor.sol";
 import "./interfaces/IGnosisSafe.sol";
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 
 contract SecurityCouncilUpgradeExecutor is
     ISecurityCouncilUpgradeExectutor,
     Initializable,
-    OwnableUpgradeable
+    AccessControlUpgradeable
 {
     // gnosis safe stores owners as linked list; SENTINAL_OWNERS is the head
     address internal constant SENTINEL_OWNERS = address(0x1);
+    bytes32 public constant UPDATOR_ROLE = keccak256("UPDATOR");
 
     IGnosisSafe public securityCouncil;
-
-    // TODO: setter?
-    uint256 public maxMembers = 12;
+    // TODO: remove this?
+    // uint256 public constant maxMembers = 12;
 
     constructor() {
         _disableInitializers();
     }
 
-    function initialize(IGnosisSafe _securityCouncil, address _owner) public initializer {
+    /// @notice initialize contract
+    /// @param _securityCouncil Gnosis safe which uses this contract as a module
+    /// @param _updator address given affordance to update members
+    /// @param _admin role admin
+    function initialize(IGnosisSafe _securityCouncil, address _updator, address _admin)
+        public
+        initializer
+    {
         securityCouncil = _securityCouncil;
-        _transferOwnership(_owner);
+        _grantRole(DEFAULT_ADMIN_ROLE, _admin);
+        //  securiy council management system can update members
+        _grantRole(UPDATOR_ROLE, _updator);
+        //  securiy council itself can update members TODO confirm / agree on this
+        _grantRole(UPDATOR_ROLE, address(_securityCouncil));
     }
 
-    // TODO: allow security council to call this directly? TBD
     /// @notice update gnosis safe members. We use add and remove gnosis's swapOwners method for cleansliness of handling different sized _membersToAdd & _membersToRemove arrays
     function updateMembers(address[] memory _membersToAdd, address[] memory _membersToRemove)
         external
-        onlyOwner
+        onlyRole(UPDATOR_ROLE)
     {
         // All update-initiating methods in SecurityCouncilManager ensure _membersToAdd and _membersToRemove have no addresses in common.
         // TODO We could, additionally, run removeSharedAddresses for extra insurance
@@ -58,9 +68,14 @@ contract SecurityCouncilUpgradeExecutor is
                 _removeMember(member, threshold);
             }
         }
+
+        // TODO: remove?
         // sanity check: ensure that after update, total member count is below max
-        uint256 memberCount = securityCouncil.getOwners().length;
-        require(memberCount <= maxMembers, "SecurityCouncilUpgradeExecutor: too many members");
+        // uint256 memberCount = securityCouncil.getOwners().length;
+        // console.log("abc memberCount: ", memberCount);
+        // console.log("abc maxMembers: ", maxMembers);
+
+        // require(memberCount <= maxMembers, "SecurityCouncilUpgradeExecutor: too many members");
     }
 
     /// @notice add member to multisig
@@ -96,7 +111,7 @@ contract SecurityCouncilUpgradeExecutor is
     /// @notice execute provided operation via gnosis safe's trusted  execTransactionFromModule entry point
     function _execFromModule(bytes memory data) internal {
         securityCouncil.execTransactionFromModule(
-            address(securityCouncil), 0, data, Enum.Operation.Call
+            address(securityCouncil), 0, data, OpEnum.Operation.Call
         );
     }
 }

@@ -10,7 +10,8 @@ struct Roles {
     address admin;
     address cohortUpdator;
     address memberAdder;
-    address memberRemover;
+    address[] memberRemovers;
+    address memberRotator;
 }
 
 struct TargetContracts {
