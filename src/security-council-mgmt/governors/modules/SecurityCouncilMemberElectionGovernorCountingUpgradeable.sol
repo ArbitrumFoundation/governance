@@ -36,13 +36,19 @@ abstract contract AccountRankerUpgradeable is Initializable {
     }
 
     /// @dev returns the received voting weight of a contender in a given proposalId
-    function votingWeightReceived(uint256 proposalId, address contender) public view returns (uint256) {
+    function votingWeightReceived(uint256 proposalId, address contender)
+        public
+        view
+        returns (uint256)
+    {
         return _weights[proposalId][contender];
     }
 
-    /// @dev increases the weight of an account in a given proposalId. 
+    /// @dev increases the weight of an account in a given proposalId.
     ///      updates the list of top nominees for that proposalId if necessary.
-    function _increaseNomineeWeight(uint256 proposalId, address account, uint256 weightToAdd) internal {
+    function _increaseNomineeWeight(uint256 proposalId, address account, uint256 weightToAdd)
+        internal
+    {
         address[] storage nomineesPtr = _nominees[proposalId];
         mapping(address => uint256) storage weightsPtr = _weights[proposalId];
 
@@ -79,7 +85,7 @@ abstract contract AccountRankerUpgradeable is Initializable {
 
         // start with the account's index - 1 and move to the left, shifting things down to the right until we find the appropriate spot
         uint256 j = previousIndexOfAccount - 1;
-        while(true) {
+        while (true) {
             address nominee = nomineesPtr[j];
             if (newWeight > weightsPtr[nominee]) {
                 // the account's weight is greater than the nominee we are looking at
@@ -87,8 +93,7 @@ abstract contract AccountRankerUpgradeable is Initializable {
                 if (j != nomineesPtr.length - 1) {
                     nomineesPtr[j + 1] = nominee;
                 }
-            }
-            else {
+            } else {
                 // the account's weight is less than or equal to the nominee we are looking at
                 // if we are at the bottom of the list, then return
                 // if we are not, then we should place the account just to the right of the nominee we are looking at and return
@@ -115,11 +120,15 @@ abstract contract AccountRankerUpgradeable is Initializable {
 }
 
 /// @title  SecurityCouncilMemberElectionGovernorCountingUpgradeable
-/// @notice Counting module for the SecurityCouncilMemberElectionGovernor. 
+/// @notice Counting module for the SecurityCouncilMemberElectionGovernor.
 ///         Voters can spread their votes across multiple nominees.
 ///         Implements linearly decreasing voting weights over time.
 ///         Uses AccountRankerUpgradeable to keep track of the top K nominees and their weights (where K is the number of nominees we want to select to become members).
-abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is Initializable, GovernorUpgradeable, AccountRankerUpgradeable {
+abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
+    Initializable,
+    GovernorUpgradeable,
+    AccountRankerUpgradeable
+{
     uint256 private constant WAD = 1e18;
 
     /// @notice Numerator for the duration of full weight voting
@@ -152,7 +161,8 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is In
         uint256 initialDurationDenominator
     ) internal onlyInitializing {
         require(
-            initialFullWeightDurationNumerator + initialDecreasingWeightDurationNumerator == initialDurationDenominator, 
+            initialFullWeightDurationNumerator + initialDecreasingWeightDurationNumerator
+                == initialDurationDenominator,
             "SecurityCouncilMemberElectionGovernorCountingUpgradeable: Sum of numerators must equal the denominator"
         );
 
@@ -188,15 +198,7 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is In
     }
 
     /// @notice Returns true if the account has voted any amount for any nominee in the proposal
-    function hasVoted(
-        uint256 proposalId, 
-        address account
-    ) 
-        public 
-        view 
-        override
-        returns (bool) 
-    {
+    function hasVoted(uint256 proposalId, address account) public view override returns (bool) {
         return _votesUsed[proposalId][account] > 0;
     }
 
@@ -209,8 +211,8 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is In
     function _voteSucceeded(uint256 proposalId) internal view override returns (bool) {
         return isNomineesListFull(proposalId);
     }
-    
-    /// @notice Register a vote by some account for a proposal. 
+
+    /// @notice Register a vote by some account for a proposal.
     /// @dev    Reverts if the account does not have enough votes.
     ///         Reverts if the possibleNominee is not a compliant nominee of the most recent election.
     ///         Weight of the vote is determined using the votesToWeight function.
@@ -218,7 +220,7 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is In
     /// @param  proposalId The id of the proposal
     /// @param  account The account that is voting
     /// @param  availableVotes The amount of votes that account had at the time of the proposal snapshot
-    /// @param  params Abi encoded (address possibleNominee, uint256 votes) 
+    /// @param  params Abi encoded (address possibleNominee, uint256 votes)
     function _countVote(
         uint256 proposalId,
         address account,
@@ -229,14 +231,14 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is In
         (address possibleNominee, uint256 votes) = abi.decode(params, (address, uint256));
 
         require(
-            _isCompliantNomineeForMostRecentElection(possibleNominee), 
+            _isCompliantNomineeForMostRecentElection(possibleNominee),
             "SecurityCouncilMemberElectionGovernorCountingUpgradeable: Nominee is not compliant"
         );
 
         uint256 prevVotesUsed = _votesUsed[proposalId][account];
 
         require(
-            prevVotesUsed + votes <= availableVotes, 
+            prevVotesUsed + votes <= availableVotes,
             "SecurityCouncilMemberElectionGovernorCountingUpgradeable: Cannot use more votes than available"
         );
 
@@ -250,9 +252,13 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is In
 
     /// @notice Returns the weight of a vote for a given proposal, block number, and number of votes.
     /// @dev    Uses a piecewise linear function to determine the weight of a vote.
-    function votesToWeight(uint256 proposalId, uint256 blockNumber, uint256 votes) public view returns (uint256) {
-        // Votes cast before T+14 days will have 100% weight. 
-        // Votes cast between T+14 days and T+28 days will have weight based on the time of casting, 
+    function votesToWeight(uint256 proposalId, uint256 blockNumber, uint256 votes)
+        public
+        view
+        returns (uint256)
+    {
+        // Votes cast before T+14 days will have 100% weight.
+        // Votes cast between T+14 days and T+28 days will have weight based on the time of casting,
         // decreasing linearly with time, with 100% weight at T+14 days, decreasing linearly to 0% weight at T+28 days.
 
         // 7 days full weight, 14 days decreasing weight
@@ -268,7 +274,8 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is In
             return 0;
         }
 
-        uint256 fullWeightDuration = WAD * _fullWeightDurationNumerator / _durationDenominator * duration / WAD;
+        uint256 fullWeightDuration =
+            WAD * _fullWeightDurationNumerator / _durationDenominator * duration / WAD;
 
         uint256 decreasingWeightStartBlock = startBlock + fullWeightDuration;
 
@@ -276,13 +283,14 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is In
             return votes;
         }
 
-
         // slope denominator
-        uint256 decreasingWeightDuration = WAD * _decreasingWeightDurationNumerator / _durationDenominator * duration / WAD;
+        uint256 decreasingWeightDuration =
+            WAD * _decreasingWeightDurationNumerator / _durationDenominator * duration / WAD;
 
         // slope numerator is -votes
 
-        uint256 decreaseAmount = WAD * votes / decreasingWeightDuration * (blockNumber - decreasingWeightStartBlock) / WAD;
+        uint256 decreaseAmount = WAD * votes / decreasingWeightDuration
+            * (blockNumber - decreasingWeightStartBlock) / WAD;
 
         if (decreaseAmount >= votes) {
             return 0;
@@ -292,7 +300,11 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is In
     }
 
     /// @dev Returns true if the possibleNominee is a compliant nominee for the most recent election
-    function _isCompliantNomineeForMostRecentElection(address possibleNominee) internal view virtual returns (bool);
+    function _isCompliantNomineeForMostRecentElection(address possibleNominee)
+        internal
+        view
+        virtual
+        returns (bool);
 
     /**
      * @dev This empty reserved space is put in place to allow future versions to add new
