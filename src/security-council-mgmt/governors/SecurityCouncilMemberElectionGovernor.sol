@@ -141,7 +141,7 @@ contract SecurityCouncilMemberElectionGovernor is
     ) internal override {
         // we know that the list is full because we checked it in _voteSucceeded
         securityCouncilManager.executeElectionResult({
-            _newCohort: _getTopNominees(proposalId),
+            _newCohort: topNominees(proposalId),
             _cohort: nomineeElectionGovernor.cohortOfMostRecentElection()
         });
     }

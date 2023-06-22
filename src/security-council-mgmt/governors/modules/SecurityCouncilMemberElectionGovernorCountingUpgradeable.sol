@@ -16,23 +16,28 @@ abstract contract AccountRankerUpgradeable is Initializable {
     ///      weight is the voting weight cast for the account
     mapping(uint256 => mapping(address => uint256)) private _weights;
 
-    function __AccountRanker_init(uint256 maxNominees) internal onlyInitializing {
-        _maxNominees = maxNominees;
+    function __AccountRanker_init(uint256 maxNominees_) internal onlyInitializing {
+        _maxNominees = maxNominees_;
+    }
+
+    /// @notice returns the max number of nominees this contract will track
+    function maxNominees() public view returns (uint256) {
+        return _maxNominees;
     }
 
     /// @dev returns the list of top nominees for a given proposalId
-    function _getTopNominees(uint256 proposalId) internal view returns (address[] memory) {
+    function topNominees(uint256 proposalId) public view returns (address[] memory) {
         return _nominees[proposalId];
     }
 
     /// @dev returns true if the list of top nominees is full for a given proposalId
-    function _isNomineesListFull(uint256 proposalId) internal view returns (bool) {
+    function isNomineesListFull(uint256 proposalId) public view returns (bool) {
         return _nominees[proposalId].length == _maxNominees;
     }
 
-    /// @dev returns the weight of an account in a given proposalId
-    function _getWeight(uint256 proposalId, address account) internal view returns (uint256) {
-        return _weights[proposalId][account];
+    /// @dev returns the received voting weight of a contender in a given proposalId
+    function votingWeightReceived(uint256 proposalId, address contender) public view returns (uint256) {
+        return _weights[proposalId][contender];
     }
 
     /// @dev increases the weight of an account in a given proposalId. 
@@ -177,7 +182,7 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is In
 
     /// @notice Returns true if votes have been cast for at least K nominees
     function _voteSucceeded(uint256 proposalId) internal view override returns (bool) {
-        return _isNomineesListFull(proposalId);
+        return isNomineesListFull(proposalId);
     }
     
     /// @notice Register a vote by some account for a proposal. 
