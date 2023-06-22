@@ -4,42 +4,47 @@ pragma solidity 0.8.16;
 import "@openzeppelin/contracts-upgradeable/governance/GovernorUpgradeable.sol";
 
 /// @title AccountRankerUpgradeable
-/// @notice Keeps track of the top K nominees for a given round (proposalId) and their weights
+/// @notice Keeps track of the top K nominees for a given proposalId and their weights
 abstract contract AccountRankerUpgradeable is Initializable {
     /// @dev max number of nominees to track (6)
-    uint256 public maxNominees;
+    uint256 private _maxNominees;
 
-    /// @dev round => list of top nominees in descending order by weight
+    /// @dev proposalId => list of top nominees in descending order by weight
     mapping(uint256 => address[]) private _nominees;
 
-    /// @dev round => account => weight.
+    /// @dev proposalId => account => weight.
     ///      weight is the voting weight cast for the account
     mapping(uint256 => mapping(address => uint256)) private _weights;
 
-    function __AccountRanker_init(uint256 _maxNominees) internal onlyInitializing {
-        maxNominees = _maxNominees;
+    function __AccountRanker_init(uint256 maxNominees_) internal onlyInitializing {
+        _maxNominees = maxNominees_;
     }
 
-    /// @dev returns the list of top nominees for a given round
-    function _getTopNominees(uint256 round) internal view returns (address[] memory) {
-        return _nominees[round];
+    /// @notice returns the max number of nominees this contract will track
+    function maxNominees() public view returns (uint256) {
+        return _maxNominees;
     }
 
-    /// @dev returns true if the list of top nominees is full for a given round
-    function _isNomineesListFull(uint256 round) internal view returns (bool) {
-        return _nominees[round].length == maxNominees;
+    /// @dev returns the list of top nominees for a given proposalId
+    function topNominees(uint256 proposalId) public view returns (address[] memory) {
+        return _nominees[proposalId];
     }
 
-    /// @dev returns the weight of an account in a given round
-    function _getWeight(uint256 round, address account) internal view returns (uint256) {
-        return _weights[round][account];
+    /// @dev returns true if the list of top nominees is full for a given proposalId
+    function isNomineesListFull(uint256 proposalId) public view returns (bool) {
+        return _nominees[proposalId].length == _maxNominees;
     }
 
-    /// @dev increases the weight of an account in a given round.
-    ///      updates the list of top nominees for that round if necessary.
-    function _increaseNomineeWeight(uint256 round, address account, uint256 weightToAdd) internal {
-        address[] storage nomineesPtr = _nominees[round];
-        mapping(address => uint256) storage weightsPtr = _weights[round];
+    /// @dev returns the received voting weight of a contender in a given proposalId
+    function votingWeightReceived(uint256 proposalId, address contender) public view returns (uint256) {
+        return _weights[proposalId][contender];
+    }
+
+    /// @dev increases the weight of an account in a given proposalId. 
+    ///      updates the list of top nominees for that proposalId if necessary.
+    function _increaseNomineeWeight(uint256 proposalId, address account, uint256 weightToAdd) internal {
+        address[] storage nomineesPtr = _nominees[proposalId];
+        mapping(address => uint256) storage weightsPtr = _weights[proposalId];
 
         uint256 oldWeight = weightsPtr[account];
         uint256 newWeight = oldWeight + weightToAdd;
@@ -58,7 +63,7 @@ abstract contract AccountRankerUpgradeable is Initializable {
         }
 
         // if the array is not max length yet, and account is not already in the list, just add the account to the end
-        if (previousIndexOfAccount == type(uint256).max && nomineesPtr.length < maxNominees) {
+        if (previousIndexOfAccount == type(uint256).max && nomineesPtr.length < _maxNominees) {
             nomineesPtr.push(account);
             previousIndexOfAccount = nomineesPtr.length - 1;
         }
@@ -121,14 +126,14 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
     uint256 private constant WAD = 1e18;
 
     /// @notice Numerator for the duration of full weight voting
-    uint256 public fullWeightDurationNumerator; // = 1 (7 days)
+    uint256 private _fullWeightDurationNumerator; // = 1 (7 days)
     /// @notice Numerator for the duration of decreasing weight voting
-    uint256 public decreasingWeightDurationNumerator; // = 2 (14 days)
+    uint256 private _decreasingWeightDurationNumerator; // = 2 (14 days)
     /// @notice Denominator for the total duration of voting
-    uint256 public durationDenominator; // = 3 (21 days)
+    uint256 private _durationDenominator; // = 3 (21 days)
 
     /// @notice Keeps track of the number of votes used by each account for each proposal
-    mapping(uint256 => mapping(address => uint256)) public votesUsed;
+    mapping(uint256 => mapping(address => uint256)) private _votesUsed;
 
     // would this be more useful if reason was included?
     event VoteCastForNominee(
@@ -139,21 +144,46 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
         uint256 weight
     );
 
-    /// @param _maxNominees The maximum number of nominees to track
-    /// @param _fullWeightDurationNumerator Numerator for the duration of full weight voting
-    /// @param _decreasingWeightDurationNumerator Numerator for the duration of decreasing weight voting
-    /// @param _durationDenominator Denominator for the total duration of voting
+    /// @param maxNominees The maximum number of nominees to track
+    /// @param initialFullWeightDurationNumerator Numerator for the duration of full weight voting
+    /// @param initialDecreasingWeightDurationNumerator Numerator for the duration of decreasing weight voting
+    /// @param initialDurationDenominator Denominator for the total duration of voting
     function __SecurityCouncilMemberElectionGovernorCounting_init(
-        uint256 _maxNominees,
-        uint256 _fullWeightDurationNumerator,
-        uint256 _decreasingWeightDurationNumerator,
-        uint256 _durationDenominator
+        uint256 maxNominees,
+        uint256 initialFullWeightDurationNumerator,
+        uint256 initialDecreasingWeightDurationNumerator,
+        uint256 initialDurationDenominator
     ) internal onlyInitializing {
-        __AccountRanker_init(_maxNominees);
+        require(
+            initialFullWeightDurationNumerator + initialDecreasingWeightDurationNumerator == initialDurationDenominator, 
+            "SecurityCouncilMemberElectionGovernorCountingUpgradeable: Sum of numerators must equal the denominator"
+        );
 
-        fullWeightDurationNumerator = _fullWeightDurationNumerator;
-        decreasingWeightDurationNumerator = _decreasingWeightDurationNumerator;
-        durationDenominator = _durationDenominator;
+        __AccountRanker_init(maxNominees);
+
+        _fullWeightDurationNumerator = initialFullWeightDurationNumerator;
+        _decreasingWeightDurationNumerator = initialDecreasingWeightDurationNumerator;
+        _durationDenominator = initialDurationDenominator;
+    }
+
+    /// @notice Returns the numerator for the duration of decreasing weight voting
+    function fullWeightDurationNumerator() public view returns (uint256) {
+        return _fullWeightDurationNumerator;
+    }
+
+    /// @notice Returns the numerator for the duration of decreasing weight voting
+    function decreasingWeightDurationNumerator() public view returns (uint256) {
+        return _decreasingWeightDurationNumerator;
+    }
+
+    /// @notice Returns the denominator for the total duration of voting
+    function durationDenominator() public view returns (uint256) {
+        return _durationDenominator;
+    }
+
+    /// @notice Returns the number of votes used by an account for a given proposal
+    function votesUsed(uint256 proposalId, address account) public view returns (uint256) {
+        return _votesUsed[proposalId][account];
     }
 
     function COUNTING_MODE() public pure virtual override returns (string memory) {
@@ -161,8 +191,16 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
     }
 
     /// @notice Returns true if the account has voted any amount for any nominee in the proposal
-    function hasVoted(uint256 proposalId, address account) public view override returns (bool) {
-        return votesUsed[proposalId][account] > 0;
+    function hasVoted(
+        uint256 proposalId, 
+        address account
+    ) 
+        public 
+        view 
+        override
+        returns (bool) 
+    {
+        return _votesUsed[proposalId][account] > 0;
     }
 
     /// @notice Returns true, since there is no minimum quorum
@@ -172,7 +210,7 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
 
     /// @notice Returns true if votes have been cast for at least K nominees
     function _voteSucceeded(uint256 proposalId) internal view override returns (bool) {
-        return _isNomineesListFull(proposalId);
+        return isNomineesListFull(proposalId);
     }
 
     /// @notice Register a vote by some account for a proposal.
@@ -198,14 +236,14 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
             "SecurityCouncilMemberElectionGovernorCountingUpgradeable: Nominee is not compliant"
         );
 
-        uint256 prevVotesUsed = votesUsed[proposalId][account];
+        uint256 prevVotesUsed = _votesUsed[proposalId][account];
 
         require(
             prevVotesUsed + votes <= availableVotes,
             "SecurityCouncilMemberElectionGovernorCountingUpgradeable: Cannot use more votes than available"
         );
 
-        votesUsed[proposalId][account] = prevVotesUsed + votes;
+        _votesUsed[proposalId][account] = prevVotesUsed + votes;
 
         uint256 weight = votesToWeight(proposalId, block.number, votes);
         _increaseNomineeWeight(proposalId, possibleNominee, weight);
@@ -237,8 +275,7 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
             return 0;
         }
 
-        uint256 fullWeightDuration =
-            WAD * fullWeightDurationNumerator / durationDenominator * duration / WAD;
+        uint256 fullWeightDuration = WAD * _fullWeightDurationNumerator / _durationDenominator * duration / WAD;
 
         uint256 decreasingWeightStartBlock = startBlock + fullWeightDuration;
 
@@ -247,8 +284,7 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
         }
 
         // slope denominator
-        uint256 decreasingWeightDuration =
-            WAD * decreasingWeightDurationNumerator / durationDenominator * duration / WAD;
+        uint256 decreasingWeightDuration = WAD * _decreasingWeightDurationNumerator / _durationDenominator * duration / WAD;
 
         // slope numerator is -votes
 
