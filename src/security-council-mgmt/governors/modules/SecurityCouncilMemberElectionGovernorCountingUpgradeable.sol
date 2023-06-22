@@ -158,6 +158,26 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is In
         _durationDenominator = durationDenominator;
     }
 
+    /// @notice Returns the numerator for the duration of decreasing weight voting
+    function fullWeightDurationNumerator() public view returns (uint256) {
+        return _fullWeightDurationNumerator;
+    }
+
+    /// @notice Returns the numerator for the duration of decreasing weight voting
+    function decreasingWeightDurationNumerator() public view returns (uint256) {
+        return _decreasingWeightDurationNumerator;
+    }
+
+    /// @notice Returns the denominator for the total duration of voting
+    function durationDenominator() public view returns (uint256) {
+        return _durationDenominator;
+    }
+
+    /// @notice Returns the number of votes used by an account for a given proposal
+    function votesUsed(uint256 proposalId, address account) public view returns (uint256) {
+        return _votesUsed[proposalId][account];
+    }
+
     function COUNTING_MODE() public pure virtual override returns (string memory) {
         return "TODO: ???";
     }
