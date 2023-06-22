@@ -62,10 +62,10 @@ contract SecurityCouncilMemberElectionGovernor is
         __Governor_init("SecurityCouncilMemberElectionGovernor");
         __GovernorVotes_init(_token);
         __SecurityCouncilMemberElectionGovernorCounting_init({
-            _maxNominees: _maxNominees,
-            _fullWeightDurationNumerator: _fullWeightDurationNumerator,
-            _decreasingWeightDurationNumerator: _decreasingWeightDurationNumerator,
-            _durationDenominator: _durationDenominator
+            maxNominees: _maxNominees,
+            initialFullWeightDurationNumerator: _fullWeightDurationNumerator,
+            initialDecreasingWeightDurationNumerator: _decreasingWeightDurationNumerator,
+            initialDurationDenominator: _durationDenominator
         });
         __GovernorSettings_init(0, _votingPeriod, 0);
         _transferOwnership(_owner);
@@ -141,7 +141,7 @@ contract SecurityCouncilMemberElectionGovernor is
     ) internal override {
         // we know that the list is full because we checked it in _voteSucceeded
         securityCouncilManager.executeElectionResult({
-            _newCohort: _getTopNominees(proposalId),
+            _newCohort: topNominees(proposalId),
             _cohort: nomineeElectionGovernor.cohortOfMostRecentElection()
         });
     }
