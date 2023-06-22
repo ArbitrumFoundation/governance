@@ -7,7 +7,9 @@ import "../util/TestUtil.sol";
 
 import "../../src/security-council-mgmt/factories/L2SecurityCouncilMgmtFactory.sol";
 import "../../src/security-council-mgmt/SecurityCouncilUpgradeExecutor.sol";
-import "../../src/security-council-mgmt/SecurityCouncilMemberRemoverGov.sol";
+import {L2ArbitrumGovernor as SecurityCouncilMemberRemoverGov } from "../../src/L2ArbitrumGovernor.sol";
+import "../../src/ArbitrumTimelock.sol";
+
 import "../../src/security-council-mgmt/SecurityCouncilManager.sol";
 
 import "../../src/security-council-mgmt/interfaces/IGnosisSafe.sol";
@@ -186,6 +188,13 @@ contract L2SecurityCouncilMgmtFactoryTest is Test {
             securityCouncilManager.hasRole(
                 securityCouncilManager.MEMBER_REMOVER_ROLE(), address(deployed.securityCouncilMemberRemoverGov)
             ),
+            "removal gov has removal role"
+        );
+
+        assertTrue(
+            securityCouncilManager.hasRole(
+                securityCouncilManager.MEMBER_REMOVER_ROLE(), address(govChainEmergencySecurityCouncil)
+            ),
             "emergency security council has removal role"
         );
         // TODO test that election contract has cohort updator role
@@ -222,13 +231,14 @@ contract L2SecurityCouncilMgmtFactoryTest is Test {
         SecurityCouncilMemberRemoverGov rg =
             SecurityCouncilMemberRemoverGov(payable(address(deployed.securityCouncilMemberRemoverGov)));
 
-        assertTrue(
-            rg.hasRole(rg.PROPSER_ROLE(), govChainEmergencySecurityCouncil),
-            "emergency SC has removal role"
-        );
-        assertTrue(
-            rg.hasRole(rg.DEFAULT_ADMIN_ROLE(), l2UpgradeExecutor), "emergency SC has removal role"
-        );
+        ArbitrumTimelock removalTimelock = ArbitrumTimelock(payable(rg.timelock()));
+        assertEq(removalTimelock.getMinDelay(), removalGovMinTimelockDelay, "removal timelock delay set");
+        assertEq(rg.votingDelay(),removalGovVotingDelay, "removal gov delay set");
+        assertEq(rg.votingPeriod(),removalGovVotingPeriod, "removal gov voting period set");
+        assertEq(rg.quorumNumerator(),removalGovQuorumNumerator, "removal gov numerator set");
+        assertEq(rg.proposalThreshold(),removalGovProposalThreshold, "removal gov proposal threshold set");
+        assertEq(rg.lateQuorumVoteExtension(),removalGovMinPeriodAfterQuorum, "removal gov extension set");
+
     }
 
     function testNomineeElectionGovDeployment() public {
