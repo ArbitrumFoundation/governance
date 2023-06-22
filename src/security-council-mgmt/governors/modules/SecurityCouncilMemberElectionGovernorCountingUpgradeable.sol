@@ -36,13 +36,19 @@ abstract contract AccountRankerUpgradeable is Initializable {
     }
 
     /// @dev returns the received voting weight of a contender in a given proposalId
-    function votingWeightReceived(uint256 proposalId, address contender) public view returns (uint256) {
+    function votingWeightReceived(uint256 proposalId, address contender)
+        public
+        view
+        returns (uint256)
+    {
         return _weights[proposalId][contender];
     }
 
-    /// @dev increases the weight of an account in a given proposalId. 
+    /// @dev increases the weight of an account in a given proposalId.
     ///      updates the list of top nominees for that proposalId if necessary.
-    function _increaseNomineeWeight(uint256 proposalId, address account, uint256 weightToAdd) internal {
+    function _increaseNomineeWeight(uint256 proposalId, address account, uint256 weightToAdd)
+        internal
+    {
         address[] storage nomineesPtr = _nominees[proposalId];
         mapping(address => uint256) storage weightsPtr = _weights[proposalId];
 
@@ -155,7 +161,8 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
         uint256 initialDurationDenominator
     ) internal onlyInitializing {
         require(
-            initialFullWeightDurationNumerator + initialDecreasingWeightDurationNumerator == initialDurationDenominator, 
+            initialFullWeightDurationNumerator + initialDecreasingWeightDurationNumerator
+                == initialDurationDenominator,
             "SecurityCouncilMemberElectionGovernorCountingUpgradeable: Sum of numerators must equal the denominator"
         );
 
@@ -191,15 +198,7 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
     }
 
     /// @notice Returns true if the account has voted any amount for any nominee in the proposal
-    function hasVoted(
-        uint256 proposalId, 
-        address account
-    ) 
-        public 
-        view 
-        override
-        returns (bool) 
-    {
+    function hasVoted(uint256 proposalId, address account) public view override returns (bool) {
         return _votesUsed[proposalId][account] > 0;
     }
 
@@ -275,7 +274,8 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
             return 0;
         }
 
-        uint256 fullWeightDuration = WAD * _fullWeightDurationNumerator / _durationDenominator * duration / WAD;
+        uint256 fullWeightDuration =
+            WAD * _fullWeightDurationNumerator / _durationDenominator * duration / WAD;
 
         uint256 decreasingWeightStartBlock = startBlock + fullWeightDuration;
 
@@ -284,7 +284,8 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
         }
 
         // slope denominator
-        uint256 decreasingWeightDuration = WAD * _decreasingWeightDurationNumerator / _durationDenominator * duration / WAD;
+        uint256 decreasingWeightDuration =
+            WAD * _decreasingWeightDurationNumerator / _durationDenominator * duration / WAD;
 
         // slope numerator is -votes
 
