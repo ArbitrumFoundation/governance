@@ -18,7 +18,7 @@ import "../interfaces/ISecurityCouncilManager.sol";
 
 /// @title  SecurityCouncilMemberElectionGovernor
 /// @notice Narrows a set of nominees down to a set of members.
-/// @dev    Proposals are created by the SecurityCouncilNomineeElectionGovernor. 
+/// @dev    Proposals are created by the SecurityCouncilNomineeElectionGovernor.
 ///         This governor is responsible for executing the final election result by calling the SecurityCouncilManager.
 contract SecurityCouncilMemberElectionGovernor is
     Initializable,
@@ -69,8 +69,11 @@ contract SecurityCouncilMemberElectionGovernor is
         securityCouncilManager = _securityCouncilManager;
     }
 
-    modifier onlyNomineeElectionGovernor {
-        require(msg.sender == address(nomineeElectionGovernor), "SecurityCouncilMemberElectionGovernor: Only the nominee election governor can call this function");
+    modifier onlyNomineeElectionGovernor() {
+        require(
+            msg.sender == address(nomineeElectionGovernor),
+            "SecurityCouncilMemberElectionGovernor: Only the nominee election governor can call this function"
+        );
         _;
     }
 
@@ -86,21 +89,28 @@ contract SecurityCouncilMemberElectionGovernor is
     }
 
     /// @notice Always reverts.
-    /// @dev    `GovernorUpgradeable` function to create a proposal overridden to just revert. 
+    /// @dev    `GovernorUpgradeable` function to create a proposal overridden to just revert.
     ///         We only want proposals to be created via `proposeFromNomineeElectionGovernor`.
-    function propose(
-        address[] memory,
-        uint256[] memory,
-        bytes[] memory,
-        string memory
-    ) public virtual override returns (uint256) {
-        revert("SecurityCouncilMemberElectionGovernor: Proposing is not allowed, call proposeFromNomineeElectionGovernor instead");
+    function propose(address[] memory, uint256[] memory, bytes[] memory, string memory)
+        public
+        virtual
+        override
+        returns (uint256)
+    {
+        revert(
+            "SecurityCouncilMemberElectionGovernor: Proposing is not allowed, call proposeFromNomineeElectionGovernor instead"
+        );
     }
 
     /// @notice Normally "the number of votes required in order for a voter to become a proposer." But in our case it is 0.
     /// @dev    Since we only want proposals to be created via `proposeFromNomineeElectionGovernor`, we set the proposal threshold to 0.
     ///         `proposeFromNomineeElectionGovernor` determines the rules for creating a proposal.
-    function proposalThreshold() public pure override(GovernorSettingsUpgradeable, GovernorUpgradeable) returns (uint256) {
+    function proposalThreshold()
+        public
+        pure
+        override(GovernorSettingsUpgradeable, GovernorUpgradeable)
+        returns (uint256)
+    {
         return 0;
     }
 
@@ -120,7 +130,10 @@ contract SecurityCouncilMemberElectionGovernor is
     }
 
     /// @notice Calls the securityCouncilManager to execute the election result.
-    function executeElectionResult(address[] memory _newCohort, Cohort _cohort) external onlyNomineeElectionGovernor {
+    function executeElectionResult(address[] memory _newCohort, Cohort _cohort)
+        external
+        onlyNomineeElectionGovernor
+    {
         securityCouncilManager.executeElectionResult(_newCohort, _cohort);
     }
 
@@ -129,9 +142,9 @@ contract SecurityCouncilMemberElectionGovernor is
     ///         Calls `SecurityCouncilManager.executeElectionResult` with the list of nominees.
     function _execute(
         uint256 proposalId,
-        address[] memory /* targets */,
-        uint256[] memory /* values */,
-        bytes[] memory /* calldatas */,
+        address[] memory, /* targets */
+        uint256[] memory, /* values */
+        bytes[] memory, /* calldatas */
         bytes32 /* descriptionHash */
     ) internal override {
         // we know that the list is full because we checked it in _voteSucceeded
@@ -142,13 +155,24 @@ contract SecurityCouncilMemberElectionGovernor is
     }
 
     /// @notice Returns the description of a proposal given the nominee election index.
-    function nomineeElectionIndexToDescription(uint256 electionIndex) public pure returns (string memory) {
-        return string.concat("Member Election for Nominee Election #", StringsUpgradeable.toString(electionIndex));
+    function nomineeElectionIndexToDescription(uint256 electionIndex)
+        public
+        pure
+        returns (string memory)
+    {
+        return string.concat(
+            "Member Election for Nominee Election #", StringsUpgradeable.toString(electionIndex)
+        );
     }
 
     /// @dev returns true if the account is a compliant nominee.
     ///      checks the SecurityCouncilNomineeElectionGovernor to see if the account is a compliant nominee of the most recent nominee election
-    function _isCompliantNomineeForMostRecentElection(address possibleNominee) internal view override returns (bool) {
+    function _isCompliantNomineeForMostRecentElection(address possibleNominee)
+        internal
+        view
+        override
+        returns (bool)
+    {
         return nomineeElectionGovernor.isCompliantNomineeForMostRecentElection(possibleNominee);
     }
 }
