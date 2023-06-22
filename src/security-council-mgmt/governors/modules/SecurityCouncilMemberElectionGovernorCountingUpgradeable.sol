@@ -151,6 +151,11 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is In
         uint256 initialDecreasingWeightDurationNumerator,
         uint256 initialDurationDenominator
     ) internal onlyInitializing {
+        require(
+            initialFullWeightDurationNumerator + initialDecreasingWeightDurationNumerator == initialDurationDenominator, 
+            "SecurityCouncilMemberElectionGovernorCountingUpgradeable: Sum of numerators must equal the denominator"
+        );
+
         __AccountRanker_init(maxNominees);
 
         _fullWeightDurationNumerator = initialFullWeightDurationNumerator;
