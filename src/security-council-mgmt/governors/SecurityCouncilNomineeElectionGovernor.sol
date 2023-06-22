@@ -3,7 +3,8 @@ pragma solidity 0.8.16;
 
 import "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorSettingsUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorVotesUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorPreventLateQuorumUpgradeable.sol";
+import
+    "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorPreventLateQuorumUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 import "@openzeppelin/contracts-upgradeable/utils/StringsUpgradeable.sol";
@@ -16,11 +17,11 @@ import "./modules/ArbitrumGovernorVotesQuorumFractionUpgradeable.sol";
 
 import "../SecurityCouncilMgmtUtils.sol";
 
-// note: this contract assumes that there can only be one proposalId with state Active or Succeeded at a time 
+// note: this contract assumes that there can only be one proposalId with state Active or Succeeded at a time
 // (easy to override state() to return `Expired` if a proposal succeeded but hasn't executed after some time)
 
 /// @title SecurityCouncilNomineeElectionGovernor
-/// @notice Governor contract for selecting Security Council Nominees (phase 1 of the Security Council election process). 
+/// @notice Governor contract for selecting Security Council Nominees (phase 1 of the Security Council election process).
 contract SecurityCouncilNomineeElectionGovernor is
     Initializable,
     GovernorUpgradeable,
@@ -29,7 +30,7 @@ contract SecurityCouncilNomineeElectionGovernor is
     ArbitrumGovernorVotesQuorumFractionUpgradeable,
     GovernorSettingsUpgradeable,
     OwnableUpgradeable
-{   
+{
     // todo: these parameters could be reordered to make more sense
     /// @notice parameters for `initialize`
     /// @param targetNomineeCount The target number of nominees to elect (6)
@@ -57,7 +58,6 @@ contract SecurityCouncilNomineeElectionGovernor is
         uint256 quorumNumeratorValue;
         uint256 votingPeriod;
     }
-
 
     /// @notice The target number of nominees to elect (6)
     uint256 public targetNomineeCount;
@@ -129,7 +129,10 @@ contract SecurityCouncilNomineeElectionGovernor is
 
     /// @notice Allows the nominee vetter to call certain functions
     modifier onlyNomineeVetter() {
-        require(msg.sender == nomineeVetter, "SecurityCouncilNomineeElectionGovernor: Only the nomineeVetter can call this function");
+        require(
+            msg.sender == nomineeVetter,
+            "SecurityCouncilNomineeElectionGovernor: Only the nomineeVetter can call this function"
+        );
         _;
     }
 
@@ -152,30 +155,38 @@ contract SecurityCouncilNomineeElectionGovernor is
     }
 
     /// @notice Always reverts.
-    /// @dev    `GovernorUpgradeable` function to create a proposal overridden to just revert. 
+    /// @dev    `GovernorUpgradeable` function to create a proposal overridden to just revert.
     ///         We only want proposals to be created via `createElection`.
-    function propose(
-        address[] memory,
-        uint256[] memory,
-        bytes[] memory,
-        string memory
-    ) public virtual override returns (uint256) {
-        revert("SecurityCouncilNomineeElectionGovernor: Proposing is not allowed, call createElection instead");
+    function propose(address[] memory, uint256[] memory, bytes[] memory, string memory)
+        public
+        virtual
+        override
+        returns (uint256)
+    {
+        revert(
+            "SecurityCouncilNomineeElectionGovernor: Proposing is not allowed, call createElection instead"
+        );
     }
 
     /// @notice Normally "the number of votes required in order for a voter to become a proposer." But in our case it is 0.
     /// @dev    Since we only want proposals to be created via `createElection`, we set the proposal threshold to 0.
     ///         `createElection` determines the rules for creating a proposal.
-    function proposalThreshold() public view virtual override(GovernorSettingsUpgradeable, GovernorUpgradeable) returns (uint256) {
+    function proposalThreshold()
+        public
+        view
+        virtual
+        override(GovernorSettingsUpgradeable, GovernorUpgradeable)
+        returns (uint256)
+    {
         return 0;
     }
 
-    /// @notice Creates a new nominee election proposal. 
+    /// @notice Creates a new nominee election proposal.
     ///         Can be called by anyone every `nominationFrequency` seconds.
     /// @return proposalId The id of the proposal
     function createElection() external returns (uint256 proposalId) {
         require(
-            block.timestamp >= firstNominationStartTime + nominationFrequency * electionCount, 
+            block.timestamp >= firstNominationStartTime + nominationFrequency * electionCount,
             "SecurityCouncilNomineeElectionGovernor: Not enough time has passed since the last election"
         );
 
@@ -191,7 +202,7 @@ contract SecurityCouncilNomineeElectionGovernor is
 
     /// @dev    `GovernorUpgradeable` function to execute a proposal overridden to handle nominee elections.
     ///         Can be called by anyone via `execute` after voting and nominee vetting periods have ended.
-    ///         If the number of compliant nominees is > the target number of nominees, 
+    ///         If the number of compliant nominees is > the target number of nominees,
     ///         we move on to the next phase by calling the SecurityCouncilMemberElectionGovernor.
     ///         If the number of compliant nominees is == the target number of nominees,
     ///         we execute the election result immediately by calling the SecurityCouncilManager.
@@ -200,13 +211,13 @@ contract SecurityCouncilNomineeElectionGovernor is
     /// @param  proposalId The id of the proposal
     function _execute(
         uint256 proposalId,
-        address[] memory /* targets */,
-        uint256[] memory /* values */,
-        bytes[] memory /* calldatas */,
+        address[] memory, /* targets */
+        uint256[] memory, /* values */
+        bytes[] memory, /* calldatas */
         bytes32 /*descriptionHash*/
     ) internal virtual override {
         require(
-            block.number > proposalVettingDeadline(proposalId), 
+            block.number > proposalVettingDeadline(proposalId),
             "SecurityCouncilNomineeElectionGovernor: Proposal is still in the nominee vetting period"
         );
 
@@ -219,19 +230,20 @@ contract SecurityCouncilNomineeElectionGovernor is
         }
 
         Cohort cohort = electionIndexToCohort(electionCount - 1);
-        
-        address[] memory maybeCompliantNominees = SecurityCouncilNomineeElectionGovernorCountingUpgradeable.nominees(proposalId);
+
+        address[] memory maybeCompliantNominees =
+            SecurityCouncilNomineeElectionGovernorCountingUpgradeable.nominees(proposalId);
         address[] memory compliantNominees = SecurityCouncilMgmtUtils.filterAddressesWithExcludeList(
-            maybeCompliantNominees, 
-            excluded[proposalId]
+            maybeCompliantNominees, excluded[proposalId]
         );
 
         if (compliantNominees.length < targetNomineeCount) {
             // there are too few compliant nominees
             // we should randomly select some members from the current cohort to add to the list
-            address[] memory currentMembers = cohort == Cohort.SEPTEMBER ? 
-                securityCouncilManager.getSeptemberCohort() : securityCouncilManager.getMarchCohort();
-            
+            address[] memory currentMembers = cohort == Cohort.SEPTEMBER
+                ? securityCouncilManager.getSeptemberCohort()
+                : securityCouncilManager.getMarchCohort();
+
             compliantNominees = SecurityCouncilMgmtUtils.randomAddToSet({
                 pickFrom: currentMembers,
                 addTo: compliantNominees,
@@ -239,7 +251,7 @@ contract SecurityCouncilNomineeElectionGovernor is
                 rng: uint256(blockhash(block.number - 1))
             });
         }
-        
+
         // tell the securityCouncilMemberElectionGovernor to call the SecurityCouncilManager to switch out the security council members
         securityCouncilMemberElectionGovernor.executeElectionResult(compliantNominees, cohort);
     }
@@ -249,16 +261,20 @@ contract SecurityCouncilNomineeElectionGovernor is
     ///         A contender cannot be a member of the opposite cohort.
     function addContender(uint256 proposalId) external {
         ProposalState state = state(proposalId);
-        require(state == ProposalState.Active, "SecurityCouncilNomineeElectionGovernor: Proposal is not active");
+        require(
+            state == ProposalState.Active,
+            "SecurityCouncilNomineeElectionGovernor: Proposal is not active"
+        );
 
         // check to make sure the contender is not part of the other cohort
         Cohort cohort = electionIndexToCohort(electionCount - 1);
 
-        address[] memory oppositeCohortCurrentMembers = cohort == Cohort.MARCH ? 
-            securityCouncilManager.getSeptemberCohort() : securityCouncilManager.getMarchCohort();
+        address[] memory oppositeCohortCurrentMembers = cohort == Cohort.MARCH
+            ? securityCouncilManager.getSeptemberCohort()
+            : securityCouncilManager.getMarchCohort();
 
         require(
-            !SecurityCouncilMgmtUtils.isInArray(msg.sender, oppositeCohortCurrentMembers), 
+            !SecurityCouncilMgmtUtils.isInArray(msg.sender, oppositeCohortCurrentMembers),
             "SecurityCouncilNomineeElectionGovernor: Account is a member of the opposite cohort"
         );
 
@@ -272,15 +288,15 @@ contract SecurityCouncilNomineeElectionGovernor is
     ///         Will revert if the provided account is not a nominee (had less than the required votes).
     function excludeNominee(uint256 proposalId, address account) external onlyNomineeVetter {
         require(
-            state(proposalId) == ProposalState.Succeeded, 
+            state(proposalId) == ProposalState.Succeeded,
             "SecurityCouncilNomineeElectionGovernor: Proposal has not succeeded"
         );
         require(
-            block.number <= proposalVettingDeadline(proposalId), 
+            block.number <= proposalVettingDeadline(proposalId),
             "SecurityCouncilNomineeElectionGovernor: Proposal is no longer in the nominee vetting period"
         );
         require(
-            isNominee(proposalId, account), 
+            isNominee(proposalId, account),
             "SecurityCouncilNomineeElectionGovernor: Account is not a nominee"
         );
 
@@ -299,7 +315,11 @@ contract SecurityCouncilNomineeElectionGovernor is
 
     /// @notice returns true if the account is a nominee for the most recent election and has not been excluded
     /// @param  account The account to check
-    function isCompliantNomineeForMostRecentElection(address account) external view returns (bool) {
+    function isCompliantNomineeForMostRecentElection(address account)
+        external
+        view
+        returns (bool)
+    {
         return isCompliantNominee(electionIndexToProposalId(electionCount - 1), account);
     }
 
@@ -309,7 +329,13 @@ contract SecurityCouncilNomineeElectionGovernor is
     }
 
     /// @inheritdoc SecurityCouncilNomineeElectionGovernorCountingUpgradeable
-    function _isContender(uint256 proposalId, address possibleContender) internal view virtual override returns (bool) {
+    function _isContender(uint256 proposalId, address possibleContender)
+        internal
+        view
+        virtual
+        override
+        returns (bool)
+    {
         return contenders[proposalId][possibleContender];
     }
 
@@ -323,14 +349,18 @@ contract SecurityCouncilNomineeElectionGovernor is
     }
 
     /// @notice Returns the description for a given `electionIndex`
-    function electionIndexToDescription(uint256 electionIndex) public pure returns (string memory) {
+    function electionIndexToDescription(uint256 electionIndex)
+        public
+        pure
+        returns (string memory)
+    {
         return string.concat("Nominee Election #", StringsUpgradeable.toString(electionIndex));
     }
 
     /// @notice Returns the proposalId for a given `electionIndex`
     function electionIndexToProposalId(uint256 electionIndex) public pure returns (uint256) {
         return hashProposal(
-            new address[](1), 
+            new address[](1),
             new uint256[](1),
             new bytes[](1),
             keccak256(bytes(electionIndexToDescription(electionIndex)))
