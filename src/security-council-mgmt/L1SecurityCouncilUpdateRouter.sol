@@ -122,7 +122,7 @@ contract L1SecurityCouncilUpdateRouter is
         _registerSecurityCouncil(_securityCouncilData);
     }
 
-    /// @notice
+    /// @notice remove security council so it's no longer updated / governed
     /// @param index index of council to remove
     function removeSecurityCouncil(uint256 index) external onlyOwner returns (bool) {
         GovernedSecurityCouncil storage lastSecurityCouncil =
