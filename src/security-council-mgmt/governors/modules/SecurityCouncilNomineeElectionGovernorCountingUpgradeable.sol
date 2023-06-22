@@ -121,6 +121,16 @@ abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is I
         return _elections[proposalId].nominees;
     }
 
+    /// @notice Returns the amount of votes an account has used for a given proposal
+    function votesUsed(uint256 proposalId, address account) public view returns (uint256) {
+        return _elections[proposalId].votesUsed[account];
+    }
+
+    /// @notice Returns the amount of votes a contender has received for a given proposal
+    function votesReceived(uint256 proposalId, address contender) public view returns (uint256) {
+        return _elections[proposalId].votesReceived[contender];
+    }
+
     /// @dev Returns true if the account is a contender for the proposal
     function _isContender(uint256 proposalId, address possibleContender) internal view virtual returns (bool);
 
