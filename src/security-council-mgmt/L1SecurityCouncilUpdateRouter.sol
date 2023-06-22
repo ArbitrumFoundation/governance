@@ -123,8 +123,8 @@ contract L1SecurityCouncilUpdateRouter is
     }
 
     /// @notice execute a security council member update.
-    /// @param __ addresses of new members to add to the security council
-    /// @param ___ addresses of new members to add to the security council
+    /// @param __ unused param
+    /// @param ___ unused param
     /// @param _membersData data in the form abi.encode(membersToAdd, membersToRemove)
     function _execute(address __, uint256 ___, bytes calldata _membersData) internal override {
         (address[] memory _membersToAdd, address[] memory _membersToRemove) =
