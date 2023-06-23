@@ -29,6 +29,7 @@ struct DeployParams {
     uint256 _removalGovQuorumNumerator;
     uint256 _removalGovProposalThreshold;
     uint64 _removalGovMinPeriodAfterQuorum;
+    uint256 _minDelay;
     // governor params
     Cohort firstCohort;
     uint256 firstNominationStartTime;
@@ -165,17 +166,13 @@ contract L2SecurityCouncilMgmtFactory is Ownable {
             memberRotator: dp._govChainEmergencySecurityCouncil
         });
 
-        TargetContracts memory targetContracts = TargetContracts({
-            govChainEmergencySecurityCouncilUpgradeExecutor: deployedContracts
-                .l2EmergencySecurityCouncilUpgradeExecutor,
-            govChainNonEmergencySecurityCouncilUpgradeExecutor: deployedContracts
-                .l2NonEmergencySecurityCouncilUpgradeExecutor,
-            l1SecurityCouncilUpdateRouter: dp._l1SecurityCouncilUpdateRouter
-        });
-
         // initialize securityCouncilManager
         deployedContracts.securityCouncilManager.initialize(
-            dp._marchCohort, dp._septemberCohort, roles, targetContracts
+            dp._marchCohort,
+            dp._septemberCohort,
+            roles,
+            dp._l1SecurityCouncilUpdateRouter,
+            dp._minDelay
         );
 
         ArbitrumTimelock memberRemovalGovTimelock = ArbitrumTimelock(

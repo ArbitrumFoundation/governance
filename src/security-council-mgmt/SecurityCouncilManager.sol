@@ -58,11 +58,11 @@ contract SecurityCouncilManager is Initializable, ArbitrumTimelock, ISecurityCou
         _grantRole(MEMBER_ROTATOR_ROLE, _roles.memberRotator);
 
         // only this contract can schedule (interally)
-        address[] memory proposers;
+        address[] memory proposers = new address[](1);
         proposers[0] = address(this);
 
         // execution is permissionless
-        address[] memory executors;
+        address[] memory executors = new address[](1);
         executors[0] = address(0);
 
         __ArbitrumTimelock_init(_minDelay, proposers, executors);

@@ -83,12 +83,14 @@ contract L1SecurityCouncilMgmtFactory is Ownable {
     /// @param _governanceChainInbox L1 address of the inbox of the Arbitrum chain that handles governance
     /// @param _l2SecurityCouncilManager L2 address of the Security Council Manager on the governance chain
     /// @param _l1UpgradeExecutor L1 address of the Uprade Executor (DAO)
+    /// @param _minDelay min delay for L1 timelock
 
     function deployStep3(
         address _governanceChainInbox,
         address _l2SecurityCouncilManager,
         address _l1UpgradeExecutor,
-        L2ChainToUpdate[] memory _initiall2ChainsToUpdateArr
+        GovernedSecurityCouncil[] memory _initiall2ChainsToUpdateArr,
+        uint256 _minDelay
     ) external onlyOwner {
         require(step == Step.Three, "L1SecurityCouncilMgmtFactory: step is not Three");
         // initialize l1SecurityCouncilUpdateRouter
@@ -97,7 +99,8 @@ contract L1SecurityCouncilMgmtFactory is Ownable {
             _l1SecurityCouncilUpgradeExecutor: l1SecurityCouncilUpgradeExecutor,
             _l2SecurityCouncilManager: _l2SecurityCouncilManager,
             _initiall2ChainsToUpdateArr: _initiall2ChainsToUpdateArr,
-            _owner: _l1UpgradeExecutor
+            _owner: _l1UpgradeExecutor,
+            _minDelay: _minDelay
         });
         step = Step.Complete;
         emit UpdateRouterInitialized();
