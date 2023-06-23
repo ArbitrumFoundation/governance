@@ -230,7 +230,8 @@ contract SecurityCouncilManager is
             SecurityCouncilMgmtUtils.removeSharedAddresses(_membersToAdd, _membersToRemove);
         // Initiate L2 to L1 message to handle updating remaining secuirity councils
         bytes memory data = abi.encodeWithSelector(
-            IL1SecurityCouncilUpdateRouter.handleUpdateMembers.selector, newMembers, oldMembers
+            IL1SecurityCouncilUpdateRouter.scheduleUpdateMembers.selector,
+            abi.encode(_membersToAdd, _membersToRemove)
         );
         ArbSys(0x0000000000000000000000000000000000000064).sendTxToL1(
             l1SecurityCouncilUpdateRouter, data

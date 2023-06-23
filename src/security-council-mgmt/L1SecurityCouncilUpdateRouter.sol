@@ -9,6 +9,7 @@ import "./interfaces/IL1SecurityCouncilUpdateRouter.sol";
 
 import "@arbitrum/nitro-contracts/src/bridge/IInbox.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
+import "../ArbitrumTimelock.sol";
 
 interface IInboxSubmissionFee {
     function calculateRetryableSubmissionFee(uint256 dataLength, uint256 baseFee)
@@ -23,6 +24,7 @@ contract L1SecurityCouncilUpdateRouter is
     L1ArbitrumMessenger,
     Initializable,
     OwnableUpgradeable,
+    ArbitrumTimelock,
     IL1SecurityCouncilUpdateRouter
 {
     address public governanceChainInbox;
@@ -44,12 +46,14 @@ contract L1SecurityCouncilUpdateRouter is
     /// @param _l1SecurityCouncilUpgradeExecutor the address of the L1 security council upgrade executor
     /// @param _l2SecurityCouncilManager L2 address of security council manager on governance chain
     /// @param _owner the owner of the contract
+    /// @param _minDelay minimum timelock delay
     function initialize(
         address _governanceChainInbox,
         address _l1SecurityCouncilUpgradeExecutor,
         address _l2SecurityCouncilManager,
         GovernedSecurityCouncil[] memory _initialGovernedSecurityCouncils,
-        address _owner
+        address _owner,
+        uint256 _minDelay
     ) external initializer onlyOwner {
         governanceChainInbox = _governanceChainInbox;
         l2SecurityCouncilManager = _l2SecurityCouncilManager;
@@ -58,6 +62,16 @@ contract L1SecurityCouncilUpdateRouter is
             _registerSecurityCouncil(_initialGovernedSecurityCouncils[i]);
         }
         transferOwnership(_owner);
+
+        // bridge (via L2 to L1 message) has proposer role
+        address[] memory proposers = new address[](1);
+        proposers[0] = address(getBridge(_governanceChainInbox));
+
+        // execution is permissionless
+        address[] memory executors = new address[](1);
+        executors[0] = address(0);
+
+        __ArbitrumTimelock_init(_minDelay, proposers, executors);
     }
 
     modifier onlyFromL2SecurityCouncilManager() {
@@ -72,14 +86,49 @@ contract L1SecurityCouncilUpdateRouter is
         _;
     }
 
-    /// @notice update l1 security council and send L1 to L2 messages to update security councils for all L2s (except governance chain)
-    /// @param _membersToAdd addresses of new members to add to the security council
-    /// @param _membersToRemove addresses of members to remove from the security council
-    function handleUpdateMembers(address[] memory _membersToAdd, address[] memory _membersToRemove)
+    /// @notice overridden; proposals can only be scheduled via scheduleUpdateMembers
+    function schedule(
+        address,
+        uint256,
+        bytes calldata,
+        bytes32,
+        bytes32,
+        uint256
+    ) public override {
+        revert("L1SecurityCouncilUpdateRouter: schedule not callable externally");
+    }
+
+    /// @notice overridden; proposals can only be scheduled via scheduleUpdateMembers
+    function scheduleBatch(
+        address[] calldata __,
+        uint256[] calldata ___,
+        bytes[] calldata ____,
+        bytes32 _____,
+        bytes32 ______,
+        uint256 _______
+    ) public virtual override {
+        revert("L1SecurityCouncilUpdateRouter: schedulebatch not callable externally");
+    }
+
+    /// @notice schedule a security council member update. callable by the security council manager on L2
+    /// @param _membersData data in the form abi.encode(membersToAdd, membersToRemove)
+    function scheduleUpdateMembers(bytes calldata _membersData)
         external
-        payable
         onlyFromL2SecurityCouncilManager
     {
+        bytes32 salt = keccak256(abi.encodePacked(block.timestamp, block.number, _membersData));
+        TimelockControllerUpgradeable.schedule(
+            address(this), 0, _membersData, bytes32(0), salt, getMinDelay()
+        );
+    }
+
+    /// @notice execute a security council member update.
+    /// @param __ unused param
+    /// @param ___ unused param
+    /// @param _membersData data in the form abi.encode(membersToAdd, membersToRemove)
+    function _execute(address __, uint256 ___, bytes calldata _membersData) internal override {
+        (address[] memory _membersToAdd, address[] memory _membersToRemove) =
+            abi.decode(_membersData, (address[], address[]));
         // update l1 security council
         ISecurityCouncilUpgradeExectutor(l1SecurityCouncilUpgradeExecutor).updateMembers(
             _membersToAdd, _membersToRemove

@@ -13,12 +13,10 @@ interface IL1SecurityCouncilUpdateRouter {
         address _l1SecurityCouncilUpgradeExecutor,
         address _l2SecurityCouncilManager,
         GovernedSecurityCouncil[] memory _initiall2ChainsToUpdateArr,
-        address _owner
+        address _owner,
+        uint256 _minDelay
     ) external;
-    function handleUpdateMembers(
-        address[] calldata _membersToAdd,
-        address[] calldata _membersToRemove
-    ) external payable;
+    function scheduleUpdateMembers(bytes calldata _membersData) external;
     function removeSecurityCouncil(uint256 index) external returns (bool);
     function registerSecurityCouncil(GovernedSecurityCouncil memory securityCouncil) external;
 }
