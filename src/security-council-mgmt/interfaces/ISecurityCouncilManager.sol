@@ -19,7 +19,8 @@ interface ISecurityCouncilManager {
         address[] memory _marchCohort,
         address[] memory _septemberCohort,
         Roles memory _roles,
-        address _targetContracts
+        address _targetContracts,
+        uint256 minDelay
     ) external;
     function executeElectionResult(address[] memory _newCohort, Cohort _cohort) external;
     function addMemberToCohort(address _newMember, Cohort _cohort) external;

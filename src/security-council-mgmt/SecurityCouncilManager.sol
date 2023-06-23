@@ -3,21 +3,17 @@ pragma solidity 0.8.16;
 
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "@arbitrum/nitro-contracts/src/precompiles/ArbSys.sol";
 import "./interfaces/IL1SecurityCouncilUpdateRouter.sol";
 import "./SecurityCouncilMgmtUtils.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "./interfaces/ISecurityCouncilManager.sol";
+import "../ArbitrumTimelock.sol";
 
 /// @notice Manages the security council updates.
 ///         Receives election results (replace cohort with 6 new members), add-member actions, and remove-member actions,
 ///         and dispatches them to all security councils on all relevant chains
-contract SecurityCouncilManager is
-    Initializable,
-    AccessControlUpgradeable,
-    ISecurityCouncilManager
-{
+contract SecurityCouncilManager is Initializable, ArbitrumTimelock, ISecurityCouncilManager {
     using ECDSA for bytes32;
 
     // cohort arrays are source-of-truth for security council; the maximum 12 owners security council owners should always be equal to the
@@ -47,7 +43,8 @@ contract SecurityCouncilManager is
         address[] memory _marchCohort,
         address[] memory _septemberCohort,
         Roles memory _roles,
-        address _l1SecurityCouncilUpdateRouter
+        address _l1SecurityCouncilUpdateRouter,
+        uint256 _minDelay
     ) external initializer {
         marchCohort = _marchCohort;
         septemberCohort = _septemberCohort;
@@ -59,6 +56,16 @@ contract SecurityCouncilManager is
             _grantRole(MEMBER_REMOVER_ROLE, _roles.memberRemovers[i]);
         }
         _grantRole(MEMBER_ROTATOR_ROLE, _roles.memberRotator);
+
+        // only this contract can schedule (interally)
+        address[] memory proposers = new address[](1);
+        proposers[0] = address(this);
+
+        // execution is permissionless
+        address[] memory executors = new address[](1);
+        executors[0] = address(0);
+
+        __ArbitrumTimelock_init(_minDelay, proposers, executors);
 
         _setL1SecurityCouncilUpdateRouter(_l1SecurityCouncilUpdateRouter);
     }
@@ -81,7 +88,7 @@ contract SecurityCouncilManager is
             septemberCohort = _newCohort;
         }
 
-        _dispatchUpdateMembers(_newCohort, previousMembersCopy);
+        _scheduleDispatchUpdateMembers(_newCohort, previousMembersCopy);
         emit ElectionResultHandled(_newCohort, _cohort);
     }
 
@@ -110,7 +117,7 @@ contract SecurityCouncilManager is
         membersToAdd[0] = (_newMember);
 
         address[] memory membersToRemove;
-        _dispatchUpdateMembers(membersToAdd, membersToRemove);
+        _scheduleDispatchUpdateMembers(membersToAdd, membersToRemove);
         emit MemberAdded(_newMember, _cohort);
     }
 
@@ -143,7 +150,7 @@ contract SecurityCouncilManager is
                 address[] memory membersToAdd;
                 address[] memory membersToRemove;
                 membersToRemove[0] = _member;
-                _dispatchUpdateMembers(membersToAdd, membersToRemove);
+                _scheduleDispatchUpdateMembers(membersToAdd, membersToRemove);
                 return true;
             }
         }
@@ -187,7 +194,7 @@ contract SecurityCouncilManager is
                 address[] memory membersToRemove;
                 membersToAdd[0] = _newAddress;
                 membersToRemove[0] = _currentAddress;
-                _dispatchUpdateMembers(membersToAdd, membersToRemove);
+                _scheduleDispatchUpdateMembers(membersToAdd, membersToRemove);
             }
         }
         rotationNonce += 1;
@@ -217,24 +224,39 @@ contract SecurityCouncilManager is
         return data.toEthSignedMessageHash().recover(signature) == account;
     }
 
-    /// @notice initates update to all Security Council Multisigs (gov chain, L1, and all others governed L2 chains).
+    /// @notice Schedules an update to all Security Council Multisigs (gov chain, L1, and all others governed L2 chains).
     /// Handles election results (add 6, remove 6 or fewer), add member (add one, remove none), and remove member (add none, remove one)
     /// @param _membersToAdd array of members to add. can be empty.
     /// @param _membersToRemove array of members to remove. can be empty.
-    function _dispatchUpdateMembers(
+    function _scheduleDispatchUpdateMembers(
         address[] memory _membersToAdd,
         address[] memory _membersToRemove
     ) internal {
         // A candidate new be relected, which case they appear in both the arrays; removing and re-added is a no-op. We instead remove them from both arrays; this simplifies the logic of updating them in the gnosis safes.
         (address[] memory newMembers, address[] memory oldMembers) =
             SecurityCouncilMgmtUtils.removeSharedAddresses(_membersToAdd, _membersToRemove);
-        // Initiate L2 to L1 message to handle updating remaining secuirity councils
-        bytes memory data = abi.encodeWithSelector(
+        bytes memory _membersData = abi.encodeWithSelector(
             IL1SecurityCouncilUpdateRouter.scheduleUpdateMembers.selector,
             abi.encode(_membersToAdd, _membersToRemove)
         );
+
+        this._scheduleDispatchUpdateMembersImpl(_membersData);
+    }
+
+    function _scheduleDispatchUpdateMembersImpl(bytes calldata _membersData) public {
+        // TODO: less hacky way to do this?
+        require(msg.sender == address(this), "SecurityCouncilManager: not callable externally");
+        bytes32 salt = keccak256(abi.encodePacked(block.timestamp, block.number, _membersData));
+
+        TimelockControllerUpgradeable.schedule(
+            address(this), 0, _membersData, bytes32(0), salt, getMinDelay()
+        );
+    }
+
+    /// @notice override timelock execute; forwards the message to the L1 router
+    function _execute(address __, uint256 ___, bytes calldata _membersData) internal override {
         ArbSys(0x0000000000000000000000000000000000000064).sendTxToL1(
-            l1SecurityCouncilUpdateRouter, data
+            l1SecurityCouncilUpdateRouter, _membersData
         );
     }
 
@@ -263,5 +285,29 @@ contract SecurityCouncilManager is
 
     function getSeptemberCohort() external view returns (address[] memory) {
         return septemberCohort;
+    }
+
+    /// @notice overridden; proposals can only be scheduled via scheduleUpdateMembers
+    function schedule(
+        address __,
+        uint256 ___,
+        bytes calldata ____,
+        bytes32 _____,
+        bytes32 ______,
+        uint256 _______
+    ) public override {
+        revert("SecurityCouncilManager: schedule not callable externally");
+    }
+
+    /// @notice overridden; proposals can only be scheduled via scheduleUpdateMembers
+    function scheduleBatch(
+        address[] calldata __,
+        uint256[] calldata ___,
+        bytes[] calldata ____,
+        bytes32 _____,
+        bytes32 ______,
+        uint256 _______
+    ) public override {
+        revert("SecurityCouncilManager: schedulebatch not callable externally");
     }
 }
