@@ -64,11 +64,11 @@ contract L1SecurityCouncilUpdateRouter is
         transferOwnership(_owner);
 
         // bridge (via L2 to L1 message) has proposer role
-        address[] memory proposers;
+        address[] memory proposers = new address[](1);
         proposers[0] = address(getBridge(_governanceChainInbox));
 
         // execution is permissionless
-        address[] memory executors;
+        address[] memory executors = new address[](1);
         executors[0] = address(0);
 
         __ArbitrumTimelock_init(_minDelay, proposers, executors);
