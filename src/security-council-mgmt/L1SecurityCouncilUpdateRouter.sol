@@ -64,11 +64,11 @@ contract L1SecurityCouncilUpdateRouter is
         transferOwnership(_owner);
 
         // bridge (via L2 to L1 message) has proposer role
-        address[] memory proposers;
+        address[] memory proposers = new address[](1);
         proposers[0] = address(getBridge(_governanceChainInbox));
 
         // execution is permissionless
-        address[] memory executors;
+        address[] memory executors = new address[](1);
         executors[0] = address(0);
 
         __ArbitrumTimelock_init(_minDelay, proposers, executors);
@@ -88,12 +88,12 @@ contract L1SecurityCouncilUpdateRouter is
 
     /// @notice overridden; proposals can only be scheduled via scheduleUpdateMembers
     function schedule(
-        address __,
-        uint256 ___,
-        bytes calldata ____,
-        bytes32 _____,
-        bytes32 ______,
-        uint256 _______
+        address,
+        uint256,
+        bytes calldata,
+        bytes32,
+        bytes32,
+        uint256
     ) public override {
         revert("L1SecurityCouncilUpdateRouter: schedule not callable externally");
     }
