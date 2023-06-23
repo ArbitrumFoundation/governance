@@ -31,6 +31,7 @@ contract L2SecurityCouncilMgmtFactoryTest is Test {
     uint256 removalGovQuorumNumerator = uint256(4);
     uint256 removalGovProposalThreshold = uint256(5);
     uint64 removalGovMinPeriodAfterQuorum = uint64(6);
+    uint256 minDelay = uint256(1);
 
     // todo: set these to something meaningful for testing. for now just to compile
     Cohort firstCohort = Cohort.SEPTEMBER;
@@ -83,7 +84,8 @@ contract L2SecurityCouncilMgmtFactoryTest is Test {
             memberVotingPeriod: memberVotingPeriod,
             memberFullWeightDurationNumerator: memberFullWeightDurationNumerator,
             memberDecreasingWeightDurationNumerator: memberDecreasingWeightDurationNumerator,
-            memberDurationDenominator: memberDurationDenominator
+            memberDurationDenominator: memberDurationDenominator,
+            _minDelay: minDelay
         });
     }
 
@@ -168,7 +170,7 @@ contract L2SecurityCouncilMgmtFactoryTest is Test {
         L2SecurityCouncilMgmtFactory.DeployedContracts memory deployed =
             fac.deployStep2(deployParams);
         SecurityCouncilManager securityCouncilManager =
-            SecurityCouncilManager(address(deployed.securityCouncilManager));
+            SecurityCouncilManager(payable(address(deployed.securityCouncilManager)));
 
         assertTrue(
             securityCouncilManager.hasRole(
@@ -215,20 +217,14 @@ contract L2SecurityCouncilMgmtFactoryTest is Test {
             ),
             "september cohort set"
         );
-        TargetContracts memory tc = securityCouncilManager.getTargetContracts();
+        address _l1SecurityCouncilUpdateRouter =
+            securityCouncilManager.l1SecurityCouncilUpdateRouter();
+
         assertEq(
-            tc.govChainEmergencySecurityCouncilUpgradeExecutor,
-            address(deployed.l2EmergencySecurityCouncilUpgradeExecutor),
-            "emergency SC set"
+            _l1SecurityCouncilUpdateRouter, l1SecurityCouncilUpdateRouter, "l1update router set"
         );
-        assertEq(
-            tc.govChainNonEmergencySecurityCouncilUpgradeExecutor,
-            address(deployed.l2NonEmergencySecurityCouncilUpgradeExecutor),
-            "non emergency SC set"
-        );
-        assertEq(
-            tc.l1SecurityCouncilUpdateRouter, l1SecurityCouncilUpdateRouter, "l1update router set"
-        );
+
+        assertEq(securityCouncilManager.getMinDelay(), minDelay, "minDelay set");
     }
 
     function testRemovalGovDeployment() public {
