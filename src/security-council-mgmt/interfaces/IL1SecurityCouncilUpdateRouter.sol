@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.16;
 
-struct L2ChainToUpdate {
+struct GovernedSecurityCouncil {
     address inbox;
     address securityCouncilUpgradeExecutor;
     uint256 chainID;
@@ -12,13 +12,11 @@ interface IL1SecurityCouncilUpdateRouter {
         address _governanceChainInbox,
         address _l1SecurityCouncilUpgradeExecutor,
         address _l2SecurityCouncilManager,
-        L2ChainToUpdate[] memory _initiall2ChainsToUpdateArr,
-        address _owner
+        GovernedSecurityCouncil[] memory _initiall2ChainsToUpdateArr,
+        address _owner,
+        uint256 minDelay
     ) external;
-    function handleUpdateMembers(
-        address[] calldata _membersToAdd,
-        address[] calldata _membersToRemove
-    ) external payable;
-    function removeL2Chain(uint256 chainID) external returns (bool);
-    function registerL2Chain(L2ChainToUpdate memory l2ChainToUpdate) external;
+    function scheduleUpdateMembers(bytes calldata _membersData) external;
+    function removeSecurityCouncil(uint256 index) external returns (bool);
+    function registerSecurityCouncil(GovernedSecurityCouncil memory securityCouncil) external;
 }

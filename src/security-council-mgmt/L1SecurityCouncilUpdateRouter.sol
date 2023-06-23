@@ -9,6 +9,7 @@ import "./interfaces/IL1SecurityCouncilUpdateRouter.sol";
 
 import "@arbitrum/nitro-contracts/src/bridge/IInbox.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
+import "../ArbitrumTimelock.sol";
 
 interface IInboxSubmissionFee {
     function calculateRetryableSubmissionFee(uint256 dataLength, uint256 baseFee)
@@ -18,20 +19,23 @@ interface IInboxSubmissionFee {
 }
 
 /// @notice Receives security council updatees from the Security Council manager and forwards them to
-/// the L1 security council and the non-governance chain governed L2 security councils
+/// the L1 security council and all L2 security councils
 contract L1SecurityCouncilUpdateRouter is
     L1ArbitrumMessenger,
     Initializable,
     OwnableUpgradeable,
+    ArbitrumTimelock,
     IL1SecurityCouncilUpdateRouter
 {
     address public governanceChainInbox;
     address public l2SecurityCouncilManager;
     address public l1SecurityCouncilUpgradeExecutor;
 
-    L2ChainToUpdate[] public l2ChainsToUpdateArr;
+    GovernedSecurityCouncil[] public governedSecurityCouncils;
 
-    event L2ChainRegistered(uint256 chainID, address inbox, address securityCouncilUpgradeExecutor);
+    event SecurityCouncilRegistered(
+        uint256 chainID, address inbox, address securityCouncilUpgradeExecutor
+    );
 
     constructor() {
         _disableInitializers();
@@ -42,20 +46,32 @@ contract L1SecurityCouncilUpdateRouter is
     /// @param _l1SecurityCouncilUpgradeExecutor the address of the L1 security council upgrade executor
     /// @param _l2SecurityCouncilManager L2 address of security council manager on governance chain
     /// @param _owner the owner of the contract
+    /// @param _minDelay minimum timelock delay
     function initialize(
         address _governanceChainInbox,
         address _l1SecurityCouncilUpgradeExecutor,
         address _l2SecurityCouncilManager,
-        L2ChainToUpdate[] memory _initiall2ChainsToUpdateArr,
-        address _owner
+        GovernedSecurityCouncil[] memory _initialGovernedSecurityCouncils,
+        address _owner,
+        uint256 _minDelay
     ) external initializer onlyOwner {
         governanceChainInbox = _governanceChainInbox;
         l2SecurityCouncilManager = _l2SecurityCouncilManager;
         l1SecurityCouncilUpgradeExecutor = _l1SecurityCouncilUpgradeExecutor;
-        for (uint256 i = 0; i < _initiall2ChainsToUpdateArr.length; i++) {
-            _registerL2Chain(_initiall2ChainsToUpdateArr[i]);
+        for (uint256 i = 0; i < _initialGovernedSecurityCouncils.length; i++) {
+            _registerSecurityCouncil(_initialGovernedSecurityCouncils[i]);
         }
         transferOwnership(_owner);
+
+        // bridge (via L2 to L1 message) has proposer role
+        address[] memory proposers;
+        proposers[0] = address(getBridge(_governanceChainInbox));
+
+        // execution is permissionless
+        address[] memory executors;
+        executors[0] = address(0);
+
+        __ArbitrumTimelock_init(_minDelay, proposers, executors);
     }
 
     modifier onlyFromL2SecurityCouncilManager() {
@@ -70,14 +86,49 @@ contract L1SecurityCouncilUpdateRouter is
         _;
     }
 
-    /// @notice update l1 security council and send L1 to L2 messages to update security councils for all L2s (except governance chain)
-    /// @param _membersToAdd addresses of new members to add to the security council
-    /// @param _membersToRemove addresses of members to remove from the security council
-    function handleUpdateMembers(address[] memory _membersToAdd, address[] memory _membersToRemove)
+    /// @notice overridden; proposals can only be scheduled via scheduleUpdateMembers
+    function schedule(
+        address __,
+        uint256 ___,
+        bytes calldata ____,
+        bytes32 _____,
+        bytes32 ______,
+        uint256 _______
+    ) public override {
+        revert("L1SecurityCouncilUpdateRouter: schedule not callable externally");
+    }
+
+    /// @notice overridden; proposals can only be scheduled via scheduleUpdateMembers
+    function scheduleBatch(
+        address[] calldata __,
+        uint256[] calldata ___,
+        bytes[] calldata ____,
+        bytes32 _____,
+        bytes32 ______,
+        uint256 _______
+    ) public virtual override {
+        revert("L1SecurityCouncilUpdateRouter: schedulebatch not callable externally");
+    }
+
+    /// @notice schedule a security council member update. callable by the security council manager on L2
+    /// @param _membersData data in the form abi.encode(membersToAdd, membersToRemove)
+    function scheduleUpdateMembers(bytes calldata _membersData)
         external
-        payable
         onlyFromL2SecurityCouncilManager
     {
+        bytes32 salt = keccak256(abi.encodePacked(block.timestamp, block.number, _membersData));
+        TimelockControllerUpgradeable.schedule(
+            address(this), 0, _membersData, bytes32(0), salt, getMinDelay()
+        );
+    }
+
+    /// @notice execute a security council member update.
+    /// @param __ unused param
+    /// @param ___ unused param
+    /// @param _membersData data in the form abi.encode(membersToAdd, membersToRemove)
+    function _execute(address __, uint256 ___, bytes calldata _membersData) internal override {
+        (address[] memory _membersToAdd, address[] memory _membersToRemove) =
+            abi.decode(_membersData, (address[], address[]));
         // update l1 security council
         ISecurityCouncilUpgradeExectutor(l1SecurityCouncilUpgradeExecutor).updateMembers(
             _membersToAdd, _membersToRemove
@@ -87,15 +138,15 @@ contract L1SecurityCouncilUpdateRouter is
             ISecurityCouncilUpgradeExectutor.updateMembers.selector, _membersToAdd, _membersToRemove
         );
 
-        // update all non-gov-chain l2 security councils
-        for (uint256 i = 0; i < l2ChainsToUpdateArr.length; i++) {
-            L2ChainToUpdate memory l2ChainToUpdate = l2ChainsToUpdateArr[i];
-            uint256 submissionCost = IInboxSubmissionFee(l2ChainToUpdate.inbox)
+        // update all l2 security councils
+        for (uint256 i = 0; i < governedSecurityCouncils.length; i++) {
+            GovernedSecurityCouncil memory securityCouncilData = governedSecurityCouncils[i];
+            uint256 submissionCost = IInboxSubmissionFee(securityCouncilData.inbox)
                 .calculateRetryableSubmissionFee(l2CallData.length, block.basefee);
 
             sendTxToL2CustomRefund({
-                _inbox: l2ChainToUpdate.inbox, // target inbox
-                _to: l2ChainToUpdate.securityCouncilUpgradeExecutor, // target l2 address
+                _inbox: securityCouncilData.inbox, // target inbox
+                _to: securityCouncilData.securityCouncilUpgradeExecutor, // target l2 address
                 _refundTo: tx.origin, //   fee refund address, for excess basefee TODO: better option?
                 _user: address(0xdead), //there is no call value, and nobody should be able to cancel
                 _l1CallValue: msg.value, // L1 callvalue
@@ -111,45 +162,44 @@ contract L1SecurityCouncilUpdateRouter is
         }
     }
 
-    /// @notice Register new DAO governed L2 chain so its security councils get updated. Callable by DAO.
-    /// @param l2ChainToUpdate new governed L2 chain
-    function registerL2Chain(L2ChainToUpdate memory l2ChainToUpdate) external onlyOwner {
-        _registerL2Chain(l2ChainToUpdate);
+    /// @notice Register new DAO governed security council. Callable by DAO.
+    /// @param _securityCouncilData new governed securityCouncil
+    function registerSecurityCouncil(GovernedSecurityCouncil memory _securityCouncilData)
+        external
+        onlyOwner
+    {
+        _registerSecurityCouncil(_securityCouncilData);
     }
 
-    /// @notice Remove L2 chain so it's security council is no longer updated
-    /// @param chainID chainID of chain to remove
-    function removeL2Chain(uint256 chainID) external onlyOwner returns (bool) {
-        for (uint256 i = 0; i < l2ChainsToUpdateArr.length; i++) {
-            if (chainID == l2ChainsToUpdateArr[i].chainID) {
-                delete l2ChainsToUpdateArr[i];
-                return true;
-            }
-        }
-        revert("L1SecurityCouncilUpdateRouter: chain not found");
+    /// @notice remove security council so it's no longer updated / governed
+    /// @param index index of council to remove
+    function removeSecurityCouncil(uint256 index) external onlyOwner returns (bool) {
+        GovernedSecurityCouncil storage lastSecurityCouncil =
+            governedSecurityCouncils[governedSecurityCouncils.length - 1];
+
+        governedSecurityCouncils[index] = lastSecurityCouncil;
+        governedSecurityCouncils.pop();
+        return true;
     }
 
-    function _registerL2Chain(L2ChainToUpdate memory l2ChainToUpdate) internal {
+    function _registerSecurityCouncil(GovernedSecurityCouncil memory _securityCouncilData)
+        internal
+    {
         require(
-            Address.isContract(l2ChainToUpdate.inbox),
+            Address.isContract(_securityCouncilData.inbox),
             "L1SecurityCouncilUpdateRouter: inbox not contract"
         );
         require(
-            l2ChainToUpdate.securityCouncilUpgradeExecutor != address(0),
+            _securityCouncilData.securityCouncilUpgradeExecutor != address(0),
             "L1SecurityCouncilUpdateRouter: zero securityCouncilUpgradeExecutor"
         );
-        require(l2ChainToUpdate.chainID != 0, "L1SecurityCouncilUpdateRouter: zero chainID");
+        require(_securityCouncilData.chainID != 0, "L1SecurityCouncilUpdateRouter: zero chainID");
 
-        for (uint256 i = 0; i < l2ChainsToUpdateArr.length; i++) {
-            if (l2ChainsToUpdateArr[i].chainID == l2ChainToUpdate.chainID) {
-                revert("L1SecurityCouncilUpdateRouter: chain already included");
-            }
-        }
-        l2ChainsToUpdateArr.push(l2ChainToUpdate);
-        emit L2ChainRegistered(
-            l2ChainToUpdate.chainID,
-            l2ChainToUpdate.inbox,
-            l2ChainToUpdate.securityCouncilUpgradeExecutor
+        governedSecurityCouncils.push(_securityCouncilData);
+        emit SecurityCouncilRegistered(
+            _securityCouncilData.chainID,
+            _securityCouncilData.inbox,
+            _securityCouncilData.securityCouncilUpgradeExecutor
         );
     }
 }
