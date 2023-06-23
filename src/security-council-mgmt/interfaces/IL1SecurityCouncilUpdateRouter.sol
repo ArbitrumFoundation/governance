@@ -14,7 +14,7 @@ interface IL1SecurityCouncilUpdateRouter {
         address _l2SecurityCouncilManager,
         GovernedSecurityCouncil[] memory _initiall2ChainsToUpdateArr,
         address _owner,
-        uint256 minDelay
+        uint256 _minDelay
     ) external;
     function scheduleUpdateMembers(bytes calldata _membersData) external;
     function removeSecurityCouncil(uint256 index) external returns (bool);
