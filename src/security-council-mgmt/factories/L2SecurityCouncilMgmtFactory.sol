@@ -7,7 +7,7 @@ import "../governors/SecurityCouncilMemberElectionGovernor.sol";
 import "../governors/SecurityCouncilNomineeElectionGovernor.sol";
 import "../SecurityCouncilManager.sol";
 import "./SecurityCouncilUpgradeExecutorFactory.sol";
-import "./AddressAliasHelper.sol";
+import "@arbitrum/nitro-contracts/src/libraries/AddressAliasHelper.sol";
 import {L2ArbitrumGovernor as SecurityCouncilMemberRemoverGov} from "../../L2ArbitrumGovernor.sol";
 import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import "../interfaces/ISecurityCouncilManager.sol";
@@ -129,7 +129,10 @@ contract L2SecurityCouncilMgmtFactory is Ownable {
         deployedContracts.l2EmergencySecurityCouncilUpgradeExecutor =
         securityCouncilUpgradeExecutorFactory.deploy({
             securityCouncil: IGnosisSafe(dp._govChainEmergencySecurityCouncil),
-            securityCouncilUpdator: address(deployedContracts.securityCouncilManager),
+            // security council can be updated via l1 to l2 message from the router:
+            securityCouncilUpdator: AddressAliasHelper.applyL1ToL2Alias(
+                address(dp._l1SecurityCouncilUpdateRouter)
+                ),
             proxyAdmin: dp._proxyAdmin,
             upgradeExecutorAdmin: dp.l2UpgradeExecutor
         });
@@ -137,7 +140,10 @@ contract L2SecurityCouncilMgmtFactory is Ownable {
         deployedContracts.l2NonEmergencySecurityCouncilUpgradeExecutor =
         securityCouncilUpgradeExecutorFactory.deploy({
             securityCouncil: IGnosisSafe(dp._govChainNonEmergencySecurityCouncil),
-            securityCouncilUpdator: address(deployedContracts.securityCouncilManager),
+            // security council can be updated via l1 to l2 message from the router
+            securityCouncilUpdator: AddressAliasHelper.applyL1ToL2Alias(
+                address(dp._l1SecurityCouncilUpdateRouter)
+                ),
             proxyAdmin: dp._proxyAdmin,
             upgradeExecutorAdmin: dp.l2UpgradeExecutor
         });
