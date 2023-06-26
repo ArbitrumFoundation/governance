@@ -6,14 +6,17 @@ import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.so
 
 import "../../../util/TestUtil.sol";
 
-import "../../../../src/security-council-mgmt/governors/modules/SecurityCouncilMemberElectionGovernorCountingUpgradeable.sol";
+import
+    "../../../../src/security-council-mgmt/governors/modules/SecurityCouncilMemberElectionGovernorCountingUpgradeable.sol";
 
 contract ConcreteAccountRanker is AccountRankerUpgradeable {
     function initialize() public initializer {
         __AccountRanker_init(6);
     }
 
-    function increaseNomineeWeight(uint256 proposalId, address account, uint256 weightToAdd) public {
+    function increaseNomineeWeight(uint256 proposalId, address account, uint256 weightToAdd)
+        public
+    {
         _increaseNomineeWeight(proposalId, account, weightToAdd);
     }
 }

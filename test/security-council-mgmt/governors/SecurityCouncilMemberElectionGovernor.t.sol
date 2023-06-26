@@ -18,7 +18,6 @@ contract SecurityCouncilMemberElectionGovernorTest is Test {
         uint256 votingPeriod;
         uint256 maxNominees;
         uint256 fullWeightDurationNumerator;
-        uint256 decreasingWeightDurationNumerator;
         uint256 durationDenominator;
     }
 
@@ -30,11 +29,10 @@ contract SecurityCouncilMemberElectionGovernorTest is Test {
         securityCouncilManager: ISecurityCouncilManager(address(2)),
         token: IVotesUpgradeable(address(3)),
         owner: address(4),
-        votingPeriod: 5,
+        votingPeriod: 2 ** 8,
         maxNominees: 6,
-        fullWeightDurationNumerator: 7,
-        decreasingWeightDurationNumerator: 8,
-        durationDenominator: 7 + 8
+        fullWeightDurationNumerator: 3,
+        durationDenominator: 4
     });
 
     function setUp() public {
@@ -48,7 +46,6 @@ contract SecurityCouncilMemberElectionGovernorTest is Test {
             _votingPeriod: initParams.votingPeriod,
             _maxNominees: initParams.maxNominees,
             _fullWeightDurationNumerator: initParams.fullWeightDurationNumerator,
-            _decreasingWeightDurationNumerator: initParams.decreasingWeightDurationNumerator,
             _durationDenominator: initParams.durationDenominator
         });
     }
@@ -65,10 +62,6 @@ contract SecurityCouncilMemberElectionGovernorTest is Test {
         assertEq(governor.votingPeriod(), initParams.votingPeriod);
         assertEq(governor.maxNominees(), initParams.maxNominees);
         assertEq(governor.fullWeightDurationNumerator(), initParams.fullWeightDurationNumerator);
-        assertEq(
-            governor.decreasingWeightDurationNumerator(),
-            initParams.decreasingWeightDurationNumerator
-        );
         assertEq(governor.durationDenominator(), initParams.durationDenominator);
     }
 
@@ -92,19 +85,68 @@ contract SecurityCouncilMemberElectionGovernorTest is Test {
         );
         governor.proposeFromNomineeElectionGovernor();
 
+        _propose(0);
+    }
+
+    function testVotesToWeight() public {
+        _propose(0);
+
+        uint256 proposalId = governor.nomineeElectionIndexToProposalId(0);
+        uint256 startBlock = governor.proposalSnapshot(proposalId);
+
+        // test weight before voting starts (block <= startBlock)
+        assertEq(governor.votesToWeight(proposalId, startBlock, 100), 0);
+
+        // test weight right after voting starts (block == startBlock + 1)
+        assertEq(governor.votesToWeight(proposalId, startBlock + 1, 100), 100);
+
+        // test weight right before full weight voting ends
+        // (block == startBlock + votingPeriod * fullWeightDurationNumerator / durationDenominator)
+        assertEq(
+            governor.votesToWeight(proposalId, governor.fullWeightVotingDeadline(proposalId), 100),
+            100
+        );
+
+        // test weight right after full weight voting ends
+        assertLe(
+            governor.votesToWeight(
+                proposalId, governor.fullWeightVotingDeadline(proposalId) + 1, 100
+            ),
+            100
+        );
+
+        // test weight halfway through decreasing weight voting
+        uint256 halfwayPoint = (
+            governor.fullWeightVotingDeadline(proposalId) + governor.proposalDeadline(proposalId)
+        ) / 2;
+        assertEq(governor.votesToWeight(proposalId, halfwayPoint, 100), 50);
+
+        // test weight at proposal deadline
+        assertEq(governor.votesToWeight(proposalId, governor.proposalDeadline(proposalId), 100), 0);
+
+        // test governor with no decreasing weight voting
+        vm.prank(address(governor));
+        governor.setFullWeightDurationNumeratorAndDurationDenominator(1, 1);
+        assertEq(
+            governor.votesToWeight(proposalId, governor.proposalDeadline(proposalId), 100), 100
+        );
+    }
+
+    function _propose(uint256 nomineeElectionIndex) internal {
         // we need to mock call to the nominee election governor
         // electionCount() returns 1
         vm.mockCall(
             address(initParams.nomineeElectionGovernor),
             abi.encodeWithSelector(initParams.nomineeElectionGovernor.electionCount.selector),
-            abi.encode(1)
+            abi.encode(nomineeElectionIndex + 1)
         );
 
         vm.prank(address(initParams.nomineeElectionGovernor));
         governor.proposeFromNomineeElectionGovernor();
+
+        vm.clearMockedCalls();
     }
 
-    
     function _deployGovernor() internal returns (SecurityCouncilMemberElectionGovernor) {
         return SecurityCouncilMemberElectionGovernor(
             payable(
