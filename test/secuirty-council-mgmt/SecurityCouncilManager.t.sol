@@ -103,8 +103,6 @@ contract SecurityCouncilManagerTest is Test {
         vm.expectRevert("SecurityCouncilManager: member not found");
         scm.removeMember(rando);
 
-        // vm.recordLogs();
-
         removeFirstMember();
         address[] memory remainingMembers = new address[](5);
         for (uint256 i = 1; i < marchCohort.length; i++) {
@@ -114,14 +112,6 @@ contract SecurityCouncilManagerTest is Test {
             TestUtil.areAddressArraysEqual(remainingMembers, scm.getMarchCohort()),
             "member removed from march chohort"
         );
-
-        // Vm.Log[] memory entries = vm.getRecordedLogs();
-        // assertEq(
-        //     entries[0].topics[0],
-        //     keccak256("CallScheduled(bytes32,uint256,address,uint256,bytes,bytes32,uint256)"),
-        //     "CallScheduled emitted"
-        // );
-        // bytes32 id = entries[0].topics[1];
         address[] memory membersToRemove = new address[](1);
         membersToRemove[0] = marchCohort[0];
 
