@@ -236,7 +236,7 @@ contract SecurityCouncilManagerTest is Test {
         // execute
         scm.execute(address(scm), 0, payload, bytes32(0), salt);
         Vm.Log[] memory entries = vm.getRecordedLogs();
-        
+
         // check ArbSysL2ToL1Tx event was emitted with payload
         assertEq(
             entries[0].topics[0],
