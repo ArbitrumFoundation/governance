@@ -10,6 +10,7 @@ import "../../src/security-council-mgmt/SecurityCouncilUpgradeExecutor.sol";
 import {L2ArbitrumGovernor as SecurityCouncilMemberRemoverGov} from
     "../../src/L2ArbitrumGovernor.sol";
 import "../../src/ArbitrumTimelock.sol";
+import "@arbitrum/nitro-contracts/src/libraries/AddressAliasHelper.sol";
 
 import "../../src/security-council-mgmt/SecurityCouncilManager.sol";
 
@@ -112,9 +113,9 @@ contract L2SecurityCouncilMgmtFactoryTest is Test {
         assertTrue(
             l2EmergencySecurityCouncilUpgradeExecutor.hasRole(
                 l2EmergencySecurityCouncilUpgradeExecutor.UPDATOR_ROLE(),
-                address(deployed.securityCouncilManager)
+                AddressAliasHelper.applyL1ToL2Alias(l1SecurityCouncilUpdateRouter)
             ),
-            "SecurityCouncilManagerAddr is updater for l2EmergencySecurityCouncilUpgradeExecutor"
+            "l1SecurityCouncilUpdateRouter is updater for l2EmergencySecurityCouncilUpgradeExecutor"
         );
         assertTrue(
             l2EmergencySecurityCouncilUpgradeExecutor.hasRole(
@@ -147,9 +148,9 @@ contract L2SecurityCouncilMgmtFactoryTest is Test {
         assertTrue(
             l2NonEmergencySecurityCouncilUpgradeExecutor.hasRole(
                 l2NonEmergencySecurityCouncilUpgradeExecutor.UPDATOR_ROLE(),
-                address(deployed.securityCouncilManager)
+                AddressAliasHelper.applyL1ToL2Alias(l1SecurityCouncilUpdateRouter)
             ),
-            "SecurityCouncilManagerAddr is updater for l2NonEmergencySecurityCouncilUpgradeExecutor"
+            "l1SecurityCouncilUpdateRouter is updater for l2NonEmergencySecurityCouncilUpgradeExecutor"
         );
         assertTrue(
             l2NonEmergencySecurityCouncilUpgradeExecutor.hasRole(
