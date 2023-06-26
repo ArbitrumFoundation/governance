@@ -41,7 +41,6 @@ contract SecurityCouncilMemberElectionGovernor is
     /// @param _votingPeriod The duration of voting on a proposal
     /// @param _maxNominees The maximum number of nominees that can become members
     /// @param _fullWeightDurationNumerator Numerator for the duration of full weight voting
-    /// @param _decreasingWeightDurationNumerator Numerator for the duration of decreasing weight voting
     /// @param _durationDenominator Denominator for the duration of full and decreasing weight voting
     function initialize(
         SecurityCouncilNomineeElectionGovernor _nomineeElectionGovernor,
@@ -51,7 +50,6 @@ contract SecurityCouncilMemberElectionGovernor is
         uint256 _votingPeriod,
         uint256 _maxNominees,
         uint256 _fullWeightDurationNumerator,
-        uint256 _decreasingWeightDurationNumerator,
         uint256 _durationDenominator
     ) public initializer {
         __Governor_init("SecurityCouncilMemberElectionGovernor");
@@ -59,7 +57,6 @@ contract SecurityCouncilMemberElectionGovernor is
         __SecurityCouncilMemberElectionGovernorCounting_init({
             maxNominees: _maxNominees,
             initialFullWeightDurationNumerator: _fullWeightDurationNumerator,
-            initialDecreasingWeightDurationNumerator: _decreasingWeightDurationNumerator,
             initialDurationDenominator: _durationDenominator
         });
         __GovernorSettings_init(0, _votingPeriod, 0);
