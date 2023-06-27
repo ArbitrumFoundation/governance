@@ -146,7 +146,7 @@ contract SecurityCouncilMemberElectionGovernorTest is Test {
             address(initParams.securityCouncilManager),
             abi.encodeWithSelector(
                 initParams.securityCouncilManager.executeElectionResult.selector,
-                governor.topNominees(governor.nomineeElectionIndexToProposalId(0)),
+                governor.topNominees(proposalId),
                 Cohort.SEPTEMBER
             ),
             abi.encode()
