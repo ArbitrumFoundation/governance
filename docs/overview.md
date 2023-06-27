@@ -145,7 +145,7 @@ The contracts in the diagram encode ownership chains that ensure only governance
 
 This means that forming a proposal involves working backwards from the target, wrapping the data multiple times to define the path the upgrade will take.
 
-You can read more about how the path is encoded in the [proposal lifecycle document](./docs/proposal_lifecycle_example.md)
+You can read more about how the path is encoded in the [proposal lifecycle document](./proposal_lifecycle_example.md)
 
 ## Proposal Cancellation 
 Both governor contracts have the affordance to cancel proposals scheduled in the L2 Timelock. The Security Council can likewise cancel proposals [via calling L2ArbitrumGovernor.relay](src/gov-action-contracts/governance/CancelTimelockOperation.sol). Note that although the core-governor Security Council has the affordance to cancel proposals in the L2 timelock via calling `cancel` directly, for clarity and consistency, it should use the aforementioned `relay` method. 
