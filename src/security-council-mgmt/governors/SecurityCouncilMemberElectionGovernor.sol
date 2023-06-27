@@ -113,6 +113,7 @@ contract SecurityCouncilMemberElectionGovernor is
         return 0;
     }
 
+    // todo: should we put this in the counting module?
     /// @notice Quorum is always 0.
     function quorum(uint256) public pure override returns (uint256) {
         return 0;

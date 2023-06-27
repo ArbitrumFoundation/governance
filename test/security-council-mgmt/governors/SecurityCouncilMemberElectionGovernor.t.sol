@@ -67,6 +67,17 @@ contract SecurityCouncilMemberElectionGovernorTest is Test {
         assertEq(governor.durationDenominator(), initParams.durationDenominator);
     }
 
+    function testRelay() public {
+        // make sure relay can only be called by owner
+        vm.expectRevert("Ownable: caller is not the owner");
+        governor.relay(address(0), 0, new bytes(0));
+
+        // make sure relay can be called by owner, and that we can call an onlyGovernance function
+        vm.prank(initParams.owner);
+        governor.relay(address(governor), 0, abi.encodeWithSelector(governor.setVotingPeriod.selector, 121212));
+        assertEq(governor.votingPeriod(), 121212);
+    }
+
     function testProposeReverts() public {
         vm.expectRevert(
             "SecurityCouncilMemberElectionGovernor: Proposing is not allowed, call proposeFromNomineeElectionGovernor instead"
@@ -89,8 +100,66 @@ contract SecurityCouncilMemberElectionGovernorTest is Test {
 
         _propose(0);
     }
+    // todo: test executeElectionResult
 
-    // todo: test relay, make sure it is there and works properly
+
+    // todo: if cleaner, can write a mock contract for the manager
+    // that way we don't have to do the mockCallRevert dance
+    // i do like that the manager is always 0x33 in the traces though, but that's whatever
+    function testExecute() public {
+        // we need to create a proposal, and vote for 6 nominees
+        uint256 proposalId = _createProposalAndVoteForSomeNominees(0, initParams.maxNominees);
+
+        // roll to the end of voting
+        vm.roll(governor.proposalDeadline(proposalId) + 1);
+
+        // make sure the governor calls the manager with the appropriate calldata
+        // we can do this by trying to call execute before and after using mockCall on the manager
+        // we still need to mock the call to the nominee election governor for cohortOfMostRecentElection
+
+        vm.mockCall(
+            address(initParams.nomineeElectionGovernor),
+            abi.encodeWithSelector(
+                initParams.nomineeElectionGovernor.cohortOfMostRecentElection.selector
+            ),
+            abi.encode(Cohort.SEPTEMBER)
+        );
+
+        // make all calls to the manager revert by default
+        vm.mockCallRevert(address(initParams.securityCouncilManager), "", "");
+
+        bytes32 descriptionHash = keccak256(bytes(governor.nomineeElectionIndexToDescription(0)));
+
+        // before mocking manager, should revert
+        // (this just makes sure that execute calls the manager at all)
+        vm.expectRevert(bytes(""));
+        governor.execute({
+            targets: new address[](1),
+            values: new uint256[](1),
+            calldatas: new bytes[](1),
+            descriptionHash: descriptionHash
+        });
+
+        // mock the call to the manager
+        // calls to the manager with any other calldata will revert
+        vm.mockCall(
+            address(initParams.securityCouncilManager),
+            abi.encodeWithSelector(
+                initParams.securityCouncilManager.executeElectionResult.selector,
+                governor.topNominees(governor.nomineeElectionIndexToProposalId(0)),
+                Cohort.SEPTEMBER
+            ),
+            abi.encode()
+        );
+
+        // now that we've mocked the call to the manager, should not revert
+        governor.execute({
+            targets: new address[](1),
+            values: new uint256[](1),
+            calldatas: new bytes[](1),
+            descriptionHash: descriptionHash
+        });
+    }
 
     ////////// SecurityCouncilMemberElectionGovernorCountingUpgradeable tests //////////
 
@@ -264,27 +333,7 @@ contract SecurityCouncilMemberElectionGovernorTest is Test {
         // - voting for fewer than 6 nominees
         // - making sure the proposal is defeated
 
-        uint256 proposalId = _propose(0);        
-
-        // roll to the start of voting
-        vm.roll(governor.proposalSnapshot(proposalId) + 1);
-
-        // vote for 5 compliant nominees
-        for (uint8 i = 0; i < initParams.maxNominees - 1; i++) {
-            // mock the number of votes they have
-            _mockGetPastVotes({
-                account: _voter(0),
-                blockNumber: governor.proposalSnapshot(proposalId),
-                votes: initParams.maxNominees - 1
-            });
-
-            _castVoteForCompliantNominee({
-                proposalId: proposalId,
-                voter: _voter(0),
-                nominee: _nominee(i),
-                votes: 1
-            });
-        }
+        uint256 proposalId = _createProposalAndVoteForSomeNominees(0, initParams.maxNominees - 1);
 
         // roll to the end of voting
         vm.roll(governor.proposalDeadline(proposalId) + 1);
@@ -299,27 +348,7 @@ contract SecurityCouncilMemberElectionGovernorTest is Test {
         // - voting for 6 nominees
         // - making sure the proposal succeeds
 
-        uint256 proposalId = _propose(0);        
-
-        // roll to the start of voting
-        vm.roll(governor.proposalSnapshot(proposalId) + 1);
-
-        // vote for 6 compliant nominees
-        for (uint8 i = 0; i < initParams.maxNominees; i++) {
-            // mock the number of votes they have
-            _mockGetPastVotes({
-                account: _voter(0),
-                blockNumber: governor.proposalSnapshot(proposalId),
-                votes: initParams.maxNominees
-            });
-
-            _castVoteForCompliantNominee({
-                proposalId: proposalId,
-                voter: _voter(0),
-                nominee: _nominee(i),
-                votes: 1
-            });
-        }
+        uint256 proposalId = _createProposalAndVoteForSomeNominees(0, initParams.maxNominees);
 
         // roll to the end of voting
         vm.roll(governor.proposalDeadline(proposalId) + 1);
@@ -334,6 +363,32 @@ contract SecurityCouncilMemberElectionGovernorTest is Test {
 
     function _nominee(uint8 i) internal pure returns (address) {
         return address(uint160(0x2200 + i));
+    }
+
+    function _createProposalAndVoteForSomeNominees(uint256 nomineeElectionIndex, uint256 numNominees) internal returns (uint256) {
+        uint256 proposalId = _propose(nomineeElectionIndex);        
+
+        // roll to the start of voting
+        vm.roll(governor.proposalSnapshot(proposalId) + 1);
+
+        // vote for 6 compliant nominees
+        for (uint8 i = 0; i < numNominees; i++) {
+            // mock the number of votes they have
+            _mockGetPastVotes({
+                account: _voter(0),
+                blockNumber: governor.proposalSnapshot(proposalId),
+                votes: numNominees
+            });
+
+            _castVoteForCompliantNominee({
+                proposalId: proposalId,
+                voter: _voter(0),
+                nominee: _nominee(i),
+                votes: 1
+            });
+        }
+
+        return proposalId;
     }
 
     function _mockGetPastVotes(address account, uint256 votes, uint256 blockNumber) internal {
