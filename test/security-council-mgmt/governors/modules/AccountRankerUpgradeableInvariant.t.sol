@@ -25,6 +25,7 @@ contract AccountRankerInvariantHandler {
     address[] public accounts;
     uint256 public accountsLength;
     mapping(address => bool) public accountUsed;
+    mapping(address => uint256) public accountWeight;
 
     constructor() {
         accountRanker = new ConcreteAccountRanker();
@@ -37,6 +38,7 @@ contract AccountRankerInvariantHandler {
             accountsLength++;
             accountUsed[account] = true;
         }
+        accountWeight[account] += weightToAdd;
         accountRanker.increaseNomineeWeight(0, account, weightToAdd);
     }
 }
@@ -102,6 +104,21 @@ contract AccountRankerInvariantTest is DSTest, StdInvariant {
             if (!isTopNominee) {
                 require(accountRanker.votingWeightReceived(0, account) <= leastWeight);
             }
+        }
+
+        // make sure there are no duplicate accounts in topNominees
+        for (uint256 i = 0; i < topNominees.length; i++) {
+            for (uint256 j = i + 1; j < topNominees.length; j++) {
+                require(topNominees[i] != topNominees[j]);
+            }
+        }
+
+        // make sure handler's weights match accountRanker's weights
+        for (uint256 i = 0; i < handler.accountsLength(); i++) {
+            address account = handler.accounts(i);
+            require(
+                handler.accountWeight(account) == accountRanker.votingWeightReceived(0, account)
+            );
         }
     }
 }
