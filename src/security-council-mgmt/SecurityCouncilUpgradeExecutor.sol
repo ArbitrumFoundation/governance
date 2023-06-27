@@ -63,7 +63,7 @@ contract SecurityCouncilUpgradeExecutor is
 
         for (uint256 i = 0; i < _membersToAdd.length; i++) {
             address member = _membersToAdd[i];
-            // skip, don't revert, if it's already not a member
+            // skip, don't revert, if it's already a member
             if (!securityCouncil.isOwner(member)) {
                 _addMember(_membersToAdd[i], threshold);
             }
