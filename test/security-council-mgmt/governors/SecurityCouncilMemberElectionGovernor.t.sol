@@ -90,6 +90,34 @@ contract SecurityCouncilMemberElectionGovernorTest is Test {
         _propose(0);
     }
 
+    // todo: test relay, make sure it is there and works properly
+
+    ////////// SecurityCouncilMemberElectionGovernorCountingUpgradeable tests //////////
+
+    function testSetFullWeightDurationNumeratorAndDurationDenominator() public {
+        // non governor should not be able to call
+        vm.expectRevert("Governor: onlyGovernance");
+        governor.setFullWeightDurationNumeratorAndDurationDenominator(1, 1);
+
+        // governor can call
+        vm.prank(address(governor));
+        governor.setFullWeightDurationNumeratorAndDurationDenominator(100, 200);
+
+        // make sure the values were set
+        assertEq(governor.fullWeightDurationNumerator(), 100);
+        assertEq(governor.durationDenominator(), 200);
+
+        // make sure it reverts when numerator is 0
+        vm.prank(address(governor));
+        vm.expectRevert("SecurityCouncilMemberElectionGovernorCountingUpgradeable: Full weight duration numerator must be > 0");
+        governor.setFullWeightDurationNumeratorAndDurationDenominator(0, 1);
+
+        // make sure it reverts when numerator is > denominator
+        vm.prank(address(governor));
+        vm.expectRevert("SecurityCouncilMemberElectionGovernorCountingUpgradeable: Full weight duration numerator must be <= duration denominator");
+        governor.setFullWeightDurationNumeratorAndDurationDenominator(2, 1);
+    }
+
     function testVotesToWeight() public {
         _propose(0);
 
