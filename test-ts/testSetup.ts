@@ -66,11 +66,11 @@ export const getCustomNetworks = async (
   let deploymentData: string;
   try {
     deploymentData = execSync(
-      "docker exec nitro_sequencer_b cat /config/deployment.json"
+      "docker exec sequencer_b cat /config/deployment.json"
     ).toString();
   } catch (e) {
     deploymentData = execSync(
-      "docker exec nitro-sequencer_c cat /config/deployment.json"
+      "docker exec sequencer_c cat /config/deployment.json"
     ).toString();
   }
   const parsedDeploymentData = JSON.parse(deploymentData) as {
