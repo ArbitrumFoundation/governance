@@ -50,6 +50,11 @@ contract SecurityCouncilMemberElectionGovernor is
         uint256 _maxNominees,
         uint256 _fullWeightDuration
     ) public initializer {
+        require(
+            _fullWeightDuration <= _votingPeriod,
+            "SecurityCouncilMemberElectionGovernor: Full weight duration must be less than or equal to voting period"
+        );
+
         __Governor_init("SecurityCouncilMemberElectionGovernor");
         __GovernorVotes_init(_token);
         __SecurityCouncilMemberElectionGovernorCounting_init({
