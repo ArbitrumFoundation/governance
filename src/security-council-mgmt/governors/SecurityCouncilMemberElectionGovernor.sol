@@ -40,8 +40,7 @@ contract SecurityCouncilMemberElectionGovernor is
     /// @param _owner The owner of the governor
     /// @param _votingPeriod The duration of voting on a proposal
     /// @param _maxNominees The maximum number of nominees that can become members
-    /// @param _fullWeightDurationNumerator Numerator for the duration of full weight voting
-    /// @param _durationDenominator Denominator for the duration of full and decreasing weight voting
+    /// @param _fullWeightDuration Duration of full weight voting (blocks)
     function initialize(
         SecurityCouncilNomineeElectionGovernor _nomineeElectionGovernor,
         ISecurityCouncilManager _securityCouncilManager,
@@ -49,15 +48,13 @@ contract SecurityCouncilMemberElectionGovernor is
         address _owner,
         uint256 _votingPeriod,
         uint256 _maxNominees,
-        uint256 _fullWeightDurationNumerator,
-        uint256 _durationDenominator
+        uint256 _fullWeightDuration
     ) public initializer {
         __Governor_init("SecurityCouncilMemberElectionGovernor");
         __GovernorVotes_init(_token);
         __SecurityCouncilMemberElectionGovernorCounting_init({
             maxNominees: _maxNominees,
-            initialFullWeightDurationNumerator: _fullWeightDurationNumerator,
-            initialDurationDenominator: _durationDenominator
+            initialFullWeightDuration: _fullWeightDuration
         });
         __GovernorSettings_init(0, _votingPeriod, 0);
         _transferOwnership(_owner);
