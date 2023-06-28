@@ -274,7 +274,7 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
         // slope numerator is -votes, slope denominator is decreasingWeightDuration, delta x is blockNumber - fullWeightVotingDeadline_
         // y intercept is votes
         uint256 decreaseAmount =
-            WAD * votes / decreasingWeightDuration * (blockNumber - fullWeightVotingDeadline_) / WAD;
+            WAD * votes * (blockNumber - fullWeightVotingDeadline_) / decreasingWeightDuration / WAD;
 
         return decreaseAmount >= votes ? 0 : votes - decreaseAmount;
     }
