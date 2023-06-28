@@ -41,8 +41,6 @@ import * as fs from "fs";
 import { ArbSdkError } from "@arbitrum/sdk/dist/lib/dataEntities/errors";
 import { parseEther } from "ethers/lib/utils";
 import { l1Networks, l2Networks } from "@arbitrum/sdk/dist/lib/dataEntities/networks";
-import { L2GatewayRouter__factory } from "@arbitrum/sdk/dist/lib/abi/factories/L2GatewayRouter__factory";
-import { wait } from "../src-ts/utils";
 
 dotenv.config();
 
@@ -116,6 +114,7 @@ export const getCustomNetworks = async (
     partnerChainID: l1NetworkInfo.chainId,
     retryableLifetimeSeconds: 7 * 24 * 60 * 60,
     nitroGenesisBlock: 0,
+    nitroGenesisL1Block: 0,
     depositTimeout: 900000,
   };
   return {
