@@ -131,11 +131,6 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
 {
     uint256 private constant WAD = 1e18;
 
-    // /// @notice Numerator for the duration of full weight voting
-    // uint256 private _fullWeightDurationNumerator; // = 1 (7 days)
-    // /// @notice Denominator for the total duration of voting
-    // uint256 private _durationDenominator; // = 3 (21 days)
-
     /// @notice Duration of full weight voting (expressed in blocks)
     uint256 private _fullWeightDuration;
 
