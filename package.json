@@ -33,7 +33,7 @@
     "format:sol": "forge fmt"
   },
   "devDependencies": {
-    "@arbitrum/sdk": "^3.0.0",
+    "@arbitrum/sdk": "^3.1.6",
     "@ethersproject/abi": "^5.7.0",
     "@ethersproject/providers": "^5.7.2",
     "@nomicfoundation/hardhat-chai-matchers": "^1.0.4",
