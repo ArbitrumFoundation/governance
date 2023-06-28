@@ -131,12 +131,12 @@ async function getProtocolOwnerWallet(l2Network: L2Network, provider: Provider):
   ).owner();
 
   let encryptedJsonFile = "/home/user/l1keystore/" + l1ProtocolOwnerAddress + ".key";
-  let dockerCommand = "docker exec nitro_poster_1 cat " + encryptedJsonFile;
+  let dockerCommand = "docker exec nitro-testnode_poster_1 cat " + encryptedJsonFile;
   let encryptedJson: string;
   try {
     encryptedJson = execSync(dockerCommand).toString();
   } catch (e) {
-    // nitro_poster_1 -> nitro-poster-1
+    // nitro-testnode_poster_1 -> nitro-testnode-poster-1
     dockerCommand = dockerCommand.split("_").join("-");
     encryptedJson = execSync(dockerCommand).toString();
   }
