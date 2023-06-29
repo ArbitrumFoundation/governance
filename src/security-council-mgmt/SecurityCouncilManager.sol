@@ -367,7 +367,7 @@ contract SecurityCouncilManager is
             // finally, we build the call data to schedule a batch of operations to the L1Timelock
             bytes memory l1TimelockCallData = abi.encodeWithSelector(
                 L1ArbitrumTimelock.scheduleBatch.selector,
-                valuesForL1TimelockOpertaions,
+                targetsForL1TimelockOperations,
                 valuesForL1TimelockOpertaions,
                 payloadsForL1TimelockOperations,
                 bytes32(0),
