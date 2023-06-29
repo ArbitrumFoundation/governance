@@ -189,6 +189,7 @@ contract SecurityCouncilNomineeElectionGovernor is
     ///         Can be called by anyone every `nominationFrequency` seconds.
     /// @return proposalId The id of the proposal
     function createElection() external returns (uint256 proposalId) {
+        // todo: change cohort to FIRST
         Date memory firstNominationStartDate = electionIndexToCohort(electionCount) == Cohort.SEPTEMBER
             ? cohortOneFirstNominationStartDate
             : cohortTwoFirstNominationStartDate;
