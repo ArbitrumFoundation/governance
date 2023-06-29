@@ -107,12 +107,9 @@ contract SecurityCouncilManager is
     {
         require(_newCohort.length == 6, "SecurityCouncilManager: invalid cohort length");
         // TODO: ensure no duplicates accross cohorts; this should be enforced in nomination process. If there are duplicates, this call will revert in the Gnosis safe contract
-        address[] memory previousMembersCopy;
         if (_cohort == Cohort.FIRST) {
-            previousMembersCopy = SecurityCouncilMgmtUtils.copyAddressArray(firstCohort);
             firstCohort = _newCohort;
         } else if (_cohort == Cohort.SECOND) {
-            previousMembersCopy = SecurityCouncilMgmtUtils.copyAddressArray(secondCohort);
             secondCohort = _newCohort;
         }
 
