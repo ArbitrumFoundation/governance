@@ -15,38 +15,24 @@ contract SecurityCouncilUpgradeAction {
     }
 
     /// @notice updates members of security council multisig to match provided array
-    function updateMembers(address[] memory _updatedMembers) external {
+    function perform(address[] memory _updatedMembers) external {
         // always preserve current threshold
         uint256 threshold = securityCouncil.getThreshold();
 
-        address[] memory membersToAdd = new address[](6);
-        uint8 membersToAddCount = 0;
+        address[] memory previousOwners = securityCouncil.getOwners();
 
         for (uint256 i = 0; i < _updatedMembers.length; i++) {
             address member = _updatedMembers[i];
             if (!securityCouncil.isOwner(member)) {
-                membersToAdd[membersToAddCount] = member;
-                membersToAddCount++;
+                _addMember(member, threshold);
             }
         }
 
-        address[] memory membersToRemove = new address[](6);
-        uint8 membersToRemoveCount = 0;
-
-        address[] memory owners = securityCouncil.getOwners();
-        for (uint256 i = 0; i < owners.length; i++) {
-            address owner = owners[i];
+        for (uint256 i = 0; i < previousOwners.length; i++) {
+            address owner = previousOwners[i];
             if (!SecurityCouncilMgmtUtils.isInArray(owner, _updatedMembers)) {
-                membersToRemove[membersToRemoveCount] = owner;
-                membersToRemoveCount++;
+                _removeMember(owner, threshold);
             }
-        }
-
-        for (uint256 i = 0; i < membersToAddCount; i++) {
-            _addMember(membersToAdd[i], threshold);
-        }
-        for (uint256 i = 0; i < membersToRemoveCount; i++) {
-            _removeMember(membersToRemove[i], threshold);
         }
     }
 
@@ -59,19 +45,26 @@ contract SecurityCouncilUpgradeAction {
     function _removeMember(address _member, uint256 _threshold) internal {
         // owners are stored as a linked list and removal requires the previous owner
         address[] memory owners = securityCouncil.getOwners();
-        address previousOwner = SENTINEL_OWNERS;
-        for (uint256 i = 0; i < owners.length; i++) {
-            address currentOwner = owners[i];
-            if (currentOwner == _member) {
-                break;
-            }
-            previousOwner = currentOwner;
-        }
+        address previousOwner = _getPrevOwner(_member, owners);
         _execFromModule(
             abi.encodeWithSelector(
                 IGnosisSafe.removeOwner.selector, previousOwner, _member, _threshold
             )
         );
+    }
+
+    function _getPrevOwner(address _owner, address[] memory _owners)
+        internal
+        returns (address previousOwner)
+    {
+        address previousOwner = SENTINEL_OWNERS;
+        for (uint256 i = 0; i < _owners.length; i++) {
+            address currentOwner = _owners[i];
+            if (currentOwner == _owner) {
+                break;
+            }
+            previousOwner = currentOwner;
+        }
     }
 
     /// @notice execute provided operation via gnosis safe's trusted  execTransactionFromModule entry point
