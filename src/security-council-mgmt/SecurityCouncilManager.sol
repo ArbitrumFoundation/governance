@@ -343,7 +343,7 @@ contract SecurityCouncilManager is
                     SecurityCouncilUpgradeAction.updateMembers.selector, newMembers
                 ) // data for upgrade executor's delegatecall to action contract
             );
-            // inbox(0) check is check for the security council being on l1.
+            // inbox as address(0) check is check for the security council being on l1.
             // if it is, the L1timelock should call the upgrade executor directly
             if (securityCouncilData.inbox == address(0)) {
                 // upgrade executor address/calldata is sent to the L1timelock top level for L1 execution (see L1ArbitrumTimelock.execute)
