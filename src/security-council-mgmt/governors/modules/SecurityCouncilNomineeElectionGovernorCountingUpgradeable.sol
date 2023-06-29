@@ -22,8 +22,20 @@ abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is
     mapping(uint256 => NomineeElectionState) private _elections;
 
     // would this be more useful if reason was included?
+    /// @notice Emitted when a vote is cast for a contender
+    /// @param proposalId The id of the proposal
+    /// @param voter The account that is casting the vote
+    /// @param contender The contender that is receiving the vote
+    /// @param votes The amount of votes that were just cast for the contender
+    /// @param totalUsedVotes The total amount of votes the voter has used for this proposal
+    /// @param totalUsableVotes The total amount of votes the voter has available for this proposal
     event VoteCastForContender(
-        uint256 indexed proposalId, address indexed voter, address indexed contender, uint256 votes
+        uint256 indexed proposalId,
+        address indexed voter,
+        address indexed contender,
+        uint256 votes,
+        uint256 totalUsedVotes,
+        uint256 totalUsableVotes
     );
 
     event NewNominee(uint256 indexed proposalId, address indexed nominee);
@@ -87,7 +99,14 @@ abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is
         uint256 prevVotesReceived = election.votesReceived[candidate];
         uint256 votesThreshold = quorum(proposalSnapshot(proposalId));
 
-        emit VoteCastForContender(proposalId, account, candidate, votes);
+        emit VoteCastForContender({
+            proposalId: proposalId,
+            voter: account,
+            contender: candidate,
+            votes: votes,
+            totalUsedVotes: prevVotesUsed + votes,
+            totalUsableVotes: weight
+        });
 
         if (prevVotesReceived + votes < votesThreshold) {
             // we didn't push the candidate over the line, so just add the votes
