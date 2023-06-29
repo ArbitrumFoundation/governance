@@ -329,9 +329,9 @@ contract SecurityCouncilManager is
         }
 
         // build batch call to L1 timellck
-        uint256[] memory valuesForL1TimelockOpertaions;
-        address[] memory targetsForL1TimelockOperations;
-        bytes[] memory payloadsForL1TimelockOperations;
+        uint256[] memory valuesForL1TimelockOpertaions = new uint256[](securityCouncils.length);
+        address[] memory targetsForL1TimelockOperations = new address[](securityCouncils.length);
+        bytes[] memory payloadsForL1TimelockOperations = new bytes[](securityCouncils.length);
         for (uint256 i = 0; i < securityCouncils.length; i++) {
             // values are all always 0
             valuesForL1TimelockOpertaions[i] = 0;
