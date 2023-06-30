@@ -35,6 +35,8 @@ contract SecurityCouncilManager is Initializable, ArbitrumTimelock, ISecurityCou
 
     uint256 public rotationNonce = 0;
 
+    uint256 public updateNonce = 0;
+
     constructor() {
         _disableInitializers();
     }
@@ -78,7 +80,7 @@ contract SecurityCouncilManager is Initializable, ArbitrumTimelock, ISecurityCou
         onlyRole(ELECTION_EXECUTOR_ROLE)
     {
         require(_newCohort.length == 6, "SecurityCouncilManager: invalid cohort length");
-        // TODO: ensure no duplicates accross cohorts; this should be enforced in nomination process. If there are duplicates, this call will revert in the Gnosis safe contract
+        // TODO: ensure no duplicates accross cohorts? this should be enforced in nomination process, tho could also be enforced here.
         address[] memory previousMembersCopy;
         if (_cohort == Cohort.MARCH) {
             previousMembersCopy = SecurityCouncilMgmtUtils.copyAddressArray(marchCohort);
@@ -113,7 +115,7 @@ contract SecurityCouncilManager is Initializable, ArbitrumTimelock, ISecurityCou
 
         cohort.push(_newMember);
 
-        address[] memory membersToAdd;
+        address[] memory membersToAdd = new address[](1);
         membersToAdd[0] = (_newMember);
 
         address[] memory membersToRemove;
@@ -146,9 +148,11 @@ contract SecurityCouncilManager is Initializable, ArbitrumTimelock, ISecurityCou
     {
         for (uint256 i = 0; i < _cohort.length; i++) {
             if (_member == _cohort[i]) {
-                delete _cohort[i];
-                address[] memory membersToAdd;
-                address[] memory membersToRemove;
+                address lastMember = _cohort[_cohort.length - 1];
+                _cohort[i] = lastMember;
+                _cohort.pop();
+                address[] memory membersToAdd = new address[](0);
+                address[] memory membersToRemove = new address[](1);
                 membersToRemove[0] = _member;
                 _scheduleDispatchUpdateMembers(membersToAdd, membersToRemove);
                 return true;
@@ -232,9 +236,6 @@ contract SecurityCouncilManager is Initializable, ArbitrumTimelock, ISecurityCou
         address[] memory _membersToAdd,
         address[] memory _membersToRemove
     ) internal {
-        // A candidate new be relected, which case they appear in both the arrays; removing and re-added is a no-op. We instead remove them from both arrays; this simplifies the logic of updating them in the gnosis safes.
-        (address[] memory newMembers, address[] memory oldMembers) =
-            SecurityCouncilMgmtUtils.removeSharedAddresses(_membersToAdd, _membersToRemove);
         bytes memory _membersData = abi.encodeWithSelector(
             IL1SecurityCouncilUpdateRouter.scheduleUpdateMembers.selector,
             abi.encode(_membersToAdd, _membersToRemove)
@@ -243,11 +244,20 @@ contract SecurityCouncilManager is Initializable, ArbitrumTimelock, ISecurityCou
         this._scheduleDispatchUpdateMembersImpl(_membersData);
     }
 
+    function calculateUpdateSalt(uint256 _nonce, bytes calldata _data)
+        public
+        pure
+        returns (bytes32)
+    {
+        return keccak256(abi.encode(_nonce, _data));
+    }
+
     function _scheduleDispatchUpdateMembersImpl(bytes calldata _membersData) public {
         // TODO: less hacky way to do this?
         require(msg.sender == address(this), "SecurityCouncilManager: not callable externally");
-        bytes32 salt = keccak256(abi.encodePacked(block.timestamp, block.number, _membersData));
+        bytes32 salt = calculateUpdateSalt(updateNonce, _membersData);
 
+        updateNonce += 1;
         TimelockControllerUpgradeable.schedule(
             address(this), 0, _membersData, bytes32(0), salt, getMinDelay()
         );

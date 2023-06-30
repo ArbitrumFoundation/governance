@@ -130,6 +130,26 @@ contract SecurityCouncilUpgradeExecutorTest is Test, DeployGnosisWithModule {
         assertTrue(TestUtil.areAddressArraysEqual(owners, expectedOwners), "members unchanged");
     }
 
+    function testAddAndRemoveCurrentMember() public {
+        address[] memory membersToAdd = new address[](1);
+        // "add" a signer whose already a signer
+        membersToAdd[0] = signer1;
+
+        address[] memory membersToRemove = new address[](1);
+        // "remove" the same signer
+        membersToRemove[0] = signer1;
+
+        vm.prank(updator);
+        scue.updateMembers(membersToAdd, membersToRemove);
+
+        address[] memory owners = securityCouncil.getOwners();
+        address[] memory expectedOwners = new address[](3);
+        expectedOwners[0] = signer1;
+        expectedOwners[1] = signer2;
+        expectedOwners[2] = signer3;
+        assertTrue(TestUtil.areAddressArraysEqual(owners, expectedOwners), "members unchanged");
+    }
+
     function testOnlyUpdatorCanRemove() public {
         address[] memory membersToAdd = new address[](0);
         address[] memory membersToRemove = new address[](0);

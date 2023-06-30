@@ -44,23 +44,15 @@ contract SecurityCouncilUpgradeExecutor is
         external
         onlyRole(UPDATOR_ROLE)
     {
-        // All update-initiating methods in SecurityCouncilManager ensure _membersToAdd and _membersToRemove have no addresses in common.
-        // TODO We could, additionally, run removeSharedAddresses for extra insurance
-
         // always preserve current threshold
         uint256 threshold = securityCouncil.getThreshold();
 
         // when adding and removing, we skip if the operation is redundant (instead of letting gnosis revert).
         // This is for race conditions of adding/removing a member and the result of an election; we want the election result to still
         // take effect if member is added/removeed before the results are finalized.
-        for (uint256 i = 0; i < _membersToAdd.length; i++) {
-            address member = _membersToAdd[i];
-            // skip, don't revert, if it's already not a member
-            if (!securityCouncil.isOwner(member)) {
-                _addMember(_membersToAdd[i], threshold);
-            }
-        }
 
+        // We remove before we add; this way, if a member whois already a signer is being both added and removed (i.e., security council member being) re-elected, they remain a member.
+        // The case where an address that isn't currently a member is being both added and removed is not possible. TODO: should we guard for this anyway?
         for (uint256 i = 0; i < _membersToRemove.length; i++) {
             address member = _membersToRemove[i];
             // skip, don't revert, if it's already not a member
@@ -69,6 +61,13 @@ contract SecurityCouncilUpgradeExecutor is
             }
         }
 
+        for (uint256 i = 0; i < _membersToAdd.length; i++) {
+            address member = _membersToAdd[i];
+            // skip, don't revert, if it's already a member
+            if (!securityCouncil.isOwner(member)) {
+                _addMember(_membersToAdd[i], threshold);
+            }
+        }
         // TODO: remove?
         // sanity check: ensure that after update, total member count is below max
         // uint256 memberCount = securityCouncil.getOwners().length;
