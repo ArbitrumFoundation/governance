@@ -102,7 +102,7 @@ contract SecurityCouncilManager is
     /// @notice callable only by Election Governer. Updates cohort in this contract's state and triggers update.
     /// @param _newCohort new cohort to replace existing cohort. New cohort is result of election, so should always have 6 members.
     /// @param _cohort cohort to replace.
-    function executeElectionResult(address[] memory _newCohort, Cohort _cohort)
+    function replaceCohort(address[] memory _newCohort, Cohort _cohort)
         external
         onlyRole(ELECTION_EXECUTOR_ROLE)
     {
