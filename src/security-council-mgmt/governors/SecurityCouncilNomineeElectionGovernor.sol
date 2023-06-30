@@ -110,6 +110,22 @@ contract SecurityCouncilNomineeElectionGovernor is
 
     /// @notice Initializes the governor
     function initialize(InitParams memory params) public initializer {
+        // make sure the start date is in the future
+        uint256 startTimestamp = DateTimeLib.dateTimeToTimestamp({
+            year: params.firstNominationStartDate.year,
+            month: params.firstNominationStartDate.month,
+            day: params.firstNominationStartDate.day,
+            hour: params.firstNominationStartDate.hour,
+            minute: 0,
+            second: 0
+        });
+
+        require(
+            startTimestamp > block.timestamp,
+            "SecurityCouncilNomineeElectionGovernor: First nomination start date must be in the future"
+        );
+
+
         __Governor_init("Security Council Nominee Election Governor");
         __GovernorVotes_init(params.token);
         __SecurityCouncilNomineeElectionGovernorCounting_init();
