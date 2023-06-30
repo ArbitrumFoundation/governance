@@ -23,22 +23,28 @@ library SecurityCouncilMgmtUtils {
     }
 
     function removeSharedAddresses(address[] memory arr1, address[] memory arr2)
-        external
+        external pure
         returns (address[] memory newArr1, address[] memory newArr2)
     {
-        address[] memory newArr1;
-        address[] memory newArr2;
+        newArr1 = new address[](arr1.length);
+        newArr2 = new address[](arr2.length);
+        uint256 newArr1Length = 0;
+        uint256 newArr2Length = 0;
         for (uint256 i = 0; i < arr1.length; i++) {
             address currentAddress = arr1[i];
             if (!isInArray(currentAddress, arr2)) {
-                newArr1[newArr1.length] = arr1[i];
+                newArr1[newArr1Length++] = arr1[i];
             }
         }
         for (uint256 i = 0; i < arr2.length; i++) {
             address currentAddress = arr2[i];
             if (!isInArray(currentAddress, arr1)) {
-                newArr2[newArr2.length] = arr2[i];
+                newArr2[newArr2Length++] = arr2[i];
             }
+        }
+        assembly {
+            mstore(newArr1, newArr1Length)
+            mstore(newArr2, newArr2Length)
         }
     }
 

@@ -10,6 +10,7 @@ import "@openzeppelin/contracts/utils/Address.sol";
 import "./interfaces/ISecurityCouncilManager.sol";
 import "../ArbitrumTimelock.sol";
 
+// TODO: This contract is exceeding contract size limit
 /// @notice Manages the security council updates.
 ///         Receives election results (replace cohort with 6 new members), add-member actions, and remove-member actions,
 ///         and dispatches them to all security councils on all relevant chains
@@ -252,7 +253,7 @@ contract SecurityCouncilManager is Initializable, ArbitrumTimelock, ISecurityCou
         return keccak256(abi.encode(_nonce, _data));
     }
 
-    function _scheduleDispatchUpdateMembersImpl(bytes calldata _membersData) public {
+    function _scheduleDispatchUpdateMembersImpl(bytes calldata _membersData) external {
         // TODO: less hacky way to do this?
         require(msg.sender == address(this), "SecurityCouncilManager: not callable externally");
         bytes32 salt = calculateUpdateSalt(updateNonce, _membersData);
@@ -264,7 +265,7 @@ contract SecurityCouncilManager is Initializable, ArbitrumTimelock, ISecurityCou
     }
 
     /// @notice override timelock execute; forwards the message to the L1 router
-    function _execute(address __, uint256 ___, bytes calldata _membersData) internal override {
+    function _execute(address, uint256, bytes calldata _membersData) internal override {
         ArbSys(0x0000000000000000000000000000000000000064).sendTxToL1(
             l1SecurityCouncilUpdateRouter, _membersData
         );
@@ -299,25 +300,25 @@ contract SecurityCouncilManager is Initializable, ArbitrumTimelock, ISecurityCou
 
     /// @notice overridden; proposals can only be scheduled via scheduleUpdateMembers
     function schedule(
-        address __,
-        uint256 ___,
-        bytes calldata ____,
-        bytes32 _____,
-        bytes32 ______,
-        uint256 _______
-    ) public override {
+        address,
+        uint256,
+        bytes calldata,
+        bytes32,
+        bytes32,
+        uint256
+    ) public pure override {
         revert("SecurityCouncilManager: schedule not callable externally");
     }
 
     /// @notice overridden; proposals can only be scheduled via scheduleUpdateMembers
     function scheduleBatch(
-        address[] calldata __,
-        uint256[] calldata ___,
-        bytes[] calldata ____,
-        bytes32 _____,
-        bytes32 ______,
-        uint256 _______
-    ) public override {
+        address[] calldata,
+        uint256[] calldata,
+        bytes[] calldata,
+        bytes32,
+        bytes32,
+        uint256
+    ) public pure override {
         revert("SecurityCouncilManager: schedulebatch not callable externally");
     }
 }

@@ -94,18 +94,18 @@ contract L1SecurityCouncilUpdateRouter is
         bytes32,
         bytes32,
         uint256
-    ) public override {
+    ) public pure override {
         revert("L1SecurityCouncilUpdateRouter: schedule not callable externally");
     }
 
     /// @notice overridden; proposals can only be scheduled via scheduleUpdateMembers
     function scheduleBatch(
-        address[] calldata __,
-        uint256[] calldata ___,
-        bytes[] calldata ____,
-        bytes32 _____,
-        bytes32 ______,
-        uint256 _______
+        address[] calldata,
+        uint256[] calldata,
+        bytes[] calldata,
+        bytes32,
+        bytes32,
+        uint256
     ) public virtual override {
         revert("L1SecurityCouncilUpdateRouter: schedulebatch not callable externally");
     }
@@ -123,10 +123,8 @@ contract L1SecurityCouncilUpdateRouter is
     }
 
     /// @notice execute a security council member update.
-    /// @param __ unused param
-    /// @param ___ unused param
     /// @param _membersData data in the form abi.encode(membersToAdd, membersToRemove)
-    function _execute(address __, uint256 ___, bytes calldata _membersData) internal override {
+    function _execute(address, uint256, bytes calldata _membersData) internal override {
         (address[] memory _membersToAdd, address[] memory _membersToRemove) =
             abi.decode(_membersData, (address[], address[]));
         // update l1 security council
@@ -149,7 +147,7 @@ contract L1SecurityCouncilUpdateRouter is
                 _to: securityCouncilData.securityCouncilUpgradeExecutor, // target l2 address
                 _refundTo: tx.origin, //   fee refund address, for excess basefee TODO: better option?
                 _user: address(0xdead), //there is no call value, and nobody should be able to cancel
-                _l1CallValue: msg.value, // L1 callvalue
+                _l1CallValue: msg.value, // L1 callvalue // @audit msg.value in a loop, need fix
                 _l2CallValue: 0, // L2 callvalue
                 // TODO possibly controversial: for each of param passing, don't attempt auto-execution
                 _l2GasParams: L2GasParams({
