@@ -61,6 +61,23 @@ abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is
         return true;
     }
 
+    function _castVote(
+        uint256 proposalId,
+        address account,
+        uint8 support,
+        string memory reason,
+        bytes memory params
+    ) internal virtual override returns (uint256) {
+        require(params.length > 0, "SecurityCouncilNomineeElectionGovernorCountingUpgradeable: Must provide params to cast a vote");
+        return super._castVote(
+            proposalId,
+            account,
+            support,
+            reason,
+            params
+        );
+    }
+
     /// @dev This function is responsible for counting votes when they are cast.
     ///      If this vote pushes the candidate over the line, then the candidate is added to the nominees
     ///      and only the necessary amount of votes will be deducted from the voter.
