@@ -206,8 +206,8 @@ contract SecurityCouncilManager is
             _verify(data, _signature, _currentAddress), "SecurityCouncilManager: invalid signature"
         );
         Cohort cohort = _removeMemberFromCohortArray(_currentAddress);
-        _addMemberToCohortArray(_newAddress, _cohort);
-        _schedule();
+        _addMemberToCohortArray(_newAddress, cohort);
+        _scheduleUpdate();
         emit MemberRotated({
             replacedAddress: _currentAddress,
             newAddress: _newAddress,
@@ -365,29 +365,29 @@ contract SecurityCouncilManager is
                     upgradeExecutorCallData
                 );
             }
-            // finally, we build the call data to schedule a batch of operations to the L1Timelock
-            bytes memory l1TimelockCallData = abi.encodeWithSelector(
-                L1ArbitrumTimelock.scheduleBatch.selector,
-                targetsForL1TimelockOperations,
-                new uint256[](securityCouncils.length), // all values are always 0
-                payloadsForL1TimelockOperations,
-                bytes32(0),
-                this.generateSalt(newMembers),
-                minL1TimelockDelay // use the minL1TimelockDelay, which always match the minimum delay value set on the L1 Timelock
-            );
-            // schedule a call to the L2 timelock to execute an l2 to l1 message via ArbSys precompile
-            ArbitrumTimelock(l2CoreGovTimelock).schedule({
-                target: address(100), // ArbSys address
-                value: 0,
-                data: abi.encodeWithSelector(
-                    ArbSys.sendTxToL1.selector, l1CoreGovTimelock, l1TimelockCallData
-                    ), // call to ArbSys; target the L1 timelock with the calldata previously constucted
-                predecessor: bytes32(0),
-                salt: this.generateSalt(newMembers),
-                delay: ArbitrumTimelock(l2CoreGovTimelock).getMinDelay()
-            });
-
-            updateNonce++;
         }
+        // finally, we build the call data to schedule a batch of operations to the L1Timelock
+        bytes memory l1TimelockCallData = abi.encodeWithSelector(
+            L1ArbitrumTimelock.scheduleBatch.selector,
+            targetsForL1TimelockOperations,
+            new uint256[](securityCouncils.length), // all values are always 0
+            payloadsForL1TimelockOperations,
+            bytes32(0),
+            this.generateSalt(newMembers),
+            minL1TimelockDelay // use the minL1TimelockDelay, which always match the minimum delay value set on the L1 Timelock
+        );
+        // schedule a call to the L2 timelock to execute an l2 to l1 message via ArbSys precompile
+        ArbitrumTimelock(l2CoreGovTimelock).schedule({
+            target: address(100), // ArbSys address
+            value: 0,
+            data: abi.encodeWithSelector(
+                ArbSys.sendTxToL1.selector, l1CoreGovTimelock, l1TimelockCallData
+                ), // call to ArbSys; target the L1 timelock with the calldata previously constucted
+            predecessor: bytes32(0),
+            salt: this.generateSalt(newMembers),
+            delay: ArbitrumTimelock(l2CoreGovTimelock).getMinDelay()
+        });
+
+        updateNonce++;
     }
 }
