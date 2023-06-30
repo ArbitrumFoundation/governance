@@ -33,6 +33,10 @@ contract SecurityCouncilManager is
     // security councils to manage; can span multiple chains
     SecurityCouncilData[] public securityCouncils;
 
+    // upper limit to number of seurity councils the DAO can add (to ensure gas required doesn't exceed limit)
+    // TODO: benchmark for reasonable number
+    uint256 public immutable MAX_SECURITY_COUNCILS = 500;
+
     bytes32 public constant ELECTION_EXECUTOR_ROLE = keccak256("ELECTION_EXECUTOR");
     bytes32 public constant MEMBER_ADDER_ROLE = keccak256("MEMBER_ADDER");
     bytes32 public constant MEMBER_ROTATOR_ROLE = keccak256("MEMBER_ROTATOR");
@@ -122,10 +126,7 @@ contract SecurityCouncilManager is
     /// new member cannot already be member of either of either cohort
     /// @param _newMember member to add
     /// @param _cohort cohort to add member to
-    function addMember(address _newMember, Cohort _cohort)
-        external
-        onlyRole(MEMBER_ADDER_ROLE)
-    {
+    function addMember(address _newMember, Cohort _cohort) external onlyRole(MEMBER_ADDER_ROLE) {
         address[] storage cohort = _cohort == Cohort.FIRST ? firstCohort : secondCohort;
         require(cohort.length < 6, "SecurityCouncilManager: cohort is full");
         require(
@@ -252,6 +253,10 @@ contract SecurityCouncilManager is
     }
 
     function _addSecurityCouncil(SecurityCouncilData memory _securityCouncilData) internal {
+        require(
+            securityCouncils.length < MAX_SECURITY_COUNCILS,
+            "SecurityCouncilManager: max security council's reached"
+        );
         require(
             _securityCouncilData.updateAction != address(0),
             "SecurityCouncilManager: zero updateAction"
