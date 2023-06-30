@@ -237,15 +237,19 @@ contract SecurityCouncilNomineeElectionGovernor is
             maybeCompliantNominees, excluded[proposalId]
         );
 
-        if (compliantNominees.length < targetNomineeCount) {
+        if (compliantNomineeCount < targetNomineeCount) {
             // there are too few compliant nominees
             // we should randomly select some members from the current cohort to add to the list
             address[] memory currentMembers = cohort == Cohort.SEPTEMBER
                 ? securityCouncilManager.getSeptemberCohort()
                 : securityCouncilManager.getMarchCohort();
 
+            address[] memory nonExcludedCurrentMembers = SecurityCouncilMgmtUtils.filterAddressesWithExcludeList(
+                currentMembers, excluded[proposalId]
+            );
+
             compliantNominees = SecurityCouncilMgmtUtils.randomAddToSet({
-                pickFrom: currentMembers,
+                pickFrom: nonExcludedCurrentMembers,
                 addTo: compliantNominees,
                 targetLength: targetNomineeCount,
                 rng: uint256(blockhash(block.number - 1))
@@ -294,10 +298,6 @@ contract SecurityCouncilNomineeElectionGovernor is
         require(
             block.number <= proposalVettingDeadline(proposalId),
             "SecurityCouncilNomineeElectionGovernor: Proposal is no longer in the nominee vetting period"
-        );
-        require(
-            isNominee(proposalId, account),
-            "SecurityCouncilNomineeElectionGovernor: Account is not a nominee"
         );
 
         excluded[proposalId][account] = true;
