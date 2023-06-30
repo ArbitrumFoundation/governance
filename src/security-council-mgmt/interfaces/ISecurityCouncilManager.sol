@@ -33,7 +33,7 @@ interface ISecurityCouncilManager {
         uint256 _minL1TimelockDelay
     ) external;
     function executeElectionResult(address[] memory _newCohort, Cohort _cohort) external;
-    function addMemberToCohort(address _newMember, Cohort _cohort) external;
+    function addMember(address _newMember, Cohort _cohort) external;
     function removeMember(address _member) external returns (bool);
     function getFirstCohort() external view returns (address[] memory);
     function getSecondCohort() external view returns (address[] memory);

@@ -62,6 +62,7 @@ contract SecurityCouncilManager is
     uint256 minL1TimelockDelay;
 
     // Used as a magic value to indicate that a retryable ticket should be created by the L1 timelock
+    // value is defined in L1ARbitrumTimelock contract https://etherscan.io/address/0xE6841D92B0C345144506576eC13ECf5103aC7f49#readProxyContract#F5
     address public constant RETRYABLE_TICKET_MAGIC = 0xa723C008e76E379c55599D2E4d93879BeaFDa79C;
 
     constructor() {
@@ -121,7 +122,7 @@ contract SecurityCouncilManager is
     /// new member cannot already be member of either of either cohort
     /// @param _newMember member to add
     /// @param _cohort cohort to add member to
-    function addMemberToCohort(address _newMember, Cohort _cohort)
+    function addMember(address _newMember, Cohort _cohort)
         external
         onlyRole(MEMBER_ADDER_ROLE)
     {
