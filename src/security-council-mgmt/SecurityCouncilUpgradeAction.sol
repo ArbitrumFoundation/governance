@@ -8,14 +8,9 @@ import "./SecurityCouncilMgmtUtils.sol";
 contract SecurityCouncilUpgradeAction {
     address internal constant SENTINEL_OWNERS = address(0x1);
 
-    IGnosisSafe public immutable securityCouncil;
-
-    constructor(address _securityCouncil) {
-        securityCouncil = IGnosisSafe(_securityCouncil);
-    }
-
     /// @notice updates members of security council multisig to match provided array
-    function perform(address[] memory _updatedMembers) external {
+    function perform(address _securityCouncil, address[] memory _updatedMembers) external {
+        IGnosisSafe securityCouncil = IGnosisSafe(_securityCouncil);
         // always preserve current threshold
         uint256 threshold = securityCouncil.getThreshold();
 
@@ -24,29 +19,35 @@ contract SecurityCouncilUpgradeAction {
         for (uint256 i = 0; i < _updatedMembers.length; i++) {
             address member = _updatedMembers[i];
             if (!securityCouncil.isOwner(member)) {
-                _addMember(member, threshold);
+                _addMember(securityCouncil, member, threshold);
             }
         }
 
         for (uint256 i = 0; i < previousOwners.length; i++) {
             address owner = previousOwners[i];
             if (!SecurityCouncilMgmtUtils.isInArray(owner, _updatedMembers)) {
-                _removeMember(owner, threshold);
+                _removeMember(securityCouncil, owner, threshold);
             }
         }
     }
 
-    function _addMember(address _member, uint256 _threshold) internal {
+    function _addMember(IGnosisSafe securityCouncil, address _member, uint256 _threshold)
+        internal
+    {
         _execFromModule(
+            securityCouncil,
             abi.encodeWithSelector(IGnosisSafe.addOwnerWithThreshold.selector, _member, _threshold)
         );
     }
 
-    function _removeMember(address _member, uint256 _threshold) internal {
+    function _removeMember(IGnosisSafe securityCouncil, address _member, uint256 _threshold)
+        internal
+    {
         // owners are stored as a linked list and removal requires the previous owner
         address[] memory owners = securityCouncil.getOwners();
         address previousOwner = _getPrevOwner(_member, owners);
         _execFromModule(
+            securityCouncil,
             abi.encodeWithSelector(
                 IGnosisSafe.removeOwner.selector, previousOwner, _member, _threshold
             )
@@ -55,6 +56,7 @@ contract SecurityCouncilUpgradeAction {
 
     function _getPrevOwner(address _owner, address[] memory _owners)
         internal
+        view
         returns (address previousOwner)
     {
         address previousOwner = SENTINEL_OWNERS;
@@ -68,7 +70,7 @@ contract SecurityCouncilUpgradeAction {
     }
 
     /// @notice execute provided operation via gnosis safe's trusted  execTransactionFromModule entry point
-    function _execFromModule(bytes memory data) internal {
+    function _execFromModule(IGnosisSafe securityCouncil, bytes memory data) internal {
         securityCouncil.execTransactionFromModule(
             address(securityCouncil), 0, data, OpEnum.Operation.Call
         );

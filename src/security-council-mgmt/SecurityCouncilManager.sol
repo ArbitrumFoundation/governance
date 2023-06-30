@@ -339,7 +339,11 @@ contract SecurityCouncilManager is
             bytes memory upgradeExecutorCallData = abi.encodeWithSelector(
                 UpgradeExecutor.execute.selector,
                 securityCouncilData.updateAction,
-                abi.encodeWithSelector(SecurityCouncilUpgradeAction.perform.selector, newMembers) // data for upgrade executor's delegatecall to action contract
+                abi.encodeWithSelector(
+                    SecurityCouncilUpgradeAction.perform.selector,
+                    securityCouncilData.securityCouncil,
+                    newMembers
+                ) // data for upgrade executor's delegatecall to action contract
             );
             // inbox as address(0) check is check for the security council being on l1.
             // if it is, the L1timelock should call the upgrade executor directly
