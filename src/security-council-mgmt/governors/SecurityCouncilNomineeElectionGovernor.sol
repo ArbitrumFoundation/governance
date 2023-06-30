@@ -110,16 +110,6 @@ contract SecurityCouncilNomineeElectionGovernor is
 
     /// @notice Initializes the governor
     function initialize(InitParams memory params) public initializer {
-        // make sure the start date is in the future
-        uint256 startTimestamp = DateTimeLib.dateTimeToTimestamp({
-            year: params.firstNominationStartDate.year,
-            month: params.firstNominationStartDate.month,
-            day: params.firstNominationStartDate.day,
-            hour: params.firstNominationStartDate.hour,
-            minute: 0,
-            second: 0
-        });
-
         require(
             DateTimeLib.isSupportedDateTime({
                 year: params.firstNominationStartDate.year,
@@ -131,6 +121,16 @@ contract SecurityCouncilNomineeElectionGovernor is
             }),
             "SecurityCouncilNomineeElectionGovernor: Invalid first nomination start date"
         );
+
+        // make sure the start date is in the future
+        uint256 startTimestamp = DateTimeLib.dateTimeToTimestamp({
+            year: params.firstNominationStartDate.year,
+            month: params.firstNominationStartDate.month,
+            day: params.firstNominationStartDate.day,
+            hour: params.firstNominationStartDate.hour,
+            minute: 0,
+            second: 0
+        });
 
         require(
             startTimestamp > block.timestamp,
