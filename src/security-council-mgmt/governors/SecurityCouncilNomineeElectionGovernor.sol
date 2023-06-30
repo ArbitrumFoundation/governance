@@ -121,6 +121,18 @@ contract SecurityCouncilNomineeElectionGovernor is
         });
 
         require(
+            DateTimeLib.isSupportedDateTime({
+                year: params.firstNominationStartDate.year,
+                month: params.firstNominationStartDate.month,
+                day: params.firstNominationStartDate.day,
+                hour: params.firstNominationStartDate.hour,
+                minute: 0,
+                second: 0
+            }),
+            "SecurityCouncilNomineeElectionGovernor: Invalid first nomination start date"
+        );
+
+        require(
             startTimestamp > block.timestamp,
             "SecurityCouncilNomineeElectionGovernor: First nomination start date must be in the future"
         );
@@ -199,26 +211,7 @@ contract SecurityCouncilNomineeElectionGovernor is
     ///         Can be called by anyone every `nominationFrequency` seconds.
     /// @return proposalId The id of the proposal
     function createElection() external returns (uint256 proposalId) {
-        Date memory startDate = firstNominationStartDate;
-
-        // subtract one to make month 0 indexed
-        startDate.month -= 1;
-
-        startDate.month += 6 * electionCount;
-        startDate.year += startDate.month / 12;
-        startDate.month = startDate.month % 12;
-
-        // add one to make month 1 indexed
-        startDate.month += 1;
-
-        uint256 thisElectionStartTs = DateTimeLib.dateTimeToTimestamp({
-            year: startDate.year,
-            month: startDate.month,
-            day: startDate.day,
-            hour: startDate.hour,
-            minute: 0,
-            second: 0
-        });
+        uint256 thisElectionStartTs = electionToTimestamp(firstNominationStartDate, electionCount);
 
         require(
             block.timestamp >= thisElectionStartTs,
@@ -372,6 +365,30 @@ contract SecurityCouncilNomineeElectionGovernor is
         returns (bool)
     {
         return contenders[proposalId][possibleContender];
+    }
+
+    /// @notice Returns the start timestamp of an election
+    /// @param firstElection The start date of the first election
+    /// @param electionIndex The index of the election
+    function electionToTimestamp(Date memory firstElection, uint256 electionIndex) public pure returns (uint256) {
+        // subtract one to make month 0 indexed
+        uint256 month = firstElection.month - 1;
+
+        month += 6 * electionIndex;
+        uint256 year = firstElection.year + month / 12;
+        month = month % 12;
+
+        // add one to make month 1 indexed
+        month += 1;
+
+        return DateTimeLib.dateTimeToTimestamp({
+            year: year,
+            month: month,
+            day: firstElection.day,
+            hour: firstElection.hour,
+            minute: 0,
+            second: 0
+        });
     }
 
     /// @notice Returns the cohort for a given `electionIndex`
