@@ -39,12 +39,17 @@ contract SecurityCouncilManager is
 
     bytes32 public constant ELECTION_EXECUTOR_ROLE = keccak256("ELECTION_EXECUTOR");
     bytes32 public constant MEMBER_ADDER_ROLE = keccak256("MEMBER_ADDER");
+    bytes32 public constant MEMBER_REPLACER_ROLE = keccak256("MEMBER_REPLACER");
+
     bytes32 public constant MEMBER_ROTATOR_ROLE = keccak256("MEMBER_ROTATOR");
     bytes32 public constant MEMBER_REMOVER_ROLE = keccak256("MEMBER_REMOVER");
 
     event ElectionResultHandled(address[] newCohort, Cohort indexed cohort);
     event MemberAdded(address indexed newMember, Cohort indexed cohort);
     event MemberRemoved(address indexed member, Cohort indexed cohort);
+    event MemberReplaced(address indexed replacedMember, address indexed newMember, Cohort cohort);
+    event MemberRotated(address indexed replacedAddress, address indexed newAddress, Cohort cohort);
+
     event SecurityCouncilAdded(
         address securityCouncil,
         address indexed upgradeExecutor,
@@ -127,6 +132,12 @@ contract SecurityCouncilManager is
     /// @param _newMember member to add
     /// @param _cohort cohort to add member to
     function addMember(address _newMember, Cohort _cohort) external onlyRole(MEMBER_ADDER_ROLE) {
+        _addMemberToCohortArray(_newMember, _cohort);
+        _scheduleUpdate();
+        emit MemberAdded(_newMember, _cohort);
+    }
+
+    function _addMemberToCohortArray(address _newMember, Cohort _cohort) internal {
         address[] storage cohort = _cohort == Cohort.FIRST ? firstCohort : secondCohort;
         require(cohort.length < 6, "SecurityCouncilManager: cohort is full");
         require(
@@ -137,48 +148,49 @@ contract SecurityCouncilManager is
             !SecurityCouncilMgmtUtils.isInArray(_newMember, secondCohort),
             "SecurityCouncilManager: member already in secondCohort cohort"
         );
-
         cohort.push(_newMember);
-
-        _scheduleUpdate();
-        emit MemberAdded(_newMember, _cohort);
     }
 
     /// @notice callable only by SC Removal Governor.
     /// Don't need to specify cohort since duplicate members aren't allowed (so always unambiguous)
     /// @param _member member to remove
     function removeMember(address _member) external onlyRole(MEMBER_REMOVER_ROLE) returns (bool) {
-        if (_removeMemberFromCohort(_member, firstCohort)) {
-            emit MemberRemoved(_member, Cohort.FIRST);
-            return true;
-        }
-        if (_removeMemberFromCohort(_member, secondCohort)) {
-            emit MemberRemoved(_member, Cohort.SECOND);
-            return true;
-        }
-
-        revert("SecurityCouncilManager: member not found");
+        Cohort cohort = _removeMemberFromCohortArray(_member);
+        _scheduleUpdate();
+        emit MemberRemoved({member: _member, cohort: cohort});
     }
 
-    /// @notice Removes member in this contract's state and triggers update
-    /// @param _member member to remove
-    /// @param _cohort cohort to remove member from
-    function _removeMemberFromCohort(address _member, address[] storage _cohort)
-        internal
-        returns (bool)
-    {
-        for (uint256 i = 0; i < _cohort.length; i++) {
-            if (_member == _cohort[i]) {
-                _cohort[i] = _cohort[_cohort.length - 1];
-                _cohort.pop();
-                _scheduleUpdate();
-                return true;
+    function _removeMemberFromCohortArray(address _member) internal returns (Cohort) {
+        for (uint256 i = 0; i < 2; i++) {
+            address[] storage cohort = i == 0 ? firstCohort : secondCohort;
+            if (_member == cohort[i]) {
+                cohort[i] = cohort[cohort.length - 1];
+                cohort.pop();
+                return i == 0 ? Cohort.FIRST : Cohort.SECOND;
             }
         }
-        return false;
+        revert("SecurityCouncilManager: member to remove not found");
+    }
+    /// @notice allows security council can use its remove and add affordance in a single operation
+    /// _memberToReplace and _newMember are of different idendities (constrast to rotateMember)
+    /// @param _memberToReplace security council member being removed
+    /// @param _newMember security council member being added
+
+    function replaceMember(address _memberToReplace, address _newMember)
+        external
+        onlyRole(MEMBER_REPLACER_ROLE)
+    {
+        Cohort cohort = _removeMemberFromCohortArray(_memberToReplace);
+        _addMemberToCohortArray(_newMember, cohort);
+        _scheduleUpdate();
+        emit MemberReplaced({
+            replacedMember: _memberToReplace,
+            newMember: _newMember,
+            cohort: cohort
+        });
     }
 
-    /// @notice Security council member can rotate out their address for a new one.
+    /// @notice Security council member can rotate out their address for a new one; _currentAddress and _newAddress are of the same idendity.
     /// Rotation must be initiated by the security council, and member rotating out must give explicit
     /// consent via signature
     /// @param _currentAddress Address to rotate out
@@ -188,31 +200,19 @@ contract SecurityCouncilManager is
         external
         onlyRole(MEMBER_ROTATOR_ROLE)
     {
-        require(
-            !SecurityCouncilMgmtUtils.isInArray(_newAddress, firstCohort)
-                && !SecurityCouncilMgmtUtils.isInArray(_newAddress, secondCohort),
-            "SecurityCouncilManager: new member already included"
-        );
-        address[] storage cohort;
-        if (SecurityCouncilMgmtUtils.isInArray(_currentAddress, firstCohort)) {
-            cohort = firstCohort;
-        } else if (SecurityCouncilMgmtUtils.isInArray(_currentAddress, secondCohort)) {
-            cohort = secondCohort;
-        } else {
-            revert("SecurityCouncilManager: current address not in either cohort");
-        }
-
         // TODO: double check that this makes sense
         bytes32 data = getRotateDataToSign(_currentAddress, _newAddress);
         require(
             _verify(data, _signature, _currentAddress), "SecurityCouncilManager: invalid signature"
         );
-        for (uint256 i = 0; i < cohort.length; i++) {
-            if (cohort[i] == _currentAddress) {
-                cohort[i] = _newAddress;
-                _scheduleUpdate();
-            }
-        }
+        Cohort cohort = _removeMemberFromCohortArray(_currentAddress);
+        _addMemberToCohortArray(_newAddress, _cohort);
+        _schedule();
+        emit MemberRotated({
+            replacedAddress: _currentAddress,
+            newAddress: _newAddress,
+            cohort: cohort
+        });
     }
 
     /// @notice Get data to sign for a key rotation. Uses an incremented nonce
