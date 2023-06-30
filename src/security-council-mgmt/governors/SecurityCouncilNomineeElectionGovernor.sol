@@ -36,8 +36,7 @@ contract SecurityCouncilNomineeElectionGovernor is
     // todo: these parameters could be reordered to make more sense
     /// @notice parameters for `initialize`
     /// @param targetNomineeCount The target number of nominees to elect (6)
-    /// @param cohortOneFirstNominationStartDate First cohort first election start date
-    /// @param cohortTwoFirstNominationStartDate Second cohort first election start date
+    /// @param firstNominationStartDate First election start date
     /// @param nomineeVettingDuration Duration of the nominee vetting period (expressed in blocks)
     /// @param nomineeVetter Address of the nominee vetter
     /// @param securityCouncilManager Security council manager contract
@@ -47,8 +46,7 @@ contract SecurityCouncilNomineeElectionGovernor is
     /// @param votingPeriod Duration of the voting period (expressed in blocks)
     struct InitParams {
         uint256 targetNomineeCount;
-        Date cohortOneFirstNominationStartDate;
-        Date cohortTwoFirstNominationStartDate;
+        Date firstNominationStartDate;
         uint256 nomineeVettingDuration;
         address nomineeVetter;
         ISecurityCouncilManager securityCouncilManager;
@@ -70,11 +68,8 @@ contract SecurityCouncilNomineeElectionGovernor is
     /// @notice The target number of nominees to elect (6)
     uint256 public targetNomineeCount;
 
-    /// @notice First cohort first election start date
-    Date public cohortOneFirstNominationStartDate;
-
-    /// @notice Second cohort first election start date
-    Date public cohortTwoFirstNominationStartDate;
+    /// @notice First election start date
+    Date public firstNominationStartDate;
 
     /// @notice Duration of the nominee vetting period (expressed in blocks)
     /// @dev    This is the amount of time after voting ends that the nomineeVetter can exclude noncompliant nominees
@@ -123,8 +118,7 @@ contract SecurityCouncilNomineeElectionGovernor is
         _transferOwnership(params.owner);
 
         targetNomineeCount = params.targetNomineeCount;
-        cohortOneFirstNominationStartDate = params.cohortOneFirstNominationStartDate;
-        cohortTwoFirstNominationStartDate = params.cohortTwoFirstNominationStartDate;
+        firstNominationStartDate = params.firstNominationStartDate;
         nomineeVettingDuration = params.nomineeVettingDuration;
         nomineeVetter = params.nomineeVetter;
         securityCouncilManager = params.securityCouncilManager;
@@ -189,18 +183,23 @@ contract SecurityCouncilNomineeElectionGovernor is
     ///         Can be called by anyone every `nominationFrequency` seconds.
     /// @return proposalId The id of the proposal
     function createElection() external returns (uint256 proposalId) {
-        // todo: change cohort to FIRST
-        Date memory firstNominationStartDate = electionIndexToCohort(electionCount) == Cohort.SEPTEMBER
-            ? cohortOneFirstNominationStartDate
-            : cohortTwoFirstNominationStartDate;
+        Date memory startDate = firstNominationStartDate;
 
-        uint256 yearsToAdd = electionCount / 2;
+        // subtract one to make month 0 indexed
+        startDate.month -= 1;
+
+        startDate.month += 6 * electionCount;
+        startDate.year += startDate.month / 12;
+        startDate.month = startDate.month % 12;
+
+        // add one to make month 1 indexed
+        startDate.month += 1;
 
         uint256 thisElectionStartTs = DateTimeLib.dateTimeToTimestamp({
-            year: firstNominationStartDate.year + yearsToAdd,
-            month: firstNominationStartDate.month,
-            day: firstNominationStartDate.day,
-            hour: firstNominationStartDate.hour,
+            year: startDate.year,
+            month: startDate.month,
+            day: startDate.day,
+            hour: startDate.hour,
             minute: 0,
             second: 0
         });
