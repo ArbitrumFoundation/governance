@@ -45,7 +45,7 @@ contract SecurityCouncilManager is
     );
     event L1TimelockDelaySet(uint256 minL1TimelockDelay);
 
-    // The Security Council members are separated into two cohorts, allowing a whole cohort to be replaced, as 
+    // The Security Council members are separated into two cohorts, allowing a whole cohort to be replaced, as
     // specified by the Arbitrum Constitution.
     // These two cohort arrays contain the source of truth for the members of the Security Council. When a membership
     // change needs to be made, a change to these arrays is first made here locally, then pushed to each of the Security Councils
@@ -55,10 +55,10 @@ contract SecurityCouncilManager is
 
     /// @notice Address of the l1 timelock used by core governance
     address public l1CoreGovTimelock;
-    
+
     /// @notice Address of the l2 timelock used by core governance
     address payable public l2CoreGovTimelock;
-    
+
     /// @notice The list of Security Councils under management. Any changes to the cohorts in this manager
     ///         will be pushed to each of these security councils, ensuring that they all stay in sync
     SecurityCouncilData[] public securityCouncils;
@@ -157,7 +157,7 @@ contract SecurityCouncilManager is
     function _removeMemberFromCohortArray(address _member) internal returns (Cohort) {
         for (uint256 i = 0; i < 2; i++) {
             address[] storage cohort = i == 0 ? firstCohort : secondCohort;
-            for(uint256 j = 0; j < cohort.length; j++) {
+            for (uint256 j = 0; j < cohort.length; j++) {
                 if (_member == cohort[j]) {
                     cohort[j] = cohort[cohort.length - 1];
                     cohort.pop();
@@ -379,7 +379,7 @@ contract SecurityCouncilManager is
                     newMembers
                 )
             );
-            
+
             // inbox as address(0) check is check for the security council being on l1.
             // if it is, the L1Timelock should call the upgrade executor directly
             if (securityCouncilData.inbox == address(0)) {
@@ -419,7 +419,7 @@ contract SecurityCouncilManager is
             // call to ArbSys.sendTxToL1; target the L1 timelock with the calldata previously constucted
             data: abi.encodeWithSelector(
                 ArbSys.sendTxToL1.selector, l1CoreGovTimelock, l1TimelockCallData
-                ), 
+                ),
             predecessor: bytes32(0),
             salt: this.generateSalt(newMembers), // must be unique as the proposal hash is used for replay protection in the L2 timelock
             delay: ArbitrumTimelock(l2CoreGovTimelock).getMinDelay()
