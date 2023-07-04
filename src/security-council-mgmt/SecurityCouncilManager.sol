@@ -1,18 +1,22 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.16;
 
-import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "./SecurityCouncilMgmtUtils.sol";
-import "@openzeppelin/contracts/utils/Address.sol";
-import "./interfaces/ISecurityCouncilManager.sol";
-import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "../ArbitrumTimelock.sol";
 import "../UpgradeExecutor.sol";
 import "../L1ArbitrumTimelock.sol";
-import "@arbitrum/nitro-contracts/src/precompiles/ArbSys.sol";
+import "./SecurityCouncilMgmtUtils.sol";
+import "./interfaces/ISecurityCouncilManager.sol";
 import "./SecurityCouncilUpgradeAction.sol";
+import "@arbitrum/nitro-contracts/src/precompiles/ArbSys.sol";
+import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
+import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 
+/// @title  The Security Council Manager
+/// @notice The source of truth for an array of Security Council that are under management
+///         Can be used to change members, and replace whole cohorts, ensuring that all managed
+///         Security Councils stay in sync
 contract SecurityCouncilManager is
     Initializable,
     AccessControlUpgradeable,
@@ -20,59 +24,66 @@ contract SecurityCouncilManager is
 {
     using ECDSA for bytes32;
 
-    // cohort arrays are source-of-truth for security council; the maximum 12 owners security council owners should always be equal to the
-    // sum of these two arrays (or have pending x-chain messages on their way to updating them)
-    address[] public firstCohort;
-    address[] public secondCohort;
-
-    // address of l1 timelock used for core govervor proposals
-    address public l1CoreGovTimelock;
-    // address of l2 timelock used for core govervor proposals
-    address payable public l2CoreGovTimelock;
-
-    // security councils to manage; can span multiple chains
-    SecurityCouncilData[] public securityCouncils;
-
-    // upper limit to number of seurity councils the DAO can add (to ensure gas required doesn't exceed limit)
-    // TODO: benchmark for reasonable number
-    uint256 public immutable MAX_SECURITY_COUNCILS = 500;
-
-    bytes32 public constant ELECTION_EXECUTOR_ROLE = keccak256("ELECTION_EXECUTOR");
-    bytes32 public constant MEMBER_ADDER_ROLE = keccak256("MEMBER_ADDER");
-    bytes32 public constant MEMBER_REPLACER_ROLE = keccak256("MEMBER_REPLACER");
-
-    bytes32 public constant MEMBER_ROTATOR_ROLE = keccak256("MEMBER_ROTATOR");
-    bytes32 public constant MEMBER_REMOVER_ROLE = keccak256("MEMBER_REMOVER");
-
-    event ElectionResultHandled(address[] newCohort, Cohort indexed cohort);
+    event CohortReplaced(address[] newCohort, Cohort indexed cohort);
     event MemberAdded(address indexed newMember, Cohort indexed cohort);
     event MemberRemoved(address indexed member, Cohort indexed cohort);
     event MemberReplaced(address indexed replacedMember, address indexed newMember, Cohort cohort);
     event MemberRotated(address indexed replacedAddress, address indexed newAddress, Cohort cohort);
-
     event SecurityCouncilAdded(
         address securityCouncil,
         address indexed upgradeExecutor,
         address updateAction,
-        address indexed inbox
+        address indexed inbox,
+        uint256 securityCouncilsLength
     );
-
     event SecurityCouncilRemoved(
         address securityCouncil,
         address indexed upgradeExecutor,
         address updateAction,
-        address indexed inbox
+        address indexed inbox,
+        uint256 securityCouncilsLength
     );
     event L1TimelockDelaySet(uint256 minL1TimelockDelay);
 
-    uint256 public updateNonce = 0;
+    // The Security Council members are separated into two cohorts, allowing a whole cohort to be replaced, as 
+    // specified by the Arbitrum Constitution.
+    // These two cohort arrays contain the source of truth for the members of the Security Council. When a membership
+    // change needs to be made, a change to these arrays is first made here locally, then pushed to each of the Security Councils
+    // A member cannot be in both cohorts at the same time
+    address[] internal firstCohort;
+    address[] internal secondCohort;
 
-    // this should be kept in sync with the timelock delay on the core gov L1ArbitrumTimelock
+    /// @notice Address of the l1 timelock used by core governance
+    address public l1CoreGovTimelock;
+    
+    /// @notice Address of the l2 timelock used by core governance
+    address payable public l2CoreGovTimelock;
+    
+    /// @notice The list of Security Councils under management. Any changes to the cohorts in this manager
+    ///         will be pushed to each of these security councils, ensuring that they all stay in sync
+    SecurityCouncilData[] public securityCouncils;
+
+    // TODO: benchmark for reasonable number
+    /// @notice Maximum possible number of Security Councils to manage
+    /// @dev    Since the councils array will be iterated this provides a safety check to make too many Sec Councils
+    ///         aren't added to the array.
+    uint256 public immutable MAX_SECURITY_COUNCILS = 500;
+
+    /// @notice Nonce to ensure that scheduled updates create unique entries in the timelocks
+    uint256 public updateNonce;
+
+    /// @notice Min delay for the L1 timelock
     uint256 minL1TimelockDelay;
 
-    // Used as a magic value to indicate that a retryable ticket should be created by the L1 timelock
-    // value is defined in L1ARbitrumTimelock contract https://etherscan.io/address/0xE6841D92B0C345144506576eC13ECf5103aC7f49#readProxyContract#F5
+    /// @notice Magic value used by the L1 timelock to indicate that a retryable ticket should be created
+    ///         Value is defined in L1ArbitrumTimelock contract https://etherscan.io/address/0xE6841D92B0C345144506576eC13ECf5103aC7f49#readProxyContract#F5
     address public constant RETRYABLE_TICKET_MAGIC = 0xa723C008e76E379c55599D2E4d93879BeaFDa79C;
+
+    bytes32 public constant ELECTION_EXECUTOR_ROLE = keccak256("ELECTION_EXECUTOR");
+    bytes32 public constant MEMBER_ADDER_ROLE = keccak256("MEMBER_ADDER");
+    bytes32 public constant MEMBER_REPLACER_ROLE = keccak256("MEMBER_REPLACER");
+    bytes32 public constant MEMBER_ROTATOR_ROLE = keccak256("MEMBER_ROTATOR");
+    bytes32 public constant MEMBER_REMOVER_ROLE = keccak256("MEMBER_REMOVER");
 
     constructor() {
         _disableInitializers();
@@ -82,9 +93,9 @@ contract SecurityCouncilManager is
         address[] memory _firstCohort,
         address[] memory _secondCohort,
         SecurityCouncilData[] memory _securityCouncils,
-        Roles memory _roles,
+        SecurityCouncilManagerRoles memory _roles,
         address _l1CoreGovTimelock,
-        address _l2CoreGovTimelock,
+        address payable _l2CoreGovTimelock,
         uint256 _minL1TimelockDelay
     ) external initializer {
         firstCohort = _firstCohort;
@@ -99,7 +110,7 @@ contract SecurityCouncilManager is
         _grantRole(MEMBER_ROTATOR_ROLE, _roles.memberRotator);
 
         l1CoreGovTimelock = _l1CoreGovTimelock;
-        l2CoreGovTimelock = payable(_l2CoreGovTimelock);
+        l2CoreGovTimelock = _l2CoreGovTimelock;
 
         _setMinL1TimelockDelay(_minL1TimelockDelay);
 
@@ -108,15 +119,17 @@ contract SecurityCouncilManager is
         }
     }
 
-    /// @notice callable only by Election Governer. Updates cohort in this contract's state and triggers update.
-    /// @param _newCohort new cohort to replace existing cohort. New cohort is result of election, so should always have 6 members.
-    /// @param _cohort cohort to replace.
+    /// @notice Replaces a whole cohort.
+    /// @dev    Initiaties cross chain messages to update the individual Security Councils
+    /// @param _newCohort   New cohort members to replace existing cohort. Must have 6 members.
+    /// @param _cohort      Cohort to replace.
     function replaceCohort(address[] memory _newCohort, Cohort _cohort)
         external
         onlyRole(ELECTION_EXECUTOR_ROLE)
     {
         require(_newCohort.length == 6, "SecurityCouncilManager: invalid cohort length");
         // TODO: ensure no duplicates accross cohorts; this should be enforced in nomination process. If there are duplicates, this call will revert in the Gnosis safe contract
+        //       probably be better to error here though, fail early
         if (_cohort == Cohort.FIRST) {
             firstCohort = _newCohort;
         } else if (_cohort == Cohort.SECOND) {
@@ -124,17 +137,7 @@ contract SecurityCouncilManager is
         }
 
         _scheduleUpdate();
-        emit ElectionResultHandled(_newCohort, _cohort);
-    }
-
-    /// @notice callable only by 9 of 12 SC. Adds member in this contract's state and triggers update.
-    /// new member cannot already be member of either of either cohort
-    /// @param _newMember member to add
-    /// @param _cohort cohort to add member to
-    function addMember(address _newMember, Cohort _cohort) external onlyRole(MEMBER_ADDER_ROLE) {
-        _addMemberToCohortArray(_newMember, _cohort);
-        _scheduleUpdate();
-        emit MemberAdded(_newMember, _cohort);
+        emit CohortReplaced(_newCohort, _cohort);
     }
 
     function _addMemberToCohortArray(address _newMember, Cohort _cohort) internal {
@@ -151,31 +154,46 @@ contract SecurityCouncilManager is
         cohort.push(_newMember);
     }
 
-    /// @notice callable only by SC Removal Governor.
-    /// Don't need to specify cohort since duplicate members aren't allowed (so always unambiguous)
-    /// @param _member member to remove
-    function removeMember(address _member) external onlyRole(MEMBER_REMOVER_ROLE) returns (bool) {
+    function _removeMemberFromCohortArray(address _member) internal returns (Cohort) {
+        for (uint256 i = 0; i < 2; i++) {
+            address[] storage cohort = i == 0 ? firstCohort : secondCohort;
+            for(uint256 j = 0; j < cohort.length; j++) {
+                if (_member == cohort[j]) {
+                    cohort[j] = cohort[cohort.length - 1];
+                    cohort.pop();
+                    return j == 0 ? Cohort.FIRST : Cohort.SECOND;
+                }
+            }
+        }
+        revert("SecurityCouncilManager: member to remove not found");
+    }
+
+    /// @notice Add a member to the specified cohort
+    ///         Cohorts cannot have more than 6 members, so the cohort must have less than 6 in order to call this.
+    ///         New member cannot already be a member of either cohort
+    /// @dev    Initiaties cross chain messages to update the individual Security Councils
+    /// @param _newMember   New member to add
+    /// @param _cohort      Cohort to add member to
+    function addMember(address _newMember, Cohort _cohort) external onlyRole(MEMBER_ADDER_ROLE) {
+        _addMemberToCohortArray(_newMember, _cohort);
+        _scheduleUpdate();
+        emit MemberAdded(_newMember, _cohort);
+    }
+
+    /// @notice Remove a member
+    /// @dev    Searches both cohorts for the member.
+    ///         Initiaties cross chain messages to update the individual Security Councils
+    /// @param _member  Member to remove
+    function removeMember(address _member) external onlyRole(MEMBER_REMOVER_ROLE) {
         Cohort cohort = _removeMemberFromCohortArray(_member);
         _scheduleUpdate();
         emit MemberRemoved({member: _member, cohort: cohort});
     }
 
-    function _removeMemberFromCohortArray(address _member) internal returns (Cohort) {
-        for (uint256 i = 0; i < 2; i++) {
-            address[] storage cohort = i == 0 ? firstCohort : secondCohort;
-            if (_member == cohort[i]) {
-                cohort[i] = cohort[cohort.length - 1];
-                cohort.pop();
-                return i == 0 ? Cohort.FIRST : Cohort.SECOND;
-            }
-        }
-        revert("SecurityCouncilManager: member to remove not found");
-    }
-    /// @notice allows security council can use its remove and add affordance in a single operation
-    /// _memberToReplace and _newMember are of different idendities (constrast to rotateMember)
-    /// @param _memberToReplace security council member being removed
-    /// @param _newMember security council member being added
-
+    /// @notice Replace a member in a council - equivalent to removing a member, then adding another in its place
+    /// @dev    Initiaties cross chain messages to update the individual Security Councils
+    /// @param _memberToReplace Security Council member to remove
+    /// @param _newMember       Security Council member to add in their place
     function replaceMember(address _memberToReplace, address _newMember)
         external
         onlyRole(MEMBER_REPLACER_ROLE)
@@ -190,17 +208,43 @@ contract SecurityCouncilManager is
         });
     }
 
+    /// @notice Verify signature over data
+    /// @param data         Signed data
+    /// @param signature    Signature over the data
+    /// @param account      Signer address
+    /// @return true        If signature is valid and from account
+    function _verify(bytes32 data, bytes memory signature, address account)
+        public
+        pure
+        returns (bool)
+    {
+        return data.toEthSignedMessageHash().recover(signature) == account;
+    }
+
+    /// @notice Get data to sign for a key rotation. Uses an incremented nonce
+    /// @param _currentAddress  Address to rotate out
+    /// @param _newAddress      Address to rotate in
+    function getRotateDataToSign(address _currentAddress, address _newAddress)
+        public
+        view
+        returns (bytes32)
+    {
+        return keccak256(abi.encodePacked(_currentAddress, _newAddress, updateNonce));
+    }
+
     /// @notice Security council member can rotate out their address for a new one; _currentAddress and _newAddress are of the same idendity.
-    /// Rotation must be initiated by the security council, and member rotating out must give explicit
-    /// consent via signature
-    /// @param _currentAddress Address to rotate out
-    /// @param _newAddress Address to rotate in
-    /// @param _signature Signature from _currentAddress
+    ///         Rotation must be initiated by the security council, and member rotating out must give explicit
+    ///         consent via signature
+    /// @param _currentAddress  Address to rotate out
+    /// @param _newAddress      Address to rotate in
+    /// @param _signature       Signature from _currentAddress
     function rotateMember(address _currentAddress, address _newAddress, bytes memory _signature)
         external
         onlyRole(MEMBER_ROTATOR_ROLE)
     {
         // TODO: double check that this makes sense
+        // CHRIS: TODO: this should use a different nonce - since otherwise a different update might invalidate the rotation
+        //              however I still advocate for removing this method
         bytes32 data = getRotateDataToSign(_currentAddress, _newAddress);
         require(
             _verify(data, _signature, _currentAddress), "SecurityCouncilManager: invalid signature"
@@ -215,29 +259,48 @@ contract SecurityCouncilManager is
         });
     }
 
-    /// @notice Get data to sign for a key rotation. Uses an incremented nonce
-    /// @param _currentAddress Address to rotate out
-    /// @param _newAddress Address to rotate in
-    function getRotateDataToSign(address _currentAddress, address _newAddress)
-        public
-        view
-        returns (bytes32)
-    {
-        return keccak256(abi.encodePacked(_currentAddress, _newAddress, updateNonce));
+    function _addSecurityCouncil(SecurityCouncilData memory _securityCouncilData) internal {
+        require(
+            securityCouncils.length < MAX_SECURITY_COUNCILS,
+            "SecurityCouncilManager: max security council's reached"
+        );
+        require(
+            _securityCouncilData.updateActionAddr != address(0),
+            "SecurityCouncilManager: zero updateAction"
+        );
+        require(
+            _securityCouncilData.upgradeExecutor != address(0),
+            "SecurityCouncilManager: zero upgradeExecutor"
+        );
+        require(
+            _securityCouncilData.securityCouncil != address(0),
+            "SecurityCouncilManager: zero securityCouncil"
+        );
+        // inbox can be zero
+        securityCouncils.push(_securityCouncilData);
+        emit SecurityCouncilAdded(
+            _securityCouncilData.securityCouncil,
+            _securityCouncilData.upgradeExecutor,
+            _securityCouncilData.updateActionAddr,
+            _securityCouncilData.inbox,
+            securityCouncils.length
+        );
     }
 
-    /// @notice Add new security council to be included in security council management system. Only DAO can call.
-    /// @param _securityCouncilData data for security council to be added
+    /// @notice Add new security council to be included in security council management system.
+    /// @param _securityCouncilData Security council info
     function addSecurityCouncil(SecurityCouncilData memory _securityCouncilData)
         external
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
+        // CHRIS: TODO: do we also want to check for duplicates when adding here?
         _addSecurityCouncil(_securityCouncilData);
     }
 
-    /// @notice Remove security council from management system. Only DAO can call.
-    /// @param _index index in securityCouncils of data to be remoed
+    /// @notice Remove security council from management system.
+    /// @param _index   Index in securityCouncils of data to be removed
     function removeSecurityCouncil(uint256 _index) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        // CHRIS: TODO: I wonder if this should be based on address, or some other identifying behaviour?
         SecurityCouncilData storage securityCouncilToRemove = securityCouncils[_index];
         SecurityCouncilData storage lastSecurityCouncil =
             securityCouncils[securityCouncils.length - 1];
@@ -247,45 +310,10 @@ contract SecurityCouncilManager is
         emit SecurityCouncilRemoved(
             securityCouncilToRemove.securityCouncil,
             securityCouncilToRemove.upgradeExecutor,
-            securityCouncilToRemove.updateAction,
-            securityCouncilToRemove.inbox
+            securityCouncilToRemove.updateActionAddr,
+            securityCouncilToRemove.inbox,
+            securityCouncils.length
         );
-    }
-
-    function _addSecurityCouncil(SecurityCouncilData memory _securityCouncilData) internal {
-        require(
-            securityCouncils.length < MAX_SECURITY_COUNCILS,
-            "SecurityCouncilManager: max security council's reached"
-        );
-        require(
-            _securityCouncilData.updateAction != address(0),
-            "SecurityCouncilManager: zero updateAction"
-        );
-        require(
-            _securityCouncilData.upgradeExecutor != address(0),
-            "SecurityCouncilManager: zero upgradeExecutor"
-        );
-
-        require(
-            _securityCouncilData.securityCouncil != address(0),
-            "SecurityCouncilManager: zero securityCouncil"
-        );
-        securityCouncils.push(_securityCouncilData);
-        emit SecurityCouncilAdded(
-            _securityCouncilData.securityCouncil,
-            _securityCouncilData.upgradeExecutor,
-            _securityCouncilData.updateAction,
-            _securityCouncilData.inbox
-        );
-    }
-    /// @notice Set delay for messages to the L1 timelock. This should only be used to keep the minTimelockDelay value in sync with L1 (i.e., if the L1 side is updated, this should be too)
-    /// @param _minL1TimelockDelay new  L1 timelock delay value
-
-    function setMinL1TimelockDelay(uint256 _minL1TimelockDelay)
-        external
-        onlyRole(DEFAULT_ADMIN_ROLE)
-    {
-        _setMinL1TimelockDelay(_minL1TimelockDelay);
     }
 
     function _setMinL1TimelockDelay(uint256 _minL1TimelockDelay) internal {
@@ -293,37 +321,39 @@ contract SecurityCouncilManager is
         emit L1TimelockDelaySet(_minL1TimelockDelay);
     }
 
-    /// @notice Verify signature over data
-    /// @param data Signed data
-    /// @param signature over data
-    /// @param account signer
-    /// @return true if signature is valid and from account
-    function _verify(bytes32 data, bytes memory signature, address account)
-        public
-        pure
-        returns (bool)
+    /// @notice Set delay for messages to the L1 timelock. This should only be used to keep the minTimelockDelay value in sync with L1 (i.e., if the L1 side is updated, this should be too)
+    /// @param _minL1TimelockDelay new  L1 timelock delay value
+    function setMinL1TimelockDelay(uint256 _minL1TimelockDelay)
+        external
+        onlyRole(DEFAULT_ADMIN_ROLE)
     {
-        return data.toEthSignedMessageHash().recover(signature) == account;
+        _setMinL1TimelockDelay(_minL1TimelockDelay);
     }
 
+    /// @notice All members of the first cohort
     function getFirstCohort() external view returns (address[] memory) {
         return firstCohort;
     }
 
+    /// @notice All members of the second cohort
     function getSecondCohort() external view returns (address[] memory) {
         return secondCohort;
     }
 
-    /// @notice generate unique salt for timelock scheduling
-    /// @param _members data to input / hash
+    /// @notice Generate unique salt for timelock scheduling
+    /// @param _members Data to input / hash
     function generateSalt(address[] memory _members) external view returns (bytes32) {
         return keccak256(abi.encodePacked(_members, updateNonce));
     }
 
-    /// @notice build new security council members array from first and second cohort and schedule a sequence of cross chain messages to update all security councils accordingly.
+    /// @dev Create a union of the second and first cohort, then update all Security Councils under management with that unioned array.
+    ///      Councils on other chains will need to be scheduled through timelocks and target upgrade executors
     function _scheduleUpdate() internal {
-        // build array of security council members
-        address[] memory newMembers = new address[](secondCohort.length + firstCohort.length);
+        // always update the nonce - this is used to ensure that proposals in the timelocks are unique
+        updateNonce++;
+
+        // build a union array of security council members
+        address[] memory newMembers = new address[](firstCohort.length + secondCohort.length);
         for (uint256 i = 0; i < firstCohort.length; i++) {
             newMembers[i] = firstCohort[i];
         }
@@ -331,7 +361,7 @@ contract SecurityCouncilManager is
             newMembers[firstCohort.length + i] = secondCohort[i];
         }
 
-        // build batch call to L1 timellck
+        // build batch call to L1 timelock
         address[] memory targetsForL1TimelockOperations = new address[](securityCouncils.length);
         bytes[] memory payloadsForL1TimelockOperations = new bytes[](securityCouncils.length);
         for (uint256 i = 0; i < securityCouncils.length; i++) {
@@ -340,21 +370,26 @@ contract SecurityCouncilManager is
             // call for upgrade executor; call "execute" to the target action contract.
             bytes memory upgradeExecutorCallData = abi.encodeWithSelector(
                 UpgradeExecutor.execute.selector,
-                securityCouncilData.updateAction,
+                // execute will delegatecall the update action address
+                securityCouncilData.updateActionAddr,
+                // call the perform function on the action address
                 abi.encodeWithSelector(
                     SecurityCouncilUpgradeAction.perform.selector,
                     securityCouncilData.securityCouncil,
                     newMembers
-                ) // data for upgrade executor's delegatecall to action contract
+                )
             );
+            
             // inbox as address(0) check is check for the security council being on l1.
-            // if it is, the L1timelock should call the upgrade executor directly
+            // if it is, the L1Timelock should call the upgrade executor directly
             if (securityCouncilData.inbox == address(0)) {
-                // upgrade executor address/calldata is sent to the L1timelock top level for L1 execution (see L1ArbitrumTimelock.execute)
+                // directly call the Upgrade Executor on the L1
                 targetsForL1TimelockOperations[i] = securityCouncilData.upgradeExecutor;
                 payloadsForL1TimelockOperations[i] = upgradeExecutorCallData;
             } else {
-                // If the security council is on L1, this is signalled with target RETRYABLE_TICKET_MAGIC and the call to the upgrade executor is encoded in the payload (see L1ArbitrumTimelock.execute for expected encoding)
+                // The Upgrade Executor (and therefore the Sec Council) is not on L1, therefore we must send it through an Inbox
+                // Signify to the L1 timelock that it should call an Inbox using the RERETRYABLE_TICKET_MAGIC to create a retryable
+                // that will target the upgrade executor on the L2 linked to that Inbox
                 targetsForL1TimelockOperations[i] = RETRYABLE_TICKET_MAGIC;
                 payloadsForL1TimelockOperations[i] = abi.encode(
                     securityCouncilData.inbox,
@@ -366,28 +401,28 @@ contract SecurityCouncilManager is
                 );
             }
         }
-        // finally, we build the call data to schedule a batch of operations to the L1Timelock
+
+        // Schedule this batch of calls into the L1Timelock
         bytes memory l1TimelockCallData = abi.encodeWithSelector(
             L1ArbitrumTimelock.scheduleBatch.selector,
             targetsForL1TimelockOperations,
             new uint256[](securityCouncils.length), // all values are always 0
             payloadsForL1TimelockOperations,
             bytes32(0),
-            this.generateSalt(newMembers),
+            this.generateSalt(newMembers), // must be unique as the proposal hash is used for replay protection in the L1 timelock
             minL1TimelockDelay // use the minL1TimelockDelay, which always match the minimum delay value set on the L1 Timelock
         );
         // schedule a call to the L2 timelock to execute an l2 to l1 message via ArbSys precompile
         ArbitrumTimelock(l2CoreGovTimelock).schedule({
-            target: address(100), // ArbSys address
+            target: address(100), // ArbSys address - this will trigger a call from L2->L1
             value: 0,
+            // call to ArbSys.sendTxToL1; target the L1 timelock with the calldata previously constucted
             data: abi.encodeWithSelector(
                 ArbSys.sendTxToL1.selector, l1CoreGovTimelock, l1TimelockCallData
-                ), // call to ArbSys; target the L1 timelock with the calldata previously constucted
+                ), 
             predecessor: bytes32(0),
-            salt: this.generateSalt(newMembers),
+            salt: this.generateSalt(newMembers), // must be unique as the proposal hash is used for replay protection in the L2 timelock
             delay: ArbitrumTimelock(l2CoreGovTimelock).getMinDelay()
         });
-
-        updateNonce++;
     }
 }
