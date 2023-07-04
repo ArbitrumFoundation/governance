@@ -164,13 +164,15 @@ contract L1ArbitrumTimelock is ArbitrumTimelock, L1ArbitrumMessenger {
                 // it's important that only this address, or another DAO controlled one is able to
                 // cancel, otherwise anyone could cancel, and therefore block, the upgrade
                 address(this),
-                // the value of the outer message is ignored instead we encode the value along with the other
-                // l2 params. We need to ensure value can be injected via msg.value since the retryable submission cost
-                // calculation is dependent on the l1 base fee, so can't be committed to at the time of
-                // proposal creation. The msg.value is only intended to cover the submission and gas costs
-                // but the l2Value needs to be in this contract already. This can be done by sending value
-                // to the receive function of this contract.
-                l2Value + msg.value,
+                // Enough value needs to be sent to cover both the l2 value and the l2 gas costs
+                // The value for each of these must be injected via msg.value or via calling receive and providing value earlier
+                // It is hard for the caller to estimate the submissionCost offchain since by the time the tx is mined the l1 base fee may have changed.
+                // Therefore it is expected that the caller will need to provide slightly more value than is actually used,
+                // leaving some surplus in this contrat after execution has completed. This contract does not
+                // provide a way to retrieve this surplus, since it is expected that the surplus will be very small.
+                // Should a caller wish to they could call this contract from another one which does the exact submission cost
+                // estimation, but doing so would likely be more expensive than just sacrificing the surplus/
+                l2Value + submissionCost + (gasLimit * maxFeePerGas),
                 l2Value,
                 L2GasParams({
                     _maxSubmissionCost: submissionCost,
