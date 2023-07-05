@@ -131,12 +131,8 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
 {
     uint256 private constant WAD = 1e18;
 
-    /// @notice Numerator for the duration of full weight voting
-    uint256 private _fullWeightDurationNumerator; // = 1 (7 days)
-    /// @notice Numerator for the duration of decreasing weight voting
-    uint256 private _decreasingWeightDurationNumerator; // = 2 (14 days)
-    /// @notice Denominator for the total duration of voting
-    uint256 private _durationDenominator; // = 3 (21 days)
+    /// @notice Duration of full weight voting (expressed in blocks)
+    uint256 private _fullWeightDuration;
 
     /// @notice Keeps track of the number of votes used by each account for each proposal
     mapping(uint256 => mapping(address => uint256)) private _votesUsed;
@@ -151,41 +147,29 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
     );
 
     /// @param maxNominees The maximum number of nominees to track
-    /// @param initialFullWeightDurationNumerator Numerator for the duration of full weight voting
-    /// @param initialDecreasingWeightDurationNumerator Numerator for the duration of decreasing weight voting
-    /// @param initialDurationDenominator Denominator for the total duration of voting
+    /// @param initialFullWeightDuration Duration of full weight voting (expressed in blocks)
     function __SecurityCouncilMemberElectionGovernorCounting_init(
         uint256 maxNominees,
-        uint256 initialFullWeightDurationNumerator,
-        uint256 initialDecreasingWeightDurationNumerator,
-        uint256 initialDurationDenominator
+        uint256 initialFullWeightDuration
     ) internal onlyInitializing {
-        require(
-            initialFullWeightDurationNumerator + initialDecreasingWeightDurationNumerator
-                == initialDurationDenominator,
-            "SecurityCouncilMemberElectionGovernorCountingUpgradeable: Sum of numerators must equal the denominator"
-        );
-
         __AccountRanker_init(maxNominees);
 
-        _fullWeightDurationNumerator = initialFullWeightDurationNumerator;
-        _decreasingWeightDurationNumerator = initialDecreasingWeightDurationNumerator;
-        _durationDenominator = initialDurationDenominator;
+        _fullWeightDuration = initialFullWeightDuration;
     }
 
-    /// @notice Returns the numerator for the duration of decreasing weight voting
-    function fullWeightDurationNumerator() public view returns (uint256) {
-        return _fullWeightDurationNumerator;
+    /// @notice Returns the duration of full weight voting (expressed in blocks)
+    function fullWeightDuration() public view returns (uint256) {
+        return _fullWeightDuration;
     }
 
-    /// @notice Returns the numerator for the duration of decreasing weight voting
-    function decreasingWeightDurationNumerator() public view returns (uint256) {
-        return _decreasingWeightDurationNumerator;
-    }
-
-    /// @notice Returns the denominator for the total duration of voting
-    function durationDenominator() public view returns (uint256) {
-        return _durationDenominator;
+    /// @notice Set the full weight duration numerator and total duration denominator
+    function setFullWeightDuration(
+        uint256 newFullWeightDuration
+    ) public onlyGovernance {
+        require(
+            newFullWeightDuration <= votingPeriod(),
+            "SecurityCouncilMemberElectionGovernorCountingUpgradeable: Full weight duration must be <= votingPeriod"
+        );
     }
 
     /// @notice Returns the number of votes used by an account for a given proposal
@@ -250,6 +234,12 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
         emit VoteCastForNominee(account, proposalId, possibleNominee, votes, weight);
     }
 
+    function fullWeightVotingDeadline(uint256 proposalId) public view returns (uint256) {
+        uint256 startBlock = proposalSnapshot(proposalId);
+
+        return startBlock + _fullWeightDuration;
+    }
+
     /// @notice Returns the weight of a vote for a given proposal, block number, and number of votes.
     /// @dev    Uses a piecewise linear function to determine the weight of a vote.
     function votesToWeight(uint256 proposalId, uint256 blockNumber, uint256 votes)
@@ -265,38 +255,28 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
 
         // do i have an off-by-one in here?
 
-        uint256 startBlock = proposalSnapshot(proposalId);
         uint256 endBlock = proposalDeadline(proposalId);
-
-        uint256 duration = endBlock - startBlock;
+        uint256 startBlock = proposalSnapshot(proposalId);
 
         if (blockNumber <= startBlock || blockNumber > endBlock) {
             return 0;
         }
 
-        uint256 fullWeightDuration =
-            WAD * _fullWeightDurationNumerator / _durationDenominator * duration / WAD;
+        uint256 fullWeightVotingDeadline_ = fullWeightVotingDeadline(proposalId);
 
-        uint256 decreasingWeightStartBlock = startBlock + fullWeightDuration;
-
-        if (blockNumber <= decreasingWeightStartBlock) {
+        if (blockNumber <= fullWeightVotingDeadline_) {
             return votes;
         }
 
         // slope denominator
-        uint256 decreasingWeightDuration =
-            WAD * _decreasingWeightDurationNumerator / _durationDenominator * duration / WAD;
+        uint256 decreasingWeightDuration = endBlock - fullWeightVotingDeadline_;
 
-        // slope numerator is -votes
+        // slope numerator is -votes, slope denominator is decreasingWeightDuration, delta x is blockNumber - fullWeightVotingDeadline_
+        // y intercept is votes
+        uint256 decreaseAmount =
+            WAD * votes * (blockNumber - fullWeightVotingDeadline_) / decreasingWeightDuration / WAD;
 
-        uint256 decreaseAmount = WAD * votes / decreasingWeightDuration
-            * (blockNumber - decreasingWeightStartBlock) / WAD;
-
-        if (decreaseAmount >= votes) {
-            return 0;
-        }
-
-        return votes - decreaseAmount;
+        return decreaseAmount >= votes ? 0 : votes - decreaseAmount;
     }
 
     /// @dev Returns true if the possibleNominee is a compliant nominee for the most recent election
