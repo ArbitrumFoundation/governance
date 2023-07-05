@@ -292,6 +292,11 @@ contract SecurityCouncilNomineeElectionGovernor is
     /// @dev    Can be called only while a proposal is active (in voting phase)
     ///         A contender cannot be a member of the opposite cohort.
     function addContender(uint256 proposalId) external {
+        require(
+            !contenders[proposalId][msg.sender],
+            "SecurityCouncilNomineeElectionGovernor: Account is already a contender"
+        );
+
         ProposalState state = state(proposalId);
         require(
             state == ProposalState.Active,
