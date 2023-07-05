@@ -125,7 +125,7 @@ contract SecurityCouncilManager is
         onlyRole(ELECTION_EXECUTOR_ROLE)
     {
         require(_newCohort.length == 6, "SecurityCouncilManager: invalid cohort length");
-        // TODO: ensure no duplicates accross cohorts; this should be enforced in nomination process.
+        // TODO: ensure no duplicates accross cohorts, and that there are no address(0)s. This should be enforced in nomination process.
         if (_cohort == Cohort.FIRST) {
             firstCohort = _newCohort;
         } else if (_cohort == Cohort.SECOND) {
@@ -166,6 +166,9 @@ contract SecurityCouncilManager is
 
     /// @inheritdoc ISecurityCouncilManager
     function addMember(address _newMember, Cohort _cohort) external onlyRole(MEMBER_ADDER_ROLE) {
+        require(
+            _newMember != address(0), "SecurityCouncilManager: new member can't be zero address"
+        );
         _addMemberToCohortArray(_newMember, _cohort);
         _scheduleUpdate();
         emit MemberAdded(_newMember, _cohort);
@@ -173,6 +176,7 @@ contract SecurityCouncilManager is
 
     /// @inheritdoc ISecurityCouncilManager
     function removeMember(address _member) external onlyRole(MEMBER_REMOVER_ROLE) {
+        require(_member != address(0), "SecurityCouncilManager: member can't be zero address");
         Cohort cohort = _removeMemberFromCohortArray(_member);
         _scheduleUpdate();
         emit MemberRemoved({member: _member, cohort: cohort});
@@ -183,6 +187,10 @@ contract SecurityCouncilManager is
         external
         onlyRole(MEMBER_REPLACER_ROLE)
     {
+        require(
+            _memberToReplace != address(0) && _newMember != address(0),
+            "SecurityCouncilManager: members can't be zero address"
+        );
         Cohort cohort = _removeMemberFromCohortArray(_memberToReplace);
         _addMemberToCohortArray(_newMember, cohort);
         _scheduleUpdate();
@@ -202,6 +210,10 @@ contract SecurityCouncilManager is
         external
         onlyRole(MEMBER_ROTATOR_ROLE)
     {
+        require(
+            _currentAddress != address(0) && _newAddress != address(0),
+            "SecurityCouncilManager: members can't be zero address"
+        );
         Cohort cohort = _removeMemberFromCohortArray(_currentAddress);
         _addMemberToCohortArray(_newAddress, cohort);
         _scheduleUpdate();
