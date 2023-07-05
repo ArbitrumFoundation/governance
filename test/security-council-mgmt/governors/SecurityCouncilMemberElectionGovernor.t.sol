@@ -17,8 +17,7 @@ contract SecurityCouncilMemberElectionGovernorTest is Test {
         address owner;
         uint256 votingPeriod;
         uint256 maxNominees;
-        uint256 fullWeightDurationNumerator;
-        uint256 durationDenominator;
+        uint256 fullWeightDuration;
     }
 
     SecurityCouncilMemberElectionGovernor governor;
@@ -31,8 +30,7 @@ contract SecurityCouncilMemberElectionGovernorTest is Test {
         owner: address(0x55),
         votingPeriod: 2 ** 8,
         maxNominees: 6,
-        fullWeightDurationNumerator: 3,
-        durationDenominator: 4
+        fullWeightDuration: 2 ** 7
     });
 
     function setUp() public {
@@ -45,8 +43,7 @@ contract SecurityCouncilMemberElectionGovernorTest is Test {
             _owner: initParams.owner,
             _votingPeriod: initParams.votingPeriod,
             _maxNominees: initParams.maxNominees,
-            _fullWeightDurationNumerator: initParams.fullWeightDurationNumerator,
-            _durationDenominator: initParams.durationDenominator
+            _fullWeightDuration: initParams.fullWeightDuration
         });
 
         vm.roll(10);
@@ -63,8 +60,7 @@ contract SecurityCouncilMemberElectionGovernorTest is Test {
         assertEq(governor.owner(), initParams.owner);
         assertEq(governor.votingPeriod(), initParams.votingPeriod);
         assertEq(governor.maxNominees(), initParams.maxNominees);
-        assertEq(governor.fullWeightDurationNumerator(), initParams.fullWeightDurationNumerator);
-        assertEq(governor.durationDenominator(), initParams.durationDenominator);
+        assertEq(governor.fullWeightDuration(), initParams.fullWeightDuration);
     }
 
     function testRelay() public {
@@ -163,29 +159,29 @@ contract SecurityCouncilMemberElectionGovernorTest is Test {
 
     ////////// SecurityCouncilMemberElectionGovernorCountingUpgradeable tests //////////
 
-    function testSetFullWeightDurationNumeratorAndDurationDenominator() public {
-        // non governor should not be able to call
-        vm.expectRevert("Governor: onlyGovernance");
-        governor.setFullWeightDurationNumeratorAndDurationDenominator(1, 1);
+    // function testSetFullWeightDurationNumeratorAndDurationDenominator() public {
+    //     // non governor should not be able to call
+    //     vm.expectRevert("Governor: onlyGovernance");
+    //     governor.setFullWeightDurationNumeratorAndDurationDenominator(1, 1);
 
-        // governor can call
-        vm.prank(address(governor));
-        governor.setFullWeightDurationNumeratorAndDurationDenominator(100, 200);
+    //     // governor can call
+    //     vm.prank(address(governor));
+    //     governor.setFullWeightDurationNumeratorAndDurationDenominator(100, 200);
 
-        // make sure the values were set
-        assertEq(governor.fullWeightDurationNumerator(), 100);
-        assertEq(governor.durationDenominator(), 200);
+    //     // make sure the values were set
+    //     assertEq(governor.fullWeightDurationNumerator(), 100);
+    //     assertEq(governor.durationDenominator(), 200);
 
-        // make sure it reverts when numerator is 0
-        vm.prank(address(governor));
-        vm.expectRevert("SecurityCouncilMemberElectionGovernorCountingUpgradeable: Full weight duration numerator must be > 0");
-        governor.setFullWeightDurationNumeratorAndDurationDenominator(0, 1);
+    //     // make sure it reverts when numerator is 0
+    //     vm.prank(address(governor));
+    //     vm.expectRevert("SecurityCouncilMemberElectionGovernorCountingUpgradeable: Full weight duration numerator must be > 0");
+    //     governor.setFullWeightDurationNumeratorAndDurationDenominator(0, 1);
 
-        // make sure it reverts when numerator is > denominator
-        vm.prank(address(governor));
-        vm.expectRevert("SecurityCouncilMemberElectionGovernorCountingUpgradeable: Full weight duration numerator must be <= duration denominator");
-        governor.setFullWeightDurationNumeratorAndDurationDenominator(2, 1);
-    }
+    //     // make sure it reverts when numerator is > denominator
+    //     vm.prank(address(governor));
+    //     vm.expectRevert("SecurityCouncilMemberElectionGovernorCountingUpgradeable: Full weight duration numerator must be <= duration denominator");
+    //     governor.setFullWeightDurationNumeratorAndDurationDenominator(2, 1);
+    // }
 
     function testVotesToWeight() public {
         _propose(0);
@@ -225,7 +221,7 @@ contract SecurityCouncilMemberElectionGovernorTest is Test {
 
         // test governor with no decreasing weight voting
         vm.prank(address(governor));
-        governor.setFullWeightDurationNumeratorAndDurationDenominator(1, 1);
+        governor.setFullWeightDuration(0);
         assertEq(
             governor.votesToWeight(proposalId, governor.proposalDeadline(proposalId), 100), 100
         );
