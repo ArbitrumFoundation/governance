@@ -5,13 +5,18 @@ import "./interfaces/IGnosisSafe.sol";
 import "./SecurityCouncilMgmtUtils.sol";
 
 /// @notice Action contract for updating security council members. Used by the security council management system.
+///         Expected to be delegate called into by an Upgrade Executor
 contract SecurityCouncilUpgradeAction {
+    /// @dev Used in the gnosis safe as the first entry in their ownership linked list
     address internal constant SENTINEL_OWNERS = address(0x1);
 
-    /// @notice updates members of security council multisig to match provided array
+    /// @notice Updates members of security council multisig to match provided array
+    /// @dev    This function contains O(n^2) operations, so doesnt scale for large numbers of members. Expected count is 12, which is acceptable.
+    /// @param _securityCouncil The security council to update
+    /// @param _updatedMembers  The new list of members. The Security Council will be updated to have this exact list of members
     function perform(address _securityCouncil, address[] memory _updatedMembers) external {
         IGnosisSafe securityCouncil = IGnosisSafe(_securityCouncil);
-        // always preserve current threshold
+        // preserve current threshold, the safe ensures that the threshold is never lower than the member count
         uint256 threshold = securityCouncil.getThreshold();
 
         address[] memory previousOwners = securityCouncil.getOwners();
@@ -43,9 +48,7 @@ contract SecurityCouncilUpgradeAction {
     function _removeMember(IGnosisSafe securityCouncil, address _member, uint256 _threshold)
         internal
     {
-        // owners are stored as a linked list and removal requires the previous owner
-        address[] memory owners = securityCouncil.getOwners();
-        address previousOwner = _getPrevOwner(_member, owners);
+        address previousOwner = _getPrevOwner(securityCouncil, _member);
         _execFromModule(
             securityCouncil,
             abi.encodeWithSelector(
@@ -54,22 +57,25 @@ contract SecurityCouncilUpgradeAction {
         );
     }
 
-    function _getPrevOwner(address _owner, address[] memory _owners)
+    function _getPrevOwner(IGnosisSafe securityCouncil, address _owner)
         internal
         view
-        returns (address previousOwner)
+        returns (address)
     {
+        // owners are stored as a linked list and removal requires the previous owner
+        address[] memory owners = securityCouncil.getOwners();
         address previousOwner = SENTINEL_OWNERS;
-        for (uint256 i = 0; i < _owners.length; i++) {
-            address currentOwner = _owners[i];
+        for (uint256 i = 0; i < owners.length; i++) {
+            address currentOwner = owners[i];
             if (currentOwner == _owner) {
-                break;
+                return previousOwner;
             }
             previousOwner = currentOwner;
         }
+        revert("SecurityCouncilUpgradeAction: Prev owner not found");
     }
 
-    /// @notice execute provided operation via gnosis safe's trusted  execTransactionFromModule entry point
+    /// @notice Execute provided operation via gnosis safe's trusted execTransactionFromModule entry point
     function _execFromModule(IGnosisSafe securityCouncil, bytes memory data) internal {
         securityCouncil.execTransactionFromModule(
             address(securityCouncil), 0, data, OpEnum.Operation.Call
