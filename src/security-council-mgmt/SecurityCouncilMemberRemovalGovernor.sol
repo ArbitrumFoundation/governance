@@ -32,7 +32,7 @@ contract SecurityCouncilMemberRemovalGovernor is L2ArbitrumGovernor {
         uint256 _proposalThreshold,
         uint64 _minPeriodAfterQuorum
     ) public {
-        _setVoteSuccessDenominator(_voteSuccessNumerator);
+        _setVoteSuccessNumerator(_voteSuccessNumerator);
         this.initialize(
             _token,
             _timelock,
