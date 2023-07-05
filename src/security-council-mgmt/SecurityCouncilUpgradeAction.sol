@@ -16,12 +16,8 @@ contract SecurityCouncilUpgradeAction {
     /// @param _updatedMembers  The new list of members. The Security Council will be updated to have this exact list of members
     function perform(address _securityCouncil, address[] memory _updatedMembers) external {
         IGnosisSafe securityCouncil = IGnosisSafe(_securityCouncil);
-        // preserve current threshold
+        // preserve current threshold, the safe ensures that the threshold is never lower than the member count
         uint256 threshold = securityCouncil.getThreshold();
-        require(
-            _updatedMembers.length >= threshold,
-            "SecurityCouncilUpgradeAction: Threshold greater than number of members"
-        );
 
         address[] memory previousOwners = securityCouncil.getOwners();
 
