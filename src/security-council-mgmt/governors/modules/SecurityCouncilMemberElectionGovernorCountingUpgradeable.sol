@@ -3,122 +3,6 @@ pragma solidity 0.8.16;
 
 import "@openzeppelin/contracts-upgradeable/governance/GovernorUpgradeable.sol";
 
-/// @title AccountRankerUpgradeable
-/// @notice Keeps track of the top K nominees for a given proposalId and their weights
-abstract contract AccountRankerUpgradeable is Initializable {
-    /// @dev max number of nominees to track (6)
-    uint256 private _maxNominees;
-
-    /// @dev proposalId => list of top nominees in descending order by weight
-    mapping(uint256 => address[]) private _nominees;
-
-    /// @dev proposalId => account => weight.
-    ///      weight is the voting weight cast for the account
-    mapping(uint256 => mapping(address => uint256)) private _weights;
-
-    function __AccountRanker_init(uint256 maxNominees_) internal onlyInitializing {
-        _maxNominees = maxNominees_;
-    }
-
-    /// @notice returns the max number of nominees this contract will track
-    function maxNominees() public view returns (uint256) {
-        return _maxNominees;
-    }
-
-    /// @dev returns the list of top nominees for a given proposalId
-    function topNominees(uint256 proposalId) public view returns (address[] memory) {
-        return _nominees[proposalId];
-    }
-
-    /// @dev returns true if the list of top nominees is full for a given proposalId
-    function isNomineesListFull(uint256 proposalId) public view returns (bool) {
-        return _nominees[proposalId].length == _maxNominees;
-    }
-
-    /// @dev returns the received voting weight of a contender in a given proposalId
-    function votingWeightReceived(uint256 proposalId, address contender)
-        public
-        view
-        returns (uint256)
-    {
-        return _weights[proposalId][contender];
-    }
-
-    /// @dev increases the weight of an account in a given proposalId.
-    ///      updates the list of top nominees for that proposalId if necessary.
-    function _increaseNomineeWeight(uint256 proposalId, address account, uint256 weightToAdd)
-        internal
-    {
-        address[] storage nomineesPtr = _nominees[proposalId];
-        mapping(address => uint256) storage weightsPtr = _weights[proposalId];
-
-        uint256 oldWeight = weightsPtr[account];
-        uint256 newWeight = oldWeight + weightToAdd;
-
-        // update the weight of account
-        weightsPtr[account] = newWeight;
-
-        // check to see if the account is already in the top K
-        uint256 previousIndexOfAccount = type(uint256).max;
-        // todo: can probably just skip this loop if the oldWeight is less than the weight of the last nominee
-        for (uint256 i = 0; i < nomineesPtr.length; i++) {
-            if (nomineesPtr[i] == account) {
-                previousIndexOfAccount = i;
-                break;
-            }
-        }
-
-        // if the array is not max length yet, and account is not already in the list, just add the account to the end
-        if (previousIndexOfAccount == type(uint256).max && nomineesPtr.length < _maxNominees) {
-            nomineesPtr.push(account);
-            previousIndexOfAccount = nomineesPtr.length - 1;
-        }
-        // if the array is max length already, and account is not already in the list, set the previousIndexOfAccount to the length of the array
-        else if (previousIndexOfAccount == type(uint256).max) {
-            previousIndexOfAccount = nomineesPtr.length;
-        }
-
-        if (previousIndexOfAccount == 0) {
-            // account is already at the top of the list
-            return;
-        }
-
-        // start with the account's index - 1 and move to the left, shifting things down to the right until we find the appropriate spot
-        uint256 j = previousIndexOfAccount - 1;
-        while (true) {
-            address nominee = nomineesPtr[j];
-            if (newWeight > weightsPtr[nominee]) {
-                // the account's weight is greater than the nominee we are looking at
-                // we should move nominee down the list by one (unless they are already at the bottom)
-                if (j != nomineesPtr.length - 1) {
-                    nomineesPtr[j + 1] = nominee;
-                }
-            } else {
-                // the account's weight is less than or equal to the nominee we are looking at
-                // if we are at the bottom of the list, then return
-                // if we are not, then we should place the account just to the right of the nominee we are looking at and return
-                if (j != nomineesPtr.length - 1) {
-                    nomineesPtr[j + 1] = account;
-                }
-                return;
-            }
-
-            if (j == 0) break;
-            j--;
-        }
-
-        // if we get here, we have passed the end of the list, so we should place the account at the beginning
-        nomineesPtr[0] = account;
-    }
-
-    /**
-     * @dev This empty reserved space is put in place to allow future versions to add new
-     * variables without shifting down storage in the inheritance chain.
-     * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
-     */
-    uint256[47] private __gap;
-}
-
 /// @title  SecurityCouncilMemberElectionGovernorCountingUpgradeable
 /// @notice Counting module for the SecurityCouncilMemberElectionGovernor.
 ///         Voters can spread their votes across multiple nominees.
@@ -126,16 +10,24 @@ abstract contract AccountRankerUpgradeable is Initializable {
 ///         Uses AccountRankerUpgradeable to keep track of the top K nominees and their weights (where K is the number of nominees we want to select to become members).
 abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
     Initializable,
-    GovernorUpgradeable,
-    AccountRankerUpgradeable
+    GovernorUpgradeable
 {
+    struct ElectionInfo {
+        mapping(address => uint256) votesUsed;
+        mapping(address => uint256) weightReceived;
+        mapping(address => bool) nomineeHasVotes;
+        address[] nomineesWithVotes;
+    }
+
     uint256 private constant WAD = 1e18;
 
     /// @notice Duration of full weight voting (expressed in blocks)
     uint256 private _fullWeightDuration;
 
-    /// @notice Keeps track of the number of votes used by each account for each proposal
-    mapping(uint256 => mapping(address => uint256)) private _votesUsed;
+    /// @notice Target number of members to elect
+    uint256 private _targetMemberCount;
+
+    mapping(uint256 => ElectionInfo) private _elections;
 
     // would this be more useful if reason was included?
     /// @notice Emitted when a vote is cast for a nominee
@@ -143,6 +35,7 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
     /// @param proposalId The id of the proposal
     /// @param nominee The nominee that is receiving the vote
     /// @param votes The amount of votes that were just cast for the nominee
+    /// @param weight The weight of the vote that was just cast for the nominee
     /// @param totalUsedVotes The total amount of votes the voter has used for this proposal
     /// @param totalUsableVotes The total amount of votes the voter has available for this proposal
     event VoteCastForNominee(
@@ -150,18 +43,18 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
         uint256 indexed proposalId,
         address indexed nominee,
         uint256 votes,
+        uint256 weight,
         uint256 totalUsedVotes,
         uint256 totalUsableVotes
     );
 
-    /// @param maxNominees The maximum number of nominees to track
+    /// @param targetMemberCount The maximum number of nominees to track
     /// @param initialFullWeightDuration Duration of full weight voting (expressed in blocks)
     function __SecurityCouncilMemberElectionGovernorCounting_init(
-        uint256 maxNominees,
+        uint256 targetMemberCount,
         uint256 initialFullWeightDuration
     ) internal onlyInitializing {
-        __AccountRanker_init(maxNominees);
-
+        _targetMemberCount = targetMemberCount;
         _fullWeightDuration = initialFullWeightDuration;
     }
 
@@ -182,7 +75,7 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
 
     /// @notice Returns the number of votes used by an account for a given proposal
     function votesUsed(uint256 proposalId, address account) public view returns (uint256) {
-        return _votesUsed[proposalId][account];
+        return _elections[proposalId].votesUsed[account];
     }
 
     function COUNTING_MODE() public pure virtual override returns (string memory) {
@@ -191,7 +84,7 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
 
     /// @notice Returns true if the account has voted any amount for any nominee in the proposal
     function hasVoted(uint256 proposalId, address account) public view override returns (bool) {
-        return _votesUsed[proposalId][account] > 0;
+        return votesUsed(proposalId, account) > 0;
     }
 
     /// @notice Returns true, since there is no minimum quorum
@@ -201,7 +94,7 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
 
     /// @notice Returns true if votes have been cast for at least K nominees
     function _voteSucceeded(uint256 proposalId) internal view override returns (bool) {
-        return isNomineesListFull(proposalId);
+        return _elections[proposalId].nomineesWithVotes.length >= _targetMemberCount;
     }
 
     /// @notice Register a vote by some account for a proposal.
@@ -222,30 +115,43 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
     ) internal virtual override {
         require(params.length > 0, "SecurityCouncilMemberElectionGovernorCountingUpgradeable: Must cast vote with params");
 
-        (address possibleNominee, uint256 votes) = abi.decode(params, (address, uint256));
+        (address nominee, uint256 votes) = abi.decode(params, (address, uint256));
 
         require(
-            _isCompliantNomineeForMostRecentElection(possibleNominee),
+            _isCompliantNomineeForMostRecentElection(nominee),
             "SecurityCouncilMemberElectionGovernorCountingUpgradeable: Nominee is not compliant"
         );
 
-        uint256 prevVotesUsed = _votesUsed[proposalId][account];
+        uint256 weight = votesToWeight(proposalId, block.number, votes);
+
+        require(
+            weight > 0,
+            "SecurityCouncilMemberElectionGovernorCountingUpgradeable: Cannot cast 0 weight vote"
+        );
+
+        ElectionInfo storage election = _elections[proposalId];
+
+        uint256 prevVotesUsed = election.votesUsed[account];
 
         require(
             prevVotesUsed + votes <= availableVotes,
             "SecurityCouncilMemberElectionGovernorCountingUpgradeable: Cannot use more votes than available"
         );
 
-        _votesUsed[proposalId][account] = prevVotesUsed + votes;
-
-        uint256 weight = votesToWeight(proposalId, block.number, votes);
-        _increaseNomineeWeight(proposalId, possibleNominee, weight);
+        election.votesUsed[account] = prevVotesUsed + votes;
+        election.weightReceived[nominee] += weight;
+        
+        if (!election.nomineeHasVotes[nominee]) {
+            election.nomineeHasVotes[nominee] = true;
+            election.nomineesWithVotes.push(nominee);
+        }
 
         emit VoteCastForNominee({
             voter: account,
             proposalId: proposalId,
-            nominee: possibleNominee,
+            nominee: nominee,
             votes: votes,
+            weight: weight,
             totalUsedVotes: prevVotesUsed + votes,
             totalUsableVotes: availableVotes
         });
@@ -294,6 +200,24 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
             WAD * votes * (blockNumber - fullWeightVotingDeadline_) / decreasingWeightDuration / WAD;
 
         return decreaseAmount >= votes ? 0 : votes - decreaseAmount;
+    }
+
+    function topNominees(uint256 proposalId) public view returns (address[] memory) {
+        address[] memory nominees = _elections[proposalId].nomineesWithVotes;
+        uint256[] memory weights = new uint256[](nominees.length);
+        ElectionInfo storage election = _elections[proposalId];
+        for (uint256 i = 0; i < nominees.length; i++) {
+            weights[i] = election.weightReceived[nominees[i]];
+        }
+        return selectTopNominees(nominees, weights, _targetMemberCount);
+    }
+
+    function selectTopNominees(address[] memory nominees, uint256[] memory weights, uint256 k)
+        public
+        pure
+        returns (address[] memory)
+    {
+        revert("TODO");
     }
 
     /// @dev Returns true if the possibleNominee is a compliant nominee for the most recent election

@@ -30,7 +30,7 @@ contract SecurityCouncilMemberElectionGovernor is
     /// @param _token The token used for voting
     /// @param _owner The owner of the governor
     /// @param _votingPeriod The duration of voting on a proposal
-    /// @param _maxNominees The maximum number of nominees that can become members
+    /// @param _targetMemberCount The target number of members to elect
     /// @param _fullWeightDuration Duration of full weight voting (blocks)
     function initialize(
         SecurityCouncilNomineeElectionGovernor _nomineeElectionGovernor,
@@ -38,7 +38,7 @@ contract SecurityCouncilMemberElectionGovernor is
         IVotesUpgradeable _token,
         address _owner,
         uint256 _votingPeriod,
-        uint256 _maxNominees,
+        uint256 _targetMemberCount,
         uint256 _fullWeightDuration
     ) public initializer {
         require(
@@ -49,7 +49,7 @@ contract SecurityCouncilMemberElectionGovernor is
         __Governor_init("SecurityCouncilMemberElectionGovernor");
         __GovernorVotes_init(_token);
         __SecurityCouncilMemberElectionGovernorCounting_init({
-            maxNominees: _maxNominees,
+            targetMemberCount: _targetMemberCount,
             initialFullWeightDuration: _fullWeightDuration
         });
         __GovernorSettings_init(0, _votingPeriod, 0);
