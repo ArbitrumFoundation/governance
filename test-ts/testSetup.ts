@@ -41,8 +41,6 @@ import * as fs from "fs";
 import { ArbSdkError } from "@arbitrum/sdk/dist/lib/dataEntities/errors";
 import { parseEther } from "ethers/lib/utils";
 import { l1Networks, l2Networks } from "@arbitrum/sdk/dist/lib/dataEntities/networks";
-import { L2GatewayRouter__factory } from "@arbitrum/sdk/dist/lib/abi/factories/L2GatewayRouter__factory";
-import { wait } from "../src-ts/utils";
 
 dotenv.config();
 
@@ -54,6 +52,25 @@ export const config = {
   ethKey: process.env["ETH_KEY"] as string,
 };
 
+function getDeploymentData(): string {
+  const dockerNames = [
+    'nitro_sequencer_1',
+    'nitro-sequencer-1',
+    'nitro-testnode-sequencer-1',
+    'nitro-testnode_sequencer_1',
+  ]
+  for (const dockerName of dockerNames) {
+    try {
+      return execSync(
+        'docker exec ' + dockerName + ' cat /config/deployment.json'
+      ).toString()
+    } catch {
+      // empty on purpose
+    }
+  }
+  throw new Error('nitro-testnode sequencer not found')
+}
+
 export const getCustomNetworks = async (
   l1Url: string,
   l2Url: string
@@ -63,16 +80,7 @@ export const getCustomNetworks = async (
 }> => {
   const l1Provider = new JsonRpcProvider(l1Url);
   const l2Provider = new JsonRpcProvider(l2Url);
-  let deploymentData: string;
-  try {
-    deploymentData = execSync(
-      "docker exec nitro_sequencer_1 cat /config/deployment.json"
-    ).toString();
-  } catch (e) {
-    deploymentData = execSync(
-      "docker exec nitro-sequencer-1 cat /config/deployment.json"
-    ).toString();
-  }
+  const deploymentData = getDeploymentData();
   const parsedDeploymentData = JSON.parse(deploymentData) as {
     bridge: string;
     inbox: string;
@@ -116,6 +124,7 @@ export const getCustomNetworks = async (
     partnerChainID: l1NetworkInfo.chainId,
     retryableLifetimeSeconds: 7 * 24 * 60 * 60,
     nitroGenesisBlock: 0,
+    nitroGenesisL1Block: 0,
     depositTimeout: 900000,
   };
   return {

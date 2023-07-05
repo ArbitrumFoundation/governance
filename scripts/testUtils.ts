@@ -44,6 +44,24 @@ export async function assert(condition: Boolean, message: string) {
   }
 }
 
+
+const _getAddressAtStorageSlot = async (contractAddress: string, provider: Provider, storageSlotBytes: string) => {
+  const storageValue = await provider.getStorageAt(
+    contractAddress,
+    storageSlotBytes
+  );
+
+  if (!storageValue) {
+    return "";
+  }
+
+  // remove excess bytes 
+  const formatAddress = storageValue.substring(0, 2) + storageValue.substring(26);
+
+  // return address as checksum address 
+  return ethers.utils.getAddress(formatAddress);
+}
+
 /**
  * Gets the proxy owner by reading storage
  *
@@ -52,21 +70,18 @@ export async function assert(condition: Boolean, message: string) {
  * @returns
  */
 export async function getProxyOwner(contractAddress: string, provider: Provider) {
-  // gets address in format like 0x000000000000000000000000a898b332e65d0cc9cb538495ff145983806d8453
-  const ownerStorageValue = await provider.getStorageAt(
-    contractAddress,
-    "0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103"
-  );
+  return _getAddressAtStorageSlot(contractAddress, provider,"0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103")
+}
 
-  if (!ownerStorageValue) {
-    return "";
-  }
-
-  // remove execess bytes -> 0xa898b332e65d0cc9cb538495ff145983806d8453
-  const formatAddress = ownerStorageValue.substring(0, 2) + ownerStorageValue.substring(26);
-
-  // return address as checksum address -> 0xA898b332e65D0cc9CB538495FF145983806D8453
-  return ethers.utils.getAddress(formatAddress);
+/**
+ * Gets implementation by reading storage
+ *
+ * @param contractAddress
+ * @param provider
+ * @returns
+ */
+ export async function getProxyImplementation(contractAddress: string, provider: Provider) {
+  return _getAddressAtStorageSlot(contractAddress, provider, "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc")
 }
 
 export type Recipients = { readonly [key: string]: BigNumber };

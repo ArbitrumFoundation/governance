@@ -27,6 +27,7 @@ Governance is responsible for the following assets:
 - **Arb One L2 parameters** - All Arbitrum chains have a chain "owner" that can set certain parameters. Read more [here](https://github.com/OffchainLabs/nitro/blob/master/precompiles/ArbOwner.go). Governance has control over the chain owner.
 - **Arb Nova L2 parameters** - same as Arb One L2 parameters.
 - **Governance contracts** - Governance has the ability to upgrade and modify itself.
+- **Arbitrum Foundation Administrative Budget Wallet** — see [here](./foundation-vesting-wallet.md) for info.
 
 ## Proposal types
 
@@ -144,7 +145,7 @@ The contracts in the diagram encode ownership chains that ensure only governance
 
 This means that forming a proposal involves working backwards from the target, wrapping the data multiple times to define the path the upgrade will take.
 
-You can read more about how the path is encoded in the [proposal lifecycle document](./docs/proposal_lifecycle_example.md)
+You can read more about how the path is encoded in the [proposal lifecycle document](./proposal_lifecycle_example.md)
 
 ## Proposal Cancellation 
 Both governor contracts have the affordance to cancel proposals scheduled in the L2 Timelock. The Security Council can likewise cancel proposals [via calling L2ArbitrumGovernor.relay](src/gov-action-contracts/governance/CancelTimelockOperation.sol). Note that although the core-governor Security Council has the affordance to cancel proposals in the L2 timelock via calling `cancel` directly, for clarity and consistency, it should use the aforementioned `relay` method. 
