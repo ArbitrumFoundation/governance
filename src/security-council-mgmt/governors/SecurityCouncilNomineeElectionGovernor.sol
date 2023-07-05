@@ -9,6 +9,8 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 import "@openzeppelin/contracts-upgradeable/utils/StringsUpgradeable.sol";
 
+import "lib/solady/src/utils/DateTimeLib.sol";
+
 import "./SecurityCouncilMemberElectionGovernor.sol";
 
 import "../interfaces/ISecurityCouncilManager.sol";
@@ -34,9 +36,7 @@ contract SecurityCouncilNomineeElectionGovernor is
     // todo: these parameters could be reordered to make more sense
     /// @notice parameters for `initialize`
     /// @param targetNomineeCount The target number of nominees to elect (6)
-    /// @param firstCohort Cohort of the first election
-    /// @param firstNominationStartTime Timestamp of the first election
-    /// @param nominationFrequency Delay between elections (expressed in seconds)
+    /// @param firstNominationStartDate First election start date
     /// @param nomineeVettingDuration Duration of the nominee vetting period (expressed in blocks)
     /// @param nomineeVetter Address of the nominee vetter
     /// @param securityCouncilManager Security council manager contract
@@ -46,9 +46,7 @@ contract SecurityCouncilNomineeElectionGovernor is
     /// @param votingPeriod Duration of the voting period (expressed in blocks)
     struct InitParams {
         uint256 targetNomineeCount;
-        Cohort firstCohort;
-        uint256 firstNominationStartTime;
-        uint256 nominationFrequency;
+        Date firstNominationStartDate;
         uint256 nomineeVettingDuration;
         address nomineeVetter;
         ISecurityCouncilManager securityCouncilManager;
@@ -59,17 +57,19 @@ contract SecurityCouncilNomineeElectionGovernor is
         uint256 votingPeriod;
     }
 
+    /// @notice Date struct for convenience
+    struct Date {
+        uint256 year;
+        uint256 month;
+        uint256 day;
+        uint256 hour;
+    }
+
     /// @notice The target number of nominees to elect (6)
     uint256 public targetNomineeCount;
 
-    /// @notice Cohort of the first election
-    Cohort public firstCohort;
-
-    /// @notice Timestamp of the first election
-    uint256 public firstNominationStartTime;
-
-    /// @notice Delay between elections (expressed in seconds)
-    uint256 public nominationFrequency;
+    /// @notice First election start date
+    Date public firstNominationStartDate;
 
     /// @notice Duration of the nominee vetting period (expressed in blocks)
     /// @dev    This is the amount of time after voting ends that the nomineeVetter can exclude noncompliant nominees
@@ -110,6 +110,34 @@ contract SecurityCouncilNomineeElectionGovernor is
 
     /// @notice Initializes the governor
     function initialize(InitParams memory params) public initializer {
+        require(
+            DateTimeLib.isSupportedDateTime({
+                year: params.firstNominationStartDate.year,
+                month: params.firstNominationStartDate.month,
+                day: params.firstNominationStartDate.day,
+                hour: params.firstNominationStartDate.hour,
+                minute: 0,
+                second: 0
+            }),
+            "SecurityCouncilNomineeElectionGovernor: Invalid first nomination start date"
+        );
+
+        // make sure the start date is in the future
+        uint256 startTimestamp = DateTimeLib.dateTimeToTimestamp({
+            year: params.firstNominationStartDate.year,
+            month: params.firstNominationStartDate.month,
+            day: params.firstNominationStartDate.day,
+            hour: params.firstNominationStartDate.hour,
+            minute: 0,
+            second: 0
+        });
+
+        require(
+            startTimestamp > block.timestamp,
+            "SecurityCouncilNomineeElectionGovernor: First nomination start date must be in the future"
+        );
+
+
         __Governor_init("Security Council Nominee Election Governor");
         __GovernorVotes_init(params.token);
         __SecurityCouncilNomineeElectionGovernorCounting_init();
@@ -118,9 +146,7 @@ contract SecurityCouncilNomineeElectionGovernor is
         _transferOwnership(params.owner);
 
         targetNomineeCount = params.targetNomineeCount;
-        firstCohort = params.firstCohort;
-        firstNominationStartTime = params.firstNominationStartTime;
-        nominationFrequency = params.nominationFrequency;
+        firstNominationStartDate = params.firstNominationStartDate;
         nomineeVettingDuration = params.nomineeVettingDuration;
         nomineeVetter = params.nomineeVetter;
         securityCouncilManager = params.securityCouncilManager;
@@ -185,8 +211,10 @@ contract SecurityCouncilNomineeElectionGovernor is
     ///         Can be called by anyone every `nominationFrequency` seconds.
     /// @return proposalId The id of the proposal
     function createElection() external returns (uint256 proposalId) {
+        uint256 thisElectionStartTs = electionToTimestamp(firstNominationStartDate, electionCount);
+
         require(
-            block.timestamp >= firstNominationStartTime + nominationFrequency * electionCount,
+            block.timestamp >= thisElectionStartTs,
             "SecurityCouncilNomineeElectionGovernor: Not enough time has passed since the last election"
         );
 
@@ -339,9 +367,33 @@ contract SecurityCouncilNomineeElectionGovernor is
         return contenders[proposalId][possibleContender];
     }
 
+    /// @notice Returns the start timestamp of an election
+    /// @param firstElection The start date of the first election
+    /// @param electionIndex The index of the election
+    function electionToTimestamp(Date memory firstElection, uint256 electionIndex) public pure returns (uint256) {
+        // subtract one to make month 0 indexed
+        uint256 month = firstElection.month - 1;
+
+        month += 6 * electionIndex;
+        uint256 year = firstElection.year + month / 12;
+        month = month % 12;
+
+        // add one to make month 1 indexed
+        month += 1;
+
+        return DateTimeLib.dateTimeToTimestamp({
+            year: year,
+            month: month,
+            day: firstElection.day,
+            hour: firstElection.hour,
+            minute: 0,
+            second: 0
+        });
+    }
+
     /// @notice Returns the cohort for a given `electionIndex`
-    function electionIndexToCohort(uint256 electionIndex) public view returns (Cohort) {
-        return Cohort((uint256(firstCohort) + electionIndex) % 2);
+    function electionIndexToCohort(uint256 electionIndex) public pure returns (Cohort) {
+        return Cohort(electionIndex % 2);
     }
 
     function cohortOfMostRecentElection() external view returns (Cohort) {
