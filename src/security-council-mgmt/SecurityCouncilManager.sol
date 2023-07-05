@@ -194,47 +194,15 @@ contract SecurityCouncilManager is
         });
     }
 
-    /// @notice Verify signature over data
-    /// @param data         Signed data
-    /// @param signature    Signature over the data
-    /// @param account      Signer address
-    /// @return true        If signature is valid and from account
-    function _verify(bytes32 data, bytes memory signature, address account)
-        public
-        pure
-        returns (bool)
-    {
-        return data.toEthSignedMessageHash().recover(signature) == account;
-    }
-
-    /// @notice Get data to sign for a key rotation. Uses an incremented nonce
-    /// @param _currentAddress  Address to rotate out
-    /// @param _newAddress      Address to rotate in
-    function getRotateDataToSign(address _currentAddress, address _newAddress)
-        public
-        view
-        returns (bytes32)
-    {
-        return keccak256(abi.encodePacked(_currentAddress, _newAddress, updateNonce));
-    }
-
-    /// @notice Security council member can rotate out their address for a new one; _currentAddress and _newAddress are of the same idendity.
+    /// @notice Security council member can rotate out their address for a new one; _currentAddress and _newAddress are of the same identity.
     ///         Rotation must be initiated by the security council, and member rotating out must give explicit
     ///         consent via signature
     /// @param _currentAddress  Address to rotate out
     /// @param _newAddress      Address to rotate in
-    /// @param _signature       Signature from _currentAddress
-    function rotateMember(address _currentAddress, address _newAddress, bytes memory _signature)
+    function rotateMember(address _currentAddress, address _newAddress)
         external
         onlyRole(MEMBER_ROTATOR_ROLE)
     {
-        // TODO: double check that this makes sense
-        // CHRIS: TODO: this should use a different nonce - since otherwise a different update might invalidate the rotation
-        //              however I still advocate for removing this method
-        bytes32 data = getRotateDataToSign(_currentAddress, _newAddress);
-        require(
-            _verify(data, _signature, _currentAddress), "SecurityCouncilManager: invalid signature"
-        );
         Cohort cohort = _removeMemberFromCohortArray(_currentAddress);
         _addMemberToCohortArray(_newAddress, cohort);
         _scheduleUpdate();
