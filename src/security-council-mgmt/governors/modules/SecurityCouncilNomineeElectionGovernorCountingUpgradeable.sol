@@ -101,32 +101,30 @@ abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is
         uint256 prevVotesReceived = election.votesReceived[contender];
         uint256 votesThreshold = quorum(proposalSnapshot(proposalId));
 
-        emit VoteCastForContender({
-            proposalId: proposalId,
-            voter: account,
-            contender: contender,
-            votes: votes,
-            totalUsedVotes: prevVotesUsed + votes,
-            totalUsableVotes: weight
-        });
+        uint256 actualVotes = votes;
 
-        if (prevVotesReceived + votes < votesThreshold) {
-            // we didn't push the contender over the line, so just add the votes
-            election.votesUsed[account] = prevVotesUsed + votes;
-            election.votesReceived[contender] = prevVotesReceived + votes;
-        } else {
+        if (prevVotesReceived + votes >= votesThreshold) {
             // we pushed the contender over the line
             // we should only give the contender enough votes to get to the line so that we don't waste votes
-            uint256 votesNeeded = votesThreshold - prevVotesReceived;
-
-            election.votesUsed[account] = prevVotesUsed + votesNeeded;
-            election.votesReceived[contender] = prevVotesReceived + votesNeeded;
+            actualVotes = votesThreshold - prevVotesReceived;
 
             // push the contender to the nominees
             election.nominees.push(contender);
 
             emit NewNominee(proposalId, contender);
         }
+
+        election.votesUsed[account] = prevVotesUsed + actualVotes;
+        election.votesReceived[contender] = prevVotesReceived + actualVotes;
+
+        emit VoteCastForContender({
+            proposalId: proposalId,
+            voter: account,
+            contender: contender,
+            votes: actualVotes,
+            totalUsedVotes: prevVotesUsed + actualVotes,
+            totalUsableVotes: weight
+        });
     }
 
     /// @notice Returns true if the contender has enough votes to be a nominee
