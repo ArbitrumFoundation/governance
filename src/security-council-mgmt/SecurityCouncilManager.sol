@@ -125,8 +125,7 @@ contract SecurityCouncilManager is
         onlyRole(ELECTION_EXECUTOR_ROLE)
     {
         require(_newCohort.length == 6, "SecurityCouncilManager: invalid cohort length");
-        // TODO: ensure no duplicates accross cohorts; this should be enforced in nomination process. If there are duplicates, this call will revert in the Gnosis safe contract
-        //       probably be better to error here though, fail early
+        // TODO: ensure no duplicates accross cohorts; this should be enforced in nomination process.
         if (_cohort == Cohort.FIRST) {
             firstCohort = _newCohort;
         } else if (_cohort == Cohort.SECOND) {
