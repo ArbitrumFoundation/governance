@@ -248,41 +248,36 @@ contract L1ArbitrumTimelockTest is Test {
             vals[0] = val2;
         }
         bytes[] memory payloads = new bytes[](2);
-        {bytes memory data = abi.encode(
-            rData.inbox,
-            rData.l2Target,
-            rData.l2Value,
-            rData.gasLimit,
-            rData.maxFeePerGas,
-            rData.data
-        );
-        bytes memory data2 = abi.encode(
-            rData2.inbox,
-            rData2.l2Target,
-            rData2.l2Value,
-            rData2.gasLimit,
-            rData2.maxFeePerGas,
-            rData2.data
-        );
-        payloads[0] = data;
-        payloads[1] = data2;}
+        {
+            bytes memory data = abi.encode(
+                rData.inbox,
+                rData.l2Target,
+                rData.l2Value,
+                rData.gasLimit,
+                rData.maxFeePerGas,
+                rData.data
+            );
+            bytes memory data2 = abi.encode(
+                rData2.inbox,
+                rData2.l2Target,
+                rData2.l2Value,
+                rData2.gasLimit,
+                rData2.maxFeePerGas,
+                rData2.data
+            );
+            payloads[0] = data;
+            payloads[1] = data2;
+        }
         bytes32 salt = keccak256(abi.encode("hi"));
 
         address[] memory tos = new address[](2);
-        
+
         tos[0] = l1Timelock.RETRYABLE_TICKET_MAGIC();
         tos[1] = l1Timelock.RETRYABLE_TICKET_MAGIC();
 
         mockActiveOutbox(outbox, l2Timelock);
         vm.prank(bridge);
-        l1Timelock.scheduleBatch(
-            tos, 
-            vals, 
-            payloads, 
-            0, 
-            salt, 
-            minDelay
-        );
+        l1Timelock.scheduleBatch(tos, vals, payloads, 0, salt, minDelay);
 
         vm.warp(block.timestamp + minDelay);
 
@@ -291,9 +286,8 @@ contract L1ArbitrumTimelockTest is Test {
 
         // set up the sender
         address payable sender = payable(address(678));
-        uint256 execVal = (submissionFee * 2) + 
-                          (rData.maxFeePerGas * rData.gasLimit) + 
-                          (rData2.maxFeePerGas * rData2.gasLimit) + 13;
+        uint256 execVal = (submissionFee * 2) + (rData.maxFeePerGas * rData.gasLimit)
+            + (rData2.maxFeePerGas * rData2.gasLimit) + 13;
         sender.transfer(execVal);
 
         // l2value has to come from the timelock itself
