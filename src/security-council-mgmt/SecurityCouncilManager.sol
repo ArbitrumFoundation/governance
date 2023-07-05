@@ -119,10 +119,7 @@ contract SecurityCouncilManager is
         }
     }
 
-    /// @notice Replaces a whole cohort.
-    /// @dev    Initiaties cross chain messages to update the individual Security Councils
-    /// @param _newCohort   New cohort members to replace existing cohort. Must have 6 members.
-    /// @param _cohort      Cohort to replace.
+    /// @inheritdoc ISecurityCouncilManager
     function replaceCohort(address[] memory _newCohort, Cohort _cohort)
         external
         onlyRole(ELECTION_EXECUTOR_ROLE)
@@ -168,32 +165,21 @@ contract SecurityCouncilManager is
         revert("SecurityCouncilManager: member to remove not found");
     }
 
-    /// @notice Add a member to the specified cohort
-    ///         Cohorts cannot have more than 6 members, so the cohort must have less than 6 in order to call this.
-    ///         New member cannot already be a member of either cohort
-    /// @dev    Initiaties cross chain messages to update the individual Security Councils
-    /// @param _newMember   New member to add
-    /// @param _cohort      Cohort to add member to
+    /// @inheritdoc ISecurityCouncilManager
     function addMember(address _newMember, Cohort _cohort) external onlyRole(MEMBER_ADDER_ROLE) {
         _addMemberToCohortArray(_newMember, _cohort);
         _scheduleUpdate();
         emit MemberAdded(_newMember, _cohort);
     }
 
-    /// @notice Remove a member
-    /// @dev    Searches both cohorts for the member.
-    ///         Initiaties cross chain messages to update the individual Security Councils
-    /// @param _member  Member to remove
+    /// @inheritdoc ISecurityCouncilManager
     function removeMember(address _member) external onlyRole(MEMBER_REMOVER_ROLE) {
         Cohort cohort = _removeMemberFromCohortArray(_member);
         _scheduleUpdate();
         emit MemberRemoved({member: _member, cohort: cohort});
     }
 
-    /// @notice Replace a member in a council - equivalent to removing a member, then adding another in its place
-    /// @dev    Initiaties cross chain messages to update the individual Security Councils
-    /// @param _memberToReplace Security Council member to remove
-    /// @param _newMember       Security Council member to add in their place
+    /// @inheritdoc ISecurityCouncilManager
     function replaceMember(address _memberToReplace, address _newMember)
         external
         onlyRole(MEMBER_REPLACER_ROLE)
@@ -265,7 +251,7 @@ contract SecurityCouncilManager is
             "SecurityCouncilManager: max security council's reached"
         );
         require(
-            _securityCouncilData.updateActionAddr != address(0),
+            _securityCouncilData.updateAction != address(0),
             "SecurityCouncilManager: zero updateAction"
         );
         require(
@@ -281,14 +267,13 @@ contract SecurityCouncilManager is
         emit SecurityCouncilAdded(
             _securityCouncilData.securityCouncil,
             _securityCouncilData.upgradeExecutor,
-            _securityCouncilData.updateActionAddr,
+            _securityCouncilData.updateAction,
             _securityCouncilData.inbox,
             securityCouncils.length
         );
     }
 
-    /// @notice Add new security council to be included in security council management system.
-    /// @param _securityCouncilData Security council info
+    /// @inheritdoc ISecurityCouncilManager
     function addSecurityCouncil(SecurityCouncilData memory _securityCouncilData)
         external
         onlyRole(DEFAULT_ADMIN_ROLE)
@@ -297,8 +282,7 @@ contract SecurityCouncilManager is
         _addSecurityCouncil(_securityCouncilData);
     }
 
-    /// @notice Remove security council from management system.
-    /// @param _index   Index in securityCouncils of data to be removed
+    /// @inheritdoc ISecurityCouncilManager
     function removeSecurityCouncil(uint256 _index) external onlyRole(DEFAULT_ADMIN_ROLE) {
         // CHRIS: TODO: I wonder if this should be based on address, or some other identifying behaviour?
         SecurityCouncilData storage securityCouncilToRemove = securityCouncils[_index];
@@ -310,7 +294,7 @@ contract SecurityCouncilManager is
         emit SecurityCouncilRemoved(
             securityCouncilToRemove.securityCouncil,
             securityCouncilToRemove.upgradeExecutor,
-            securityCouncilToRemove.updateActionAddr,
+            securityCouncilToRemove.updateAction,
             securityCouncilToRemove.inbox,
             securityCouncils.length
         );
@@ -321,8 +305,7 @@ contract SecurityCouncilManager is
         emit L1TimelockDelaySet(_minL1TimelockDelay);
     }
 
-    /// @notice Set delay for messages to the L1 timelock. This should only be used to keep the minTimelockDelay value in sync with L1 (i.e., if the L1 side is updated, this should be too)
-    /// @param _minL1TimelockDelay new  L1 timelock delay value
+    /// @inheritdoc ISecurityCouncilManager
     function setMinL1TimelockDelay(uint256 _minL1TimelockDelay)
         external
         onlyRole(DEFAULT_ADMIN_ROLE)
@@ -330,12 +313,12 @@ contract SecurityCouncilManager is
         _setMinL1TimelockDelay(_minL1TimelockDelay);
     }
 
-    /// @notice All members of the first cohort
+    /// @inheritdoc ISecurityCouncilManager
     function getFirstCohort() external view returns (address[] memory) {
         return firstCohort;
     }
 
-    /// @notice All members of the second cohort
+    /// @inheritdoc ISecurityCouncilManager
     function getSecondCohort() external view returns (address[] memory) {
         return secondCohort;
     }
@@ -371,7 +354,7 @@ contract SecurityCouncilManager is
             bytes memory upgradeExecutorCallData = abi.encodeWithSelector(
                 UpgradeExecutor.execute.selector,
                 // execute will delegatecall the update action address
-                securityCouncilData.updateActionAddr,
+                securityCouncilData.updateAction,
                 // call the perform function on the action address
                 abi.encodeWithSelector(
                     SecurityCouncilUpgradeAction.perform.selector,
