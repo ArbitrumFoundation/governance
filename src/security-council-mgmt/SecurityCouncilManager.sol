@@ -302,7 +302,7 @@ contract SecurityCouncilManager is
     function _scheduleUpdate() internal {
         // always update the nonce - this is used to ensure that proposals in the timelocks are unique
         updateNonce++;
-        // TODO: enforce ordering (on the L1 side) with a nonce? is no contract level ordering guarunee for updates ok? 
+        // TODO: enforce ordering (on the L1 side) with a nonce? is no contract level ordering guarunee for updates ok?
 
         // build a union array of security council members
         address[] memory newMembers = new address[](firstCohort.length + secondCohort.length);
