@@ -61,23 +61,6 @@ abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is
         return true;
     }
 
-    function _castVote(
-        uint256 proposalId,
-        address account,
-        uint8 support,
-        string memory reason,
-        bytes memory params
-    ) internal virtual override returns (uint256) {
-        require(params.length > 0, "SecurityCouncilNomineeElectionGovernorCountingUpgradeable: Must provide params to cast a vote");
-        return super._castVote(
-            proposalId,
-            account,
-            support,
-            reason,
-            params
-        );
-    }
-
     /// @dev This function is responsible for counting votes when they are cast.
     ///      If this vote pushes the contender over the line, then the contender is added to the nominees
     ///      and only the necessary amount of votes will be deducted from the voter.
@@ -92,6 +75,8 @@ abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is
         uint256 weight,
         bytes memory params
     ) internal virtual override {
+        require(params.length > 0, "SecurityCouncilNomineeElectionGovernorCountingUpgradeable: Must cast vote with params");
+
         // let's say params is (address contender, uint256 votes)
         (address contender, uint256 votes) = abi.decode(params, (address, uint256));
 
