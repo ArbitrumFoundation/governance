@@ -77,8 +77,11 @@ contract SecurityCouncilUpgradeAction {
 
     /// @notice Execute provided operation via gnosis safe's trusted execTransactionFromModule entry point
     function _execFromModule(IGnosisSafe securityCouncil, bytes memory data) internal {
-        securityCouncil.execTransactionFromModule(
-            address(securityCouncil), 0, data, OpEnum.Operation.Call
+        require(
+            securityCouncil.execTransactionFromModule(
+                address(securityCouncil), 0, data, OpEnum.Operation.Call
+            ),
+            "SecurityCouncilUpgradeAction: execTransactionFromModule failed"
         );
     }
 }
