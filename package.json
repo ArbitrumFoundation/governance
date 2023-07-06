@@ -14,6 +14,8 @@
     "gen:recipients": "ts-node ./scripts/genRecipients.ts",
     "deploy:governance": "ts-node ./scripts/governanceDeployer.ts",
     "deploy:note-store": "ts-node ./scripts/deployNoteStore.ts",
+    "deploy:vested-wallets": "ts-node ./scripts/vestedWalletsDeployer.ts",
+    "verify:vested-wallets": "ts-node ./scripts/vestedWalletsDeploymentVerifier.ts",
     "verify:governance": "ts-node ./scripts/governanceDeploymentVerifier.ts",
     "allocate:tokens": "ts-node ./scripts/tokenAllocator.ts",
     "allocate:dao:tokens": "ts-node ./scripts/tokenDaoAllocator.ts",
