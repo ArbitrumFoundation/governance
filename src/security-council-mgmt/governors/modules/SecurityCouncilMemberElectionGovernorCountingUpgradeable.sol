@@ -3,6 +3,8 @@ pragma solidity 0.8.16;
 
 import "@openzeppelin/contracts-upgradeable/governance/GovernorUpgradeable.sol";
 
+import "lib/solady/src/utils/LibSort.sol";
+
 /// @title  SecurityCouncilMemberElectionGovernorCountingUpgradeable
 /// @notice Counting module for the SecurityCouncilMemberElectionGovernor.
 ///         Voters can spread their votes across multiple nominees.
@@ -202,6 +204,7 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
         return decreaseAmount >= votes ? 0 : votes - decreaseAmount;
     }
 
+    // gas usage is probably a little bit more than (4200 + 1786)n. With 500 that's 2,993,000
     function topNominees(uint256 proposalId) public view returns (address[] memory) {
         address[] memory nominees = _elections[proposalId].nomineesWithVotes;
         uint256[] memory weights = new uint256[](nominees.length);
@@ -212,12 +215,43 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
         return selectTopNominees(nominees, weights, _targetMemberCount);
     }
 
-    function selectTopNominees(address[] memory nominees, uint256[] memory weights, uint256 k)
-        public
-        pure
-        returns (address[] memory)
-    {
-        revert("TODO");
+    // gas usage with k = 6, n = nominees.length is approx 1786n. with 500 it is 902,346
+    // these numbers are for the worst case scenario where the nominees are in ascending order
+    // these numbers also include memory expansion cost (i think) which is quadratic but small
+    function selectTopNominees(address[] memory nominees, uint256[] memory weights, uint256 k) public pure returns (address[] memory) {
+        require(
+            nominees.length == weights.length,
+            "SecurityCouncilMemberElectionGovernorCountingUpgradeable: Nominees and weights must have same length"
+        );
+        
+        uint256[] memory topNomineesPacked = new uint256[](k);
+        uint256 topNomineesPackedLength = 0;
+
+        for (uint16 i = 0; i < nominees.length; i++) {
+            uint256 weight = weights[i];
+            uint256 packed = (weight << 16) | i;
+
+            if (topNomineesPackedLength < k - 1) {
+                topNomineesPacked[topNomineesPackedLength] = packed;
+                topNomineesPackedLength++;
+            } 
+            else if (topNomineesPackedLength == k - 1) {
+                topNomineesPacked[topNomineesPackedLength] = packed;
+                topNomineesPackedLength++;
+                LibSort.insertionSort(topNomineesPacked);
+            }
+            else if (topNomineesPacked[0] < packed) {
+                topNomineesPacked[0] = packed;
+                LibSort.insertionSort(topNomineesPacked);
+            }
+        }
+
+        address[] memory topNomineesAddresses = new address[](k);
+        for (uint256 i = 0; i < k; i++) {
+            topNomineesAddresses[i] = nominees[uint16(topNomineesPacked[i])];
+        }
+
+        return topNomineesAddresses;
     }
 
     /// @dev Returns true if the possibleNominee is a compliant nominee for the most recent election
