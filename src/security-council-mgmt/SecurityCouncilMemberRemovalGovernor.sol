@@ -62,14 +62,14 @@ contract SecurityCouncilMemberRemovalGovernor is L2ArbitrumGovernor {
     /// @notice set numerator for removal vote to succeed; only DAO can call
     /// @param _voteSuccessNumerator new numberator value
     function setVoteSuccessNumerator(uint256 _voteSuccessNumerator) public onlyOwner {
-        require(
-            _voteSuccessNumerator > 0,
-            "SecurityCouncilMemberRemovalGovernor: _voteSuccessNumerator  cannot be zero"
-        );
         _setVoteSuccessNumerator(_voteSuccessNumerator);
     }
 
     function _setVoteSuccessNumerator(uint256 _voteSuccessNumerator) internal {
+        require(
+            _voteSuccessNumerator > 0 && _voteSuccessNumerator <= voteSuccessDenominator,
+            "SecurityCouncilMemberRemovalGovernor: _voteSuccessNumerator  cannot be zero"
+        );
         voteSuccessNumerator = _voteSuccessNumerator;
         emit VoteSuccessNumeratorSet(_voteSuccessNumerator);
     }
