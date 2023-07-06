@@ -132,7 +132,6 @@ contract SecurityCouncilNomineeElectionGovernor is
             "SecurityCouncilNomineeElectionGovernor: First nomination start date must be in the future"
         );
 
-
         __Governor_init("Security Council Nominee Election Governor");
         __GovernorVotes_init(params.token);
         __SecurityCouncilNomineeElectionGovernorCounting_init();
@@ -267,9 +266,8 @@ contract SecurityCouncilNomineeElectionGovernor is
                 ? securityCouncilManager.getFirstCohort()
                 : securityCouncilManager.getSecondCohort();
 
-            address[] memory nonExcludedCurrentMembers = SecurityCouncilMgmtUtils.filterAddressesWithExcludeList(
-                currentMembers, excluded[proposalId]
-            );
+            address[] memory nonExcludedCurrentMembers = SecurityCouncilMgmtUtils
+                .filterAddressesWithExcludeList(currentMembers, excluded[proposalId]);
 
             compliantNominees = SecurityCouncilMgmtUtils.randomAddToSet({
                 pickFrom: nonExcludedCurrentMembers,
@@ -370,7 +368,11 @@ contract SecurityCouncilNomineeElectionGovernor is
     /// @notice Returns the start timestamp of an election
     /// @param firstElection The start date of the first election
     /// @param electionIndex The index of the election
-    function electionToTimestamp(Date memory firstElection, uint256 electionIndex) public pure returns (uint256) {
+    function electionToTimestamp(Date memory firstElection, uint256 electionIndex)
+        public
+        pure
+        returns (uint256)
+    {
         // subtract one to make month 0 indexed
         uint256 month = firstElection.month - 1;
 

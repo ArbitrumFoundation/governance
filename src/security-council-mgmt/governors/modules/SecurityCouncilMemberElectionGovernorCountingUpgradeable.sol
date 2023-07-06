@@ -171,9 +171,7 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
     }
 
     /// @notice Set the full weight duration numerator and total duration denominator
-    function setFullWeightDuration(
-        uint256 newFullWeightDuration
-    ) public onlyGovernance {
+    function setFullWeightDuration(uint256 newFullWeightDuration) public onlyGovernance {
         require(
             newFullWeightDuration <= votingPeriod(),
             "SecurityCouncilMemberElectionGovernorCountingUpgradeable: Full weight duration must be <= votingPeriod"
@@ -220,7 +218,10 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
         uint256 availableVotes,
         bytes memory params
     ) internal virtual override {
-        require(params.length == 64, "SecurityCouncilMemberElectionGovernorCountingUpgradeable: Must cast vote with abi encoded (nominee, votes)");
+        require(
+            params.length == 64,
+            "SecurityCouncilMemberElectionGovernorCountingUpgradeable: Must cast vote with abi encoded (nominee, votes)"
+        );
 
         (address possibleNominee, uint256 votes) = abi.decode(params, (address, uint256));
 
