@@ -132,7 +132,6 @@ contract SecurityCouncilNomineeElectionGovernor is
             "SecurityCouncilNomineeElectionGovernor: First nomination start date must be in the future"
         );
 
-
         __Governor_init("Security Council Nominee Election Governor");
         __GovernorVotes_init(params.token);
         __SecurityCouncilNomineeElectionGovernorCounting_init();
@@ -263,13 +262,12 @@ contract SecurityCouncilNomineeElectionGovernor is
         if (compliantNomineeCount < targetNomineeCount) {
             // there are too few compliant nominees
             // we should randomly select some members from the current cohort to add to the list
-            address[] memory currentMembers = cohort == Cohort.SEPTEMBER
-                ? securityCouncilManager.getSeptemberCohort()
-                : securityCouncilManager.getMarchCohort();
+            address[] memory currentMembers = cohort == Cohort.FIRST
+                ? securityCouncilManager.getFirstCohort()
+                : securityCouncilManager.getSecondCohort();
 
-            address[] memory nonExcludedCurrentMembers = SecurityCouncilMgmtUtils.filterAddressesWithExcludeList(
-                currentMembers, excluded[proposalId]
-            );
+            address[] memory nonExcludedCurrentMembers = SecurityCouncilMgmtUtils
+                .filterAddressesWithExcludeList(currentMembers, excluded[proposalId]);
 
             compliantNominees = SecurityCouncilMgmtUtils.randomAddToSet({
                 pickFrom: nonExcludedCurrentMembers,
@@ -301,9 +299,9 @@ contract SecurityCouncilNomineeElectionGovernor is
         // check to make sure the contender is not part of the other cohort
         Cohort cohort = electionIndexToCohort(electionCount - 1);
 
-        address[] memory oppositeCohortCurrentMembers = cohort == Cohort.MARCH
-            ? securityCouncilManager.getSeptemberCohort()
-            : securityCouncilManager.getMarchCohort();
+        address[] memory oppositeCohortCurrentMembers = cohort == Cohort.SECOND
+            ? securityCouncilManager.getFirstCohort()
+            : securityCouncilManager.getSecondCohort();
 
         require(
             !SecurityCouncilMgmtUtils.isInArray(msg.sender, oppositeCohortCurrentMembers),
@@ -370,7 +368,11 @@ contract SecurityCouncilNomineeElectionGovernor is
     /// @notice Returns the start timestamp of an election
     /// @param firstElection The start date of the first election
     /// @param electionIndex The index of the election
-    function electionToTimestamp(Date memory firstElection, uint256 electionIndex) public pure returns (uint256) {
+    function electionToTimestamp(Date memory firstElection, uint256 electionIndex)
+        public
+        pure
+        returns (uint256)
+    {
         // subtract one to make month 0 indexed
         uint256 month = firstElection.month - 1;
 

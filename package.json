@@ -26,12 +26,14 @@
     "execute:ownership:transfer": "ts-node ./scripts/executeLocalProtocolOwnershipTransfer.ts",
     "verify:ownership:transfer": "ts-node ./scripts/protocolOwnershipVerifier.ts",
     "verify:contracts:etherscan": "ts-node ./scripts/verifyContractsCode.ts",
+    "deploy:foundation-wallet": "tsc && node ./dist/scripts/foundation-wallet-deployment/deploy.js",
+    "verify:foundation-wallet": "tsc && node ./dist/scripts/foundation-wallet-deployment/verifyDeployment.js",
     "test:integration": "hardhat test",
     "test:proposals": "ts-node ./scripts/proposalTests.ts",
     "format:sol": "forge fmt"
   },
   "devDependencies": {
-    "@arbitrum/sdk": "^3.0.0",
+    "@arbitrum/sdk": "^3.1.6",
     "@ethersproject/abi": "^5.7.0",
     "@ethersproject/providers": "^5.7.2",
     "@nomicfoundation/hardhat-chai-matchers": "^1.0.4",

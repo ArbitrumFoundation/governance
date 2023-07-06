@@ -124,12 +124,12 @@ contract SecurityCouncilMemberElectionGovernor is
         external
         onlyNomineeElectionGovernor
     {
-        securityCouncilManager.executeElectionResult(_newCohort, _cohort);
+        securityCouncilManager.replaceCohort(_newCohort, _cohort);
     }
 
     /// @dev    `GovernorUpgradeable` function to execute a proposal overridden to handle nominee elections.
     ///         We know that _getTopNominees will return a full list of nominees because we checked it in _voteSucceeded.
-    ///         Calls `SecurityCouncilManager.executeElectionResult` with the list of nominees.
+    ///         Calls `SecurityCouncilManager.replaceCohort` with the list of nominees.
     function _execute(
         uint256 proposalId,
         address[] memory, /* targets */
@@ -138,7 +138,7 @@ contract SecurityCouncilMemberElectionGovernor is
         bytes32 /* descriptionHash */
     ) internal override {
         // we know that the list is full because we checked it in _voteSucceeded
-        securityCouncilManager.executeElectionResult({
+        securityCouncilManager.replaceCohort({
             _newCohort: topNominees(proposalId),
             _cohort: nomineeElectionGovernor.cohortOfMostRecentElection()
         });

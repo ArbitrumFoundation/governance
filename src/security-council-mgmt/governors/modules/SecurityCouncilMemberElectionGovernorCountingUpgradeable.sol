@@ -39,7 +39,7 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
     /// @param votes The amount of votes that were just cast for the nominee
     /// @param weight The weight of the vote that was just cast for the nominee
     /// @param totalUsedVotes The total amount of votes the voter has used for this proposal
-    /// @param totalUsableVotes The total amount of votes the voter has available for this proposal
+    /// @param usableVotes The total amount of votes the voter has available for this proposal
     event VoteCastForNominee(
         address indexed voter,
         uint256 indexed proposalId,
@@ -47,7 +47,7 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
         uint256 votes,
         uint256 weight,
         uint256 totalUsedVotes,
-        uint256 totalUsableVotes
+        uint256 usableVotes
     );
 
     /// @param targetMemberCount The maximum number of nominees to track
@@ -66,9 +66,7 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
     }
 
     /// @notice Set the full weight duration numerator and total duration denominator
-    function setFullWeightDuration(
-        uint256 newFullWeightDuration
-    ) public onlyGovernance {
+    function setFullWeightDuration(uint256 newFullWeightDuration) public onlyGovernance {
         require(
             newFullWeightDuration <= votingPeriod(),
             "SecurityCouncilMemberElectionGovernorCountingUpgradeable: Full weight duration must be <= votingPeriod"
@@ -115,7 +113,10 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
         uint256 availableVotes,
         bytes memory params
     ) internal virtual override {
-        require(params.length > 0, "SecurityCouncilMemberElectionGovernorCountingUpgradeable: Must cast vote with params");
+        require(
+            params.length == 64,
+            "SecurityCouncilMemberElectionGovernorCountingUpgradeable: Must cast vote with abi encoded (nominee, votes)"
+        );
 
         (address nominee, uint256 votes) = abi.decode(params, (address, uint256));
 
@@ -155,7 +156,7 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
             votes: votes,
             weight: weight,
             totalUsedVotes: prevVotesUsed + votes,
-            totalUsableVotes: availableVotes
+            usableVotes: availableVotes
         });
     }
 

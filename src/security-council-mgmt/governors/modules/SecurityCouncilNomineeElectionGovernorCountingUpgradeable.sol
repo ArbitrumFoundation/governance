@@ -28,14 +28,14 @@ abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is
     /// @param contender The contender that is receiving the vote
     /// @param votes The amount of votes that were just cast for the contender
     /// @param totalUsedVotes The total amount of votes the voter has used for this proposal
-    /// @param totalUsableVotes The total amount of votes the voter has available for this proposal
+    /// @param usableVotes The total amount of votes the voter has available for this proposal
     event VoteCastForContender(
         uint256 indexed proposalId,
         address indexed voter,
         address indexed contender,
         uint256 votes,
         uint256 totalUsedVotes,
-        uint256 totalUsableVotes
+        uint256 usableVotes
     );
 
     event NewNominee(uint256 indexed proposalId, address indexed nominee);
@@ -75,9 +75,12 @@ abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is
         uint256 weight,
         bytes memory params
     ) internal virtual override {
-        require(params.length > 0, "SecurityCouncilNomineeElectionGovernorCountingUpgradeable: Must cast vote with params");
+        require(
+            params.length == 64,
+            "SecurityCouncilNomineeElectionGovernorCountingUpgradeable: Must cast vote with abi encoded (contender, votes)"
+        );
 
-        // let's say params is (address contender, uint256 votes)
+        // params is encoded as (address contender, uint256 votes)
         (address contender, uint256 votes) = abi.decode(params, (address, uint256));
 
         require(
@@ -123,7 +126,7 @@ abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is
             contender: contender,
             votes: actualVotes,
             totalUsedVotes: prevVotesUsed + actualVotes,
-            totalUsableVotes: weight
+            usableVotes: weight
         });
     }
 

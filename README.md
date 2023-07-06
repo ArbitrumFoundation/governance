@@ -224,6 +224,19 @@ Finally, let's make sure owership of protocol assets has been succsessfully tran
 yarn verify:ownership:transfer
 ```
 
+### ArbitrumFoundationVestingWallet Deployer
+
+#### Deploy
+- Set `ARB_URL` and `ARB_KEY` env vars
+- Set FoundationWalletDeploymentConfig variables (for target chain) in [config file](./scripts/foundation-wallet-deployment/config.ts)
+- run ```yarn hardhat compile ```
+- run ```yarn deploy:foundation-wallet ```
+
+#### Verify Deployment
+_Verify contract's bytecode on Arbiscan and verify that contract's parameters were set correctly_
+- Set `ARB_URL` and `ARBISCAN_API_KEY` env vars 
+- Set DeployedWallet address (for target chain) in [config file](./scripts/foundation-wallet-deployment/config.ts)
+- run ```yarn verify:foundation-wallet ```
 ### Guide for deploying vesting wallets
 Vesting wallets deployer script can be used to deploy vesting wallets. Script will deploy wallet factory contract, and then call `createWallets` function in a loop, 5 wallets at a time. Currently script does not contain logic for transfering tokens to deployed wallets, it only deploys wallets. Deployer script can handle failures, ie. if execution is unexpectedly terminated script can be re-run and it will continue deploying wallets which haven't been deployed. It is important to notice  assumption that input list of recipients does not change between runs.
 
