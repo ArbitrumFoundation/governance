@@ -263,9 +263,9 @@ contract SecurityCouncilNomineeElectionGovernor is
         if (compliantNomineeCount < targetNomineeCount) {
             // there are too few compliant nominees
             // we should randomly select some members from the current cohort to add to the list
-            address[] memory currentMembers = cohort == Cohort.SEPTEMBER
-                ? securityCouncilManager.getSeptemberCohort()
-                : securityCouncilManager.getMarchCohort();
+            address[] memory currentMembers = cohort == Cohort.FIRST
+                ? securityCouncilManager.getFirstCohort()
+                : securityCouncilManager.getSecondCohort();
 
             address[] memory nonExcludedCurrentMembers = SecurityCouncilMgmtUtils.filterAddressesWithExcludeList(
                 currentMembers, excluded[proposalId]
@@ -301,9 +301,9 @@ contract SecurityCouncilNomineeElectionGovernor is
         // check to make sure the contender is not part of the other cohort
         Cohort cohort = electionIndexToCohort(electionCount - 1);
 
-        address[] memory oppositeCohortCurrentMembers = cohort == Cohort.MARCH
-            ? securityCouncilManager.getSeptemberCohort()
-            : securityCouncilManager.getMarchCohort();
+        address[] memory oppositeCohortCurrentMembers = cohort == Cohort.SECOND
+            ? securityCouncilManager.getFirstCohort()
+            : securityCouncilManager.getSecondCohort();
 
         require(
             !SecurityCouncilMgmtUtils.isInArray(msg.sender, oppositeCohortCurrentMembers),
