@@ -138,12 +138,20 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
     mapping(uint256 => mapping(address => uint256)) private _votesUsed;
 
     // would this be more useful if reason was included?
+    /// @notice Emitted when a vote is cast for a nominee
+    /// @param voter The account that is casting the vote
+    /// @param proposalId The id of the proposal
+    /// @param nominee The nominee that is receiving the vote
+    /// @param votes The amount of votes that were just cast for the nominee
+    /// @param totalUsedVotes The total amount of votes the voter has used for this proposal
+    /// @param usableVotes The total amount of votes the voter has available for this proposal
     event VoteCastForNominee(
         address indexed voter,
         uint256 indexed proposalId,
         address indexed nominee,
         uint256 votes,
-        uint256 weight
+        uint256 totalUsedVotes,
+        uint256 usableVotes
     );
 
     /// @param maxNominees The maximum number of nominees to track
@@ -212,6 +220,8 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
         uint256 availableVotes,
         bytes memory params
     ) internal virtual override {
+        require(params.length == 64, "SecurityCouncilMemberElectionGovernorCountingUpgradeable: Must cast vote with abi encoded (nominee, votes)");
+
         (address possibleNominee, uint256 votes) = abi.decode(params, (address, uint256));
 
         require(
@@ -231,7 +241,14 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
         uint256 weight = votesToWeight(proposalId, block.number, votes);
         _increaseNomineeWeight(proposalId, possibleNominee, weight);
 
-        emit VoteCastForNominee(account, proposalId, possibleNominee, votes, weight);
+        emit VoteCastForNominee({
+            voter: account,
+            proposalId: proposalId,
+            nominee: possibleNominee,
+            votes: votes,
+            totalUsedVotes: prevVotesUsed + votes,
+            usableVotes: availableVotes
+        });
     }
 
     function fullWeightVotingDeadline(uint256 proposalId) public view returns (uint256) {

@@ -1,17 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.16;
 
-import "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorSettingsUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorVotesUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-
-import "@openzeppelin/contracts-upgradeable/utils/StringsUpgradeable.sol";
-
-import "./modules/ArbitrumGovernorVotesQuorumFractionUpgradeable.sol";
 import "./modules/SecurityCouncilMemberElectionGovernorCountingUpgradeable.sol";
 import "./SecurityCouncilNomineeElectionGovernor.sol";
-
-import "../interfaces/ISecurityCouncilManager.sol";
 
 // this contract assumes that any active or successful proposal corresponds to the last NomineeElectionGovernor election
 // we may want to override state() such that a successful proposal expires if it isn't executed after some time
