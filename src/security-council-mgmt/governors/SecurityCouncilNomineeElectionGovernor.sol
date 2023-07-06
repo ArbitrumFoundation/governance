@@ -60,6 +60,19 @@ contract SecurityCouncilNomineeElectionGovernor is
         uint256 hour;
     }
 
+    /// @notice Information about a nominee election
+    /// @param isContender Whether the account is a contender
+    /// @param isExcluded Whether the account has been excluded by the nomineeVetter
+    /// @param excludedNomineeCount The number of nominees that have been excluded by the nomineeVetter
+    struct ElectionInfo {
+        mapping(address => bool) isContender;
+        mapping(address => bool) isExcluded;
+        uint256 excludedNomineeCount;
+    }
+
+    /// @notice Maps proposalId to ElectionInfo
+    mapping(uint256 => ElectionInfo) internal _elections;
+
     /// @notice The target number of nominees to elect (6)
     uint256 public targetNomineeCount;
 
@@ -82,18 +95,6 @@ contract SecurityCouncilNomineeElectionGovernor is
 
     /// @notice Number of elections created
     uint256 public electionCount;
-
-    /// @notice Contenders up for nomination
-    /// @dev    proposalId => contender => bool
-    mapping(uint256 => mapping(address => bool)) public contenders;
-
-    /// @notice Excluded nominees for each proposal
-    /// @dev    Accounts can only be marked in this mapping if they have received enough votes to be a nominee.
-    ///         proposalId => nominee => bool
-    mapping(uint256 => mapping(address => bool)) public excluded;
-
-    /// @notice Number of excluded nominees per proposal
-    mapping(uint256 => uint256) public excludedNomineeCount;
 
     event NomineeVetterChanged(address indexed oldNomineeVetter, address indexed newNomineeVetter);
     event ContenderAdded(uint256 indexed proposalId, address indexed contender);
@@ -243,7 +244,9 @@ contract SecurityCouncilNomineeElectionGovernor is
             "SecurityCouncilNomineeElectionGovernor: Proposal is still in the nominee vetting period"
         );
 
-        uint256 compliantNomineeCount = nomineeCount(proposalId) - excludedNomineeCount[proposalId];
+        ElectionInfo storage election = _elections[proposalId];
+
+        uint256 compliantNomineeCount = nomineeCount(proposalId) - election.excludedNomineeCount;
 
         if (compliantNomineeCount > targetNomineeCount) {
             // call the SecurityCouncilMemberElectionGovernor to start the next phase of the election
@@ -256,7 +259,7 @@ contract SecurityCouncilNomineeElectionGovernor is
         address[] memory maybeCompliantNominees =
             SecurityCouncilNomineeElectionGovernorCountingUpgradeable.nominees(proposalId);
         address[] memory compliantNominees = SecurityCouncilMgmtUtils.filterAddressesWithExcludeList(
-            maybeCompliantNominees, excluded[proposalId]
+            maybeCompliantNominees, election.isExcluded
         );
 
         if (compliantNomineeCount < targetNomineeCount) {
@@ -267,7 +270,7 @@ contract SecurityCouncilNomineeElectionGovernor is
                 : securityCouncilManager.getSecondCohort();
 
             address[] memory nonExcludedCurrentMembers = SecurityCouncilMgmtUtils
-                .filterAddressesWithExcludeList(currentMembers, excluded[proposalId]);
+                .filterAddressesWithExcludeList(currentMembers, election.isExcluded);
 
             compliantNominees = SecurityCouncilMgmtUtils.randomAddToSet({
                 pickFrom: nonExcludedCurrentMembers,
@@ -285,8 +288,9 @@ contract SecurityCouncilNomineeElectionGovernor is
     /// @dev    Can be called only while a proposal is active (in voting phase)
     ///         A contender cannot be a member of the opposite cohort.
     function addContender(uint256 proposalId) external {
+        ElectionInfo storage election = _elections[proposalId];
         require(
-            !contenders[proposalId][msg.sender],
+            !election.isContender[msg.sender],
             "SecurityCouncilNomineeElectionGovernor: Account is already a contender"
         );
 
@@ -308,7 +312,7 @@ contract SecurityCouncilNomineeElectionGovernor is
             "SecurityCouncilNomineeElectionGovernor: Account is a member of the opposite cohort"
         );
 
-        contenders[proposalId][msg.sender] = true;
+        election.isContender[msg.sender] = true;
 
         emit ContenderAdded(proposalId, msg.sender);
     }
@@ -326,8 +330,10 @@ contract SecurityCouncilNomineeElectionGovernor is
             "SecurityCouncilNomineeElectionGovernor: Proposal is no longer in the nominee vetting period"
         );
 
-        excluded[proposalId][account] = true;
-        excludedNomineeCount[proposalId]++;
+        ElectionInfo storage election = _elections[proposalId];
+
+        election.isExcluded[account] = true;
+        election.excludedNomineeCount++;
 
         emit NomineeExcluded(proposalId, account);
     }
@@ -336,7 +342,7 @@ contract SecurityCouncilNomineeElectionGovernor is
     /// @param  proposalId The id of the proposal
     /// @param  account The account to check
     function isCompliantNominee(uint256 proposalId, address account) public view returns (bool) {
-        return isNominee(proposalId, account) && !excluded[proposalId][account];
+        return isNominee(proposalId, account) && !_elections[proposalId].isExcluded[account];
     }
 
     /// @notice returns true if the account is a nominee for the most recent election and has not been excluded
@@ -362,7 +368,7 @@ contract SecurityCouncilNomineeElectionGovernor is
         override
         returns (bool)
     {
-        return contenders[proposalId][possibleContender];
+        return _elections[proposalId].isContender[possibleContender];
     }
 
     /// @notice Returns the start timestamp of an election
