@@ -410,6 +410,8 @@ contract SecurityCouncilNomineeElectionGovernor is
         );
     }
 
+    /************** internal override view/pure functions **************/
+
     /// @inheritdoc SecurityCouncilNomineeElectionGovernorCountingUpgradeable
     function _isContender(uint256 proposalId, address possibleContender)
         internal
@@ -421,7 +423,7 @@ contract SecurityCouncilNomineeElectionGovernor is
         return _elections[proposalId].isContender[possibleContender];
     }
 
-    /************** "disabled" functions **************/
+    /************** disabled functions **************/
 
     /// @notice Always reverts.
     /// @dev    `GovernorUpgradeable` function to create a proposal overridden to just revert.
