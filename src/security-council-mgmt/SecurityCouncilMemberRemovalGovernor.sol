@@ -59,6 +59,21 @@ contract SecurityCouncilMemberRemovalGovernor is L2ArbitrumGovernor {
         return voteSuccessNumerator * forVotes > againstVotes * voteSuccessDenominator;
     }
 
+    ///@notice A removal proposal if a theshold of all cast votes vote in favor of removal. Thus, abstaining would be exactly equivalent to voting against. Thus, to prevent any confusing, abstaining is disallowed.
+    function _countVote(
+        uint256 proposalId,
+        address account,
+        uint8 support,
+        uint256 weight,
+        bytes memory params
+    ) internal virtual override(GovernorCountingSimpleUpgradeable, GovernorUpgradeable) {
+        require(
+            VoteType(support) != VoteType.Abstain,
+            "SecurityCouncilMemberRemovalGovernor: cannot vote abstain"
+        );
+        GovernorCountingSimpleUpgradeable._countVote(proposalId, account, support, weight, params);
+    }
+
     /// @notice set numerator for removal vote to succeed; only DAO can call
     /// @param _voteSuccessNumerator new numberator value
     function setVoteSuccessNumerator(uint256 _voteSuccessNumerator) public onlyOwner {
@@ -68,7 +83,7 @@ contract SecurityCouncilMemberRemovalGovernor is L2ArbitrumGovernor {
     function _setVoteSuccessNumerator(uint256 _voteSuccessNumerator) internal {
         require(
             _voteSuccessNumerator > 0 && _voteSuccessNumerator <= voteSuccessDenominator,
-            "SecurityCouncilMemberRemovalGovernor: _voteSuccessNumerator  cannot be zero"
+            "SecurityCouncilMemberRemovalGovernor: _voteSuccessNumerator must be within [1, voteSuccessDenominator]"
         );
         voteSuccessNumerator = _voteSuccessNumerator;
         emit VoteSuccessNumeratorSet(_voteSuccessNumerator);
