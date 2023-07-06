@@ -216,6 +216,7 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
         return selectTopNominees(nominees, weights, _targetMemberCount);
     }
 
+    // todo: set a lower threshold bound in the nominee governor.
     // gas usage with k = 6, n = nominees.length is approx 1786n. with 500 it is 902,346
     // these numbers are for the worst case scenario where the nominees are in ascending order
     // these numbers also include memory expansion cost (i think)
