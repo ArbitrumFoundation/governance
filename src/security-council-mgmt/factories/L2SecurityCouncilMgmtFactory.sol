@@ -44,17 +44,16 @@ struct DeployParams {
     uint256 memberDurationDenominator;
 }
 
-/// @notice Factory for deploying L2 Security Council management contracts
-
+/// @notice Factory for deploying L2 Security Council management contracts.
+/// Prerequisites: core Arb DAO governance contracts, and a SecurityCouncilUpgradeAction deployed for each governed security council (on each corresponding chain)
 contract L2SecurityCouncilMgmtFactory is Ownable {
     event ContractsDeployed(DeployedContracts deployedContracts);
 
+    // contracts deployed by factory
     struct DeployedContracts {
         SecurityCouncilNomineeElectionGovernor nomineeElectionGovernor;
         SecurityCouncilMemberElectionGovernor memberElectionGovernor;
         ISecurityCouncilManager securityCouncilManager;
-        address l2EmergencySecurityCouncilUpgradeExecutor;
-        address l2NonEmergencySecurityCouncilUpgradeExecutor;
         SecurityCouncilMemberRemovalGovernor securityCouncilMemberRemoverGov;
         ArbitrumTimelock memberRemovalGovTimelock;
     }
@@ -160,7 +159,7 @@ contract L2SecurityCouncilMgmtFactory is Ownable {
         );
 
         deployedContracts.memberRemovalGovTimelock.initialize(0, new address[](0), new address[](0));
-        
+
         // removal gov can propose to timelock
         deployedContracts.memberRemovalGovTimelock.grantRole(
             deployedContracts.memberRemovalGovTimelock.PROPOSER_ROLE(),
