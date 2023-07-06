@@ -8,7 +8,6 @@ import "./SecurityCouncilMgmtUtils.sol";
 import "./interfaces/ISecurityCouncilManager.sol";
 import "./SecurityCouncilUpgradeAction.sol";
 import "@arbitrum/nitro-contracts/src/precompiles/ArbSys.sol";
-import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
@@ -22,8 +21,6 @@ contract SecurityCouncilManager is
     AccessControlUpgradeable,
     ISecurityCouncilManager
 {
-    using ECDSA for bytes32;
-
     event CohortReplaced(address[] newCohort, Cohort indexed cohort);
     event MemberAdded(address indexed newMember, Cohort indexed cohort);
     event MemberRemoved(address indexed member, Cohort indexed cohort);
