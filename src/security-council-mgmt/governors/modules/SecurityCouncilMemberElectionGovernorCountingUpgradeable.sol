@@ -144,14 +144,14 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
     /// @param nominee The nominee that is receiving the vote
     /// @param votes The amount of votes that were just cast for the nominee
     /// @param totalUsedVotes The total amount of votes the voter has used for this proposal
-    /// @param totalUsableVotes The total amount of votes the voter has available for this proposal
+    /// @param usableVotes The total amount of votes the voter has available for this proposal
     event VoteCastForNominee(
         address indexed voter,
         uint256 indexed proposalId,
         address indexed nominee,
         uint256 votes,
         uint256 totalUsedVotes,
-        uint256 totalUsableVotes
+        uint256 usableVotes
     );
 
     /// @param maxNominees The maximum number of nominees to track
@@ -220,7 +220,7 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
         uint256 availableVotes,
         bytes memory params
     ) internal virtual override {
-        require(params.length > 0, "SecurityCouncilMemberElectionGovernorCountingUpgradeable: Must cast vote with params");
+        require(params.length == 64, "SecurityCouncilMemberElectionGovernorCountingUpgradeable: Must cast vote with abi encoded (nominee, votes)");
 
         (address possibleNominee, uint256 votes) = abi.decode(params, (address, uint256));
 
@@ -247,7 +247,7 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
             nominee: possibleNominee,
             votes: votes,
             totalUsedVotes: prevVotesUsed + votes,
-            totalUsableVotes: availableVotes
+            usableVotes: availableVotes
         });
     }
 
