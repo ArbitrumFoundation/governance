@@ -157,7 +157,7 @@ contract SecurityCouncilNomineeElectionGovernor is
         _;
     }
 
-    /************** State mutating functions **************/
+    /************** permissionless state mutating functions **************/
 
     /// @notice Creates a new nominee election proposal.
     ///         Can be called by anyone every `nominationFrequency` seconds.
@@ -213,6 +213,26 @@ contract SecurityCouncilNomineeElectionGovernor is
         emit ContenderAdded(proposalId, msg.sender);
     }
 
+    /************** permissioned state mutating functions **************/
+
+    /// @notice Allows the owner to change the nomineeVetter
+    function setNomineeVetter(address _nomineeVetter) external onlyOwner {
+        address oldNomineeVetter = nomineeVetter;
+        nomineeVetter = _nomineeVetter;
+        emit NomineeVetterChanged(oldNomineeVetter, _nomineeVetter);
+    }
+
+    /// @notice Allows the owner to make calls from the governor
+    /// @dev    See {L2ArbitrumGovernor-relay}
+    function relay(address target, uint256 value, bytes calldata data)
+        external
+        virtual
+        override
+        onlyOwner
+    {
+        AddressUpgradeable.functionCallWithValue(target, data, value);
+    }
+
     /// @notice Allows the nomineeVetter to exclude a noncompliant nominee.
     /// @dev    Can be called only after a proposal has succeeded (voting has ended) and before the nominee vetting period has ended.
     ///         Will revert if the provided account is not a nominee (had less than the required votes).
@@ -234,23 +254,7 @@ contract SecurityCouncilNomineeElectionGovernor is
         emit NomineeExcluded(proposalId, account);
     }
 
-    /// @notice Allows the owner to change the nomineeVetter
-    function setNomineeVetter(address _nomineeVetter) external onlyOwner {
-        address oldNomineeVetter = nomineeVetter;
-        nomineeVetter = _nomineeVetter;
-        emit NomineeVetterChanged(oldNomineeVetter, _nomineeVetter);
-    }
-
-    /// @notice Allows the owner to make calls from the governor
-    /// @dev    See {L2ArbitrumGovernor-relay}
-    function relay(address target, uint256 value, bytes calldata data)
-        external
-        virtual
-        override
-        onlyOwner
-    {
-        AddressUpgradeable.functionCallWithValue(target, data, value);
-    }
+    /************** internal/private state mutating functions **************/
 
     /// @dev    `GovernorUpgradeable` function to execute a proposal overridden to handle nominee elections.
     ///         Can be called by anyone via `execute` after voting and nominee vetting periods have ended.
@@ -313,19 +317,7 @@ contract SecurityCouncilNomineeElectionGovernor is
         securityCouncilMemberElectionGovernor.executeElectionResult(compliantNominees, cohort);
     }
 
-    /// @notice Always reverts.
-    /// @dev    `GovernorUpgradeable` function to create a proposal overridden to just revert.
-    ///         We only want proposals to be created via `createElection`.
-    function propose(address[] memory, uint256[] memory, bytes[] memory, string memory)
-        public
-        virtual
-        override
-        returns (uint256)
-    {
-        revert(
-            "SecurityCouncilNomineeElectionGovernor: Proposing is not allowed, call createElection instead"
-        );
-    }
+    /************** view/pure functions **************/
 
     /// @notice returns true if the account is a nominee for the most recent election and has not been excluded
     /// @param  account The account to check
@@ -427,5 +419,21 @@ contract SecurityCouncilNomineeElectionGovernor is
         returns (bool)
     {
         return _elections[proposalId].isContender[possibleContender];
+    }
+
+    /************** "disabled" functions **************/
+
+    /// @notice Always reverts.
+    /// @dev    `GovernorUpgradeable` function to create a proposal overridden to just revert.
+    ///         We only want proposals to be created via `createElection`.
+    function propose(address[] memory, uint256[] memory, bytes[] memory, string memory)
+        public
+        virtual
+        override
+        returns (uint256)
+    {
+        revert(
+            "SecurityCouncilNomineeElectionGovernor: Proposing is not allowed, call createElection instead"
+        );
     }
 }
