@@ -77,7 +77,7 @@ abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is
     ) internal virtual override {
         require(params.length == 64, "SecurityCouncilNomineeElectionGovernorCountingUpgradeable: Must cast vote with abi encoded (contender, votes)");
 
-        // let's say params is (address contender, uint256 votes)
+        // params is encoded as (address contender, uint256 votes)
         (address contender, uint256 votes) = abi.decode(params, (address, uint256));
 
         require(
