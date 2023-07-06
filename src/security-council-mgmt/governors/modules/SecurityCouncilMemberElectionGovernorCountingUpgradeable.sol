@@ -143,7 +143,7 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
 
         election.votesUsed[account] = prevVotesUsed + votes;
         election.weightReceived[nominee] += weight;
-        
+
         if (!election.nomineeHasVotes[nominee]) {
             election.nomineeHasVotes[nominee] = true;
             election.nomineesWithVotes.push(nominee);
@@ -220,12 +220,16 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
     // gas usage with k = 6, n = nominees.length is approx 1786n. with 500 it is 902,346
     // these numbers are for the worst case scenario where the nominees are in ascending order
     // these numbers also include memory expansion cost (i think)
-    function selectTopNominees(address[] memory nominees, uint256[] memory weights, uint256 k) public pure returns (address[] memory) {
+    function selectTopNominees(address[] memory nominees, uint256[] memory weights, uint256 k)
+        public
+        pure
+        returns (address[] memory)
+    {
         require(
             nominees.length == weights.length,
             "SecurityCouncilMemberElectionGovernorCountingUpgradeable: Nominees and weights must have same length"
         );
-        
+
         uint256[] memory topNomineesPacked = new uint256[](k);
         uint256 topNomineesPackedLength = 0;
 
@@ -236,13 +240,11 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
             if (topNomineesPackedLength < k - 1) {
                 topNomineesPacked[topNomineesPackedLength] = packed;
                 topNomineesPackedLength++;
-            } 
-            else if (topNomineesPackedLength == k - 1) {
+            } else if (topNomineesPackedLength == k - 1) {
                 topNomineesPacked[topNomineesPackedLength] = packed;
                 topNomineesPackedLength++;
                 LibSort.insertionSort(topNomineesPacked);
-            }
-            else if (topNomineesPacked[0] < packed) {
+            } else if (topNomineesPacked[0] < packed) {
                 topNomineesPacked[0] = packed;
                 LibSort.insertionSort(topNomineesPacked);
             }
