@@ -12,6 +12,10 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
     Initializable,
     GovernorUpgradeable
 {
+    /// @notice Information about a proposal relevant to the counting module
+    /// @param votesUsed The number of votes used by an account for a given proposal
+    /// @param weightReceived The weight received by an account for a given proposal
+    /// @param topNominees The list of top nominees for a given proposal in descending order of weight
     struct ElectionInfo {
         mapping(address => uint256) votesUsed;
         mapping(address => uint256) weightReceived;
@@ -26,6 +30,7 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
     /// @notice Target number of members to elect
     uint256 private _targetMemberCount;
 
+    /// @dev Mapping of proposalId to ElectionInfo
     mapping(uint256 => ElectionInfo) private _elections;
 
     // would this be more useful if reason was included?
