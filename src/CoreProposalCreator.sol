@@ -24,7 +24,6 @@ contract CoreProposalCreator is Initializable, AccessControlUpgradeable {
         address upgradeExecutor;
         bool exists;
         SecurityCouncil emergencySecurityCouncil;
-        // SecurityCouncil[] otherSecurityCouncils;
     }
 
     struct SecurityCouncil {
@@ -33,20 +32,12 @@ contract CoreProposalCreator is Initializable, AccessControlUpgradeable {
         /// @notice Address of the update action contract that contains the logic for
         ///         updating council membership. Will be delegate called by the upgrade executor
         address updateAction;
-
         uint256 chainID;
-
     }
 
-
-    /// @notice If the upgrade executor can only be reached by going through an Inbox
-    ///         that address is supplied here.
-    ///         address(0) can be supplied here, in which case the upgrade executor is called directly
-    ///         rather than being passed through an inbox.UpgradeContracts
-
-    
-
     mapping(uint256 => Chain) chainIDToChainData;
+
+    SecurityCouncil[] nonEmergencySecurityCouncils;
 
     uint256[] registeredChainIDs;
 
@@ -56,12 +47,11 @@ contract CoreProposalCreator is Initializable, AccessControlUpgradeable {
     // Used as a magic value to indicate that a retryable ticket should be created by the L1 timelock
     address public constant RETRYABLE_TICKET_MAGIC = 0xa723C008e76E379c55599D2E4d93879BeaFDa79C;
 
-    // event L2ChainInboxRegistered(
-    //     uint256 indexed chainID, address indexed inbox, address indexed upgradeExecutor
-    // );
-    // event L2ChainInboxRemoved(
-    //     uint256 indexed chainID, address indexed inbox, address indexed upgradeExecutor
-    // );
+    event ChainAdded(Chain chain);
+    event ChainRemoved(Chain chain);
+    event NonEmergencySecurityCouncilAdded(SecurityCouncil securityCouncil);
+    event NonEmergencySecurityCouncilRemoved(SecurityCouncil securityCouncil);
+
     event MinL1TimelockDelaySet(uint256 indexed newMinTimelockDelay);
 
     event ProposalCreated(
@@ -112,6 +102,7 @@ contract CoreProposalCreator is Initializable, AccessControlUpgradeable {
     function initialize(
         address _l1ArbitrumTimelock,
         Chain[] memory _chains,
+        SecurityCouncil[] memory _nonEmergencySecurityCouncils,
         address _admin,
         address _proposalCreator,
         uint256 _minL1TimelockDelay
@@ -121,12 +112,33 @@ contract CoreProposalCreator is Initializable, AccessControlUpgradeable {
 
         l1ArbitrumTimelock = _l1ArbitrumTimelock;
         for (uint256 i = 0; i < _chains.length; i++) {
-            _registerChain(_chains[i]);
+            _addChain(_chains[i]);
+        }
+
+        for (uint256 i = 0; i < _nonEmergencySecurityCouncils.length; i++) {
+            _addNonEmergencySecurityCouncil(_nonEmergencySecurityCouncils[i]);
         }
         _setMinL1TimelockDelay(_minL1TimelockDelay);
     }
 
+    function allSecurityCouncils()
+        public
+        view
+        returns (SecurityCouncil[] memory allSecurityCouncils)
+    {
+        SecurityCouncil[] memory allSecurityCouncils =
+            new SecurityCouncil[](registeredChainIDs.length + nonEmergencySecurityCouncils.length);
+        uint256 i;
+        for (i = 0; i < registeredChainIDs.length; i++) {
+            allSecurityCouncils[i] =
+                chainIDToChainData[registeredChainIDs[i]].emergencySecurityCouncil;
+        }
+        for (uint256 j = 0; j < nonEmergencySecurityCouncils.length; j++) {
+            allSecurityCouncils[i + j] = nonEmergencySecurityCouncils[j];
+        }
+    }
     /// @notice Sets the minimum L1 timelock delay that can be used for a proposal; value should be kept in sync with value in L1 timelock
+
     function setMinL1TimelockDelay(uint256 _minL1TimelockDelay)
         external
         onlyRole(DEFAULT_ADMIN_ROLE)
@@ -139,47 +151,59 @@ contract CoreProposalCreator is Initializable, AccessControlUpgradeable {
         emit MinL1TimelockDelaySet(minL1TimelockDelay);
     }
 
-    function _registerChain(Chain memory _chain) internal {
-        // require(_chainID != 0, "CoreProposalCreator: zero chainID");
+    function _addChain(Chain memory _chain) internal {
         require(
-            _chain.upgradeExecutor != address(0),
-            "CoreProposalCreator: zero upgradeExecutor"
+            !chainIDToChainData[_chain.chainID].exists,
+            "CoreProposalCreator: chain already included"
         );
-        // if (_chainID != 1) {
-        //     require(
-        //         _upgradeContracts.inbox != address(0),
-        //         "CoreProposalCreator: zero inbox for L2 chain"
-        //     );
-        // }
         _chain.exists = true;
         chainIDToChainData[_chain.chainID] = _chain;
         registeredChainIDs.push(_chain.chainID);
-        // emit L2ChainInboxRegistered(
-        //     _chainID, _upgradeContracts.inbox, _upgradeContracts.upgradeExecutor
-        // );
+        emit ChainAdded(_chain);
     }
 
     /// @notice Add a new chain to be used for governance actions
-    function registerChain(Chain memory _chain)
-        external
-        onlyRole(DEFAULT_ADMIN_ROLE)
-    {
-        _registerChain(_chain);
+    function addChain(Chain memory _chain) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _addChain(_chain);
     }
 
     /// @notice Remove a chain to be used for governance actions
-    function removeRegisteredL2Chain(uint256 _chainID) external onlyRole(DEFAULT_ADMIN_ROLE) returns(bool) {
+    function removeChain(uint256 _chainID) external onlyRole(DEFAULT_ADMIN_ROLE) returns (bool) {
         Chain storage chain = chainIDToChainData[_chainID];
         delete chainIDToChainData[_chainID];
         for (uint256 i = 0; i < registeredChainIDs.length; i++) {
-            if(registeredChainIDs[i] == _chainID){
-                registeredChainIDs[i] = registeredChainIDs[registeredChainIDs.length -1];
+            if (registeredChainIDs[i] == _chainID) {
+                registeredChainIDs[i] = registeredChainIDs[registeredChainIDs.length - 1];
                 registeredChainIDs.pop();
+                emit ChainRemoved(chain);
                 return true;
             }
         }
         revert("CoreProposalCreator: chain not found");
-        // emit L2ChainInboxRemoved(_chainID, upgradeContracts.inbox, upgradeContracts.upgradeExecutor);
+    }
+
+    function addNonEmergencySecurityCouncil(SecurityCouncil memory _securityCouncil)
+        external
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
+        _addNonEmergencySecurityCouncil(_securityCouncil);
+    }
+
+    function _addNonEmergencySecurityCouncil(SecurityCouncil memory _securityCouncil) internal {
+        nonEmergencySecurityCouncils.push(_securityCouncil);
+        emit NonEmergencySecurityCouncilAdded(_securityCouncil);
+    }
+
+    function removeNonEmergencySecurityCouncil(uint256 _index)
+        external
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
+        SecurityCouncil memory lastNESecurityCouncil =
+            nonEmergencySecurityCouncils[nonEmergencySecurityCouncils.length - 1];
+        SecurityCouncil storage NESecurityCouncilToRemove = nonEmergencySecurityCouncils[_index];
+        nonEmergencySecurityCouncils[_index] = lastNESecurityCouncil;
+        nonEmergencySecurityCouncils.pop();
+        emit NonEmergencySecurityCouncilRemoved(NESecurityCouncilToRemove);
     }
 
     function createProposalBatch(
@@ -188,7 +212,7 @@ contract CoreProposalCreator is Initializable, AccessControlUpgradeable {
         bytes[] memory _govActionContractCalldatas,
         uint256[] memory _values,
         bytes32 _l1TimelockPrececessor,
-        bytes32 __l1TimelockSalt,
+        bytes32 _l1TimelockSalt,
         uint256 _l1TimelockDelay
     ) external onlyRole(PROPOSAL_CREATOR_ROLE) {
         _createProposalBatch(
@@ -197,7 +221,7 @@ contract CoreProposalCreator is Initializable, AccessControlUpgradeable {
             _govActionContractCalldatas,
             _values,
             _l1TimelockPrececessor,
-            __l1TimelockSalt,
+            _l1TimelockSalt,
             _l1TimelockDelay
         );
     }
@@ -224,8 +248,8 @@ contract CoreProposalCreator is Initializable, AccessControlUpgradeable {
             _defaultGovActionContractCalldatas,
             _defaultValues,
             DEFAULT_PREDECESSOR,
-            this.generateSalt(),
-            this.defaultL1TimelockDelay()
+            generateSalt(),
+            defaultL1TimelockDelay()
         );
     }
 
@@ -302,7 +326,7 @@ contract CoreProposalCreator is Initializable, AccessControlUpgradeable {
 
         address target;
         uint256 value;
-        bytes memory paylod;
+        bytes memory payload;
         if (chain.inbox == address(0)) {
             // target and value are encoded top level for L1 actions
             target = chain.upgradeExecutor;
@@ -313,28 +337,20 @@ contract CoreProposalCreator is Initializable, AccessControlUpgradeable {
             target = RETRYABLE_TICKET_MAGIC;
             value = 0;
             payload = abi.encode(
-                chain.inbox,
-                chain.upgradeExecutor,
-                _value,
-                0,
-                0,
-                upgradeExecutorCallData
+                chain.inbox, chain.upgradeExecutor, _value, 0, 0, upgradeExecutorCallData
             );
         }
     }
-
-
-
 
     function sendTxToL1Timelock(bytes memory _l1TimelockCallData) internal {
         ArbSys(address(100)).sendTxToL1(l1ArbitrumTimelock, _l1TimelockCallData);
     }
 
-    function generateSalt() external view returns (bytes32) {
+    function generateSalt() public view returns (bytes32) {
         return keccak256(abi.encodePacked(block.timestamp, block.number));
     }
 
-    function defaultL1TimelockDelay() external view returns (uint256) {
+    function defaultL1TimelockDelay() public view returns (uint256) {
         return minL1TimelockDelay;
     }
 }
