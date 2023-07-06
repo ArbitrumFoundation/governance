@@ -38,6 +38,6 @@ contract SecurityCouncilMemberElectionGovernorCountingUpgradeableTest is Test {
             assertEq(topNominees[i], address(uint160(n - k + 1 + i)));
         }
 
-        console.log(n, g);
+        assertLt(g, n * 2000);
     }
 }

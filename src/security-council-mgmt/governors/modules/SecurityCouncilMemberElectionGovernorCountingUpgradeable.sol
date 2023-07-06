@@ -217,7 +217,7 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
 
     // gas usage with k = 6, n = nominees.length is approx 1786n. with 500 it is 902,346
     // these numbers are for the worst case scenario where the nominees are in ascending order
-    // these numbers also include memory expansion cost (i think) which is quadratic but small
+    // these numbers also include memory expansion cost (i think)
     function selectTopNominees(address[] memory nominees, uint256[] memory weights, uint256 k) public pure returns (address[] memory) {
         require(
             nominees.length == weights.length,
