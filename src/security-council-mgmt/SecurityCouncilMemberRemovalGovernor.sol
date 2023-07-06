@@ -68,7 +68,7 @@ contract SecurityCouncilMemberRemovalGovernor is L2ArbitrumGovernor {
     function _setVoteSuccessNumerator(uint256 _voteSuccessNumerator) internal {
         require(
             _voteSuccessNumerator > 0 && _voteSuccessNumerator <= voteSuccessDenominator,
-            "SecurityCouncilMemberRemovalGovernor: _voteSuccessNumerator  cannot be zero"
+            "SecurityCouncilMemberRemovalGovernor: _voteSuccessNumerator must be within [1, voteSuccessDenominator]"
         );
         voteSuccessNumerator = _voteSuccessNumerator;
         emit VoteSuccessNumeratorSet(_voteSuccessNumerator);
