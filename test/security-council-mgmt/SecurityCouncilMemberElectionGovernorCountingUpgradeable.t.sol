@@ -9,6 +9,7 @@ contract SecurityCouncilMemberElectionGovernorCountingUpgradeableTest is Test {
     SecurityCouncilMemberElectionGovernor governor;
     uint256 constant n = 500;
     uint256 constant k = 6;
+
     function setUp() public {
         governor = new SecurityCouncilMemberElectionGovernor();
 
@@ -26,11 +27,7 @@ contract SecurityCouncilMemberElectionGovernorCountingUpgradeableTest is Test {
 
         // select the top 6 and calculate gas usage
         uint256 g = gasleft();
-        address[] memory topNominees = governor.selectTopNominees(
-            nominees,
-            weights,
-            k
-        );
+        address[] memory topNominees = governor.selectTopNominees(nominees, weights, k);
         g = g - gasleft();
 
         // check the result
