@@ -7,11 +7,12 @@ import "../L1ArbitrumTimelock.sol";
 import "./SecurityCouncilMgmtUtils.sol";
 import "./interfaces/ISecurityCouncilManager.sol";
 import "./SecurityCouncilUpgradeAction.sol";
-import "../UpgradeExecRouter.sol";
+import "../UpgradeExecRouterBuilder.sol";
 import "@arbitrum/nitro-contracts/src/precompiles/ArbSys.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
 
 /// @title  The Security Council Manager
 /// @notice The source of truth for an array of Security Council that are under management
@@ -33,6 +34,7 @@ contract SecurityCouncilManager is
     event SecurityCouncilRemoved(
         address securityCouncil, address updateAction, uint256 securityCouncilsLength
     );
+    event UpgradeExecRouterBuilderSet(address upgradeExecRouterBuilder);
 
     // The Security Council members are separated into two cohorts, allowing a whole cohort to be replaced, as
     // specified by the Arbitrum Constitution.
@@ -49,8 +51,8 @@ contract SecurityCouncilManager is
     ///         will be pushed to each of these security councils, ensuring that they all stay in sync
     SecurityCouncilData[] public securityCouncils;
 
-    // CHRIS: TODO: initialise
-    UpgradeExecRouter public router;
+    /// @notice Address of UpgradeExecRouterBuilder. Used to help create security council updates
+    UpgradeExecRouterBuilder public router;
 
     // TODO: benchmark for reasonable number
     /// @notice Maximum possible number of Security Councils to manage
@@ -83,7 +85,8 @@ contract SecurityCouncilManager is
         address[] memory _secondCohort,
         SecurityCouncilData[] memory _securityCouncils,
         SecurityCouncilManagerRoles memory _roles,
-        address payable _l2CoreGovTimelock
+        address payable _l2CoreGovTimelock,
+        UpgradeExecRouterBuilder _router
     ) external initializer {
         firstCohort = _firstCohort;
         secondCohort = _secondCohort;
@@ -101,6 +104,7 @@ contract SecurityCouncilManager is
         for (uint256 i = 0; i < _securityCouncils.length; i++) {
             _addSecurityCouncil(_securityCouncils[i]);
         }
+        _setUpgradeExecRouterBuilder(_router);
     }
 
     /// @inheritdoc ISecurityCouncilManager
@@ -222,13 +226,11 @@ contract SecurityCouncilManager is
             "SecurityCouncilManager: zero securityCouncil"
         );
         require(_securityCouncilData.chainId != 0, "SecurityCouncilManager: zero securityCouncil");
-        // inbox can be zero
+
         securityCouncils.push(_securityCouncilData);
         emit SecurityCouncilAdded(
             _securityCouncilData.securityCouncil,
-            // _securityCouncilData.upgradeExecutor,
             _securityCouncilData.updateAction,
-            // _securityCouncilData.inbox,
             securityCouncils.length
         );
     }
@@ -258,6 +260,23 @@ contract SecurityCouncilManager is
             // securityCouncilToRemove.inbox,
             securityCouncils.length
         );
+    }
+
+    /// @inheritdoc ISecurityCouncilManager
+    function setUpgradeExecRouterBuilder(UpgradeExecRouterBuilder _router)
+        external
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
+        _setUpgradeExecRouterBuilder(_router);
+    }
+
+    function _setUpgradeExecRouterBuilder(UpgradeExecRouterBuilder _router) internal {
+        require(
+            Address.isContract(address(_router)),
+            "SecurityCouncilManager: new router not a contract"
+        );
+        router = _router;
+        emit UpgradeExecRouterBuilderSet(address(_router));
     }
 
     /// @inheritdoc ISecurityCouncilManager
@@ -309,7 +328,7 @@ contract SecurityCouncilManager is
             );
         }
 
-        (address to, bytes memory data) = router.routeActions(
+        (address to, bytes memory data) = router.createActionRouteData(
             chainIds,
             actionAddresses,
             new uint256[](securityCouncils.length), // all values are always 0
