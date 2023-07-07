@@ -29,19 +29,15 @@ struct DeployParams {
     uint256 _removalGovVoteSuccessNumerator;
     uint64 _removalGovMinPeriodAfterQuorum;
     SecurityCouncilData[] _securityCouncils;
-    uint256 _fullWeightDuration;
     // governor params
     Cohort firstCohort;
     SecurityCouncilNomineeElectionGovernor.Date firstNominationStartDate;
-    uint256 nominationFrequency;
     uint256 nomineeVettingDuration;
     address nomineeVetter;
     uint256 nomineeQuorumNumerator;
     uint256 nomineeVotingPeriod;
     uint256 memberVotingPeriod;
-    uint256 memberFullWeightDurationNumerator;
-    uint256 memberDecreasingWeightDurationNumerator;
-    uint256 memberDurationDenominator;
+    uint256 _fullWeightDuration;
 }
 
 /// @notice Factory for deploying L2 Security Council management contracts.
