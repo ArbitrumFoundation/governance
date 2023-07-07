@@ -45,7 +45,7 @@ contract UpgradeExecRouterBuilder {
 
     /// @param _upgradeExecutors location data for upgrade executors
     /// @param _l1ArbitrumTimelock minimum delay for L1 timelock
-    /// @param _l1ArbitrumTimelock address of the core gov L1 timelock
+    /// @param _l1TimelockMinDelay address of the core gov L1 timelock
     constructor(
         ChainAndUpExecLocation[] memory _upgradeExecutors,
         address _l1ArbitrumTimelock,

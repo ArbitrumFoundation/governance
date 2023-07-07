@@ -11,17 +11,19 @@ import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.so
 import "../interfaces/ISecurityCouncilManager.sol";
 import "../../ArbitrumTimelock.sol";
 import "@openzeppelin/contracts-upgradeable/governance/utils/IVotesUpgradeable.sol";
+import "../../UpgradeExecRouterBuilder.sol";
 
 struct DeployParams {
+    ChainAndUpExecLocation[] _upgradeExecutors;
     address _govChainEmergencySecurityCouncil;
-    address _l1CoreGovTimelock;
+    address _l1ArbitrumTimelock;
     address _l2CoreGovTimelock;
     address _proxyAdmin;
     address[] _secondCohort;
     address[] _firstCohort;
     address l2UpgradeExecutor;
     address arbToken;
-    uint256 _minL1TimelockDelay;
+    uint256 _l1TimelockMinDelay;
     uint256 _removalGovVotingDelay;
     uint256 _removalGovVotingPeriod;
     uint256 _removalGovQuorumNumerator;
@@ -52,6 +54,7 @@ contract L2SecurityCouncilMgmtFactory is Ownable {
         ISecurityCouncilManager securityCouncilManager;
         SecurityCouncilMemberRemovalGovernor securityCouncilMemberRemoverGov;
         ArbitrumTimelock memberRemovalGovTimelock;
+        UpgradeExecRouterBuilder upgradeExecRouterBuilder;
     }
 
     function deploy(DeployParams memory dp) external onlyOwner returns (DeployedContracts memory) {
@@ -143,15 +146,20 @@ contract L2SecurityCouncilMgmtFactory is Ownable {
             memberRotator: dp._govChainEmergencySecurityCouncil
         });
 
+        deployedContracts.upgradeExecRouterBuilder = new UpgradeExecRouterBuilder({
+            _upgradeExecutors: dp._upgradeExecutors,
+            _l1ArbitrumTimelock: dp._l1ArbitrumTimelock,
+            _l1TimelockMinDelay: dp._l1TimelockMinDelay
+        });
+
         // initialize securityCouncilManager
         deployedContracts.securityCouncilManager.initialize(
             dp._secondCohort,
             dp._firstCohort,
             dp._securityCouncils,
             roles,
-            dp._l1CoreGovTimelock,
             payable(dp._l2CoreGovTimelock),
-            dp._minL1TimelockDelay
+            deployedContracts.upgradeExecRouterBuilder
         );
 
         deployedContracts.memberRemovalGovTimelock.initialize(0, new address[](0), new address[](0));
