@@ -67,6 +67,7 @@ contract SecurityCouncilMemberRemovalGovernor is L2ArbitrumGovernor {
         uint256 weight,
         bytes memory params
     ) internal virtual override(GovernorCountingSimpleUpgradeable, GovernorUpgradeable) {
+        // TODO: confirm / finalize this decision
         require(
             VoteType(support) != VoteType.Abstain,
             "SecurityCouncilMemberRemovalGovernor: cannot vote abstain"
