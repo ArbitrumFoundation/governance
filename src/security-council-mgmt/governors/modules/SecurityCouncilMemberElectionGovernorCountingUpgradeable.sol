@@ -40,6 +40,7 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
     /// @param weight The weight of the vote that was just cast for the nominee
     /// @param totalUsedVotes The total amount of votes the voter has used for this proposal
     /// @param usableVotes The total amount of votes the voter has available for this proposal
+    /// @param weightReceived The total amount of voting weight the nominee has received for this proposal
     event VoteCastForNominee(
         address indexed voter,
         uint256 indexed proposalId,
@@ -47,7 +48,8 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
         uint256 votes,
         uint256 weight,
         uint256 totalUsedVotes,
-        uint256 usableVotes
+        uint256 usableVotes,
+        uint256 weightReceived
     );
 
     /// @param targetMemberCount The maximum number of nominees to track
@@ -131,7 +133,8 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
             votes: votes,
             weight: weight,
             totalUsedVotes: prevVotesUsed + votes,
-            usableVotes: availableVotes
+            usableVotes: availableVotes,
+            weightReceived: election.weightReceived[nominee]
         });
     }
 
