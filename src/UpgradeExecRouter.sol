@@ -138,12 +138,12 @@ contract UpgradeExecRouter is Initializable, AccessControlUpgradeable {
     function routeActions(
         uint256[] memory chainIds,
         address[] memory actionAddresses,
-        uint256[] memory actionDatavalues,
+        uint256[] memory actionValues,
         bytes[] memory actionData,
         bytes32 timelockSalt
     ) public view returns (address, bytes memory) {
         require(chainIds.length == actionAddresses.length, "CoreProposalCreator: length mismatch");
-        require(chainIds.length == actionDatavalues.length, "CoreProposalCreator: length mismatch");
+        require(chainIds.length == actionValues.length, "CoreProposalCreator: length mismatch");
         require(chainIds.length == actionData.length, "CoreProposalCreator: length mismatch");
 
         address[] memory schedTargets = new address[](chainIds.length);
@@ -164,7 +164,7 @@ contract UpgradeExecRouter is Initializable, AccessControlUpgradeable {
             // CHRIS: TODO: safety check that all targets and data are non zero?
             if (upExecLocation.inbox == address(0)) {
                 schedTargets[i] = upExecLocation.upgradeExecutor;
-                schedValues[i] = actionDatavalues[i];
+                schedValues[i] = actionValues[i];
                 schedData[i] = executorData;
             } else {
                 // For L2 actions, magic is top level target, and value and calldata are encoded in payload
@@ -173,7 +173,7 @@ contract UpgradeExecRouter is Initializable, AccessControlUpgradeable {
                 schedData[i] = abi.encode(
                     upExecLocation.inbox,
                     upExecLocation.upgradeExecutor,
-                    actionDatavalues[i],
+                    actionValues[i],
                     0,
                     0,
                     executorData
@@ -201,7 +201,7 @@ contract UpgradeExecRouter is Initializable, AccessControlUpgradeable {
     function routeActionsWithDefaults(
         uint256[] memory chainIds,
         address[] memory actionAddresses,
-        bytes32 timelockSalt
+        bytes32 timelockSalt // CHRIS: TODO: can we calculate this in the contract somehow?
     ) public view returns (address, bytes memory) {
         uint256[] memory values = new uint256[](chainIds.length);
         bytes[] memory actionData = new bytes[](chainIds.length);

@@ -33,7 +33,6 @@ contract SecurityCouncilManager is
     event SecurityCouncilRemoved(
         address securityCouncil, address updateAction, uint256 securityCouncilsLength
     );
-    event L1TimelockDelaySet(uint256 minL1TimelockDelay);
 
     // The Security Council members are separated into two cohorts, allowing a whole cohort to be replaced, as
     // specified by the Arbitrum Constitution.
