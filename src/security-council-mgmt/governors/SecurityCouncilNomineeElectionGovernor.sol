@@ -410,7 +410,7 @@ contract SecurityCouncilNomineeElectionGovernor is
         );
     }
 
-    /************** internal override view/pure functions **************/
+    /************** internal view/pure functions **************/
 
     /// @inheritdoc SecurityCouncilNomineeElectionGovernorCountingUpgradeable
     function _isContender(uint256 proposalId, address possibleContender)

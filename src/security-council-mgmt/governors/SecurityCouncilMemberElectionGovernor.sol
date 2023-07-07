@@ -147,7 +147,7 @@ contract SecurityCouncilMemberElectionGovernor is
         );
     }
 
-    /************** internal override view/pure functions **************/
+    /************** internal view/pure functions **************/
 
     /// @dev returns true if the account is a compliant nominee.
     ///      checks the SecurityCouncilNomineeElectionGovernor to see if the account is a compliant nominee of the most recent nominee election
