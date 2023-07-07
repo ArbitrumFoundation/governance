@@ -28,14 +28,10 @@ contract SecurityCouncilManager is
     event MemberReplaced(address indexed replacedMember, address indexed newMember, Cohort cohort);
     event MemberRotated(address indexed replacedAddress, address indexed newAddress, Cohort cohort);
     event SecurityCouncilAdded(
-        address securityCouncil,
-        address updateAction,
-        uint256 securityCouncilsLength
+        address securityCouncil, address updateAction, uint256 securityCouncilsLength
     );
     event SecurityCouncilRemoved(
-        address securityCouncil,
-        address updateAction,
-        uint256 securityCouncilsLength
+        address securityCouncil, address updateAction, uint256 securityCouncilsLength
     );
     event L1TimelockDelaySet(uint256 minL1TimelockDelay);
 
@@ -226,10 +222,7 @@ contract SecurityCouncilManager is
             _securityCouncilData.securityCouncil != address(0),
             "SecurityCouncilManager: zero securityCouncil"
         );
-        require(
-            _securityCouncilData.chainId != 0,
-            "SecurityCouncilManager: zero securityCouncil"
-        );
+        require(_securityCouncilData.chainId != 0, "SecurityCouncilManager: zero securityCouncil");
         // inbox can be zero
         securityCouncils.push(_securityCouncilData);
         emit SecurityCouncilAdded(

@@ -23,11 +23,18 @@ struct ChainAndUpExecLocation {
 }
 
 library UpgradeExecutorLocations {
-    function exists(mapping(uint256 => UpExecLocation) storage locations, uint256 chainId) view internal returns(bool) {
+    function exists(mapping(uint256 => UpExecLocation) storage locations, uint256 chainId)
+        internal
+        view
+        returns (bool)
+    {
         return locations[chainId].upgradeExecutor != address(0);
     }
 
-    function add(mapping(uint256 => UpExecLocation) storage locations, ChainAndUpExecLocation memory _upExecLocation) internal {
+    function add(
+        mapping(uint256 => UpExecLocation) storage locations,
+        ChainAndUpExecLocation memory _upExecLocation
+    ) internal {
         require(
             !exists(locations, _upExecLocation.chainId),
             "UpgradeExecutorLocations: upgrade executor already exists"
@@ -35,8 +42,12 @@ library UpgradeExecutorLocations {
         locations[_upExecLocation.chainId] = _upExecLocation.location;
     }
 
-    function remove(mapping(uint256 => UpExecLocation) storage locations, uint256 chainId) internal {
-        require(exists(locations, chainId), "UpgradeExecutorLocations: upgrade executor does not exist");
+    function remove(mapping(uint256 => UpExecLocation) storage locations, uint256 chainId)
+        internal
+    {
+        require(
+            exists(locations, chainId), "UpgradeExecutorLocations: upgrade executor does not exist"
+        );
         delete locations[chainId];
     }
 }
@@ -63,6 +74,7 @@ contract UpgradeExecRouter is Initializable, AccessControlUpgradeable {
     uint256 public l1TimelockMinDelay;
 
     using UpgradeExecutorLocations for mapping(uint256 => UpExecLocation);
+
     mapping(uint256 => UpExecLocation) upExecLocations;
 
     // CHRIS: TODO: need to emit these
@@ -100,7 +112,10 @@ contract UpgradeExecRouter is Initializable, AccessControlUpgradeable {
     }
 
     /// @notice Add a new chain to be used for governance actions
-    function addUpgradeExecutor(ChainAndUpExecLocation memory _upExecLocation) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function addUpgradeExecutor(ChainAndUpExecLocation memory _upExecLocation)
+        external
+        onlyRole(DEFAULT_ADMIN_ROLE)
+    {
         upExecLocations.add(_upExecLocation);
     }
 
@@ -122,35 +137,26 @@ contract UpgradeExecRouter is Initializable, AccessControlUpgradeable {
     }
 
     function routeActions(
-        uint256[] memory chainIds, 
+        uint256[] memory chainIds,
         address[] memory actionAddresses,
         uint256[] memory actionDatavalues,
         bytes[] memory actionData,
         bytes32 timelockSalt
-    ) public view returns(address, bytes memory) {
-        require(
-            chainIds.length == actionAddresses.length,
-            "CoreProposalCreator: length mismatch"
-        );
-        require(
-            chainIds.length == actionDatavalues.length,
-            "CoreProposalCreator: length mismatch"
-        );
-        require(
-            chainIds.length == actionData.length,
-            "CoreProposalCreator: length mismatch"
-        );
+    ) public view returns (address, bytes memory) {
+        require(chainIds.length == actionAddresses.length, "CoreProposalCreator: length mismatch");
+        require(chainIds.length == actionDatavalues.length, "CoreProposalCreator: length mismatch");
+        require(chainIds.length == actionData.length, "CoreProposalCreator: length mismatch");
 
         address[] memory schedTargets = new address[](chainIds.length);
         uint256[] memory schedValues = new uint256[](chainIds.length);
         bytes[] memory schedData = new bytes[](chainIds.length);
         //CHRIS: TODO: check arrays are same length
-        for (uint i = 0; i < chainIds.length; i++) {    
+        for (uint256 i = 0; i < chainIds.length; i++) {
             UpExecLocation memory upExecLocation = upExecLocations[chainIds[i]];
             bytes memory executorData = abi.encodeWithSelector(
                 UpgradeExecutor.execute.selector, actionAddresses[i], actionData[i]
             );
-            
+
             // CHRIS: TODO: safety check that all targets and data are non zero?
             if (upExecLocation.inbox == address(0)) {
                 schedTargets[i] = upExecLocation.upgradeExecutor;
@@ -161,7 +167,12 @@ contract UpgradeExecRouter is Initializable, AccessControlUpgradeable {
                 schedTargets[i] = RETRYABLE_TICKET_MAGIC;
                 schedValues[i] = 0;
                 schedData[i] = abi.encode(
-                    upExecLocation.inbox, upExecLocation.upgradeExecutor, actionDatavalues[i], 0, 0, executorData
+                    upExecLocation.inbox,
+                    upExecLocation.upgradeExecutor,
+                    actionDatavalues[i],
+                    0,
+                    0,
+                    executorData
                 );
             }
         }
@@ -177,63 +188,49 @@ contract UpgradeExecRouter is Initializable, AccessControlUpgradeable {
             l1TimelockMinDelay
         );
 
-        return (address(100), abi.encodeWithSelector(ArbSys.sendTxToL1.selector, l1TimelockAddr, timelockCallData));
+        return (
+            address(100),
+            abi.encodeWithSelector(ArbSys.sendTxToL1.selector, l1TimelockAddr, timelockCallData)
+        );
     }
 
-    function routeActionsWithDefaults(uint256[] memory chainIds, 
+    function routeActionsWithDefaults(
+        uint256[] memory chainIds,
         address[] memory actionAddresses,
-        bytes32 timelockSalt) public view returns(address, bytes memory) {
-            uint256[] memory values = new uint256[](chainIds.length);
-            bytes[] memory actionData = new bytes[](chainIds.length);
-            for (uint i = 0; i < chainIds.length; i++) {
-                actionData[i] = DEFAULT_GOV_ACTION_CALLDATA;
-                values[i] = DEFAULT_VALUE;
-            }
-            return routeActions(
-                chainIds, 
-                actionAddresses, 
-                values, 
-                actionData, 
-                timelockSalt
-            );
+        bytes32 timelockSalt
+    ) public view returns (address, bytes memory) {
+        uint256[] memory values = new uint256[](chainIds.length);
+        bytes[] memory actionData = new bytes[](chainIds.length);
+        for (uint256 i = 0; i < chainIds.length; i++) {
+            actionData[i] = DEFAULT_GOV_ACTION_CALLDATA;
+            values[i] = DEFAULT_VALUE;
         }
+        return routeActions(chainIds, actionAddresses, values, actionData, timelockSalt);
+    }
 
     function scheduleActions(
-        uint256[] memory chainIds, 
+        uint256[] memory chainIds,
         address[] memory actionAddresses,
         uint256[] memory values,
         bytes[] memory actionData,
         bytes32 timelockSalt
     ) public onlyRole(ACTION_SCHEDULER_ROLE) {
-        (address to, bytes memory payload) = routeActions(
-            chainIds,
-            actionAddresses,
-            values,
-            actionData,
-            timelockSalt
-        );
+        (address to, bytes memory payload) =
+            routeActions(chainIds, actionAddresses, values, actionData, timelockSalt);
         // CHRIS: TODO: use OZ lib for this
-        (bool res, ) = to.call(payload);
+        (bool res,) = to.call(payload);
         require(res, "CoreProposalCreator: Call failed");
     }
 
     function scheduleActionsWithDefaults(
-        uint256[] memory chainIds, 
+        uint256[] memory chainIds,
         address[] memory actionAddresses,
         bytes32 timelockSalt
     ) public onlyRole(ACTION_SCHEDULER_ROLE) {
-            uint256[] memory values = new uint256[](chainIds.length);
-            bytes[] memory actionData = new bytes[](chainIds.length);
-            for (uint i = 0; i < chainIds.length; i++) {
-                actionData[i] = DEFAULT_GOV_ACTION_CALLDATA;
-                values[i] = DEFAULT_VALUE;
-            }
-            scheduleActions(
-                chainIds, 
-                actionAddresses, 
-                values, 
-                actionData, 
-                timelockSalt
-            );
+        (address to, bytes memory payload) =
+            routeActionsWithDefaults(chainIds, actionAddresses, timelockSalt);
+        // CHRIS: TODO: use OZ lib for this
+        (bool res,) = to.call(payload);
+        require(res, "CoreProposalCreator: Call failed");
     }
 }
