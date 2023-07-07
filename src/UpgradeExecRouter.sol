@@ -22,7 +22,7 @@ struct ChainAndUpExecLocation {
     UpExecLocation location;
 }
 
-library UpgradeExecutorLocations {
+library UpgradeExecutorLocationsLib {
     function exists(mapping(uint256 => UpExecLocation) storage locations, uint256 chainId)
         internal
         view
@@ -61,6 +61,8 @@ library UpgradeExecutorLocations {
 ///         Upgrade executors can only be reached by going through a withdrawal and L1 timelock, so this contract
 ///         also include these stages when creating/scheduling a route
 contract UpgradeExecRouter is Initializable, AccessControlUpgradeable {
+    using UpgradeExecutorLocationsLib for mapping(uint256 => UpExecLocation);
+
     bytes32 public constant ACTION_SCHEDULER_ROLE = keccak256("ACTION_SCHEDULER_ROLE");
     // Used as a magic value to indicate that a retryable ticket should be created by the L1 timelock
     address public constant RETRYABLE_TICKET_MAGIC = 0xa723C008e76E379c55599D2E4d93879BeaFDa79C;
@@ -72,9 +74,6 @@ contract UpgradeExecRouter is Initializable, AccessControlUpgradeable {
 
     address public l1TimelockAddr;
     uint256 public l1TimelockMinDelay;
-
-    using UpgradeExecutorLocations for mapping(uint256 => UpExecLocation);
-
     mapping(uint256 => UpExecLocation) upExecLocations;
 
     // CHRIS: TODO: need to emit these
@@ -152,7 +151,12 @@ contract UpgradeExecRouter is Initializable, AccessControlUpgradeable {
         bytes[] memory schedData = new bytes[](chainIds.length);
         //CHRIS: TODO: check arrays are same length
         for (uint256 i = 0; i < chainIds.length; i++) {
+            require(
+                upExecLocations.exists(chainIds[i]),
+                "UpgradeExecRouter: Upgrade exec location does not exist"
+            );
             UpExecLocation memory upExecLocation = upExecLocations[chainIds[i]];
+
             bytes memory executorData = abi.encodeWithSelector(
                 UpgradeExecutor.execute.selector, actionAddresses[i], actionData[i]
             );
