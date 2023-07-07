@@ -16,7 +16,7 @@ interface IInboxSubmissionFee {
 /// @dev   Only accepts proposals from a counterparty L2 timelock
 ///        If ever upgrading to a later version of TimelockControllerUpgradeable be sure to check that
 ///        no new behaviour has been given to the PROPOSER role, as this is assigned to the bridge
-///        and any new behaviour should be overriden to also include the 'onlyCoreProposerPropagator' modifier check
+///        and any new behaviour should be overriden to also include the 'onlyCounterpartTimelock' modifier check
 contract L1ArbitrumTimelock is ArbitrumTimelock, L1ArbitrumMessenger {
     /// @notice The magic address to be used when a retryable ticket is to be created
     /// @dev When the target of an proposal is this magic value then the proposal
@@ -31,8 +31,6 @@ contract L1ArbitrumTimelock is ArbitrumTimelock, L1ArbitrumMessenger {
     address public governanceChainInbox;
     /// @notice The timelock of the governance contract on L2
     address public l2Timelock;
-    /// @notice The address of the core proposal creator on L2
-    address public coreProposalCreator;
 
     constructor() {
         _disableInitializers();
@@ -68,31 +66,20 @@ contract L1ArbitrumTimelock is ArbitrumTimelock, L1ArbitrumMessenger {
         grantRole(PROPOSER_ROLE, bridge);
     }
 
-    function postUpgradeHook(address _coreProposalCreator) external {
-        require(_coreProposalCreator != address(0), "L1ArbitrumTimelock: zero _coreProposalCreator");
-        require(
-            coreProposalCreator == address(0), "L1ArbitrumTimelock: postUpgradeHook already called"
-        );
-        coreProposalCreator = _coreProposalCreator;
-    }
-
-    modifier onlyCoreProposerPropagator() {
+    modifier onlyCounterpartTimelock() {
         // this bridge == msg.sender check is redundant in all the places that
         // we currently use this modifier since we call a function on super
         // that also checks the proposer role, which we enforce is in the intializer above
         // so although the msg.sender is being checked against the bridge twice we
         // still leave this check here for consistency of this function and in case
-        // onlyCoreProposerPropagator is used on other functions without this proposer check
+        // onlyCounterpartTimelock is used on other functions without this proposer check
         // in future
         address govChainBridge = address(getBridge(governanceChainInbox));
         require(msg.sender == govChainBridge, "L1ArbitrumTimelock: not from bridge");
 
         // the outbox reports that the L2 address of the sender is the counterpart gateway
         address l2ToL1Sender = super.getL2ToL1Sender(governanceChainInbox);
-        require(
-            l2ToL1Sender == coreProposalCreator || l2ToL1Sender == l2Timelock,
-            "L1ArbitrumTimelock: not from core proposal propagator"
-        );
+        require(l2ToL1Sender == l2Timelock, "L1ArbitrumTimelock: not from l2 timelock");
         _;
     }
 
@@ -111,7 +98,7 @@ contract L1ArbitrumTimelock is ArbitrumTimelock, L1ArbitrumMessenger {
         bytes32 predecessor,
         bytes32 salt,
         uint256 delay
-    ) public virtual override(TimelockControllerUpgradeable) onlyCoreProposerPropagator {
+    ) public virtual override(TimelockControllerUpgradeable) onlyCounterpartTimelock {
         TimelockControllerUpgradeable.scheduleBatch(
             targets, values, payloads, predecessor, salt, delay
         );
@@ -120,7 +107,7 @@ contract L1ArbitrumTimelock is ArbitrumTimelock, L1ArbitrumMessenger {
     /// @inheritdoc TimelockControllerUpgradeable
     /// @dev Adds the restriction that only the counterparty timelock can call this func
     /// @param predecessor  Do not use predecessor to preserve ordering for proposals that make cross
-    ///                     chain calls, since those calls are executed async and do not preserve order themselves.
+    ///                     chain calls, since those calls are executed async it and do not preserve order themselves.
     function schedule(
         address target,
         uint256 value,
@@ -128,7 +115,7 @@ contract L1ArbitrumTimelock is ArbitrumTimelock, L1ArbitrumMessenger {
         bytes32 predecessor,
         bytes32 salt,
         uint256 delay
-    ) public virtual override(TimelockControllerUpgradeable) onlyCoreProposerPropagator {
+    ) public virtual override(TimelockControllerUpgradeable) onlyCounterpartTimelock {
         TimelockControllerUpgradeable.schedule(target, value, data, predecessor, salt, delay);
     }
 

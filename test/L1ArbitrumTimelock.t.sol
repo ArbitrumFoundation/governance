@@ -368,13 +368,13 @@ contract L1ArbitrumTimelockTest is Test {
 
         address wrongL2Timelock = address(1245);
         mockActiveOutbox(outbox, wrongL2Timelock);
-        vm.expectRevert("L1ArbitrumTimelock: not from core proposal propagator");
+        vm.expectRevert("L1ArbitrumTimelock: not from l2 timelock");
         vm.prank(bridge);
         l1Timelock.schedule(
             sarg.target, sarg.value, sarg.payload, sarg.predecessor, sarg.salt, minDelay
         );
 
-        vm.expectRevert("L1ArbitrumTimelock: not from core proposal propagator");
+        vm.expectRevert("L1ArbitrumTimelock: not from l2 timelock");
         vm.prank(bridge);
         l1Timelock.scheduleBatch(
             sarg.targets,
