@@ -18,6 +18,16 @@ struct SecurityCouncilManagerRoles {
     address memberRotator;
 }
 
+/// @notice Data for a Security Council to be managed
+struct SecurityCouncilData {
+    /// @notice Address of the Security Council
+    address securityCouncil;
+    /// @notice Address of the update action contract that contains the logic for
+    ///         updating council membership. Will be delegate called by the upgrade executor
+    address updateAction;
+    uint256 chainId;
+}
+
 interface ISecurityCouncilManager {
     // TODO
     // function initialize(
@@ -51,4 +61,10 @@ interface ISecurityCouncilManager {
     function getFirstCohort() external view returns (address[] memory);
     /// @notice All members of the second cohort
     function getSecondCohort() external view returns (address[] memory);
+    /// @notice Add new security council to be included in security council management system.
+    /// @param _securityCouncilData Security council info
+    function addSecurityCouncil(SecurityCouncilData memory _securityCouncilData) external;
+    /// @notice Remove security council from management system.
+    /// @param _index   Index in securityCouncils of data to be removed
+    function removeSecurityCouncil(uint256 _index) external;
 }
