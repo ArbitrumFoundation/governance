@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.16;
 
+import "../../UpgradeExecRouterBuilder.sol";
+
 /// @notice Security councils members are members of one of two cohorts.
 ///         Periodically all the positions on a cohort are put up for election,
 ///         and the members replaced with new ones.
@@ -30,11 +32,14 @@ struct SecurityCouncilData {
 
 interface ISecurityCouncilManager {
     // TODO
-    // function initialize(
-    //     address[] memory _marchCohort,
-    //     address[] memory _septemberCohort,
-    //     SecurityCouncilManagerRoles memory _roles
-    // ) external;
+    function initialize(
+        address[] memory _firstCohort,
+        address[] memory _secondCohort,
+        SecurityCouncilData[] memory _securityCouncils,
+        SecurityCouncilManagerRoles memory _roles,
+        address payable _l2CoreGovTimelock,
+        UpgradeExecRouterBuilder _router
+    ) external;
     /// @notice Replaces a whole cohort.
     /// @dev    Initiaties cross chain messages to update the individual Security Councils
     /// @param _newCohort   New cohort members to replace existing cohort. Must have 6 members.
@@ -67,4 +72,7 @@ interface ISecurityCouncilManager {
     /// @notice Remove security council from management system.
     /// @param _index   Index in securityCouncils of data to be removed
     function removeSecurityCouncil(uint256 _index) external;
+    /// @notice UpgradeExecRouterBuilder is immutable, so in lieu of upgrading it, it can be redeployed and reset here
+    /// @param _router new router address
+    function setUpgradeExecRouterBuilder(UpgradeExecRouterBuilder _router) external;
 }
