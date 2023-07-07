@@ -174,7 +174,14 @@ contract L2SecurityCouncilMgmtFactory is Ownable {
         deployedContracts.memberRemovalGovTimelock.grantRole(
             deployedContracts.memberRemovalGovTimelock.TIMELOCK_ADMIN_ROLE(), dp.l2UpgradeExecutor
         );
-        // TODO do we need to revoke the TIMELOCK_ADMIN_ROLE from the timelock itself?
+        // revoke admin roles from the timelock and the deployer
+        deployedContracts.memberRemovalGovTimelock.revokeRole(
+            deployedContracts.memberRemovalGovTimelock.TIMELOCK_ADMIN_ROLE(),
+            address(deployedContracts.memberRemovalGovTimelock)
+        );
+        deployedContracts.memberRemovalGovTimelock.revokeRole(
+            deployedContracts.memberRemovalGovTimelock.TIMELOCK_ADMIN_ROLE(), address(this)
+        );
 
         _initRemovalGov(
             dp,
