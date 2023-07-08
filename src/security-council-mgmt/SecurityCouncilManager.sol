@@ -126,11 +126,11 @@ contract SecurityCouncilManager is
         require(cohort.length < 6, "SecurityCouncilManager: cohort is full");
         require(
             !SecurityCouncilMgmtUtils.isInArray(_newMember, firstCohort),
-            "SecurityCouncilManager: member already in march cohort"
+            "SecurityCouncilManager: member already in first cohort"
         );
         require(
             !SecurityCouncilMgmtUtils.isInArray(_newMember, secondCohort),
-            "SecurityCouncilManager: member already in secondCohort cohort"
+            "SecurityCouncilManager: member already in second cohort"
         );
         cohort.push(_newMember);
     }

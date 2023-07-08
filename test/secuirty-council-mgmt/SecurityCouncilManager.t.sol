@@ -8,6 +8,33 @@ import "../../src/UpgradeExecRouterBuilder.sol";
 import "../util/TestUtil.sol";
 import "../util/MockArbSys.sol";
 
+contract MockArbitrumTimelock {
+    event CallScheduled(
+        bytes32 indexed id,
+        uint256 indexed index,
+        address target,
+        uint256 value,
+        bytes data,
+        bytes32 predecessor,
+        uint256 delay
+    );
+
+    function getMinDelay() external view returns (uint256) {
+        return uint256(123);
+    }
+
+    function schedule(
+        address target,
+        uint256 value,
+        bytes calldata data,
+        bytes32 predecessor,
+        bytes32 salt,
+        uint256 delay
+    ) public virtual {
+        emit CallScheduled(salt, 0, target, value, data, predecessor, delay);
+    }
+}
+
 contract SecurityCouncilManagerTest is Test {
     address[] secondCohort = new address[](6);
     address[6] _secondCohort =
@@ -43,7 +70,7 @@ contract SecurityCouncilManagerTest is Test {
 
     address l1ArbitrumTimelock = address(8881);
 
-    address payable l2CoreGovTimelock = payable(address(9991));
+    address payable l2CoreGovTimelock;
 
     uint256 l1TimelockMinDelay = uint256(1);
     ChainAndUpExecLocation[] chainAndUpExecLocation;
@@ -61,11 +88,14 @@ contract SecurityCouncilManagerTest is Test {
         }
         address prox = TestUtil.deployProxy(address(new SecurityCouncilManager()));
         scm = SecurityCouncilManager(payable(prox));
+        l2CoreGovTimelock = payable(address(new MockArbitrumTimelock()));
+
         scm.initialize(firstCohort, secondCohort, securityCouncils, roles, l2CoreGovTimelock, uerb);
 
-        bytes memory code = vm.getDeployedCode("MockArbSys.sol:ArbSysMock");
-        address overrideAddress = address(0x0000000000000000000000000000000000000064);
-        vm.etch(overrideAddress, code);
+        //
+        // bytes memory code = vm.getDeployedCode("MockArbSys.sol:ArbSysMock");
+        // address overrideAddress = address(0x0000000000000000000000000000000000000064);
+        // vm.etch(overrideAddress, code);
     }
 
     function testInitialization() public {
@@ -97,75 +127,75 @@ contract SecurityCouncilManagerTest is Test {
             scm.hasRole(scm.MEMBER_ROTATOR_ROLE(), roles.memberRotator),
             "member memberRotator role set"
         );
-
         assertEq(l2CoreGovTimelock, scm.l2CoreGovTimelock(), "l2CoreGovTimelock set");
 
         assertEq(address(uerb), address(scm.router()), "exec router set");
     }
 
-    //     function testRemoveMember() public {
-    //         vm.prank(rando);
-    //         vm.expectRevert();
-    //         scm.removeMember(rando);
+    function testRemoveMember() public {
+        vm.prank(rando);
+        vm.expectRevert();
+        scm.removeMember(rando);
 
-    //         vm.prank(roles.memberRemovers[0]);
-    //         vm.expectRevert("SecurityCouncilManager: member not found");
-    //         scm.removeMember(rando);
+        vm.prank(roles.memberRemovers[0]);
+        vm.expectRevert("SecurityCouncilManager: member to remove not found");
+        scm.removeMember(rando);
 
-    //         removeFirstMember();
-    //         address[] memory remainingMembers = new address[](5);
-    //         for (uint256 i = 1; i < secondCohort.length; i++) {
-    //             remainingMembers[i - 1] = secondCohort[i];
-    //         }
-    //         assertTrue(
-    //             TestUtil.areAddressArraysEqual(remainingMembers, scm.getMarchCohort()),
-    //             "member removed from march chohort"
-    //         );
-    //         address[] memory membersToRemove = new address[](1);
-    //         membersToRemove[0] = secondCohort[0];
+        removeFirstMember();
+        address[] memory remainingMembers = new address[](5);
+        for (uint256 i = 1; i < firstCohort.length; i++) {
+            remainingMembers[i - 1] = firstCohort[i];
+        }
+        assertTrue(
+            TestUtil.areAddressArraysEqual(remainingMembers, scm.getFirstCohort()),
+            "member removed from first chohort"
+        );
+        // address[] memory membersToRemove = new address[](1);
+        // membersToRemove[0] = secondCohort[0];
 
-    //         address[] memory membersToAdd = new address[](0);
-    //         checkOperationScheduledAndExecute(membersToAdd, membersToRemove);
-    //     }
+        // address[] memory membersToAdd = new address[](0);
+        // checkOperationScheduledAndExecute(membersToAdd, membersToRemove);
+    }
 
-    //     function testAddMember() public {
-    //         vm.prank(rando);
-    //         vm.expectRevert();
-    //         scm.addMemberToCohort(memberToAdd, Cohort.MARCH);
+    function testAddMember() public {
+        vm.prank(rando);
+        vm.expectRevert();
+        scm.addMember(memberToAdd, Cohort.FIRST);
 
-    //         vm.prank(roles.memberAdder);
-    //         vm.expectRevert("SecurityCouncilManager: cohort is full");
-    //         scm.addMemberToCohort(memberToAdd, Cohort.MARCH);
+        vm.prank(roles.memberAdder);
+        vm.expectRevert("SecurityCouncilManager: cohort is full");
+        scm.addMember(memberToAdd, Cohort.FIRST);
 
-    //         removeFirstMember();
+        removeFirstMember();
 
-    //         vm.startPrank(roles.memberAdder);
+        vm.startPrank(roles.memberAdder);
 
-    //         vm.expectRevert("SecurityCouncilManager: member already in firstCohort cohort");
-    //         scm.addMemberToCohort(firstCohort[0], Cohort.MARCH);
+        vm.expectRevert("SecurityCouncilManager: member already in first cohort");
+        scm.addMember(firstCohort[1], Cohort.FIRST);
 
-    //         scm.addMemberToCohort(memberToAdd, Cohort.MARCH);
-    //         address[] memory newMarchCohort = new address[](6);
-    //         for (uint256 i = 1; i < secondCohort.length; i++) {
-    //             newMarchCohort[i - 1] = secondCohort[i];
-    //         }
-    //         newMarchCohort[5] = memberToAdd;
+        scm.addMember(memberToAdd, Cohort.FIRST);
+        address[] memory newFirstCohort = new address[](6);
+        for (uint256 i = 1; i < firstCohort.length; i++) {
+            newFirstCohort[i - 1] = firstCohort[i];
+        }
+        newFirstCohort[5] = memberToAdd;
 
-    //         assertTrue(
-    //             TestUtil.areAddressArraysEqual(newMarchCohort, scm.getMarchCohort()),
-    //             "member added to march chohort"
-    //         );
+        assertTrue(
+            TestUtil.areAddressArraysEqual(newFirstCohort, scm.getFirstCohort()),
+            "member added to first chohort"
+        );
 
-    //         assertTrue(
-    //             TestUtil.areAddressArraysEqual(firstCohort, scm.getSeptemberCohort()),
-    //             "september cohort untouched"
-    //         );
+        assertTrue(
+            TestUtil.areAddressArraysEqual(secondCohort, scm.getSecondCohort()),
+            "second cohort untouched"
+        );
+        // TODO test adding to second
 
-    //         address[] memory membersToRemove = new address[](0);
-    //         address[] memory membersToAdd = new address[](1);
-    //         membersToAdd[0] = memberToAdd;
-    //         checkOperationScheduledAndExecute(membersToAdd, membersToRemove);
-    //     }
+        // address[] memory membersToRemove = new address[](0);
+        // address[] memory membersToAdd = new address[](1);
+        // membersToAdd[0] = memberToAdd;
+        // checkOperationScheduledAndExecute(membersToAdd, membersToRemove);
+    }
 
     //     function testUpdateCohortAffordances() public {
     //         vm.prank(rando);
@@ -246,9 +276,9 @@ contract SecurityCouncilManagerTest is Test {
     //         assertEq(payloadFromEventLog, keccak256(payload), "eq");
     //     }
 
-    //     function removeFirstMember() internal {
-    //         address memberToRemove = secondCohort[0];
-    //         vm.prank(roles.memberRemovers[0]);
-    //         scm.removeMember(memberToRemove);
-    //     }
+    function removeFirstMember() internal {
+        address memberToRemove = firstCohort[0];
+        vm.prank(roles.memberRemovers[0]);
+        scm.removeMember(memberToRemove);
+    }
 }
