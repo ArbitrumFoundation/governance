@@ -36,12 +36,12 @@ contract MockArbitrumTimelock {
 }
 
 contract SecurityCouncilManagerTest is Test {
-    address[] secondCohort = new address[](6);
-    address[6] _secondCohort =
-        [address(1111), address(1112), address(1113), address(1114), address(1114), address(1116)];
-
     address[] firstCohort = new address[](6);
     address[6] _firstCohort =
+        [address(1111), address(1112), address(1113), address(1114), address(1114), address(1116)];
+
+    address[] secondCohort = new address[](6);
+    address[6] _secondCohort =
         [address(2221), address(2222), address(2223), address(2224), address(2224), address(2226)];
 
     address[] newCohort = new address[](6);
