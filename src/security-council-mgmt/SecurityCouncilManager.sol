@@ -95,13 +95,14 @@ contract SecurityCouncilManager is
             _grantRole(MEMBER_REMOVER_ROLE, _roles.memberRemovers[i]);
         }
         _grantRole(MEMBER_ROTATOR_ROLE, _roles.memberRotator);
+        _grantRole(MEMBER_REPLACER_ROLE, _roles.memberReplacer);
 
         l2CoreGovTimelock = _l2CoreGovTimelock;
 
+        _setUpgradeExecRouterBuilder(_router);
         for (uint256 i = 0; i < _securityCouncils.length; i++) {
             _addSecurityCouncil(_securityCouncils[i]);
         }
-        _setUpgradeExecRouterBuilder(_router);
     }
 
     /// @inheritdoc ISecurityCouncilManager
@@ -142,7 +143,7 @@ contract SecurityCouncilManager is
                 if (_member == cohort[j]) {
                     cohort[j] = cohort[cohort.length - 1];
                     cohort.pop();
-                    return j == 0 ? Cohort.FIRST : Cohort.SECOND;
+                    return i == 0 ? Cohort.FIRST : Cohort.SECOND;
                 }
             }
         }
@@ -221,6 +222,23 @@ contract SecurityCouncilManager is
         );
         require(_securityCouncilData.chainId != 0, "SecurityCouncilManager: zero chain id");
 
+        require(
+            router.upExecLocationExists(_securityCouncilData.chainId),
+            "SecurityCouncilManager: security council not in UpgradeExecRouterBuilder"
+        );
+
+        for (uint256 i = 0; i < securityCouncils.length; i++) {
+            SecurityCouncilData storage existantSecurityCouncil = securityCouncils[i];
+            require(
+                !(
+                    existantSecurityCouncil.chainId == _securityCouncilData.chainId
+                        && existantSecurityCouncil.securityCouncil
+                            == _securityCouncilData.securityCouncil
+                ),
+                "SecurityCouncilManager: security council already included"
+            );
+        }
+
         securityCouncils.push(_securityCouncilData);
         emit SecurityCouncilAdded(
             _securityCouncilData.securityCouncil,
@@ -234,7 +252,6 @@ contract SecurityCouncilManager is
         external
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
-        // CHRIS: TODO: do we also want to check for duplicates when adding here?
         _addSecurityCouncil(_securityCouncilData);
     }
 
@@ -291,6 +308,10 @@ contract SecurityCouncilManager is
     /// @inheritdoc ISecurityCouncilManager
     function getSecondCohort() external view returns (address[] memory) {
         return secondCohort;
+    }
+
+    function securityCouncilsLength() public view returns (uint256) {
+        return securityCouncils.length;
     }
 
     /// @notice Generate unique salt for timelock scheduling

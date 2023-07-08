@@ -59,10 +59,9 @@ contract SecurityCouncilManagerTest is Test {
         cohortUpdator: address(4442),
         memberAdder: address(4443),
         memberRemovers: memberRemovers,
-        memberRotator: address(4446)
+        memberRotator: address(4446),
+        memberReplacer: address(4447)
     });
-
-    uint256 minDelay = uint256(5);
 
     address rando = address(6661);
 
@@ -76,7 +75,31 @@ contract SecurityCouncilManagerTest is Test {
     ChainAndUpExecLocation[] chainAndUpExecLocation;
     SecurityCouncilData[] securityCouncils;
 
+    SecurityCouncilData firstSC = SecurityCouncilData({
+        securityCouncil: address(9991),
+        updateAction: address(9992),
+        chainId: 2
+    });
+
+    SecurityCouncilData scToAdd = SecurityCouncilData({
+        securityCouncil: address(9993),
+        updateAction: address(9994),
+        chainId: 3
+    });
+
+    ChainAndUpExecLocation firstChainAndUpExecLocation = ChainAndUpExecLocation({
+        chainId: 2,
+        location: UpExecLocation({inbox: address(9993), upgradeExecutor: address(9994)})
+    });
+
+    ChainAndUpExecLocation secondChainAndUpExecLocation = ChainAndUpExecLocation({
+        chainId: 3,
+        location: UpExecLocation({inbox: address(9995), upgradeExecutor: address(9996)})
+    });
+
     function setUp() public {
+        chainAndUpExecLocation.push(firstChainAndUpExecLocation);
+        chainAndUpExecLocation.push(secondChainAndUpExecLocation);
         uerb = new UpgradeExecRouterBuilder({
             _upgradeExecutors:chainAndUpExecLocation,
             _l1ArbitrumTimelock: l1ArbitrumTimelock,
@@ -90,12 +113,8 @@ contract SecurityCouncilManagerTest is Test {
         scm = SecurityCouncilManager(payable(prox));
         l2CoreGovTimelock = payable(address(new MockArbitrumTimelock()));
 
+        securityCouncils.push(firstSC);
         scm.initialize(firstCohort, secondCohort, securityCouncils, roles, l2CoreGovTimelock, uerb);
-
-        //
-        // bytes memory code = vm.getDeployedCode("MockArbSys.sol:ArbSysMock");
-        // address overrideAddress = address(0x0000000000000000000000000000000000000064);
-        // vm.etch(overrideAddress, code);
     }
 
     function testInitialization() public {
@@ -223,6 +242,101 @@ contract SecurityCouncilManagerTest is Test {
         );
     }
 
+    function testReplaceMemberAffordances() public {
+        vm.prank(rando);
+        vm.expectRevert();
+        scm.replaceMember(rando, rando);
+
+        vm.startPrank(roles.memberReplacer);
+        vm.expectRevert("SecurityCouncilManager: member to remove not found");
+        scm.replaceMember(memberToAdd, rando);
+
+        vm.expectRevert("SecurityCouncilManager: member already in first cohort");
+        scm.replaceMember(firstCohort[0], firstCohort[1]);
+
+        vm.expectRevert("SecurityCouncilManager: member already in second cohort");
+        scm.replaceMember(firstCohort[0], secondCohort[0]);
+        vm.stopPrank();
+    }
+
+    function testReplaceMemberInFirstCohort() public {
+        vm.startPrank(roles.memberReplacer);
+        vm.recordLogs();
+        scm.replaceMember(firstCohort[0], memberToAdd);
+        checkScheduleWasCalled();
+
+        address[] memory newFirstCohortArray = new address[](6);
+        newFirstCohortArray[0] = memberToAdd;
+        for (uint256 i = 1; i < firstCohort.length; i++) {
+            newFirstCohortArray[i] = firstCohort[i];
+        }
+        assertTrue(
+            TestUtil.areAddressArraysEqual(newFirstCohortArray, scm.getFirstCohort()),
+            "first cohort updated"
+        );
+        assertTrue(
+            TestUtil.areAddressArraysEqual(secondCohort, scm.getSecondCohort()),
+            "second cohort untouched"
+        );
+        vm.stopPrank();
+    }
+
+    function testReplaceMemberInSecondCohort() public {
+        vm.startPrank(roles.memberReplacer);
+        vm.recordLogs();
+        scm.replaceMember(secondCohort[0], memberToAdd);
+        checkScheduleWasCalled();
+        address[] memory newSecondCohortArray = new address[](6);
+        newSecondCohortArray[0] = memberToAdd;
+        for (uint256 i = 1; i < secondCohort.length; i++) {
+            newSecondCohortArray[i] = secondCohort[i];
+        }
+        assertTrue(
+            TestUtil.areAddressArraysEqual(newSecondCohortArray, scm.getSecondCohort()),
+            "second cohort updated"
+        );
+        assertTrue(
+            TestUtil.areAddressArraysEqual(firstCohort, scm.getFirstCohort()),
+            "first cohort untouched"
+        );
+        vm.stopPrank();
+    }
+
+    function testAddSCAffordances() public {
+        vm.prank(rando);
+        vm.expectRevert();
+        scm.addSecurityCouncil(scToAdd);
+
+        vm.startPrank(roles.admin);
+        vm.expectRevert("SecurityCouncilManager: security council already included");
+        scm.addSecurityCouncil(firstSC);
+
+        SecurityCouncilData memory scWithChainNotInRouter = SecurityCouncilData({
+            securityCouncil: address(9991),
+            updateAction: address(9992),
+            chainId: 4
+        });
+        vm.expectRevert("SecurityCouncilManager: security council not in UpgradeExecRouterBuilder");
+        scm.addSecurityCouncil(scWithChainNotInRouter);
+        vm.stopPrank();
+    }
+
+    function testAddSC() public {
+        uint256 len = scm.securityCouncilsLength();
+        vm.prank(roles.admin);
+        scm.addSecurityCouncil(scToAdd);
+        assertEq(len + 1, scm.securityCouncilsLength(), "confimred new SC added");
+
+        (address scAddress, address action, uint256 chainid) =
+            scm.securityCouncils(scm.securityCouncilsLength() - 1);
+
+        assertEq(scAddress, scToAdd.securityCouncil, "confimred new SC added");
+        assertEq(chainid, scToAdd.chainId, "confimred new SC added");
+    }
+
+    // TODO remove SC: affordances / removal
+    // TODO setrouter: affordances / removal
+
     function testUpdateCohortAffordances() public {
         vm.prank(rando);
         vm.expectRevert();
@@ -269,8 +383,6 @@ contract SecurityCouncilManagerTest is Test {
             "first cohort untouched"
         );
     }
-
-    // // TODO: test rotator
 
     // // helpers
     function checkScheduleWasCalled() internal {

@@ -18,6 +18,7 @@ struct SecurityCouncilManagerRoles {
     address memberAdder;
     address[] memberRemovers;
     address memberRotator;
+    address memberReplacer;
 }
 
 /// @notice Data for a Security Council to be managed
@@ -71,6 +72,8 @@ interface ISecurityCouncilManager {
     function getFirstCohort() external view returns (address[] memory);
     /// @notice All members of the second cohort
     function getSecondCohort() external view returns (address[] memory);
+    /// @notice length of security councils array
+    function securityCouncilsLength() external view returns (uint256);
     /// @notice Add new security council to be included in security council management system.
     /// @param _securityCouncilData Security council info
     function addSecurityCouncil(SecurityCouncilData memory _securityCouncilData) external;

@@ -63,7 +63,7 @@ contract UpgradeExecRouterBuilder {
                 "UpgradeExecRouterBuilder: upgradeExecutor cannot be address(0)"
             );
             require(
-                upExecLocations[chainAndUpExecLocation.chainId].upgradeExecutor == address(0),
+                !upExecLocationExists(chainAndUpExecLocation.chainId),
                 "UpgradeExecRouterBuilder: location already added"
             );
             upExecLocations[chainAndUpExecLocation.chainId] = chainAndUpExecLocation.location;
@@ -71,6 +71,12 @@ contract UpgradeExecRouterBuilder {
 
         l1TimelockAddr = _l1ArbitrumTimelock;
         l1TimelockMinDelay = _l1TimelockMinDelay;
+    }
+    /// @notice getter for UpExecLocation in upExecLocations mapping
+    /// @param _chainId chainId for target UpExecLocation
+
+    function upExecLocationExists(uint256 _chainId) public view returns (bool) {
+        return upExecLocations[_chainId].upgradeExecutor != address(0);
     }
 
     /// @notice creates data for ArbSys for a batch of core governance operations

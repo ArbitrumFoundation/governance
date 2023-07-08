@@ -143,7 +143,8 @@ contract L2SecurityCouncilMgmtFactory is Ownable {
             cohortUpdator: address(deployedContracts.memberElectionGovernor),
             memberAdder: dp._govChainEmergencySecurityCouncil,
             memberRemovers: memberRemovers,
-            memberRotator: dp._govChainEmergencySecurityCouncil
+            memberRotator: dp._govChainEmergencySecurityCouncil,
+            memberReplacer: dp._govChainEmergencySecurityCouncil
         });
 
         deployedContracts.upgradeExecRouterBuilder = new UpgradeExecRouterBuilder({
