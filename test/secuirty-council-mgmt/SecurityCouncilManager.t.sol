@@ -173,7 +173,7 @@ contract SecurityCouncilManagerTest is Test {
         scm.addMember(firstCohort[1], Cohort.FIRST);
     }
 
-    function testAddMember() public {
+    function testAddMemberToFirstCohort() public {
         removeFirstMember();
         vm.startPrank(roles.memberAdder);
         vm.recordLogs();
@@ -195,7 +195,32 @@ contract SecurityCouncilManagerTest is Test {
             TestUtil.areAddressArraysEqual(secondCohort, scm.getSecondCohort()),
             "second cohort untouched"
         );
-        // TODO test adding to second?
+    }
+
+    function testAddMemberToSecondCohort() public {
+        vm.prank(roles.memberRemovers[0]);
+        scm.removeMember(secondCohort[0]);
+
+        vm.startPrank(roles.memberAdder);
+        vm.recordLogs();
+        scm.addMember(memberToAdd, Cohort.SECOND);
+        checkScheduleWasCalled();
+        vm.stopPrank();
+        address[] memory newSecondCohort = new address[](6);
+        for (uint256 i = 1; i < secondCohort.length; i++) {
+            newSecondCohort[i - 1] = secondCohort[i];
+        }
+        newSecondCohort[5] = memberToAdd;
+
+        assertTrue(
+            TestUtil.areAddressArraysEqual(newSecondCohort, scm.getSecondCohort()),
+            "member added to second chohort"
+        );
+
+        assertTrue(
+            TestUtil.areAddressArraysEqual(firstCohort, scm.getFirstCohort()),
+            "first cohort untouched"
+        );
     }
 
     function testUpdateCohortAffordances() public {
