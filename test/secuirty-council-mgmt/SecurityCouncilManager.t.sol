@@ -141,7 +141,10 @@ contract SecurityCouncilManagerTest is Test {
         vm.expectRevert("SecurityCouncilManager: member to remove not found");
         scm.removeMember(rando);
 
+        vm.recordLogs();
         removeFirstMember();
+        checkScheduleWasCalled();
+
         address[] memory remainingMembers = new address[](5);
         for (uint256 i = 1; i < firstCohort.length; i++) {
             remainingMembers[i - 1] = firstCohort[i];
@@ -150,11 +153,6 @@ contract SecurityCouncilManagerTest is Test {
             TestUtil.areAddressArraysEqual(remainingMembers, scm.getFirstCohort()),
             "member removed from first chohort"
         );
-        // address[] memory membersToRemove = new address[](1);
-        // membersToRemove[0] = secondCohort[0];
-
-        // address[] memory membersToAdd = new address[](0);
-        // checkOperationScheduledAndExecute(membersToAdd, membersToRemove);
     }
 
     function testAddMember() public {
@@ -173,7 +171,10 @@ contract SecurityCouncilManagerTest is Test {
         vm.expectRevert("SecurityCouncilManager: member already in first cohort");
         scm.addMember(firstCohort[1], Cohort.FIRST);
 
+        vm.recordLogs();
         scm.addMember(memberToAdd, Cohort.FIRST);
+        checkScheduleWasCalled();
+
         address[] memory newFirstCohort = new address[](6);
         for (uint256 i = 1; i < firstCohort.length; i++) {
             newFirstCohort[i - 1] = firstCohort[i];
@@ -189,92 +190,67 @@ contract SecurityCouncilManagerTest is Test {
             TestUtil.areAddressArraysEqual(secondCohort, scm.getSecondCohort()),
             "second cohort untouched"
         );
-        // TODO test adding to second
-
-        // address[] memory membersToRemove = new address[](0);
-        // address[] memory membersToAdd = new address[](1);
-        // membersToAdd[0] = memberToAdd;
-        // checkOperationScheduledAndExecute(membersToAdd, membersToRemove);
+        // TODO test adding to second?
     }
 
-    //     function testUpdateCohortAffordances() public {
-    //         vm.prank(rando);
-    //         vm.expectRevert();
-    //         scm.executeElectionResult(newCohort, Cohort.MARCH);
+    function testUpdateCohortAffordances() public {
+        vm.prank(rando);
+        vm.expectRevert();
+        scm.replaceCohort(newCohort, Cohort.FIRST);
 
-    //         vm.startPrank(roles.cohortUpdator);
-    //         address[] memory newSmallCohort = new address[](1);
-    //         newSmallCohort[0] = rando;
-    //         vm.expectRevert("SecurityCouncilManager: invalid cohort length");
-    //         scm.executeElectionResult(newSmallCohort, Cohort.MARCH);
+        vm.startPrank(roles.cohortUpdator);
+        address[] memory newSmallCohort = new address[](1);
+        newSmallCohort[0] = rando;
+        vm.expectRevert("SecurityCouncilManager: invalid cohort length");
+        scm.replaceCohort(newSmallCohort, Cohort.FIRST);
+        vm.stopPrank();
+    }
 
-    //         vm.stopPrank();
-    //     }
+    function testUpdateFirstCohort() public {
+        vm.startPrank(roles.cohortUpdator);
 
-    //     function testUpdateMarchCohort() public {
-    //         vm.startPrank(roles.cohortUpdator);
-    //         scm.executeElectionResult(newCohort, Cohort.MARCH);
-    //         assertTrue(
-    //             TestUtil.areAddressArraysEqual(newCohort, scm.getMarchCohort()), "march cohort updated"
-    //         );
+        vm.recordLogs();
+        scm.replaceCohort(newCohort, Cohort.FIRST);
+        checkScheduleWasCalled();
 
-    //         assertTrue(
-    //             TestUtil.areAddressArraysEqual(firstCohort, scm.getSeptemberCohort()),
-    //             "september cohort untouched"
-    //         );
-    //         checkOperationScheduledAndExecute(newCohort, secondCohort);
-    //     }
+        assertTrue(
+            TestUtil.areAddressArraysEqual(newCohort, scm.getFirstCohort()), "first cohort updated"
+        );
 
-    //     function testUpdateSeptemberCohort() public {
-    //         vm.startPrank(roles.cohortUpdator);
-    //         scm.executeElectionResult(newCohort, Cohort.SEPTEMBER);
-    //         assertTrue(
-    //             TestUtil.areAddressArraysEqual(newCohort, scm.getSeptemberCohort()),
-    //             "september cohort updated"
-    //         );
-    //         assertTrue(
-    //             TestUtil.areAddressArraysEqual(secondCohort, scm.getMarchCohort()),
-    //             "march cohort untouched"
-    //         );
-    //         checkOperationScheduledAndExecute(newCohort, firstCohort);
-    //     }
+        assertTrue(
+            TestUtil.areAddressArraysEqual(secondCohort, scm.getSecondCohort()),
+            "second cohort untouched"
+        );
+    }
 
-    //     // TODO: test rotator
+    function testUpdateSecondCohort() public {
+        vm.startPrank(roles.cohortUpdator);
 
-    //     // helpers
-    //     function checkOperationScheduledAndExecute(
-    //         address[] memory membersToAdd,
-    //         address[] memory membersToRemove
-    //     ) internal {
-    //         bytes memory payload = abi.encodeWithSelector(
-    //             IL1SecurityCouncilUpdateRouter.scheduleUpdateMembers.selector,
-    //             abi.encode(membersToAdd, membersToRemove)
-    //         );
-    //         bytes32 salt = scm.calculateUpdateSalt(scm.updateNonce() - 1, payload);
-    //         bytes32 id = scm.hashOperation(address(scm), 0, payload, bytes32(0), salt);
+        vm.recordLogs();
+        scm.replaceCohort(newCohort, Cohort.SECOND);
+        checkScheduleWasCalled();
 
-    //         // check operation is scheduled
-    //         assertTrue(scm.isOperationPending(id), "operation pending");
-    //         assertFalse(scm.isOperationReady(id), "operation not ready");
+        assertTrue(
+            TestUtil.areAddressArraysEqual(newCohort, scm.getSecondCohort()),
+            "second cohort updated"
+        );
+        assertTrue(
+            TestUtil.areAddressArraysEqual(firstCohort, scm.getFirstCohort()),
+            "first cohort untouched"
+        );
+    }
 
-    //         // warp so it can be executed
-    //         vm.warp(block.timestamp + minDelay);
-    //         assertTrue(scm.isOperationReady(id), "operation ready");
+    // // TODO: test rotator
 
-    //         vm.recordLogs();
-    //         // execute
-    //         scm.execute(address(scm), 0, payload, bytes32(0), salt);
-    //         Vm.Log[] memory entries = vm.getRecordedLogs();
-
-    //         // check ArbSysL2ToL1Tx event was emitted with payload
-    //         assertEq(
-    //             entries[0].topics[0],
-    //             keccak256("ArbSysL2ToL1Tx(address,address,uint256,bytes)"),
-    //             "ArbSysL2ToL1Tx emitted"
-    //         );
-    //         bytes32 payloadFromEventLog = entries[0].topics[1];
-    //         assertEq(payloadFromEventLog, keccak256(payload), "eq");
-    //     }
+    // // helpers
+    function checkScheduleWasCalled() internal {
+        Vm.Log[] memory entries = vm.getRecordedLogs();
+        assertEq(
+            entries[0].topics[0],
+            keccak256("CallScheduled(bytes32,uint256,address,uint256,bytes,bytes32,uint256)"),
+            "ArbSysL2ToL1Tx emitted"
+        );
+    }
 
     function removeFirstMember() internal {
         address memberToRemove = firstCohort[0];
