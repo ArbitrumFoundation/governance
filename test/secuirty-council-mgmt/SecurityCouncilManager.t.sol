@@ -132,7 +132,7 @@ contract SecurityCouncilManagerTest is Test {
         assertEq(address(uerb), address(scm.router()), "exec router set");
     }
 
-    function testRemoveMember() public {
+    function testRemoveMemberAffordances() public {
         vm.prank(rando);
         vm.expectRevert();
         scm.removeMember(rando);
@@ -140,7 +140,9 @@ contract SecurityCouncilManagerTest is Test {
         vm.prank(roles.memberRemovers[0]);
         vm.expectRevert("SecurityCouncilManager: member to remove not found");
         scm.removeMember(rando);
+    }
 
+    function testRemoveMember() public {
         vm.recordLogs();
         removeFirstMember();
         checkScheduleWasCalled();
@@ -155,7 +157,7 @@ contract SecurityCouncilManagerTest is Test {
         );
     }
 
-    function testAddMember() public {
+    function testAddMemberAffordances() public {
         vm.prank(rando);
         vm.expectRevert();
         scm.addMember(memberToAdd, Cohort.FIRST);
@@ -166,15 +168,18 @@ contract SecurityCouncilManagerTest is Test {
 
         removeFirstMember();
 
-        vm.startPrank(roles.memberAdder);
-
+        vm.prank(roles.memberAdder);
         vm.expectRevert("SecurityCouncilManager: member already in first cohort");
         scm.addMember(firstCohort[1], Cohort.FIRST);
+    }
 
+    function testAddMember() public {
+        removeFirstMember();
+        vm.startPrank(roles.memberAdder);
         vm.recordLogs();
         scm.addMember(memberToAdd, Cohort.FIRST);
         checkScheduleWasCalled();
-
+        vm.stopPrank();
         address[] memory newFirstCohort = new address[](6);
         for (uint256 i = 1; i < firstCohort.length; i++) {
             newFirstCohort[i - 1] = firstCohort[i];

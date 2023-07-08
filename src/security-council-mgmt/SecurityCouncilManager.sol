@@ -172,13 +172,7 @@ contract SecurityCouncilManager is
         external
         onlyRole(MEMBER_REPLACER_ROLE)
     {
-        require(
-            _memberToReplace != address(0) && _newMember != address(0),
-            "SecurityCouncilManager: members can't be zero address"
-        );
-        Cohort cohort = _removeMemberFromCohortArray(_memberToReplace);
-        _addMemberToCohortArray(_newMember, cohort);
-        _scheduleUpdate();
+        Cohort cohort = _swapMembers(_memberToReplace, _newMember);
         emit MemberReplaced({
             replacedMember: _memberToReplace,
             newMember: _newMember,
@@ -186,27 +180,30 @@ contract SecurityCouncilManager is
         });
     }
 
-    /// @notice Security council member can rotate out their address for a new one; _currentAddress and _newAddress are of the same identity.
-    ///         Rotation must be initiated by the security council, and member rotating out must give explicit
-    ///         consent via signature
-    /// @param _currentAddress  Address to rotate out
-    /// @param _newAddress      Address to rotate in
+    /// @inheritdoc ISecurityCouncilManager
     function rotateMember(address _currentAddress, address _newAddress)
         external
         onlyRole(MEMBER_ROTATOR_ROLE)
     {
-        require(
-            _currentAddress != address(0) && _newAddress != address(0),
-            "SecurityCouncilManager: members can't be zero address"
-        );
-        Cohort cohort = _removeMemberFromCohortArray(_currentAddress);
-        _addMemberToCohortArray(_newAddress, cohort);
-        _scheduleUpdate();
+        Cohort cohort = _swapMembers(_currentAddress, _newAddress);
         emit MemberRotated({
             replacedAddress: _currentAddress,
             newAddress: _newAddress,
             cohort: cohort
         });
+    }
+
+    function _swapMembers(address _addressToRemove, address _addressToAdd)
+        internal
+        returns (Cohort cohort)
+    {
+        require(
+            _addressToRemove != address(0) && _addressToAdd != address(0),
+            "SecurityCouncilManager: members can't be zero address"
+        );
+        Cohort cohort = _removeMemberFromCohortArray(_addressToRemove);
+        _addMemberToCohortArray(_addressToAdd, cohort);
+        _scheduleUpdate();
     }
 
     function _addSecurityCouncil(SecurityCouncilData memory _securityCouncilData) internal {
@@ -222,7 +219,7 @@ contract SecurityCouncilManager is
             _securityCouncilData.securityCouncil != address(0),
             "SecurityCouncilManager: zero securityCouncil"
         );
-        require(_securityCouncilData.chainId != 0, "SecurityCouncilManager: zero securityCouncil");
+        require(_securityCouncilData.chainId != 0, "SecurityCouncilManager: zero chain id");
 
         securityCouncils.push(_securityCouncilData);
         emit SecurityCouncilAdded(
@@ -242,21 +239,31 @@ contract SecurityCouncilManager is
     }
 
     /// @inheritdoc ISecurityCouncilManager
-    function removeSecurityCouncil(uint256 _index) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        // CHRIS: TODO: I wonder if this should be based on address, or some other identifying behaviour?
-        SecurityCouncilData storage securityCouncilToRemove = securityCouncils[_index];
-        SecurityCouncilData storage lastSecurityCouncil =
-            securityCouncils[securityCouncils.length - 1];
+    function removeSecurityCouncil(uint256 _chainId, address _securityCouncil)
+        external
+        onlyRole(DEFAULT_ADMIN_ROLE)
+        returns (bool)
+    {
+        for (uint256 i = 0; i < securityCouncils.length; i++) {
+            SecurityCouncilData storage securityCouncilData = securityCouncils[i];
+            if (
+                securityCouncilData.securityCouncil == _securityCouncil
+                    && securityCouncilData.chainId == _chainId
+            ) {
+                SecurityCouncilData storage lastSecurityCouncil =
+                    securityCouncils[securityCouncils.length - 1];
 
-        securityCouncils[_index] = lastSecurityCouncil;
-        securityCouncils.pop();
-        emit SecurityCouncilRemoved(
-            securityCouncilToRemove.securityCouncil,
-            // securityCouncilToRemove.upgradeExecutor,
-            securityCouncilToRemove.updateAction,
-            // securityCouncilToRemove.inbox,
-            securityCouncils.length
-        );
+                securityCouncils[i] = lastSecurityCouncil;
+                securityCouncils.pop();
+                emit SecurityCouncilRemoved(
+                    securityCouncilData.securityCouncil,
+                    securityCouncilData.updateAction,
+                    securityCouncils.length
+                );
+                return true;
+            }
+        }
+        revert("SecurityCouncilManager: security council not found");
     }
 
     /// @inheritdoc ISecurityCouncilManager
