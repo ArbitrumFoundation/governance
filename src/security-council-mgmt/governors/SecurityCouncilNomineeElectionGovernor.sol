@@ -8,7 +8,7 @@ import "./SecurityCouncilMemberElectionGovernor.sol";
 
 import "./modules/SecurityCouncilNomineeElectionGovernorCountingUpgradeable.sol";
 import "./modules/ArbitrumGovernorVotesQuorumFractionUpgradeable.sol";
-import "./modules/SecurityCouncilNomineeElectionGovernorIndexing.sol";
+import "./modules/SecurityCouncilNomineeElectionGovernorTiming.sol";
 
 import "../SecurityCouncilMgmtUtils.sol";
 
@@ -25,7 +25,7 @@ contract SecurityCouncilNomineeElectionGovernor is
     ArbitrumGovernorVotesQuorumFractionUpgradeable,
     GovernorSettingsUpgradeable,
     OwnableUpgradeable,
-    SecurityCouncilNomineeElectionGovernorIndexing
+    SecurityCouncilNomineeElectionGovernorTiming
 {
     // todo: these parameters could be reordered to make more sense
     /// @notice parameters for `initialize`

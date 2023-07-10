@@ -6,7 +6,7 @@ import "../../interfaces/ISecurityCouncilManager.sol";
 import "@openzeppelin/contracts-upgradeable/governance/GovernorUpgradeable.sol";
 import "lib/solady/src/utils/DateTimeLib.sol";
 
-abstract contract SecurityCouncilNomineeElectionGovernorIndexing is Initializable, GovernorUpgradeable {
+abstract contract SecurityCouncilNomineeElectionGovernorTiming is Initializable, GovernorUpgradeable {
     /// @notice Date struct for convenience
     struct Date {
         uint256 year;
