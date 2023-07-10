@@ -102,8 +102,8 @@ contract SecurityCouncilMemberElectionGovernorTest is Test {
 
     function testSelectTopNominees() public {
         // make a random list of addresses and weights
-        uint256[] memory weights = _randomArray(100, 0);
-        address[] memory addresses = _randomAddresses(100, 1);
+        uint256[] memory weights = TestUtil.randomArray(100, 0);
+        address[] memory addresses = TestUtil.randomAddresses(100, 1);
 
         // call selectTopNominees
         address[] memory topNominees = governor.selectTopNominees(addresses, weights, 6);
@@ -150,7 +150,7 @@ contract SecurityCouncilMemberElectionGovernorTest is Test {
         bytes32 descriptionHash = keccak256(bytes(governor.nomineeElectionIndexToDescription(0)));
 
         // before mocking manager, should revert
-        // (this just makes sure that execute calls the manager at all)
+        // (this just makes sure that execute calls the manager)
         vm.expectRevert(bytes(""));
         governor.execute({
             targets: new address[](1),
@@ -391,23 +391,6 @@ contract SecurityCouncilMemberElectionGovernorTest is Test {
 
     function _nominee(uint8 i) internal pure returns (address) {
         return address(uint160(0x2200 + i));
-    }
-
-    function _randomArray(uint256 length, uint256 seed) internal pure returns (uint256[] memory) {
-        uint256[] memory arr = new uint256[](length);
-        for (uint256 i = 0; i < length; i++) {
-            arr[i] = uint256(keccak256(abi.encode(seed, i)));
-        }
-        return arr;
-    }
-
-    function _randomAddresses(uint256 length, uint256 seed) internal pure returns (address[] memory) {
-        uint256[] memory arr = _randomArray(length, seed);
-        address[] memory addresses = new address[](length);
-        for (uint256 i = 0; i < length; i++) {
-            addresses[i] = address(uint160(arr[i]));
-        }
-        return addresses;
     }
 
     function _createProposalAndVoteForSomeNominees(uint256 nomineeElectionIndex, uint256 numNominees) internal returns (uint256) {
