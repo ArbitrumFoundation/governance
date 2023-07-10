@@ -38,7 +38,7 @@ contract SecurityCouncilMemberElectionGovernor is
         IVotesUpgradeable _token,
         address _owner,
         uint256 _votingPeriod,
-        uint256 _targetMemberCount,
+        uint256 _targetMemberCount, // HENRY: TODO: remove this, won't do it now because it messes with factory
         uint256 _fullWeightDuration
     ) public initializer {
         require(
