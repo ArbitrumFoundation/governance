@@ -51,8 +51,6 @@ contract SecurityCouncilNomineeElectionGovernor is
         uint256 votingPeriod;
     }
 
-    
-
     /// @notice Information about a nominee election
     /// @param isContender Whether the account is a contender
     /// @param isExcluded Whether the account has been excluded by the nomineeVetter
@@ -368,13 +366,23 @@ contract SecurityCouncilNomineeElectionGovernor is
         );
     }
 
-    /**
-     * internal view/pure functions *************
-     */
+    /// @notice returns true if the nominee has been excluded by the nomineeVetter for the given proposal
+    function isExcluded(uint256 proposalId, address possibleExcluded)
+        public
+        view
+        returns (bool)
+    {
+        return _elections[proposalId].isExcluded[possibleExcluded];
+    }
+
+    /// @notice returns the number of excluded nominees for the given proposal
+    function excludedNomineeCount(uint256 proposalId) public view returns (uint256) {
+        return _elections[proposalId].excludedNomineeCount;
+    }
 
     /// @inheritdoc SecurityCouncilNomineeElectionGovernorCountingUpgradeable
-    function _isContender(uint256 proposalId, address possibleContender)
-        internal
+    function isContender(uint256 proposalId, address possibleContender)
+        public
         view
         virtual
         override

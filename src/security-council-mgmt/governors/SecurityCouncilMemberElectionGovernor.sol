@@ -38,7 +38,7 @@ contract SecurityCouncilMemberElectionGovernor is
         IVotesUpgradeable _token,
         address _owner,
         uint256 _votingPeriod,
-        uint256 _targetMemberCount,
+        uint256 _targetMemberCount, // HENRY: TODO: remove this, won't do it now because it messes with factory
         uint256 _fullWeightDuration
     ) public initializer {
         require(
@@ -49,7 +49,6 @@ contract SecurityCouncilMemberElectionGovernor is
         __Governor_init("SecurityCouncilMemberElectionGovernor");
         __GovernorVotes_init(_token);
         __SecurityCouncilMemberElectionGovernorCounting_init({
-            targetMemberCount: _targetMemberCount,
             initialFullWeightDuration: _fullWeightDuration
         });
         __GovernorSettings_init(0, _votingPeriod, 0);
@@ -153,6 +152,16 @@ contract SecurityCouncilMemberElectionGovernor is
         );
     }
 
+    /// @notice Returns the proposalId for a given `electionIndex`
+    function nomineeElectionIndexToProposalId(uint256 electionIndex) public pure returns (uint256) {
+        return hashProposal(
+            new address[](1),
+            new uint256[](1),
+            new bytes[](1),
+            keccak256(bytes(nomineeElectionIndexToDescription(electionIndex)))
+        );
+    }
+
     /**
      * internal view/pure functions *************
      */
@@ -166,6 +175,11 @@ contract SecurityCouncilMemberElectionGovernor is
         returns (bool)
     {
         return nomineeElectionGovernor.isCompliantNomineeForMostRecentElection(possibleNominee);
+    }
+
+    /// @inheritdoc SecurityCouncilMemberElectionGovernorCountingUpgradeable
+    function _targetMemberCount() internal view override returns (uint256) {
+        return nomineeElectionGovernor.targetNomineeCount();
     }
 
     /**

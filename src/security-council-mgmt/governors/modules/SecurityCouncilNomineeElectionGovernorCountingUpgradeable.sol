@@ -72,7 +72,7 @@ abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is
         (address contender, uint256 votes) = abi.decode(params, (address, uint256));
 
         require(
-            _isContender(proposalId, contender),
+            isContender(proposalId, contender),
             "SecurityCouncilNomineeElectionGovernorCountingUpgradeable: Contender is not eligible"
         );
 
@@ -161,6 +161,13 @@ abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is
         return _elections[proposalId].votesReceived[contender];
     }
 
+    /// @dev Returns true if the account is a contender for the proposal
+    function isContender(uint256 proposalId, address possibleContender)
+        public
+        view
+        virtual
+        returns (bool);
+
     /**
      * internal view/pure functions *************
      */
@@ -174,13 +181,6 @@ abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is
     function _voteSucceeded(uint256) internal pure override returns (bool) {
         return true;
     }
-
-    /// @dev Returns true if the account is a contender for the proposal
-    function _isContender(uint256 proposalId, address possibleContender)
-        internal
-        view
-        virtual
-        returns (bool);
 
     /**
      * @dev This empty reserved space is put in place to allow future versions to add new
