@@ -41,8 +41,8 @@ contract SecurityCouncilManager is
     // These two cohort arrays contain the source of truth for the members of the Security Council. When a membership
     // change needs to be made, a change to these arrays is first made here locally, then pushed to each of the Security Councils
     // A member cannot be in both cohorts at the same time
-    address[] public firstCohort;
-    address[] public secondCohort;
+    address[] internal firstCohort;
+    address[] internal secondCohort;
 
     /// @notice Address of the l2 timelock used by core governance
     address payable public l2CoreGovTimelock;

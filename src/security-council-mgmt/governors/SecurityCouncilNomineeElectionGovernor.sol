@@ -215,7 +215,7 @@ contract SecurityCouncilNomineeElectionGovernor is
 
         emit ContenderAdded(proposalId, msg.sender);
     }
-    
+
     /// @notice Allows the owner to change the nomineeVetter
     function setNomineeVetter(address _nomineeVetter) external onlyOwner {
         address oldNomineeVetter = nomineeVetter;
@@ -273,6 +273,13 @@ contract SecurityCouncilNomineeElectionGovernor is
             "SecurityCouncilNomineeElectionGovernor: Nominee already added"
         );
 
+        uint256 compliantNomineeCount =
+            nomineeCount(proposalId) - _elections[proposalId].excludedNomineeCount;
+        require(
+            compliantNomineeCount < targetNomineeCount,
+            "SecurityCouncilNomineeElectionGovernor: Compliant nominee count at target"
+        );
+
         Cohort cohort = electionIndexToCohort(electionCount - 1);
         if (cohort == Cohort.FIRST) {
             require(
@@ -286,7 +293,7 @@ contract SecurityCouncilNomineeElectionGovernor is
             );
         }
 
-        addNominee(proposalId, account);
+        _addNominee(proposalId, account);
 
         emit NewNominee(proposalId, account);
     }
