@@ -22,9 +22,6 @@ abstract contract SecurityCouncilNomineeElectionGovernorIndexingTiming is Initia
     /// @dev    This is the amount of time after voting ends that the nomineeVetter can exclude noncompliant nominees
     uint256 public nomineeVettingDuration;
 
-    /// @notice Number of elections created
-    uint256 public electionCount;
-
     function __SecurityCouncilNomineeElectionGovernorIndexingTiming_init(
         Date memory _firstNominationStartDate,
         uint256 _nomineeVettingDuration
@@ -92,33 +89,5 @@ abstract contract SecurityCouncilNomineeElectionGovernorIndexingTiming is Initia
             minute: 0,
             second: 0
         });
-    }
-
-    /// @notice Returns the cohort for a given `electionIndex`
-    function electionIndexToCohort(uint256 electionIndex) public pure returns (Cohort) {
-        return Cohort(electionIndex % 2);
-    }
-
-    function cohortOfMostRecentElection() external view returns (Cohort) {
-        return electionIndexToCohort(electionCount - 1);
-    }
-
-    /// @notice Returns the description for a given `electionIndex`
-    function electionIndexToDescription(uint256 electionIndex)
-        public
-        pure
-        returns (string memory)
-    {
-        return string.concat("Nominee Election #", StringsUpgradeable.toString(electionIndex));
-    }
-
-    /// @notice Returns the proposalId for a given `electionIndex`
-    function electionIndexToProposalId(uint256 electionIndex) public pure returns (uint256) {
-        return hashProposal(
-            new address[](1),
-            new uint256[](1),
-            new bytes[](1),
-            keccak256(bytes(electionIndexToDescription(electionIndex)))
-        );
     }
 }
