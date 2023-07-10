@@ -276,12 +276,12 @@ contract SecurityCouncilNomineeElectionGovernor is
         Cohort cohort = electionIndexToCohort(electionCount - 1);
         if (cohort == Cohort.FIRST) {
             require(
-                !securityCouncilManager.secondCohort(account),
+                !securityCouncilManager.secondCohortIncludes(account),
                 "SecurityCouncilNomineeElectionGovernor: Cannot add member of other second cohort"
             );
         } else {
             require(
-                !securityCouncilManager.firstCohort(account),
+                !securityCouncilManager.firstCohortIncludes(account),
                 "SecurityCouncilNomineeElectionGovernor: Cannot add member of other first cohort"
             );
         }
