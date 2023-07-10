@@ -286,6 +286,21 @@ contract SecurityCouncilManager is
         return secondCohort;
     }
 
+    /// @inheritdoc ISecurityCouncilManager
+    function firstCohortIncludes(address account) external view returns (bool) {
+        return _cohortIncludes(Cohort.FIRST, account);
+    }
+
+    /// @inheritdoc ISecurityCouncilManager
+    function secondCohortIncludes(address account) external view returns (bool) {
+        return _cohortIncludes(Cohort.SECOND, account);
+    }
+
+    function _cohortIncludes(Cohort cohort, address account) internal view returns (bool) {
+        address[] memory cohortMembers = cohort == Cohort.FIRST ? firstCohort : secondCohort;
+        return SecurityCouncilMgmtUtils.isInArray(account, cohortMembers);
+    }
+
     /// @notice Generate unique salt for timelock scheduling
     /// @param _members Data to input / hash
     function generateSalt(address[] memory _members) external view returns (bytes32) {

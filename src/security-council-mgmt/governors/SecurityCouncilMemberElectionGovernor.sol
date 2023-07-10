@@ -66,7 +66,9 @@ contract SecurityCouncilMemberElectionGovernor is
         _;
     }
 
-    /************** permissioned state mutating functions **************/
+    /**
+     * permissioned state mutating functions *************
+     */
 
     /// @notice Creates a new member election proposal from the most recent nominee election.
     function proposeFromNomineeElectionGovernor() external onlyNomineeElectionGovernor {
@@ -97,7 +99,9 @@ contract SecurityCouncilMemberElectionGovernor is
         AddressUpgradeable.functionCallWithValue(target, data, value);
     }
 
-    /************** internal/private state mutating functions **************/
+    /**
+     * internal/private state mutating functions *************
+     */
 
     /// @dev    `GovernorUpgradeable` function to execute a proposal overridden to handle nominee elections.
     ///         We know that _getTopNominees will return a full list of nominees because we checked it in _voteSucceeded.
@@ -116,7 +120,9 @@ contract SecurityCouncilMemberElectionGovernor is
         });
     }
 
-    /************** view/pure functions **************/
+    /**
+     * view/pure functions *************
+     */
 
     /// @notice Normally "the number of votes required in order for a voter to become a proposer." But in our case it is 0.
     /// @dev    Since we only want proposals to be created via `proposeFromNomineeElectionGovernor`, we set the proposal threshold to 0.
@@ -156,7 +162,9 @@ contract SecurityCouncilMemberElectionGovernor is
         );
     }
 
-    /************** internal view/pure functions **************/
+    /**
+     * internal view/pure functions *************
+     */
 
     /// @dev returns true if the account is a compliant nominee.
     ///      checks the SecurityCouncilNomineeElectionGovernor to see if the account is a compliant nominee of the most recent nominee election
@@ -174,7 +182,9 @@ contract SecurityCouncilMemberElectionGovernor is
         return nomineeElectionGovernor.targetNomineeCount();
     }
 
-    /************** disabled functions **************/
+    /**
+     * disabled functions *************
+     */
 
     /// @notice Always reverts.
     /// @dev    `GovernorUpgradeable` function to create a proposal overridden to just revert.
