@@ -314,8 +314,8 @@ contract SecurityCouncilManager is
     function securityCouncilsLength() public view returns (uint256) {
         return securityCouncils.length;
     }
-    /// @inheritdoc ISecurityCouncilManager
 
+    /// @inheritdoc ISecurityCouncilManager
     function firstCohortIncludes(address account) public view returns (bool) {
         return _cohortIncludes(Cohort.FIRST, account);
     }
