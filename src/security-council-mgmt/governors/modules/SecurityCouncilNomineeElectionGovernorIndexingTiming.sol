@@ -68,18 +68,17 @@ abstract contract SecurityCouncilNomineeElectionGovernorIndexingTiming is Initia
     }
 
     /// @notice Returns the start timestamp of an election
-    /// @param firstElection The start date of the first election
     /// @param electionIndex The index of the election
-    function electionToTimestamp(Date memory firstElection, uint256 electionIndex)
+    function electionToTimestamp(uint256 electionIndex)
         public
-        pure
+        view
         returns (uint256)
     {
         // subtract one to make month 0 indexed
-        uint256 month = firstElection.month - 1;
+        uint256 month = firstNominationStartDate.month - 1;
 
         month += 6 * electionIndex;
-        uint256 year = firstElection.year + month / 12;
+        uint256 year = firstNominationStartDate.year + month / 12;
         month = month % 12;
 
         // add one to make month 1 indexed
@@ -88,8 +87,8 @@ abstract contract SecurityCouncilNomineeElectionGovernorIndexingTiming is Initia
         return DateTimeLib.dateTimeToTimestamp({
             year: year,
             month: month,
-            day: firstElection.day,
-            hour: firstElection.hour,
+            day: firstNominationStartDate.day,
+            hour: firstNominationStartDate.hour,
             minute: 0,
             second: 0
         });
