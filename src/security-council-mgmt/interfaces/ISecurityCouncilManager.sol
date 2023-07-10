@@ -18,6 +18,7 @@ struct SecurityCouncilManagerRoles {
     address memberAdder;
     address[] memberRemovers;
     address memberRotator;
+    address memberReplacer;
 }
 
 /// @notice Data for a Security Council to be managed
@@ -57,11 +58,16 @@ interface ISecurityCouncilManager {
     ///         Initiaties cross chain messages to update the individual Security Councils
     /// @param _member  Member to remove
     function removeMember(address _member) external;
-    /// @notice Replace a member in a council - equivalent to removing a member, then adding another in its place
+    /// @notice Replace a member in a council - equivalent to removing a member, then adding another in its place. Idendities of members should  be the different. Functionality is equivalent to replaceMember, tho emits a different event to distinguish the security council's intent (different identities).
     /// @dev    Initiaties cross chain messages to update the individual Security Councils
     /// @param _memberToReplace Security Council member to remove
     /// @param _newMember       Security Council member to add in their place
     function replaceMember(address _memberToReplace, address _newMember) external;
+    /// @notice Security council member can rotate out their address for a new one; _currentAddress and _newAddress should be of the same identity. Functionality is equivalent to replaceMember, tho emits a different event to distinguish the security council's intent (same identity).
+    ///         Rotation must be initiated by the security council.
+    /// @param _currentAddress  Address to rotate out
+    /// @param _newAddress      Address to rotate in
+    function rotateMember(address _currentAddress, address _newAddress) external;
     /// @notice Is the account a member of the first cohort
     function firstCohortIncludes(address account) external view returns (bool);
     /// @notice Is the account a member of the second cohort
@@ -70,12 +76,16 @@ interface ISecurityCouncilManager {
     function getFirstCohort() external view returns (address[] memory);
     /// @notice All members of the second cohort
     function getSecondCohort() external view returns (address[] memory);
+    /// @notice length of security councils array
+    function securityCouncilsLength() external view returns (uint256);
     /// @notice Add new security council to be included in security council management system.
     /// @param _securityCouncilData Security council info
     function addSecurityCouncil(SecurityCouncilData memory _securityCouncilData) external;
     /// @notice Remove security council from management system.
-    /// @param _index   Index in securityCouncils of data to be removed
-    function removeSecurityCouncil(uint256 _index) external;
+    /// @param _securityCouncilData   security council to be removed
+    function removeSecurityCouncil(SecurityCouncilData memory _securityCouncilData)
+        external
+        returns (bool);
     /// @notice UpgradeExecRouterBuilder is immutable, so in lieu of upgrading it, it can be redeployed and reset here
     /// @param _router new router address
     function setUpgradeExecRouterBuilder(UpgradeExecRouterBuilder _router) external;

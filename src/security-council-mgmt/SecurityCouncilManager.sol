@@ -95,13 +95,14 @@ contract SecurityCouncilManager is
             _grantRole(MEMBER_REMOVER_ROLE, _roles.memberRemovers[i]);
         }
         _grantRole(MEMBER_ROTATOR_ROLE, _roles.memberRotator);
+        _grantRole(MEMBER_REPLACER_ROLE, _roles.memberReplacer);
 
         l2CoreGovTimelock = _l2CoreGovTimelock;
 
+        _setUpgradeExecRouterBuilder(_router);
         for (uint256 i = 0; i < _securityCouncils.length; i++) {
             _addSecurityCouncil(_securityCouncils[i]);
         }
-        _setUpgradeExecRouterBuilder(_router);
     }
 
     /// @inheritdoc ISecurityCouncilManager
@@ -125,12 +126,12 @@ contract SecurityCouncilManager is
         address[] storage cohort = _cohort == Cohort.FIRST ? firstCohort : secondCohort;
         require(cohort.length < 6, "SecurityCouncilManager: cohort is full");
         require(
-            !SecurityCouncilMgmtUtils.isInArray(_newMember, firstCohort),
-            "SecurityCouncilManager: member already in march cohort"
+            !firstCohortIncludes(_newMember),
+            "SecurityCouncilManager: member already in first cohort"
         );
         require(
-            !SecurityCouncilMgmtUtils.isInArray(_newMember, secondCohort),
-            "SecurityCouncilManager: member already in secondCohort cohort"
+            !secondCohortIncludes(_newMember),
+            "SecurityCouncilManager: member already in second cohort"
         );
         cohort.push(_newMember);
     }
@@ -142,7 +143,7 @@ contract SecurityCouncilManager is
                 if (_member == cohort[j]) {
                     cohort[j] = cohort[cohort.length - 1];
                     cohort.pop();
-                    return j == 0 ? Cohort.FIRST : Cohort.SECOND;
+                    return i == 0 ? Cohort.FIRST : Cohort.SECOND;
                 }
             }
         }
@@ -172,13 +173,7 @@ contract SecurityCouncilManager is
         external
         onlyRole(MEMBER_REPLACER_ROLE)
     {
-        require(
-            _memberToReplace != address(0) && _newMember != address(0),
-            "SecurityCouncilManager: members can't be zero address"
-        );
-        Cohort cohort = _removeMemberFromCohortArray(_memberToReplace);
-        _addMemberToCohortArray(_newMember, cohort);
-        _scheduleUpdate();
+        Cohort cohort = _swapMembers(_memberToReplace, _newMember);
         emit MemberReplaced({
             replacedMember: _memberToReplace,
             newMember: _newMember,
@@ -186,27 +181,30 @@ contract SecurityCouncilManager is
         });
     }
 
-    /// @notice Security council member can rotate out their address for a new one; _currentAddress and _newAddress are of the same identity.
-    ///         Rotation must be initiated by the security council, and member rotating out must give explicit
-    ///         consent via signature
-    /// @param _currentAddress  Address to rotate out
-    /// @param _newAddress      Address to rotate in
+    /// @inheritdoc ISecurityCouncilManager
     function rotateMember(address _currentAddress, address _newAddress)
         external
         onlyRole(MEMBER_ROTATOR_ROLE)
     {
-        require(
-            _currentAddress != address(0) && _newAddress != address(0),
-            "SecurityCouncilManager: members can't be zero address"
-        );
-        Cohort cohort = _removeMemberFromCohortArray(_currentAddress);
-        _addMemberToCohortArray(_newAddress, cohort);
-        _scheduleUpdate();
+        Cohort cohort = _swapMembers(_currentAddress, _newAddress);
         emit MemberRotated({
             replacedAddress: _currentAddress,
             newAddress: _newAddress,
             cohort: cohort
         });
+    }
+
+    function _swapMembers(address _addressToRemove, address _addressToAdd)
+        internal
+        returns (Cohort cohort)
+    {
+        require(
+            _addressToRemove != address(0) && _addressToAdd != address(0),
+            "SecurityCouncilManager: members can't be zero address"
+        );
+        Cohort cohort = _removeMemberFromCohortArray(_addressToRemove);
+        _addMemberToCohortArray(_addressToAdd, cohort);
+        _scheduleUpdate();
     }
 
     function _addSecurityCouncil(SecurityCouncilData memory _securityCouncilData) internal {
@@ -222,7 +220,24 @@ contract SecurityCouncilManager is
             _securityCouncilData.securityCouncil != address(0),
             "SecurityCouncilManager: zero securityCouncil"
         );
-        require(_securityCouncilData.chainId != 0, "SecurityCouncilManager: zero securityCouncil");
+        require(_securityCouncilData.chainId != 0, "SecurityCouncilManager: zero chain id");
+
+        require(
+            router.upExecLocationExists(_securityCouncilData.chainId),
+            "SecurityCouncilManager: security council not in UpgradeExecRouterBuilder"
+        );
+
+        for (uint256 i = 0; i < securityCouncils.length; i++) {
+            SecurityCouncilData storage existantSecurityCouncil = securityCouncils[i];
+            require(
+                !(
+                    existantSecurityCouncil.chainId == _securityCouncilData.chainId
+                        && existantSecurityCouncil.securityCouncil
+                            == _securityCouncilData.securityCouncil
+                ),
+                "SecurityCouncilManager: security council already included"
+            );
+        }
 
         securityCouncils.push(_securityCouncilData);
         emit SecurityCouncilAdded(
@@ -237,26 +252,36 @@ contract SecurityCouncilManager is
         external
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
-        // CHRIS: TODO: do we also want to check for duplicates when adding here?
         _addSecurityCouncil(_securityCouncilData);
     }
 
     /// @inheritdoc ISecurityCouncilManager
-    function removeSecurityCouncil(uint256 _index) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        // CHRIS: TODO: I wonder if this should be based on address, or some other identifying behaviour?
-        SecurityCouncilData storage securityCouncilToRemove = securityCouncils[_index];
-        SecurityCouncilData storage lastSecurityCouncil =
-            securityCouncils[securityCouncils.length - 1];
+    function removeSecurityCouncil(SecurityCouncilData memory _securityCouncilData)
+        external
+        onlyRole(DEFAULT_ADMIN_ROLE)
+        returns (bool)
+    {
+        for (uint256 i = 0; i < securityCouncils.length; i++) {
+            SecurityCouncilData storage securityCouncilData = securityCouncils[i];
+            if (
+                securityCouncilData.securityCouncil == _securityCouncilData.securityCouncil
+                    && securityCouncilData.chainId == _securityCouncilData.chainId
+                    && securityCouncilData.updateAction == _securityCouncilData.updateAction
+            ) {
+                SecurityCouncilData storage lastSecurityCouncil =
+                    securityCouncils[securityCouncils.length - 1];
 
-        securityCouncils[_index] = lastSecurityCouncil;
-        securityCouncils.pop();
-        emit SecurityCouncilRemoved(
-            securityCouncilToRemove.securityCouncil,
-            // securityCouncilToRemove.upgradeExecutor,
-            securityCouncilToRemove.updateAction,
-            // securityCouncilToRemove.inbox,
-            securityCouncils.length
-        );
+                securityCouncils[i] = lastSecurityCouncil;
+                securityCouncils.pop();
+                emit SecurityCouncilRemoved(
+                    securityCouncilData.securityCouncil,
+                    securityCouncilData.updateAction,
+                    securityCouncils.length
+                );
+                return true;
+            }
+        }
+        revert("SecurityCouncilManager: security council not found");
     }
 
     /// @inheritdoc ISecurityCouncilManager
@@ -286,13 +311,17 @@ contract SecurityCouncilManager is
         return secondCohort;
     }
 
+    function securityCouncilsLength() public view returns (uint256) {
+        return securityCouncils.length;
+    }
+
     /// @inheritdoc ISecurityCouncilManager
-    function firstCohortIncludes(address account) external view returns (bool) {
+    function firstCohortIncludes(address account) public view returns (bool) {
         return _cohortIncludes(Cohort.FIRST, account);
     }
 
     /// @inheritdoc ISecurityCouncilManager
-    function secondCohortIncludes(address account) external view returns (bool) {
+    function secondCohortIncludes(address account) public view returns (bool) {
         return _cohortIncludes(Cohort.SECOND, account);
     }
 

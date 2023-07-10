@@ -5,10 +5,16 @@ import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.so
 import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 import "@gnosis.pm/safe-contracts/contracts/GnosisSafeL2.sol";
 
+contract StubContract {}
+
 library TestUtil {
     function deployProxy(address logic) public returns (address) {
         ProxyAdmin pa = new ProxyAdmin();
         return address(new TransparentUpgradeableProxy(address(logic), address(pa), ""));
+    }
+
+    function deployStubContract() public returns (address) {
+        return address(new StubContract());
     }
 
     function areAddressArraysEqual(address[] memory array1, address[] memory array2)
