@@ -121,7 +121,7 @@ contract SecurityCouncilNomineeElectionGovernor is
     ///         Can be called by anyone every `nominationFrequency` seconds.
     /// @return proposalId The id of the proposal
     function createElection() external returns (uint256 proposalId) {
-        uint256 thisElectionStartTs = electionToTimestamp(firstNominationStartDate, electionCount);
+        uint256 thisElectionStartTs = electionToTimestamp(electionCount);
 
         require(
             block.timestamp >= thisElectionStartTs,
