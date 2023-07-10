@@ -11,15 +11,14 @@ abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is
     Initializable,
     GovernorUpgradeable
 {
-    // todo: better name
-    struct NomineeElectionState {
+    /// @param votesUsed The amount of votes the voter has used
+    /// @param votesReceived The amount of votes the contender has received
+    /// @param nominees The list of contenders who've received enough votes to become a nominee
+    struct NomineeElectionCountingInfo {
         mapping(address => uint256) votesUsed;
         mapping(address => uint256) votesReceived;
         address[] nominees;
     }
-
-    // proposalId => NomineeElectionState
-    mapping(uint256 => NomineeElectionState) private _elections;
 
     // would this be more useful if reason was included?
     /// @notice Emitted when a vote is cast for a contender
@@ -40,26 +39,12 @@ abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is
 
     event NewNominee(uint256 indexed proposalId, address indexed nominee);
 
+    // proposalId => NomineeElectionCountingInfo
+    mapping(uint256 => NomineeElectionCountingInfo) private _elections;
+
     function __SecurityCouncilNomineeElectionGovernorCounting_init() internal onlyInitializing {}
 
-    function COUNTING_MODE() public pure virtual override returns (string memory) {
-        return "TODO: ???";
-    }
-
-    /// @notice returns true if the account has voted any amount for any contender in the proposal
-    function hasVoted(uint256 proposalId, address account) public view override returns (bool) {
-        return _elections[proposalId].votesUsed[account] > 0;
-    }
-
-    /// @dev there is no minimum quorum for nominations, so we just return true
-    function _quorumReached(uint256) internal pure override returns (bool) {
-        return true;
-    }
-
-    /// @dev the vote always succeeds, so we just return true
-    function _voteSucceeded(uint256) internal pure override returns (bool) {
-        return true;
-    }
+    /************** internal/private state mutating functions **************/
 
     /// @dev This function is responsible for counting votes when they are cast.
     ///      If this vote pushes the contender over the line, then the contender is added to the nominees
@@ -93,7 +78,7 @@ abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is
             "SecurityCouncilNomineeElectionGovernorCountingUpgradeable: Contender already has enough votes"
         );
 
-        NomineeElectionState storage election = _elections[proposalId];
+        NomineeElectionCountingInfo storage election = _elections[proposalId];
         uint256 prevVotesUsed = election.votesUsed[account];
 
         require(
@@ -130,6 +115,17 @@ abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is
         });
     }
 
+    /************** view/pure functions **************/
+
+    function COUNTING_MODE() public pure virtual override returns (string memory) {
+        return "TODO: ???";
+    }
+
+    /// @notice returns true if the account has voted any amount for any contender in the proposal
+    function hasVoted(uint256 proposalId, address account) public view override returns (bool) {
+        return _elections[proposalId].votesUsed[account] > 0;
+    }
+
     /// @notice Returns true if the contender has enough votes to be a nominee
     function isNominee(uint256 proposalId, address contender) public view returns (bool) {
         return
@@ -154,6 +150,18 @@ abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is
     /// @notice Returns the amount of votes a contender has received for a given proposal
     function votesReceived(uint256 proposalId, address contender) public view returns (uint256) {
         return _elections[proposalId].votesReceived[contender];
+    }
+
+    /************** internal view/pure functions **************/
+
+    /// @dev there is no minimum quorum for nominations, so we just return true
+    function _quorumReached(uint256) internal pure override returns (bool) {
+        return true;
+    }
+
+    /// @dev the vote always succeeds, so we just return true
+    function _voteSucceeded(uint256) internal pure override returns (bool) {
+        return true;
     }
 
     /// @dev Returns true if the account is a contender for the proposal

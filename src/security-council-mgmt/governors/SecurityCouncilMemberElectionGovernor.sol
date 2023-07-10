@@ -67,47 +67,7 @@ contract SecurityCouncilMemberElectionGovernor is
         _;
     }
 
-    /// @notice Allows the owner to make calls from the governor
-    /// @dev    See {L2ArbitrumGovernor-relay}
-    function relay(address target, uint256 value, bytes calldata data)
-        external
-        virtual
-        override
-        onlyOwner
-    {
-        AddressUpgradeable.functionCallWithValue(target, data, value);
-    }
-
-    /// @notice Always reverts.
-    /// @dev    `GovernorUpgradeable` function to create a proposal overridden to just revert.
-    ///         We only want proposals to be created via `proposeFromNomineeElectionGovernor`.
-    function propose(address[] memory, uint256[] memory, bytes[] memory, string memory)
-        public
-        virtual
-        override
-        returns (uint256)
-    {
-        revert(
-            "SecurityCouncilMemberElectionGovernor: Proposing is not allowed, call proposeFromNomineeElectionGovernor instead"
-        );
-    }
-
-    /// @notice Normally "the number of votes required in order for a voter to become a proposer." But in our case it is 0.
-    /// @dev    Since we only want proposals to be created via `proposeFromNomineeElectionGovernor`, we set the proposal threshold to 0.
-    ///         `proposeFromNomineeElectionGovernor` determines the rules for creating a proposal.
-    function proposalThreshold()
-        public
-        pure
-        override(GovernorSettingsUpgradeable, GovernorUpgradeable)
-        returns (uint256)
-    {
-        return 0;
-    }
-
-    /// @notice Quorum is always 0.
-    function quorum(uint256) public pure override returns (uint256) {
-        return 0;
-    }
+    /************** permissioned state mutating functions **************/
 
     /// @notice Creates a new member election proposal from the most recent nominee election.
     function proposeFromNomineeElectionGovernor() external onlyNomineeElectionGovernor {
@@ -127,6 +87,19 @@ contract SecurityCouncilMemberElectionGovernor is
         securityCouncilManager.replaceCohort(_newCohort, _cohort);
     }
 
+    /// @notice Allows the owner to make calls from the governor
+    /// @dev    See {L2ArbitrumGovernor-relay}
+    function relay(address target, uint256 value, bytes calldata data)
+        external
+        virtual
+        override
+        onlyOwner
+    {
+        AddressUpgradeable.functionCallWithValue(target, data, value);
+    }
+
+    /************** internal/private state mutating functions **************/
+
     /// @dev    `GovernorUpgradeable` function to execute a proposal overridden to handle nominee elections.
     ///         We know that _getTopNominees will return a full list of nominees because we checked it in _voteSucceeded.
     ///         Calls `SecurityCouncilManager.replaceCohort` with the list of nominees.
@@ -144,6 +117,25 @@ contract SecurityCouncilMemberElectionGovernor is
         });
     }
 
+    /************** view/pure functions **************/
+
+    /// @notice Normally "the number of votes required in order for a voter to become a proposer." But in our case it is 0.
+    /// @dev    Since we only want proposals to be created via `proposeFromNomineeElectionGovernor`, we set the proposal threshold to 0.
+    ///         `proposeFromNomineeElectionGovernor` determines the rules for creating a proposal.
+    function proposalThreshold()
+        public
+        pure
+        override(GovernorSettingsUpgradeable, GovernorUpgradeable)
+        returns (uint256)
+    {
+        return 0;
+    }
+
+    /// @notice Quorum is always 0.
+    function quorum(uint256) public pure override returns (uint256) {
+        return 0;
+    }
+
     /// @notice Returns the description of a proposal given the nominee election index.
     function nomineeElectionIndexToDescription(uint256 electionIndex)
         public
@@ -155,6 +147,8 @@ contract SecurityCouncilMemberElectionGovernor is
         );
     }
 
+    /************** internal view/pure functions **************/
+
     /// @dev returns true if the account is a compliant nominee.
     ///      checks the SecurityCouncilNomineeElectionGovernor to see if the account is a compliant nominee of the most recent nominee election
     function _isCompliantNomineeForMostRecentElection(address possibleNominee)
@@ -164,5 +158,21 @@ contract SecurityCouncilMemberElectionGovernor is
         returns (bool)
     {
         return nomineeElectionGovernor.isCompliantNomineeForMostRecentElection(possibleNominee);
+    }
+
+    /************** disabled functions **************/
+
+    /// @notice Always reverts.
+    /// @dev    `GovernorUpgradeable` function to create a proposal overridden to just revert.
+    ///         We only want proposals to be created via `proposeFromNomineeElectionGovernor`.
+    function propose(address[] memory, uint256[] memory, bytes[] memory, string memory)
+        public
+        virtual
+        override
+        returns (uint256)
+    {
+        revert(
+            "SecurityCouncilMemberElectionGovernor: Proposing is not allowed, call proposeFromNomineeElectionGovernor instead"
+        );
     }
 }
