@@ -118,12 +118,15 @@ contract SecurityCouncilNomineeElectionGovernor is
         _;
     }
 
-    /************** permissionless state mutating functions **************/
+    /**
+     * permissionless state mutating functions *************
+     */
 
     /// @notice Creates a new nominee election proposal.
     ///         Can be called by anyone every `nominationFrequency` seconds.
     /// @return proposalId The id of the proposal
     function createElection() external returns (uint256 proposalId) {
+        // CHRIS: TODO: we need to check elections cannot have a time less than all the stages put together when initialising
         uint256 thisElectionStartTs = electionToTimestamp(electionCount);
 
         require(
@@ -174,8 +177,6 @@ contract SecurityCouncilNomineeElectionGovernor is
         emit ContenderAdded(proposalId, msg.sender);
     }
 
-    /************** permissioned state mutating functions **************/
-
     /// @notice Allows the owner to change the nomineeVetter
     function setNomineeVetter(address _nomineeVetter) external onlyOwner {
         address oldNomineeVetter = nomineeVetter;
@@ -208,6 +209,7 @@ contract SecurityCouncilNomineeElectionGovernor is
         );
 
         ElectionInfo storage election = _elections[proposalId];
+        require(!election.isExcluded[account], "Nominee already excluded");
 
         election.isExcluded[account] = true;
         election.excludedNomineeCount++;
@@ -215,7 +217,51 @@ contract SecurityCouncilNomineeElectionGovernor is
         emit NomineeExcluded(proposalId, account);
     }
 
-    /************** internal/private state mutating functions **************/
+    /// @notice Allows the nomineeVetter to explicitly include a nominee
+    /// @dev    Can be called only after a proposal has succeeded (voting has ended) and before the nominee vetting period has ended.
+    ///         Will revert if the provided account is already a nominee
+    function includeNominee(uint256 proposalId, address account) external onlyNomineeVetter {
+        require(
+            state(proposalId) == ProposalState.Succeeded,
+            "SecurityCouncilNomineeElectionGovernor: Proposal has not succeeded"
+        );
+        require(
+            block.number <= proposalVettingDeadline(proposalId),
+            "SecurityCouncilNomineeElectionGovernor: Proposal is no longer in the nominee vetting period"
+        );
+        require(
+            !isNominee(proposalId, account),
+            "SecurityCouncilNomineeElectionGovernor: Nominee already added"
+        );
+
+        uint256 compliantNomineeCount =
+            nomineeCount(proposalId) - _elections[proposalId].excludedNomineeCount;
+        require(
+            compliantNomineeCount < targetNomineeCount,
+            "SecurityCouncilNomineeElectionGovernor: Compliant nominee count at target"
+        );
+
+        Cohort cohort = electionIndexToCohort(electionCount - 1);
+        if (cohort == Cohort.FIRST) {
+            require(
+                !securityCouncilManager.secondCohortIncludes(account),
+                "SecurityCouncilNomineeElectionGovernor: Cannot add member of other second cohort"
+            );
+        } else {
+            require(
+                !securityCouncilManager.firstCohortIncludes(account),
+                "SecurityCouncilNomineeElectionGovernor: Cannot add member of other first cohort"
+            );
+        }
+
+        _addNominee(proposalId, account);
+
+        emit NewNominee(proposalId, account);
+    }
+
+    /**
+     * internal/private state mutating functions
+     */
 
     /// @dev    `GovernorUpgradeable` function to execute a proposal overridden to handle nominee elections.
     ///         Can be called by anyone via `execute` after voting and nominee vetting periods have ended.
@@ -242,43 +288,27 @@ contract SecurityCouncilNomineeElectionGovernor is
 
         uint256 compliantNomineeCount = nomineeCount(proposalId) - election.excludedNomineeCount;
 
-        if (compliantNomineeCount > targetNomineeCount) {
+        if (compliantNomineeCount == targetNomineeCount) {
+            address[] memory maybeCompliantNominees =
+                SecurityCouncilNomineeElectionGovernorCountingUpgradeable.nominees(proposalId);
+            address[] memory compliantNominees = SecurityCouncilMgmtUtils
+                .filterAddressesWithExcludeList(maybeCompliantNominees, election.isExcluded);
+            Cohort cohort = electionIndexToCohort(electionCount - 1);
+            securityCouncilMemberElectionGovernor.executeElectionResult(compliantNominees, cohort);
+        } else if (compliantNomineeCount > targetNomineeCount) {
             // call the SecurityCouncilMemberElectionGovernor to start the next phase of the election
             securityCouncilMemberElectionGovernor.proposeFromNomineeElectionGovernor();
             return;
+        } else {
+            revert(
+                "SecurityCouncilNomineeElectionGovernor: Insufficient number of compliant nominees"
+            );
         }
-
-        Cohort cohort = electionIndexToCohort(electionCount - 1);
-
-        address[] memory maybeCompliantNominees =
-            SecurityCouncilNomineeElectionGovernorCountingUpgradeable.nominees(proposalId);
-        address[] memory compliantNominees = SecurityCouncilMgmtUtils.filterAddressesWithExcludeList(
-            maybeCompliantNominees, election.isExcluded
-        );
-
-        if (compliantNomineeCount < targetNomineeCount) {
-            // there are too few compliant nominees
-            // we should randomly select some members from the current cohort to add to the list
-            address[] memory currentMembers = cohort == Cohort.FIRST
-                ? securityCouncilManager.getFirstCohort()
-                : securityCouncilManager.getSecondCohort();
-
-            address[] memory nonExcludedCurrentMembers = SecurityCouncilMgmtUtils
-                .filterAddressesWithExcludeList(currentMembers, election.isExcluded);
-
-            compliantNominees = SecurityCouncilMgmtUtils.randomAddToSet({
-                pickFrom: nonExcludedCurrentMembers,
-                addTo: compliantNominees,
-                targetLength: targetNomineeCount,
-                rng: uint256(blockhash(block.number - 1))
-            });
-        }
-
-        // tell the securityCouncilMemberElectionGovernor to call the SecurityCouncilManager to switch out the security council members
-        securityCouncilMemberElectionGovernor.executeElectionResult(compliantNominees, cohort);
     }
 
-    /************** view/pure functions **************/
+    /**
+     * view/pure functions *************
+     */
 
     /// @notice returns true if the account is a nominee for the most recent election and has not been excluded
     /// @param  account The account to check
@@ -338,7 +368,9 @@ contract SecurityCouncilNomineeElectionGovernor is
         );
     }
 
-    /************** internal view/pure functions **************/
+    /**
+     * internal view/pure functions *************
+     */
 
     /// @inheritdoc SecurityCouncilNomineeElectionGovernorCountingUpgradeable
     function _isContender(uint256 proposalId, address possibleContender)
@@ -351,7 +383,9 @@ contract SecurityCouncilNomineeElectionGovernor is
         return _elections[proposalId].isContender[possibleContender];
     }
 
-    /************** disabled functions **************/
+    /**
+     * disabled functions *************
+     */
 
     /// @notice Always reverts.
     /// @dev    `GovernorUpgradeable` function to create a proposal overridden to just revert.

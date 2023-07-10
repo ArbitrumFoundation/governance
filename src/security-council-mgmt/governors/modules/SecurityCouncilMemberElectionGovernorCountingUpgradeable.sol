@@ -62,7 +62,9 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
         _fullWeightDuration = initialFullWeightDuration;
     }
 
-    /************** permissioned state mutating functions **************/
+    /**
+     * permissioned state mutating functions *************
+     */
 
     /// @notice Set the full weight duration numerator and total duration denominator
     function setFullWeightDuration(uint256 newFullWeightDuration) public onlyGovernance {
@@ -72,7 +74,9 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
         );
     }
 
-    /************** internal/private state mutating functions **************/
+    /**
+     * internal/private state mutating functions *************
+     */
 
     /// @notice Register a vote by some account for a proposal.
     /// @dev    Reverts if the account does not have enough votes.
@@ -138,7 +142,9 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
         });
     }
 
-    /************** view/pure functions **************/
+    /**
+     * view/pure functions *************
+     */
 
     /// @notice Returns the duration of full weight voting (expressed in blocks)
     function fullWeightDuration() public view returns (uint256) {
@@ -257,7 +263,9 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
         return decreaseAmount >= votes ? 0 : votes - decreaseAmount;
     }
 
-    /************** internal view/pure functions **************/
+    /**
+     * internal view/pure functions *************
+     */
 
     /// @notice Returns true, since there is no minimum quorum
     function _quorumReached(uint256) internal pure override returns (bool) {
