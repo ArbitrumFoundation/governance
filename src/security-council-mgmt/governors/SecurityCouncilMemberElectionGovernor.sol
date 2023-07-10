@@ -49,7 +49,6 @@ contract SecurityCouncilMemberElectionGovernor is
         __Governor_init("SecurityCouncilMemberElectionGovernor");
         __GovernorVotes_init(_token);
         __SecurityCouncilMemberElectionGovernorCounting_init({
-            targetMemberCount: _targetMemberCount,
             initialFullWeightDuration: _fullWeightDuration
         });
         __GovernorSettings_init(0, _votingPeriod, 0);
@@ -158,6 +157,11 @@ contract SecurityCouncilMemberElectionGovernor is
         returns (bool)
     {
         return nomineeElectionGovernor.isCompliantNomineeForMostRecentElection(possibleNominee);
+    }
+
+    /// @inheritdoc SecurityCouncilMemberElectionGovernorCountingUpgradeable
+    function _targetMemberCount() internal view override returns (uint256) {
+        return nomineeElectionGovernor.targetNomineeCount();
     }
 
     /************** disabled functions **************/

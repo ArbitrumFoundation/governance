@@ -17,17 +17,13 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
     struct ElectionInfo {
         mapping(address => uint256) votesUsed;
         mapping(address => uint256) weightReceived;
-        mapping(address => bool) nomineeHasVotes;
-        address[] nomineesWithVotes;
+        address[] nomineesWithWeight;
     }
 
     uint256 private constant WAD = 1e18;
 
     /// @notice Duration of full weight voting (expressed in blocks)
-    uint256 private _fullWeightDuration;
-
-    /// @notice Target number of members to elect
-    uint256 private _targetMemberCount;
+    uint256 public fullWeightDuration;
 
     mapping(uint256 => ElectionInfo) private _elections;
 
@@ -52,14 +48,11 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
         uint256 weightReceived
     );
 
-    /// @param targetMemberCount The maximum number of nominees to track
     /// @param initialFullWeightDuration Duration of full weight voting (expressed in blocks)
     function __SecurityCouncilMemberElectionGovernorCounting_init(
-        uint256 targetMemberCount,
         uint256 initialFullWeightDuration
     ) internal onlyInitializing {
-        _targetMemberCount = targetMemberCount;
-        _fullWeightDuration = initialFullWeightDuration;
+        fullWeightDuration = initialFullWeightDuration;
     }
 
     /************** permissioned state mutating functions **************/
@@ -70,6 +63,8 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
             newFullWeightDuration <= votingPeriod(),
             "SecurityCouncilMemberElectionGovernorCountingUpgradeable: Full weight duration must be <= votingPeriod"
         );
+
+        fullWeightDuration = newFullWeightDuration;
     }
 
     /************** internal/private state mutating functions **************/
@@ -118,12 +113,13 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
             "SecurityCouncilMemberElectionGovernorCountingUpgradeable: Cannot use more votes than available"
         );
 
-        election.votesUsed[account] = prevVotesUsed + votes;
-        election.weightReceived[nominee] += weight;
+        uint256 prevWeightReceived = election.weightReceived[nominee];
 
-        if (!election.nomineeHasVotes[nominee]) {
-            election.nomineeHasVotes[nominee] = true;
-            election.nomineesWithVotes.push(nominee);
+        election.votesUsed[account] = prevVotesUsed + votes;
+        election.weightReceived[nominee] = prevWeightReceived + weight;
+
+        if (prevWeightReceived == 0) {
+            election.nomineesWithWeight.push(nominee);
         }
 
         emit VoteCastForNominee({
@@ -140,9 +136,8 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
 
     /************** view/pure functions **************/
 
-    /// @notice Returns the duration of full weight voting (expressed in blocks)
-    function fullWeightDuration() public view returns (uint256) {
-        return _fullWeightDuration;
+    function COUNTING_MODE() public pure virtual override returns (string memory) {
+        return "TODO: ???";
     }
 
     /// @notice Returns the number of votes used by an account for a given proposal
@@ -150,9 +145,10 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
         return _elections[proposalId].votesUsed[account];
     }
 
-    function COUNTING_MODE() public pure virtual override returns (string memory) {
-        return "TODO: ???";
-    }
+    /// @notice Returns weight received by a nominee for a given proposal
+    function weightReceived(uint256 proposalId, address nominee) public view returns (uint256) {
+        return _elections[proposalId].weightReceived[nominee];
+    }    
 
     /// @notice Returns true if the account has voted any amount for any nominee in the proposal
     function hasVoted(uint256 proposalId, address account) public view override returns (bool) {
@@ -162,18 +158,18 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
     function fullWeightVotingDeadline(uint256 proposalId) public view returns (uint256) {
         uint256 startBlock = proposalSnapshot(proposalId);
 
-        return startBlock + _fullWeightDuration;
+        return startBlock + fullWeightDuration;
     }
 
     // gas usage is probably a little bit more than (4200 + 1786)n. With 500 that's 2,993,000
     function topNominees(uint256 proposalId) public view returns (address[] memory) {
-        address[] memory nominees = _elections[proposalId].nomineesWithVotes;
+        address[] memory nominees = _elections[proposalId].nomineesWithWeight;
         uint256[] memory weights = new uint256[](nominees.length);
         ElectionInfo storage election = _elections[proposalId];
         for (uint256 i = 0; i < nominees.length; i++) {
             weights[i] = election.weightReceived[nominees[i]];
         }
-        return selectTopNominees(nominees, weights, _targetMemberCount);
+        return selectTopNominees(nominees, weights, _targetMemberCount());
     }
 
     // todo: set a lower threshold bound in the nominee governor.
@@ -266,7 +262,7 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
 
     /// @notice Returns true if votes have been cast for at least K nominees
     function _voteSucceeded(uint256 proposalId) internal view override returns (bool) {
-        return _elections[proposalId].nomineesWithVotes.length >= _targetMemberCount;
+        return _elections[proposalId].nomineesWithWeight.length >= _targetMemberCount();
     }
 
     /// @dev Returns true if the possibleNominee is a compliant nominee for the most recent election
@@ -275,6 +271,9 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
         view
         virtual
         returns (bool);
+
+    /// @dev Returns the target number of members to elect
+    function _targetMemberCount() internal view virtual returns (uint256);
 
     /**
      * @dev This empty reserved space is put in place to allow future versions to add new
