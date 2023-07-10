@@ -126,11 +126,11 @@ contract SecurityCouncilManager is
         address[] storage cohort = _cohort == Cohort.FIRST ? firstCohort : secondCohort;
         require(cohort.length < 6, "SecurityCouncilManager: cohort is full");
         require(
-            !SecurityCouncilMgmtUtils.isInArray(_newMember, firstCohort),
+            !firstCohortIncludes(_newMember),
             "SecurityCouncilManager: member already in first cohort"
         );
         require(
-            !SecurityCouncilMgmtUtils.isInArray(_newMember, secondCohort),
+            !secondCohortIncludes(_newMember),
             "SecurityCouncilManager: member already in second cohort"
         );
         cohort.push(_newMember);
@@ -315,12 +315,13 @@ contract SecurityCouncilManager is
         return securityCouncils.length;
     }
     /// @inheritdoc ISecurityCouncilManager
-    function firstCohortIncludes(address account) external view returns (bool) {
+
+    function firstCohortIncludes(address account) public view returns (bool) {
         return _cohortIncludes(Cohort.FIRST, account);
     }
 
     /// @inheritdoc ISecurityCouncilManager
-    function secondCohortIncludes(address account) external view returns (bool) {
+    function secondCohortIncludes(address account) public view returns (bool) {
         return _cohortIncludes(Cohort.SECOND, account);
     }
 
