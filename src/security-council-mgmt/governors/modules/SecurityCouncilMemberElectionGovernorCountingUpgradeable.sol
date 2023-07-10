@@ -40,6 +40,7 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
     /// @param weight The weight of the vote that was just cast for the nominee
     /// @param totalUsedVotes The total amount of votes the voter has used for this proposal
     /// @param usableVotes The total amount of votes the voter has available for this proposal
+    /// @param weightReceived The total amount of voting weight the nominee has received for this proposal
     event VoteCastForNominee(
         address indexed voter,
         uint256 indexed proposalId,
@@ -47,7 +48,8 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
         uint256 votes,
         uint256 weight,
         uint256 totalUsedVotes,
-        uint256 usableVotes
+        uint256 usableVotes,
+        uint256 weightReceived
     );
 
     /// @param targetMemberCount The maximum number of nominees to track
@@ -60,10 +62,9 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
         _fullWeightDuration = initialFullWeightDuration;
     }
 
-    /// @notice Returns the duration of full weight voting (expressed in blocks)
-    function fullWeightDuration() public view returns (uint256) {
-        return _fullWeightDuration;
-    }
+    /**
+     * permissioned state mutating functions *************
+     */
 
     /// @notice Set the full weight duration numerator and total duration denominator
     function setFullWeightDuration(uint256 newFullWeightDuration) public onlyGovernance {
@@ -73,29 +74,9 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
         );
     }
 
-    /// @notice Returns the number of votes used by an account for a given proposal
-    function votesUsed(uint256 proposalId, address account) public view returns (uint256) {
-        return _elections[proposalId].votesUsed[account];
-    }
-
-    function COUNTING_MODE() public pure virtual override returns (string memory) {
-        return "TODO: ???";
-    }
-
-    /// @notice Returns true if the account has voted any amount for any nominee in the proposal
-    function hasVoted(uint256 proposalId, address account) public view override returns (bool) {
-        return votesUsed(proposalId, account) > 0;
-    }
-
-    /// @notice Returns true, since there is no minimum quorum
-    function _quorumReached(uint256) internal pure override returns (bool) {
-        return true;
-    }
-
-    /// @notice Returns true if votes have been cast for at least K nominees
-    function _voteSucceeded(uint256 proposalId) internal view override returns (bool) {
-        return _elections[proposalId].nomineesWithVotes.length >= _targetMemberCount;
-    }
+    /**
+     * internal/private state mutating functions *************
+     */
 
     /// @notice Register a vote by some account for a proposal.
     /// @dev    Reverts if the account does not have enough votes.
@@ -156,53 +137,38 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
             votes: votes,
             weight: weight,
             totalUsedVotes: prevVotesUsed + votes,
-            usableVotes: availableVotes
+            usableVotes: availableVotes,
+            weightReceived: election.weightReceived[nominee]
         });
+    }
+
+    /**
+     * view/pure functions *************
+     */
+
+    /// @notice Returns the duration of full weight voting (expressed in blocks)
+    function fullWeightDuration() public view returns (uint256) {
+        return _fullWeightDuration;
+    }
+
+    /// @notice Returns the number of votes used by an account for a given proposal
+    function votesUsed(uint256 proposalId, address account) public view returns (uint256) {
+        return _elections[proposalId].votesUsed[account];
+    }
+
+    function COUNTING_MODE() public pure virtual override returns (string memory) {
+        return "TODO: ???";
+    }
+
+    /// @notice Returns true if the account has voted any amount for any nominee in the proposal
+    function hasVoted(uint256 proposalId, address account) public view override returns (bool) {
+        return votesUsed(proposalId, account) > 0;
     }
 
     function fullWeightVotingDeadline(uint256 proposalId) public view returns (uint256) {
         uint256 startBlock = proposalSnapshot(proposalId);
 
         return startBlock + _fullWeightDuration;
-    }
-
-    /// @notice Returns the weight of a vote for a given proposal, block number, and number of votes.
-    /// @dev    Uses a piecewise linear function to determine the weight of a vote.
-    function votesToWeight(uint256 proposalId, uint256 blockNumber, uint256 votes)
-        public
-        view
-        returns (uint256)
-    {
-        // Votes cast before T+14 days will have 100% weight.
-        // Votes cast between T+14 days and T+28 days will have weight based on the time of casting,
-        // decreasing linearly with time, with 100% weight at T+14 days, decreasing linearly to 0% weight at T+28 days.
-
-        // 7 days full weight, 14 days decreasing weight
-
-        // do i have an off-by-one in here?
-
-        uint256 endBlock = proposalDeadline(proposalId);
-        uint256 startBlock = proposalSnapshot(proposalId);
-
-        if (blockNumber <= startBlock || blockNumber > endBlock) {
-            return 0;
-        }
-
-        uint256 fullWeightVotingDeadline_ = fullWeightVotingDeadline(proposalId);
-
-        if (blockNumber <= fullWeightVotingDeadline_) {
-            return votes;
-        }
-
-        // slope denominator
-        uint256 decreasingWeightDuration = endBlock - fullWeightVotingDeadline_;
-
-        // slope numerator is -votes, slope denominator is decreasingWeightDuration, delta x is blockNumber - fullWeightVotingDeadline_
-        // y intercept is votes
-        uint256 decreaseAmount =
-            WAD * votes * (blockNumber - fullWeightVotingDeadline_) / decreasingWeightDuration / WAD;
-
-        return decreaseAmount >= votes ? 0 : votes - decreaseAmount;
     }
 
     // gas usage is probably a little bit more than (4200 + 1786)n. With 500 that's 2,993,000
@@ -256,6 +222,59 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
         }
 
         return topNomineesAddresses;
+    }
+
+    /// @notice Returns the weight of a vote for a given proposal, block number, and number of votes.
+    /// @dev    Uses a piecewise linear function to determine the weight of a vote.
+    function votesToWeight(uint256 proposalId, uint256 blockNumber, uint256 votes)
+        public
+        view
+        returns (uint256)
+    {
+        // Votes cast before T+14 days will have 100% weight.
+        // Votes cast between T+14 days and T+28 days will have weight based on the time of casting,
+        // decreasing linearly with time, with 100% weight at T+14 days, decreasing linearly to 0% weight at T+28 days.
+
+        // 7 days full weight, 14 days decreasing weight
+
+        // do i have an off-by-one in here?
+
+        uint256 endBlock = proposalDeadline(proposalId);
+        uint256 startBlock = proposalSnapshot(proposalId);
+
+        if (blockNumber <= startBlock || blockNumber > endBlock) {
+            return 0;
+        }
+
+        uint256 fullWeightVotingDeadline_ = fullWeightVotingDeadline(proposalId);
+
+        if (blockNumber <= fullWeightVotingDeadline_) {
+            return votes;
+        }
+
+        // slope denominator
+        uint256 decreasingWeightDuration = endBlock - fullWeightVotingDeadline_;
+
+        // slope numerator is -votes, slope denominator is decreasingWeightDuration, delta x is blockNumber - fullWeightVotingDeadline_
+        // y intercept is votes
+        uint256 decreaseAmount =
+            WAD * votes * (blockNumber - fullWeightVotingDeadline_) / decreasingWeightDuration / WAD;
+
+        return decreaseAmount >= votes ? 0 : votes - decreaseAmount;
+    }
+
+    /**
+     * internal view/pure functions *************
+     */
+
+    /// @notice Returns true, since there is no minimum quorum
+    function _quorumReached(uint256) internal pure override returns (bool) {
+        return true;
+    }
+
+    /// @notice Returns true if votes have been cast for at least K nominees
+    function _voteSucceeded(uint256 proposalId) internal view override returns (bool) {
+        return _elections[proposalId].nomineesWithVotes.length >= _targetMemberCount;
     }
 
     /// @dev Returns true if the possibleNominee is a compliant nominee for the most recent election

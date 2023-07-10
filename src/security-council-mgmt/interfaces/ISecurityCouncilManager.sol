@@ -68,6 +68,10 @@ interface ISecurityCouncilManager {
     /// @param _currentAddress  Address to rotate out
     /// @param _newAddress      Address to rotate in
     function rotateMember(address _currentAddress, address _newAddress) external;
+    /// @notice Is the account a member of the first cohort
+    function firstCohortIncludes(address account) external view returns (bool);
+    /// @notice Is the account a member of the second cohort
+    function secondCohortIncludes(address account) external view returns (bool);
     /// @notice All members of the first cohort
     function getFirstCohort() external view returns (address[] memory);
     /// @notice All members of the second cohort
