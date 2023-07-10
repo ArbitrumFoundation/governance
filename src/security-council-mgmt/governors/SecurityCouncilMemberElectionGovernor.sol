@@ -146,6 +146,16 @@ contract SecurityCouncilMemberElectionGovernor is
         );
     }
 
+    /// @notice Returns the proposalId for a given `electionIndex`
+    function nomineeElectionIndexToProposalId(uint256 electionIndex) public pure returns (uint256) {
+        return hashProposal(
+            new address[](1),
+            new uint256[](1),
+            new bytes[](1),
+            keccak256(bytes(nomineeElectionIndexToDescription(electionIndex)))
+        );
+    }
+
     /************** internal view/pure functions **************/
 
     /// @dev returns true if the account is a compliant nominee.
