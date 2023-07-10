@@ -100,7 +100,7 @@ abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is
             actualVotes = votesThreshold - prevVotesReceived;
 
             // push the contender to the nominees
-            addNominee(proposalId, contender);
+            _addNominee(proposalId, contender);
 
             emit NewNominee(proposalId, contender);
         }
@@ -118,7 +118,7 @@ abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is
         });
     }
 
-    function addNominee(uint256 proposalId, address account) internal {
+    function _addNominee(uint256 proposalId, address account) internal {
         _elections[proposalId].nominees.push(account);
         _elections[proposalId].isNominee[account] = true;
     }
