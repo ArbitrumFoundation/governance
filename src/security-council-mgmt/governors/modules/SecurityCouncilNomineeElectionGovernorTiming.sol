@@ -6,7 +6,7 @@ import "../../interfaces/ISecurityCouncilManager.sol";
 import "@openzeppelin/contracts-upgradeable/governance/GovernorUpgradeable.sol";
 import "lib/solady/src/utils/DateTimeLib.sol";
 
-abstract contract SecurityCouncilNomineeElectionGovernorIndexingTiming is Initializable, GovernorUpgradeable {
+abstract contract SecurityCouncilNomineeElectionGovernorTiming is Initializable, GovernorUpgradeable {
     /// @notice Date struct for convenience
     struct Date {
         uint256 year;
@@ -21,9 +21,6 @@ abstract contract SecurityCouncilNomineeElectionGovernorIndexingTiming is Initia
     /// @notice Duration of the nominee vetting period (expressed in blocks)
     /// @dev    This is the amount of time after voting ends that the nomineeVetter can exclude noncompliant nominees
     uint256 public nomineeVettingDuration;
-
-    /// @notice Number of elections created
-    uint256 public electionCount;
 
     function __SecurityCouncilNomineeElectionGovernorIndexingTiming_init(
         Date memory _firstNominationStartDate,
@@ -68,18 +65,17 @@ abstract contract SecurityCouncilNomineeElectionGovernorIndexingTiming is Initia
     }
 
     /// @notice Returns the start timestamp of an election
-    /// @param firstElection The start date of the first election
     /// @param electionIndex The index of the election
-    function electionToTimestamp(Date memory firstElection, uint256 electionIndex)
+    function electionToTimestamp(uint256 electionIndex)
         public
-        pure
+        view
         returns (uint256)
     {
         // subtract one to make month 0 indexed
-        uint256 month = firstElection.month - 1;
+        uint256 month = firstNominationStartDate.month - 1;
 
         month += 6 * electionIndex;
-        uint256 year = firstElection.year + month / 12;
+        uint256 year = firstNominationStartDate.year + month / 12;
         month = month % 12;
 
         // add one to make month 1 indexed
@@ -88,38 +84,10 @@ abstract contract SecurityCouncilNomineeElectionGovernorIndexingTiming is Initia
         return DateTimeLib.dateTimeToTimestamp({
             year: year,
             month: month,
-            day: firstElection.day,
-            hour: firstElection.hour,
+            day: firstNominationStartDate.day,
+            hour: firstNominationStartDate.hour,
             minute: 0,
             second: 0
         });
-    }
-
-    /// @notice Returns the cohort for a given `electionIndex`
-    function electionIndexToCohort(uint256 electionIndex) public pure returns (Cohort) {
-        return Cohort(electionIndex % 2);
-    }
-
-    function cohortOfMostRecentElection() external view returns (Cohort) {
-        return electionIndexToCohort(electionCount - 1);
-    }
-
-    /// @notice Returns the description for a given `electionIndex`
-    function electionIndexToDescription(uint256 electionIndex)
-        public
-        pure
-        returns (string memory)
-    {
-        return string.concat("Nominee Election #", StringsUpgradeable.toString(electionIndex));
-    }
-
-    /// @notice Returns the proposalId for a given `electionIndex`
-    function electionIndexToProposalId(uint256 electionIndex) public pure returns (uint256) {
-        return hashProposal(
-            new address[](1),
-            new uint256[](1),
-            new bytes[](1),
-            keccak256(bytes(electionIndexToDescription(electionIndex)))
-        );
     }
 }

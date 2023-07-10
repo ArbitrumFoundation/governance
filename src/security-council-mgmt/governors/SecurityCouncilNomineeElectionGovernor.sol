@@ -8,7 +8,7 @@ import "./SecurityCouncilMemberElectionGovernor.sol";
 
 import "./modules/SecurityCouncilNomineeElectionGovernorCountingUpgradeable.sol";
 import "./modules/ArbitrumGovernorVotesQuorumFractionUpgradeable.sol";
-import "./modules/SecurityCouncilNomineeElectionGovernorIndexingTiming.sol";
+import "./modules/SecurityCouncilNomineeElectionGovernorTiming.sol";
 
 import "../SecurityCouncilMgmtUtils.sol";
 
@@ -25,7 +25,7 @@ contract SecurityCouncilNomineeElectionGovernor is
     ArbitrumGovernorVotesQuorumFractionUpgradeable,
     GovernorSettingsUpgradeable,
     OwnableUpgradeable,
-    SecurityCouncilNomineeElectionGovernorIndexingTiming
+    SecurityCouncilNomineeElectionGovernorTiming
 {
     // todo: these parameters could be reordered to make more sense
     /// @notice parameters for `initialize`
@@ -78,6 +78,9 @@ contract SecurityCouncilNomineeElectionGovernor is
     /// @notice Security council member election governor contract
     SecurityCouncilMemberElectionGovernor public securityCouncilMemberElectionGovernor;
 
+    /// @notice Number of elections created
+    uint256 public electionCount;
+
     /// @notice Maps proposalId to ElectionInfo
     mapping(uint256 => ElectionInfo) internal _elections;
 
@@ -119,7 +122,7 @@ contract SecurityCouncilNomineeElectionGovernor is
     ///         Can be called by anyone every `nominationFrequency` seconds.
     /// @return proposalId The id of the proposal
     function createElection() external returns (uint256 proposalId) {
-        uint256 thisElectionStartTs = electionToTimestamp(firstNominationStartDate, electionCount);
+        uint256 thisElectionStartTs = electionToTimestamp(electionCount);
 
         require(
             block.timestamp >= thisElectionStartTs,
@@ -303,6 +306,34 @@ contract SecurityCouncilNomineeElectionGovernor is
     /// @param  account The account to check
     function isCompliantNominee(uint256 proposalId, address account) public view returns (bool) {
         return isNominee(proposalId, account) && !_elections[proposalId].isExcluded[account];
+    }
+
+    /// @notice Returns the cohort for a given `electionIndex`
+    function electionIndexToCohort(uint256 electionIndex) public pure returns (Cohort) {
+        return Cohort(electionIndex % 2);
+    }
+
+    function cohortOfMostRecentElection() external view returns (Cohort) {
+        return electionIndexToCohort(electionCount - 1);
+    }
+
+    /// @notice Returns the description for a given `electionIndex`
+    function electionIndexToDescription(uint256 electionIndex)
+        public
+        pure
+        returns (string memory)
+    {
+        return string.concat("Nominee Election #", StringsUpgradeable.toString(electionIndex));
+    }
+
+    /// @notice Returns the proposalId for a given `electionIndex`
+    function electionIndexToProposalId(uint256 electionIndex) public pure returns (uint256) {
+        return hashProposal(
+            new address[](1),
+            new uint256[](1),
+            new bytes[](1),
+            keccak256(bytes(electionIndexToDescription(electionIndex)))
+        );
     }
 
     /// @notice returns true if the nominee has been excluded by the nomineeVetter for the given proposal
