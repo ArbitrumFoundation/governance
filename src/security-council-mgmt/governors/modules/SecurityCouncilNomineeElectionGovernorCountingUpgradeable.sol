@@ -18,6 +18,7 @@ abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is
         mapping(address => uint256) votesUsed;
         mapping(address => uint256) votesReceived;
         address[] nominees;
+        mapping(address => bool) isNominee;
     }
 
     // would this be more useful if reason was included?
@@ -44,7 +45,9 @@ abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is
 
     function __SecurityCouncilNomineeElectionGovernorCounting_init() internal onlyInitializing {}
 
-    /************** internal/private state mutating functions **************/
+    /**
+     * internal/private state mutating functions *************
+     */
 
     /// @dev This function is responsible for counting votes when they are cast.
     ///      If this vote pushes the contender over the line, then the contender is added to the nominees
@@ -75,7 +78,7 @@ abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is
 
         require(
             !isNominee(proposalId, contender),
-            "SecurityCouncilNomineeElectionGovernorCountingUpgradeable: Contender already has enough votes"
+            "SecurityCouncilNomineeElectionGovernorCountingUpgradeable: Nominee already added"
         );
 
         NomineeElectionCountingInfo storage election = _elections[proposalId];
@@ -97,7 +100,7 @@ abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is
             actualVotes = votesThreshold - prevVotesReceived;
 
             // push the contender to the nominees
-            election.nominees.push(contender);
+            addNominee(proposalId, contender);
 
             emit NewNominee(proposalId, contender);
         }
@@ -115,7 +118,14 @@ abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is
         });
     }
 
-    /************** view/pure functions **************/
+    function addNominee(uint256 proposalId, address account) internal {
+        _elections[proposalId].nominees.push(account);
+        _elections[proposalId].isNominee[account] = true;
+    }
+
+    /**
+     * view/pure functions *************
+     */
 
     function COUNTING_MODE() public pure virtual override returns (string memory) {
         return "TODO: ???";
@@ -128,8 +138,7 @@ abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is
 
     /// @notice Returns true if the contender has enough votes to be a nominee
     function isNominee(uint256 proposalId, address contender) public view returns (bool) {
-        return
-            _elections[proposalId].votesReceived[contender] >= quorum(proposalSnapshot(proposalId));
+        return _elections[proposalId].isNominee[contender];
     }
 
     /// @notice Returns the number of nominees for a given proposal
@@ -152,7 +161,9 @@ abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is
         return _elections[proposalId].votesReceived[contender];
     }
 
-    /************** internal view/pure functions **************/
+    /**
+     * internal view/pure functions *************
+     */
 
     /// @dev there is no minimum quorum for nominations, so we just return true
     function _quorumReached(uint256) internal pure override returns (bool) {

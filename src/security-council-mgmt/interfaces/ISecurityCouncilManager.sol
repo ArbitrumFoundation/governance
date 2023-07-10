@@ -62,6 +62,10 @@ interface ISecurityCouncilManager {
     /// @param _memberToReplace Security Council member to remove
     /// @param _newMember       Security Council member to add in their place
     function replaceMember(address _memberToReplace, address _newMember) external;
+    /// @notice Is the account a member of the first cohort
+    function firstCohort(address account) external view returns (bool);
+    /// @notice Is the account a member of the second cohort
+    function secondCohort(address account) external view returns (bool);
     /// @notice All members of the first cohort
     function getFirstCohort() external view returns (address[] memory);
     /// @notice All members of the second cohort
