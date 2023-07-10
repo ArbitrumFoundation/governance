@@ -78,9 +78,8 @@ interface ISecurityCouncilManager {
     /// @param _securityCouncilData Security council info
     function addSecurityCouncil(SecurityCouncilData memory _securityCouncilData) external;
     /// @notice Remove security council from management system.
-    /// @param _chainId   chainid of security council to be removed
-    /// @param _securityCouncil address of security council to be removed
-    function removeSecurityCouncil(uint256 _chainId, address _securityCouncil)
+    /// @param _securityCouncilData   security council to be removed
+    function removeSecurityCouncil(SecurityCouncilData memory _securityCouncilData)
         external
         returns (bool);
     /// @notice UpgradeExecRouterBuilder is immutable, so in lieu of upgrading it, it can be redeployed and reset here

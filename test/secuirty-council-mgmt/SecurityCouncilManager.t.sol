@@ -334,8 +334,21 @@ contract SecurityCouncilManagerTest is Test {
         assertEq(chainid, scToAdd.chainId, "confimred new SC added");
     }
 
-    // TODO remove SC: affordances / removal
-    // TODO setrouter: affordances / removal
+    function testRemoveSCAffordances() public {
+        vm.prank(rando);
+        vm.expectRevert();
+        scm.removeSecurityCouncil(firstSC);
+
+        vm.prank(roles.admin);
+        vm.expectRevert("SecurityCouncilManager: security council not found");
+        scm.removeSecurityCouncil(scToAdd);
+    }
+
+    function testRemoveSeC() public {
+        vm.prank(roles.admin);
+        scm.removeSecurityCouncil(firstSC);
+        assertEq(scm.securityCouncilsLength(), 0, "SC removed");
+    }
 
     function testUpdateCohortAffordances() public {
         vm.prank(rando);
@@ -382,6 +395,24 @@ contract SecurityCouncilManagerTest is Test {
             TestUtil.areAddressArraysEqual(firstCohort, scm.getFirstCohort()),
             "first cohort untouched"
         );
+    }
+
+    function testUpdateRouterAffordacnes() public {
+        UpgradeExecRouterBuilder newRouter = UpgradeExecRouterBuilder(TestUtil.deployStubContract());
+        vm.prank(rando);
+        vm.expectRevert();
+        scm.setUpgradeExecRouterBuilder(newRouter);
+
+        vm.prank(roles.admin);
+        vm.expectRevert("SecurityCouncilManager: new router not a contract");
+        scm.setUpgradeExecRouterBuilder(UpgradeExecRouterBuilder(rando));
+    }
+
+    function testUpdateRouter() public {
+        UpgradeExecRouterBuilder newRouter = UpgradeExecRouterBuilder(TestUtil.deployStubContract());
+        vm.prank(roles.admin);
+        scm.setUpgradeExecRouterBuilder(UpgradeExecRouterBuilder(newRouter));
+        assertEq(address(newRouter), address(scm.router()), "router set");
     }
 
     // // helpers

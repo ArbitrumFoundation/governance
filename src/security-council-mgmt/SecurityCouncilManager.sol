@@ -256,7 +256,7 @@ contract SecurityCouncilManager is
     }
 
     /// @inheritdoc ISecurityCouncilManager
-    function removeSecurityCouncil(uint256 _chainId, address _securityCouncil)
+    function removeSecurityCouncil(SecurityCouncilData memory _securityCouncilData)
         external
         onlyRole(DEFAULT_ADMIN_ROLE)
         returns (bool)
@@ -264,8 +264,9 @@ contract SecurityCouncilManager is
         for (uint256 i = 0; i < securityCouncils.length; i++) {
             SecurityCouncilData storage securityCouncilData = securityCouncils[i];
             if (
-                securityCouncilData.securityCouncil == _securityCouncil
-                    && securityCouncilData.chainId == _chainId
+                securityCouncilData.securityCouncil == _securityCouncilData.securityCouncil
+                    && securityCouncilData.chainId == _securityCouncilData.chainId
+                    && securityCouncilData.updateAction == _securityCouncilData.updateAction
             ) {
                 SecurityCouncilData storage lastSecurityCouncil =
                     securityCouncils[securityCouncils.length - 1];
