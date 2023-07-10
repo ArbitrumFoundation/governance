@@ -4,13 +4,11 @@ pragma solidity 0.8.16;
 import "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorSettingsUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
-import "lib/solady/src/utils/DateTimeLib.sol";
-
 import "./SecurityCouncilMemberElectionGovernor.sol";
 
-import "../interfaces/ISecurityCouncilManager.sol";
 import "./modules/SecurityCouncilNomineeElectionGovernorCountingUpgradeable.sol";
 import "./modules/ArbitrumGovernorVotesQuorumFractionUpgradeable.sol";
+import "./modules/SecurityCouncilNomineeElectionGovernorTiming.sol";
 
 import "../SecurityCouncilMgmtUtils.sol";
 
@@ -26,7 +24,8 @@ contract SecurityCouncilNomineeElectionGovernor is
     SecurityCouncilNomineeElectionGovernorCountingUpgradeable,
     ArbitrumGovernorVotesQuorumFractionUpgradeable,
     GovernorSettingsUpgradeable,
-    OwnableUpgradeable
+    OwnableUpgradeable,
+    SecurityCouncilNomineeElectionGovernorTiming
 {
     // todo: these parameters could be reordered to make more sense
     /// @notice parameters for `initialize`
@@ -52,14 +51,6 @@ contract SecurityCouncilNomineeElectionGovernor is
         uint256 votingPeriod;
     }
 
-    /// @notice Date struct for convenience
-    struct Date {
-        uint256 year;
-        uint256 month;
-        uint256 day;
-        uint256 hour;
-    }
-
     /// @notice Information about a nominee election
     /// @param isContender Whether the account is a contender
     /// @param isExcluded Whether the account has been excluded by the nomineeVetter
@@ -76,13 +67,6 @@ contract SecurityCouncilNomineeElectionGovernor is
 
     /// @notice The target number of nominees to elect (6)
     uint256 public targetNomineeCount;
-
-    /// @notice First election start date
-    Date public firstNominationStartDate;
-
-    /// @notice Duration of the nominee vetting period (expressed in blocks)
-    /// @dev    This is the amount of time after voting ends that the nomineeVetter can exclude noncompliant nominees
-    uint256 public nomineeVettingDuration;
 
     /// @notice Address responsible for blocking non compliant nominees
     address public nomineeVetter;
@@ -106,43 +90,18 @@ contract SecurityCouncilNomineeElectionGovernor is
 
     /// @notice Initializes the governor
     function initialize(InitParams memory params) public initializer {
-        require(
-            DateTimeLib.isSupportedDateTime({
-                year: params.firstNominationStartDate.year,
-                month: params.firstNominationStartDate.month,
-                day: params.firstNominationStartDate.day,
-                hour: params.firstNominationStartDate.hour,
-                minute: 0,
-                second: 0
-            }),
-            "SecurityCouncilNomineeElectionGovernor: Invalid first nomination start date"
-        );
-
-        // make sure the start date is in the future
-        uint256 startTimestamp = DateTimeLib.dateTimeToTimestamp({
-            year: params.firstNominationStartDate.year,
-            month: params.firstNominationStartDate.month,
-            day: params.firstNominationStartDate.day,
-            hour: params.firstNominationStartDate.hour,
-            minute: 0,
-            second: 0
-        });
-
-        require(
-            startTimestamp > block.timestamp,
-            "SecurityCouncilNomineeElectionGovernor: First nomination start date must be in the future"
-        );
-
         __Governor_init("Security Council Nominee Election Governor");
         __GovernorVotes_init(params.token);
         __SecurityCouncilNomineeElectionGovernorCounting_init();
         __ArbitrumGovernorVotesQuorumFraction_init(params.quorumNumeratorValue);
         __GovernorSettings_init(0, params.votingPeriod, 0); // votingDelay and proposalThreshold are set to 0
+        __SecurityCouncilNomineeElectionGovernorIndexingTiming_init(
+            params.firstNominationStartDate,
+            params.nomineeVettingDuration
+        );
         _transferOwnership(params.owner);
 
         targetNomineeCount = params.targetNomineeCount;
-        firstNominationStartDate = params.firstNominationStartDate;
-        nomineeVettingDuration = params.nomineeVettingDuration;
         nomineeVetter = params.nomineeVetter;
         securityCouncilManager = params.securityCouncilManager;
         securityCouncilMemberElectionGovernor = params.securityCouncilMemberElectionGovernor;
@@ -166,7 +125,7 @@ contract SecurityCouncilNomineeElectionGovernor is
     /// @return proposalId The id of the proposal
     function createElection() external returns (uint256 proposalId) {
         // CHRIS: TODO: we need to check elections cannot have a time less than all the stages put together when initialising
-        uint256 thisElectionStartTs = electionToTimestamp(firstNominationStartDate, electionCount);
+        uint256 thisElectionStartTs = electionToTimestamp(electionCount);
 
         require(
             block.timestamp >= thisElectionStartTs,
@@ -379,39 +338,6 @@ contract SecurityCouncilNomineeElectionGovernor is
         return isNominee(proposalId, account) && !_elections[proposalId].isExcluded[account];
     }
 
-    /// @notice Returns the deadline for the nominee vetting period for a given `proposalId`
-    function proposalVettingDeadline(uint256 proposalId) public view returns (uint256) {
-        return proposalDeadline(proposalId) + nomineeVettingDuration;
-    }
-
-    /// @notice Returns the start timestamp of an election
-    /// @param firstElection The start date of the first election
-    /// @param electionIndex The index of the election
-    function electionToTimestamp(Date memory firstElection, uint256 electionIndex)
-        public
-        pure
-        returns (uint256)
-    {
-        // subtract one to make month 0 indexed
-        uint256 month = firstElection.month - 1;
-
-        month += 6 * electionIndex;
-        uint256 year = firstElection.year + month / 12;
-        month = month % 12;
-
-        // add one to make month 1 indexed
-        month += 1;
-
-        return DateTimeLib.dateTimeToTimestamp({
-            year: year,
-            month: month,
-            day: firstElection.day,
-            hour: firstElection.hour,
-            minute: 0,
-            second: 0
-        });
-    }
-
     /// @notice Returns the cohort for a given `electionIndex`
     function electionIndexToCohort(uint256 electionIndex) public pure returns (Cohort) {
         return Cohort(electionIndex % 2);
@@ -440,13 +366,23 @@ contract SecurityCouncilNomineeElectionGovernor is
         );
     }
 
-    /**
-     * internal view/pure functions *************
-     */
+    /// @notice returns true if the nominee has been excluded by the nomineeVetter for the given proposal
+    function isExcluded(uint256 proposalId, address possibleExcluded)
+        public
+        view
+        returns (bool)
+    {
+        return _elections[proposalId].isExcluded[possibleExcluded];
+    }
+
+    /// @notice returns the number of excluded nominees for the given proposal
+    function excludedNomineeCount(uint256 proposalId) public view returns (uint256) {
+        return _elections[proposalId].excludedNomineeCount;
+    }
 
     /// @inheritdoc SecurityCouncilNomineeElectionGovernorCountingUpgradeable
-    function _isContender(uint256 proposalId, address possibleContender)
-        internal
+    function isContender(uint256 proposalId, address possibleContender)
+        public
         view
         virtual
         override
