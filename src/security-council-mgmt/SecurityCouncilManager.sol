@@ -7,10 +7,12 @@ import "../L1ArbitrumTimelock.sol";
 import "./SecurityCouncilMgmtUtils.sol";
 import "./interfaces/ISecurityCouncilManager.sol";
 import "./SecurityCouncilUpgradeAction.sol";
+import "../UpgradeExecRouterBuilder.sol";
 import "@arbitrum/nitro-contracts/src/precompiles/ArbSys.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
 
 /// @title  The Security Council Manager
 /// @notice The source of truth for an array of Security Council that are under management
@@ -27,20 +29,12 @@ contract SecurityCouncilManager is
     event MemberReplaced(address indexed replacedMember, address indexed newMember, Cohort cohort);
     event MemberRotated(address indexed replacedAddress, address indexed newAddress, Cohort cohort);
     event SecurityCouncilAdded(
-        address securityCouncil,
-        address indexed upgradeExecutor,
-        address updateAction,
-        address indexed inbox,
-        uint256 securityCouncilsLength
+        address securityCouncil, address updateAction, uint256 securityCouncilsLength
     );
     event SecurityCouncilRemoved(
-        address securityCouncil,
-        address indexed upgradeExecutor,
-        address updateAction,
-        address indexed inbox,
-        uint256 securityCouncilsLength
+        address securityCouncil, address updateAction, uint256 securityCouncilsLength
     );
-    event L1TimelockDelaySet(uint256 minL1TimelockDelay);
+    event UpgradeExecRouterBuilderSet(address upgradeExecRouterBuilder);
 
     // The Security Council members are separated into two cohorts, allowing a whole cohort to be replaced, as
     // specified by the Arbitrum Constitution.
@@ -50,15 +44,15 @@ contract SecurityCouncilManager is
     address[] internal firstCohort;
     address[] internal secondCohort;
 
-    /// @notice Address of the l1 timelock used by core governance
-    address public l1CoreGovTimelock;
-
     /// @notice Address of the l2 timelock used by core governance
     address payable public l2CoreGovTimelock;
 
     /// @notice The list of Security Councils under management. Any changes to the cohorts in this manager
     ///         will be pushed to each of these security councils, ensuring that they all stay in sync
     SecurityCouncilData[] public securityCouncils;
+
+    /// @notice Address of UpgradeExecRouterBuilder. Used to help create security council updates
+    UpgradeExecRouterBuilder public router;
 
     // TODO: benchmark for reasonable number
     /// @notice Maximum possible number of Security Councils to manage
@@ -68,9 +62,6 @@ contract SecurityCouncilManager is
 
     /// @notice Nonce to ensure that scheduled updates create unique entries in the timelocks
     uint256 public updateNonce;
-
-    /// @notice Min delay for the L1 timelock
-    uint256 minL1TimelockDelay;
 
     /// @notice Magic value used by the L1 timelock to indicate that a retryable ticket should be created
     ///         Value is defined in L1ArbitrumTimelock contract https://etherscan.io/address/0xE6841D92B0C345144506576eC13ECf5103aC7f49#readProxyContract#F5
@@ -91,9 +82,8 @@ contract SecurityCouncilManager is
         address[] memory _secondCohort,
         SecurityCouncilData[] memory _securityCouncils,
         SecurityCouncilManagerRoles memory _roles,
-        address _l1CoreGovTimelock,
         address payable _l2CoreGovTimelock,
-        uint256 _minL1TimelockDelay
+        UpgradeExecRouterBuilder _router
     ) external initializer {
         firstCohort = _firstCohort;
         secondCohort = _secondCohort;
@@ -106,14 +96,12 @@ contract SecurityCouncilManager is
         }
         _grantRole(MEMBER_ROTATOR_ROLE, _roles.memberRotator);
 
-        l1CoreGovTimelock = _l1CoreGovTimelock;
         l2CoreGovTimelock = _l2CoreGovTimelock;
-
-        _setMinL1TimelockDelay(_minL1TimelockDelay);
 
         for (uint256 i = 0; i < _securityCouncils.length; i++) {
             _addSecurityCouncil(_securityCouncils[i]);
         }
+        _setUpgradeExecRouterBuilder(_router);
     }
 
     /// @inheritdoc ISecurityCouncilManager
@@ -231,20 +219,15 @@ contract SecurityCouncilManager is
             "SecurityCouncilManager: zero updateAction"
         );
         require(
-            _securityCouncilData.upgradeExecutor != address(0),
-            "SecurityCouncilManager: zero upgradeExecutor"
-        );
-        require(
             _securityCouncilData.securityCouncil != address(0),
             "SecurityCouncilManager: zero securityCouncil"
         );
-        // inbox can be zero
+        require(_securityCouncilData.chainId != 0, "SecurityCouncilManager: zero securityCouncil");
+
         securityCouncils.push(_securityCouncilData);
         emit SecurityCouncilAdded(
             _securityCouncilData.securityCouncil,
-            _securityCouncilData.upgradeExecutor,
             _securityCouncilData.updateAction,
-            _securityCouncilData.inbox,
             securityCouncils.length
         );
     }
@@ -269,24 +252,28 @@ contract SecurityCouncilManager is
         securityCouncils.pop();
         emit SecurityCouncilRemoved(
             securityCouncilToRemove.securityCouncil,
-            securityCouncilToRemove.upgradeExecutor,
+            // securityCouncilToRemove.upgradeExecutor,
             securityCouncilToRemove.updateAction,
-            securityCouncilToRemove.inbox,
+            // securityCouncilToRemove.inbox,
             securityCouncils.length
         );
     }
 
-    function _setMinL1TimelockDelay(uint256 _minL1TimelockDelay) internal {
-        minL1TimelockDelay = _minL1TimelockDelay;
-        emit L1TimelockDelaySet(_minL1TimelockDelay);
-    }
-
     /// @inheritdoc ISecurityCouncilManager
-    function setMinL1TimelockDelay(uint256 _minL1TimelockDelay)
+    function setUpgradeExecRouterBuilder(UpgradeExecRouterBuilder _router)
         external
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
-        _setMinL1TimelockDelay(_minL1TimelockDelay);
+        _setUpgradeExecRouterBuilder(_router);
+    }
+
+    function _setUpgradeExecRouterBuilder(UpgradeExecRouterBuilder _router) internal {
+        require(
+            Address.isContract(address(_router)),
+            "SecurityCouncilManager: new router not a contract"
+        );
+        router = _router;
+        emit UpgradeExecRouterBuilderSet(address(_router));
     }
 
     /// @inheritdoc ISecurityCouncilManager
@@ -322,64 +309,35 @@ contract SecurityCouncilManager is
         }
 
         // build batch call to L1 timelock
-        address[] memory targetsForL1TimelockOperations = new address[](securityCouncils.length);
-        bytes[] memory payloadsForL1TimelockOperations = new bytes[](securityCouncils.length);
+        address[] memory actionAddresses = new address[](securityCouncils.length);
+        bytes[] memory actionData = new bytes[](securityCouncils.length);
+        uint256[] memory chainIds = new uint256[](securityCouncils.length);
+
         for (uint256 i = 0; i < securityCouncils.length; i++) {
             SecurityCouncilData memory securityCouncilData = securityCouncils[i];
 
-            // call for upgrade executor; call "execute" to the target action contract.
-            bytes memory upgradeExecutorCallData = abi.encodeWithSelector(
-                UpgradeExecutor.execute.selector,
-                // execute will delegatecall the update action address
-                securityCouncilData.updateAction,
-                // call the perform function on the action address
-                abi.encodeWithSelector(
-                    SecurityCouncilUpgradeAction.perform.selector,
-                    securityCouncilData.securityCouncil,
-                    newMembers
-                )
+            actionAddresses[i] = securityCouncilData.updateAction;
+            chainIds[i] = securityCouncilData.chainId;
+            actionData[i] = abi.encodeWithSelector(
+                SecurityCouncilUpgradeAction.perform.selector,
+                securityCouncilData.securityCouncil,
+                newMembers
             );
-
-            // inbox as address(0) check is check for the security council being on l1.
-            // if it is, the L1Timelock should call the upgrade executor directly
-            if (securityCouncilData.inbox == address(0)) {
-                // directly call the Upgrade Executor on the L1
-                targetsForL1TimelockOperations[i] = securityCouncilData.upgradeExecutor;
-                payloadsForL1TimelockOperations[i] = upgradeExecutorCallData;
-            } else {
-                // The Upgrade Executor (and therefore the Sec Council) is not on L1, therefore we must send it through an Inbox
-                // Signify to the L1 timelock that it should call an Inbox using the RERETRYABLE_TICKET_MAGIC to create a retryable
-                // that will target the upgrade executor on the L2 linked to that Inbox
-                targetsForL1TimelockOperations[i] = RETRYABLE_TICKET_MAGIC;
-                payloadsForL1TimelockOperations[i] = abi.encode(
-                    securityCouncilData.inbox,
-                    securityCouncilData.upgradeExecutor,
-                    0,
-                    0,
-                    0,
-                    upgradeExecutorCallData
-                );
-            }
         }
 
-        // Schedule this batch of calls into the L1Timelock
-        bytes memory l1TimelockCallData = abi.encodeWithSelector(
-            L1ArbitrumTimelock.scheduleBatch.selector,
-            targetsForL1TimelockOperations,
+        (address to, bytes memory data) = router.createActionRouteData(
+            chainIds,
+            actionAddresses,
             new uint256[](securityCouncils.length), // all values are always 0
-            payloadsForL1TimelockOperations,
-            bytes32(0),
-            this.generateSalt(newMembers), // must be unique as the proposal hash is used for replay protection in the L1 timelock
-            minL1TimelockDelay // use the minL1TimelockDelay, which always match the minimum delay value set on the L1 Timelock
+            actionData,
+            this.generateSalt(newMembers) // must be unique as the proposal hash is used for replay protection in the L1 timelock
         );
-        // schedule a call to the L2 timelock to execute an l2 to l1 message via ArbSys precompile
+
         ArbitrumTimelock(l2CoreGovTimelock).schedule({
-            target: address(100), // ArbSys address - this will trigger a call from L2->L1
+            target: to, // ArbSys address - this will trigger a call from L2->L1
             value: 0,
             // call to ArbSys.sendTxToL1; target the L1 timelock with the calldata previously constucted
-            data: abi.encodeWithSelector(
-                ArbSys.sendTxToL1.selector, l1CoreGovTimelock, l1TimelockCallData
-                ),
+            data: data,
             predecessor: bytes32(0),
             salt: this.generateSalt(newMembers), // must be unique as the proposal hash is used for replay protection in the L2 timelock
             delay: ArbitrumTimelock(l2CoreGovTimelock).getMinDelay()
