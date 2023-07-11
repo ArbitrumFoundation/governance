@@ -91,7 +91,7 @@ contract SecurityCouncilNomineeElectionGovernor is
     error AccountInOtherCohort(Cohort cohort, address account);
     error ProposalNotSuccessful();
     error ProposalNotInVettingPeriod();
-    error NomineeAlreadyAdded();
+    error NomineeAlreadyExcluded();
     error CompliantNomineeTargetHit();
     error ProposalInVettingPeriod();
     error InsufficientCompliantNomineeCount();
@@ -208,7 +208,9 @@ contract SecurityCouncilNomineeElectionGovernor is
         }
 
         ElectionInfo storage election = _elections[proposalId];
-        require(!election.isExcluded[account], "Nominee already excluded");
+        if (election.isExcluded[account]) {
+            revert NomineeAlreadyExcluded();
+        }
 
         election.isExcluded[account] = true;
         election.excludedNomineeCount++;
