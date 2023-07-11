@@ -321,6 +321,7 @@ contract SecurityCouncilNomineeElectionGovernor is
         return Cohort(electionIndex % 2);
     }
 
+    // CHRIS: TODO: put these in both governors? or in a lib?
     /// @notice Returns the description for a given `electionIndex`
     function electionIndexToDescription(uint256 electionIndex)
         public
