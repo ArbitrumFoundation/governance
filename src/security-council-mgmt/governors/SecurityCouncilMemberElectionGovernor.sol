@@ -108,9 +108,7 @@ contract SecurityCouncilMemberElectionGovernor is
         // we know that the list is full because we checked it in _voteSucceeded
         securityCouncilManager.replaceCohort({
             _newCohort: topNominees(proposalId),
-            _cohort: nomineeElectionGovernor.electionIndexToCohort(
-                nomineeElectionGovernor.electionCount() - 1
-                )
+            _cohort: nomineeElectionGovernor.currentCohort()
         });
     }
 

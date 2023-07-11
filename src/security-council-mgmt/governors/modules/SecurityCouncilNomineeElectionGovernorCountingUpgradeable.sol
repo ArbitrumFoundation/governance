@@ -101,8 +101,6 @@ abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is
 
             // push the contender to the nominees
             _addNominee(proposalId, contender);
-
-            emit NewNominee(proposalId, contender);
         }
 
         election.votesUsed[account] = prevVotesUsed + actualVotes;
@@ -121,6 +119,7 @@ abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is
     function _addNominee(uint256 proposalId, address account) internal {
         _elections[proposalId].nominees.push(account);
         _elections[proposalId].isNominee[account] = true;
+        emit NewNominee(proposalId, account);
     }
 
     /**
