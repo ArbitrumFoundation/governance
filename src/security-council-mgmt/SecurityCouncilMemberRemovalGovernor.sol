@@ -2,17 +2,22 @@
 pragma solidity 0.8.16;
 
 import "../L2ArbitrumGovernor.sol";
+import "./interfaces/ISecurityCouncilManager.sol";
 
 contract SecurityCouncilMemberRemovalGovernor is L2ArbitrumGovernor {
     uint256 public constant voteSuccessDenominator = 10_000;
 
     uint256 public voteSuccessNumerator;
 
+    ISecurityCouncilManager public securityCouncilManager;
+
     event VoteSuccessNumeratorSet(uint256 indexed voteSuccessNumerator);
+    event MemberRemovalProposed(address memberToRemove, string description);
 
     /// @notice Initialize the contract
     /// @dev this method does not include an initializer modifier; it calls its parent's initiaze method which itself prevents repeated initialize calls
     /// @param _voteSuccessNumerator value that with denominator 10_000 determines the ration of for/against votes required for success
+    /// @param _securityCouncilManager security council manager contract
     /// @param _token The address of the governance token
     /// @param _timelock A time lock for proposal execution
     /// @param _owner The DAO (Upgrade Executor); admin over proposal role
@@ -23,6 +28,7 @@ contract SecurityCouncilMemberRemovalGovernor is L2ArbitrumGovernor {
     /// @param _minPeriodAfterQuorum The minimum number of blocks available for voting after the quorum is reached
     function initialize(
         uint256 _voteSuccessNumerator,
+        ISecurityCouncilManager _securityCouncilManager,
         IVotesUpgradeable _token,
         TimelockControllerUpgradeable _timelock,
         address _owner,
@@ -33,6 +39,7 @@ contract SecurityCouncilMemberRemovalGovernor is L2ArbitrumGovernor {
         uint64 _minPeriodAfterQuorum
     ) public {
         _setVoteSuccessNumerator(_voteSuccessNumerator);
+        securityCouncilManager = _securityCouncilManager;
         this.initialize(
             _token,
             _timelock,
@@ -43,6 +50,50 @@ contract SecurityCouncilMemberRemovalGovernor is L2ArbitrumGovernor {
             _proposalThreshold,
             _minPeriodAfterQuorum
         );
+    }
+
+    /// @notice Propose a security council member removal. Method conforms to the governor propose interface but enforces that only calls to removeMember can be propsoed.
+    /// @param targets Target contract operation; must be [securityCouncilManager]
+    /// @param values Value for removeMmeber; must be [0]
+    /// @param calldatas Operation calldata; must be removeMember with address argument
+    /// @param description rationale for member removal
+    function propose(
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        string memory description
+    ) public override(GovernorUpgradeable, IGovernorUpgradeable) returns (uint256) {
+        require(
+            targets.length == 1, "SecurityCouncilMemberRemovalGovernor: operations length must be 1"
+        );
+        // length equality of targets, values, and calldatas is checked in  GovernorUpgradeable.propose
+
+        require(
+            targets[0] == address(securityCouncilManager),
+            "SecurityCouncilMemberRemovalGovernor: target must be SecurityCouncilManager"
+        );
+        require(values[0] == 0, "SecurityCouncilMemberRemovalGovernor: value must be 0");
+
+        require(
+            calldatas[0].length == 36,
+            "SecurityCouncilMemberRemovalGovernor: unexpected calldata length"
+        );
+
+        (bytes4 selector, address memberToRemove) = abi.decode(calldatas[0], (bytes4, address));
+
+        require(
+            selector == ISecurityCouncilManager.removeMember.selector,
+            "SecurityCouncilMemberRemovalGovernor: call must be to removeMember"
+        );
+
+        require(
+            securityCouncilManager.firstCohortIncludes(memberToRemove)
+                || securityCouncilManager.secondCohortIncludes(memberToRemove),
+            "SecurityCouncilMemberRemovalGovernor: member not found"
+        );
+
+        GovernorUpgradeable.propose(targets, values, calldatas, description);
+        emit MemberRemovalProposed(memberToRemove, description);
     }
 
     /// @notice override to allow for required vote success ratio that isn't 0.5
