@@ -25,6 +25,10 @@ contract SecurityCouncilMemberElectionGovernor is
     /// @notice The SecurityCouncilManager that will execute the election result
     ISecurityCouncilManager public securityCouncilManager;
 
+    error InvalidDurations(uint256 fullWeightDuration, uint256 votingPeriod);
+    error OnlyNomineeElectionGovernor();
+    error ProposeDisabled();
+
     /// @param _nomineeElectionGovernor The SecurityCouncilNomineeElectionGovernor
     /// @param _securityCouncilManager The SecurityCouncilManager
     /// @param _token The token used for voting
@@ -39,10 +43,9 @@ contract SecurityCouncilMemberElectionGovernor is
         uint256 _votingPeriod,
         uint256 _fullWeightDuration
     ) public initializer {
-        require(
-            _fullWeightDuration <= _votingPeriod,
-            "SecurityCouncilMemberElectionGovernor: Full weight duration must be less than or equal to voting period"
-        );
+        if (_fullWeightDuration > _votingPeriod) {
+            revert InvalidDurations(_fullWeightDuration, _votingPeriod);
+        }
 
         __Governor_init("SecurityCouncilMemberElectionGovernor");
         __GovernorVotes_init(_token);
@@ -57,10 +60,9 @@ contract SecurityCouncilMemberElectionGovernor is
     }
 
     modifier onlyNomineeElectionGovernor() {
-        require(
-            msg.sender == address(nomineeElectionGovernor),
-            "SecurityCouncilMemberElectionGovernor: Only the nominee election governor can call this function"
-        );
+        if (msg.sender != address(nomineeElectionGovernor)) {
+            revert OnlyNomineeElectionGovernor();
+        }
         _;
     }
 
@@ -176,8 +178,6 @@ contract SecurityCouncilMemberElectionGovernor is
         override
         returns (uint256)
     {
-        revert(
-            "SecurityCouncilMemberElectionGovernor: Proposing is not allowed, call proposeFromNomineeElectionGovernor instead"
-        );
+        revert ProposeDisabled();
     }
 }
