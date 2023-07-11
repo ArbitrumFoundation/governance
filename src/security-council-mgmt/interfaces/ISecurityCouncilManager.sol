@@ -2,14 +2,7 @@
 pragma solidity 0.8.16;
 
 import "../../UpgradeExecRouterBuilder.sol";
-
-/// @notice Security councils members are members of one of two cohorts.
-///         Periodically all the positions on a cohort are put up for election,
-///         and the members replaced with new ones.
-enum Cohort {
-    FIRST,
-    SECOND
-}
+import "../Common.sol";
 
 /// @notice Addresses to be given specific roles on the Security Council Manager
 struct SecurityCouncilManagerRoles {
