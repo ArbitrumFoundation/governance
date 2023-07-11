@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.16;
 
-import "../L2ArbitrumGovernor.sol";
-import "./interfaces/ISecurityCouncilManager.sol";
+import "../../L2ArbitrumGovernor.sol";
+import "./../interfaces/ISecurityCouncilManager.sol";
 
 contract SecurityCouncilMemberRemovalGovernor is L2ArbitrumGovernor {
     uint256 public constant voteSuccessDenominator = 10_000;
