@@ -10,7 +10,7 @@ interface DefaultGovAction {
 }
 
 struct UpExecLocation {
-    address inbox; // for L1, inbox should be set to address(o)
+    address inbox; // for L1, inbox should be set to address(0)
     address upgradeExecutor;
 }
 
@@ -83,18 +83,18 @@ contract UpgradeExecRouterBuilder {
     /// @param chainIds target chain ids for actions
     /// @param actionAddresses address of action contracts (on their target chain)
     /// @param actionValues callvalues for operations
-    /// @param actionData calldata for actions
+    /// @param actionDatas calldatas for actions
     /// @param timelockSalt salt for core gov l1 timelock operation
     function createActionRouteData(
         uint256[] memory chainIds,
         address[] memory actionAddresses,
         uint256[] memory actionValues,
-        bytes[] memory actionData,
+        bytes[] memory actionDatas,
         bytes32 timelockSalt
     ) public view returns (address, bytes memory) {
         require(chainIds.length == actionAddresses.length, "CoreProposalCreator: length mismatch");
         require(chainIds.length == actionValues.length, "CoreProposalCreator: length mismatch");
-        require(chainIds.length == actionData.length, "CoreProposalCreator: length mismatch");
+        require(chainIds.length == actionDatas.length, "CoreProposalCreator: length mismatch");
 
         address[] memory schedTargets = new address[](chainIds.length);
         uint256[] memory schedValues = new uint256[](chainIds.length);
@@ -106,10 +106,10 @@ contract UpgradeExecRouterBuilder {
                 upExecLocation.upgradeExecutor != address(0),
                 "UpgradeExecRouter: Upgrade exec location does not exist"
             );
-            require(actionData[i].length > 0, "UpgradeExecRouter: 0 bytes data");
+            require(actionDatas[i].length > 0, "UpgradeExecRouter: 0 bytes data");
 
             bytes memory executorData = abi.encodeWithSelector(
-                UpgradeExecutor.execute.selector, actionAddresses[i], actionData[i]
+                UpgradeExecutor.execute.selector, actionAddresses[i], actionDatas[i]
             );
 
             // for L1, inbox is set to address(0):
@@ -159,11 +159,11 @@ contract UpgradeExecRouterBuilder {
         bytes32 timelockSalt // CHRIS: TODO: can we calculate this in the contract somehow?
     ) public view returns (address, bytes memory) {
         uint256[] memory values = new uint256[](chainIds.length);
-        bytes[] memory actionData = new bytes[](chainIds.length);
+        bytes[] memory actionDatas = new bytes[](chainIds.length);
         for (uint256 i = 0; i < chainIds.length; i++) {
-            actionData[i] = DEFAULT_GOV_ACTION_CALLDATA;
+            actionDatas[i] = DEFAULT_GOV_ACTION_CALLDATA;
             values[i] = DEFAULT_VALUE;
         }
-        return createActionRouteData(chainIds, actionAddresses, values, actionData, timelockSalt);
+        return createActionRouteData(chainIds, actionAddresses, values, actionDatas, timelockSalt);
     }
 }
