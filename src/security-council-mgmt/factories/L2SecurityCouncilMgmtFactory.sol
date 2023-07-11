@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/utils/Address.sol";
 import "../governors/SecurityCouncilMemberElectionGovernor.sol";
 import "../governors/SecurityCouncilNomineeElectionGovernor.sol";
 import "../SecurityCouncilManager.sol";
-import "../SecurityCouncilMemberRemovalGovernor.sol";
+import "../governors/SecurityCouncilMemberRemovalGovernor.sol";
 import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import "../interfaces/ISecurityCouncilManager.sol";
 import "../../ArbitrumTimelock.sol";
@@ -175,6 +175,7 @@ contract L2SecurityCouncilMgmtFactory is Ownable {
 
         _initRemovalGov(
             dp,
+            deployedContracts.securityCouncilManager,
             deployedContracts.memberRemovalGovTimelock,
             deployedContracts.securityCouncilMemberRemoverGov
         );
@@ -210,10 +211,12 @@ contract L2SecurityCouncilMgmtFactory is Ownable {
 
     function _initRemovalGov(
         DeployParams memory dp,
+        ISecurityCouncilManager _securityCouncilManager,
         ArbitrumTimelock _memberRemovalGovTimelock,
         SecurityCouncilMemberRemovalGovernor securityCouncilMemberRemoverGov
     ) internal {
         securityCouncilMemberRemoverGov.initialize({
+            _securityCouncilManager: _securityCouncilManager,
             _voteSuccessNumerator: dp._removalGovVoteSuccessNumerator,
             _token: IVotesUpgradeable(dp.arbToken),
             _timelock: _memberRemovalGovTimelock,
