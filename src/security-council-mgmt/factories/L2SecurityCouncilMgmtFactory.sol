@@ -32,7 +32,6 @@ struct DeployParams {
     uint64 _removalGovMinPeriodAfterQuorum;
     SecurityCouncilData[] _securityCouncils;
     // governor params
-    Cohort firstCohort;
     SecurityCouncilNomineeElectionGovernor.Date firstNominationStartDate;
     uint256 nomineeVettingDuration;
     address nomineeVetter;
@@ -73,6 +72,10 @@ contract L2SecurityCouncilMgmtFactory is Ownable {
         require(
             Address.isContract(dp.arbToken),
             "L2SecurityCouncilMgmtFactory: arbToken is not a contract"
+        );
+        require(
+            dp.nomineeVetter != address(0),
+            "L2SecurityCouncilMgmtFactory: nomineeVetter must be non zero"
         );
 
         DeployedContracts memory deployedContracts;
@@ -153,7 +156,14 @@ contract L2SecurityCouncilMgmtFactory is Ownable {
             _l1TimelockMinDelay: dp._l1TimelockMinDelay
         });
 
-        // initialize securityCouncilManager
+        // init the deployed contracts
+        _initElectionGovernors(
+            dp,
+            deployedContracts.securityCouncilManager,
+            deployedContracts.nomineeElectionGovernor,
+            deployedContracts.memberElectionGovernor
+        );
+
         deployedContracts.securityCouncilManager.initialize(
             dp._secondCohort,
             dp._firstCohort,
@@ -161,6 +171,12 @@ contract L2SecurityCouncilMgmtFactory is Ownable {
             roles,
             payable(dp._l2CoreGovTimelock),
             deployedContracts.upgradeExecRouterBuilder
+        );
+
+        _initRemovalGov(
+            dp,
+            deployedContracts.memberRemovalGovTimelock,
+            deployedContracts.securityCouncilMemberRemoverGov
         );
 
         deployedContracts.memberRemovalGovTimelock.initialize(0, new address[](0), new address[](0));
@@ -186,19 +202,6 @@ contract L2SecurityCouncilMgmtFactory is Ownable {
         );
         deployedContracts.memberRemovalGovTimelock.revokeRole(
             deployedContracts.memberRemovalGovTimelock.TIMELOCK_ADMIN_ROLE(), address(this)
-        );
-
-        _initRemovalGov(
-            dp,
-            deployedContracts.memberRemovalGovTimelock,
-            deployedContracts.securityCouncilMemberRemoverGov
-        );
-
-        _initElectionGovernors(
-            dp,
-            deployedContracts.securityCouncilManager,
-            deployedContracts.nomineeElectionGovernor,
-            deployedContracts.memberElectionGovernor
         );
 
         emit ContractsDeployed(deployedContracts);
@@ -250,7 +253,6 @@ contract L2SecurityCouncilMgmtFactory is Ownable {
             _token: IVotesUpgradeable(dp.arbToken),
             _owner: dp.l2UpgradeExecutor,
             _votingPeriod: dp.memberVotingPeriod,
-            _targetMemberCount: dp._firstCohort.length,
             _fullWeightDuration: dp._fullWeightDuration
         });
     }

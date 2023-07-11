@@ -96,8 +96,7 @@ contract SecurityCouncilNomineeElectionGovernor is
         __ArbitrumGovernorVotesQuorumFraction_init(params.quorumNumeratorValue);
         __GovernorSettings_init(0, params.votingPeriod, 0); // votingDelay and proposalThreshold are set to 0
         __SecurityCouncilNomineeElectionGovernorIndexingTiming_init(
-            params.firstNominationStartDate,
-            params.nomineeVettingDuration
+            params.firstNominationStartDate, params.nomineeVettingDuration
         );
         _transferOwnership(params.owner);
 
@@ -159,14 +158,10 @@ contract SecurityCouncilNomineeElectionGovernor is
         );
 
         // check to make sure the contender is not part of the other cohort
-        Cohort cohort = electionIndexToCohort(electionCount - 1);
-
-        address[] memory oppositeCohortCurrentMembers = cohort == Cohort.SECOND
-            ? securityCouncilManager.getFirstCohort()
-            : securityCouncilManager.getSecondCohort();
-
+        // do electionCount instead of electionCount - 1 to get the other cohort
+        Cohort otherCohort = electionIndexToCohort(electionCount);
         require(
-            !SecurityCouncilMgmtUtils.isInArray(msg.sender, oppositeCohortCurrentMembers),
+            !securityCouncilManager.cohortIncludes(otherCohort, msg.sender),
             "SecurityCouncilNomineeElectionGovernor: Account is a member of the opposite cohort"
         );
 
@@ -239,18 +234,13 @@ contract SecurityCouncilNomineeElectionGovernor is
             "SecurityCouncilNomineeElectionGovernor: Compliant nominee count at target"
         );
 
-        Cohort cohort = electionIndexToCohort(electionCount - 1);
-        if (cohort == Cohort.FIRST) {
-            require(
-                !securityCouncilManager.secondCohortIncludes(account),
-                "SecurityCouncilNomineeElectionGovernor: Cannot add member of other second cohort"
-            );
-        } else {
-            require(
-                !securityCouncilManager.firstCohortIncludes(account),
-                "SecurityCouncilNomineeElectionGovernor: Cannot add member of other first cohort"
-            );
-        }
+        // cant include nominees from the other cohort
+        // do electionCount instead of electionCount - 1 to get the other cohort
+        Cohort otherCohort = electionIndexToCohort(electionCount);
+        require(
+            !securityCouncilManager.cohortIncludes(otherCohort, account),
+            "SecurityCouncilNomineeElectionGovernor: Account is a member of the opposite cohort"
+        );
 
         _addNominee(proposalId, account);
 
@@ -286,37 +276,16 @@ contract SecurityCouncilNomineeElectionGovernor is
 
         uint256 compliantNomineeCount = nomineeCount(proposalId) - election.excludedNomineeCount;
 
-        if (compliantNomineeCount == targetNomineeCount) {
-            address[] memory maybeCompliantNominees =
-                SecurityCouncilNomineeElectionGovernorCountingUpgradeable.nominees(proposalId);
-            address[] memory compliantNominees = SecurityCouncilMgmtUtils
-                .filterAddressesWithExcludeList(maybeCompliantNominees, election.isExcluded);
-            Cohort cohort = electionIndexToCohort(electionCount - 1);
-            securityCouncilMemberElectionGovernor.executeElectionResult(compliantNominees, cohort);
-        } else if (compliantNomineeCount > targetNomineeCount) {
-            // call the SecurityCouncilMemberElectionGovernor to start the next phase of the election
-            securityCouncilMemberElectionGovernor.proposeFromNomineeElectionGovernor();
-            return;
-        } else {
-            revert(
-                "SecurityCouncilNomineeElectionGovernor: Insufficient number of compliant nominees"
-            );
-        }
+        require(
+            compliantNomineeCount >= targetNomineeCount,
+            "SecurityCouncilNomineeElectionGovernor: Insufficient compliant nominees"
+        );
+        securityCouncilMemberElectionGovernor.proposeFromNomineeElectionGovernor();
     }
 
     /**
      * view/pure functions *************
      */
-
-    /// @notice returns true if the account is a nominee for the most recent election and has not been excluded
-    /// @param  account The account to check
-    function isCompliantNomineeForMostRecentElection(address account)
-        external
-        view
-        returns (bool)
-    {
-        return isCompliantNominee(electionIndexToProposalId(electionCount - 1), account);
-    }
 
     /// @notice Normally "the number of votes required in order for a voter to become a proposer." But in our case it is 0.
     /// @dev    Since we only want proposals to be created via `createElection`, we set the proposal threshold to 0.
@@ -338,22 +307,29 @@ contract SecurityCouncilNomineeElectionGovernor is
         return isNominee(proposalId, account) && !_elections[proposalId].isExcluded[account];
     }
 
+    function compliantNominees(uint256 proposalId) public view returns (address[] memory) {
+        ElectionInfo storage election = _elections[proposalId];
+        address[] memory maybeCompliantNominees =
+            SecurityCouncilNomineeElectionGovernorCountingUpgradeable.nominees(proposalId);
+        return SecurityCouncilMgmtUtils.filterAddressesWithExcludeList(
+            maybeCompliantNominees, election.isExcluded
+        );
+    }
+
     /// @notice Returns the cohort for a given `electionIndex`
     function electionIndexToCohort(uint256 electionIndex) public pure returns (Cohort) {
         return Cohort(electionIndex % 2);
     }
 
-    function cohortOfMostRecentElection() external view returns (Cohort) {
-        return electionIndexToCohort(electionCount - 1);
-    }
-
+    // CHRIS: TODO: put these in both governors? or in a lib?
     /// @notice Returns the description for a given `electionIndex`
     function electionIndexToDescription(uint256 electionIndex)
         public
         pure
         returns (string memory)
     {
-        return string.concat("Nominee Election #", StringsUpgradeable.toString(electionIndex));
+        return
+            string.concat("Security Council Election #", StringsUpgradeable.toString(electionIndex));
     }
 
     /// @notice Returns the proposalId for a given `electionIndex`
@@ -367,11 +343,7 @@ contract SecurityCouncilNomineeElectionGovernor is
     }
 
     /// @notice returns true if the nominee has been excluded by the nomineeVetter for the given proposal
-    function isExcluded(uint256 proposalId, address possibleExcluded)
-        public
-        view
-        returns (bool)
-    {
+    function isExcluded(uint256 proposalId, address possibleExcluded) public view returns (bool) {
         return _elections[proposalId].isExcluded[possibleExcluded];
     }
 
