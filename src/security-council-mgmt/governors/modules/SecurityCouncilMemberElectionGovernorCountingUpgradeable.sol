@@ -15,7 +15,7 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
     GovernorUpgradeable
 {
     struct ElectionInfo {
-        /// @dev The total of votes used by a delegate.
+        /// @dev The total votes used by a delegate.
         mapping(address => uint256) votesUsed;
         /// @dev The weight of votes received by a nominee. At the start of the election
         ///      each vote has weight 1, however after a cutoff point the weight of each
