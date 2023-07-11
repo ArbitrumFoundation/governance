@@ -7,6 +7,7 @@ import "../../src/UpgradeExecRouterBuilder.sol";
 
 import "../util/TestUtil.sol";
 import "../util/MockArbSys.sol";
+import "../../src/security-council-mgmt/errors.sol";
 
 contract MockArbitrumTimelock {
     event CallScheduled(
@@ -157,7 +158,7 @@ contract SecurityCouncilManagerTest is Test {
         scm.removeMember(rando);
 
         vm.prank(roles.memberRemovers[0]);
-        vm.expectRevert("SecurityCouncilManager: member to remove not found");
+        vm.expectRevert(abi.encodeWithSelector(NotAMember.selector, rando));
         scm.removeMember(rando);
     }
 
@@ -182,13 +183,15 @@ contract SecurityCouncilManagerTest is Test {
         scm.addMember(memberToAdd, Cohort.FIRST);
 
         vm.prank(roles.memberAdder);
-        vm.expectRevert("SecurityCouncilManager: cohort is full");
+        vm.expectRevert(abi.encodeWithSelector(CohortFull.selector, Cohort.FIRST));
         scm.addMember(memberToAdd, Cohort.FIRST);
 
         removeFirstMember();
 
         vm.prank(roles.memberAdder);
-        vm.expectRevert("SecurityCouncilManager: member already in first cohort");
+        vm.expectRevert(
+            abi.encodeWithSelector(MemberInCohort.selector, firstCohort[1], Cohort.FIRST)
+        );
         scm.addMember(firstCohort[1], Cohort.FIRST);
     }
 
@@ -248,13 +251,17 @@ contract SecurityCouncilManagerTest is Test {
         scm.replaceMember(rando, rando);
 
         vm.startPrank(roles.memberReplacer);
-        vm.expectRevert("SecurityCouncilManager: member to remove not found");
+        vm.expectRevert(abi.encodeWithSelector(NotAMember.selector, memberToAdd));
         scm.replaceMember(memberToAdd, rando);
 
-        vm.expectRevert("SecurityCouncilManager: member already in first cohort");
+        vm.expectRevert(
+            abi.encodeWithSelector(MemberInCohort.selector, firstCohort[1], Cohort.FIRST)
+        );
         scm.replaceMember(firstCohort[0], firstCohort[1]);
 
-        vm.expectRevert("SecurityCouncilManager: member already in second cohort");
+        vm.expectRevert(
+            abi.encodeWithSelector(MemberInCohort.selector, secondCohort[0], Cohort.SECOND)
+        );
         scm.replaceMember(firstCohort[0], secondCohort[0]);
         vm.stopPrank();
     }
@@ -308,7 +315,7 @@ contract SecurityCouncilManagerTest is Test {
         scm.addSecurityCouncil(scToAdd);
 
         vm.startPrank(roles.admin);
-        vm.expectRevert("SecurityCouncilManager: security council already included");
+        vm.expectRevert(abi.encodeWithSelector(SecurityCouncilAlreadyInRouter.selector, firstSC));
         scm.addSecurityCouncil(firstSC);
 
         SecurityCouncilData memory scWithChainNotInRouter = SecurityCouncilData({
@@ -316,7 +323,9 @@ contract SecurityCouncilManagerTest is Test {
             updateAction: address(9992),
             chainId: 4
         });
-        vm.expectRevert("SecurityCouncilManager: security council not in UpgradeExecRouterBuilder");
+        vm.expectRevert(
+            abi.encodeWithSelector(SecurityCouncilNotInRouter.selector, scWithChainNotInRouter)
+        );
         scm.addSecurityCouncil(scWithChainNotInRouter);
         vm.stopPrank();
     }
@@ -340,7 +349,7 @@ contract SecurityCouncilManagerTest is Test {
         scm.removeSecurityCouncil(firstSC);
 
         vm.prank(roles.admin);
-        vm.expectRevert("SecurityCouncilManager: security council not found");
+        vm.expectRevert(abi.encodeWithSelector(SecurityCouncilNotInManager.selector, scToAdd));
         scm.removeSecurityCouncil(scToAdd);
     }
 
@@ -358,7 +367,7 @@ contract SecurityCouncilManagerTest is Test {
         vm.startPrank(roles.cohortUpdator);
         address[] memory newSmallCohort = new address[](1);
         newSmallCohort[0] = rando;
-        vm.expectRevert("SecurityCouncilManager: invalid cohort length");
+        vm.expectRevert(abi.encodeWithSelector(InvalidNewCohortLength.selector, newSmallCohort));
         scm.replaceCohort(newSmallCohort, Cohort.FIRST);
         vm.stopPrank();
     }
@@ -404,7 +413,7 @@ contract SecurityCouncilManagerTest is Test {
         scm.setUpgradeExecRouterBuilder(newRouter);
 
         vm.prank(roles.admin);
-        vm.expectRevert("SecurityCouncilManager: new router not a contract");
+        vm.expectRevert(abi.encodeWithSelector(NotAContract.selector, rando));
         scm.setUpgradeExecRouterBuilder(UpgradeExecRouterBuilder(rando));
     }
 
