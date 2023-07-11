@@ -196,7 +196,7 @@ contract SecurityCouncilManager is
 
     function _swapMembers(address _addressToRemove, address _addressToAdd)
         internal
-        returns (Cohort cohort)
+        returns (Cohort)
     {
         require(
             _addressToRemove != address(0) && _addressToAdd != address(0),
@@ -205,6 +205,7 @@ contract SecurityCouncilManager is
         Cohort cohort = _removeMemberFromCohortArray(_addressToRemove);
         _addMemberToCohortArray(_addressToAdd, cohort);
         _scheduleUpdate();
+        return cohort;
     }
 
     function _addSecurityCouncil(SecurityCouncilData memory _securityCouncilData) internal {
@@ -317,15 +318,15 @@ contract SecurityCouncilManager is
 
     /// @inheritdoc ISecurityCouncilManager
     function firstCohortIncludes(address account) public view returns (bool) {
-        return _cohortIncludes(Cohort.FIRST, account);
+        return cohortIncludes(Cohort.FIRST, account);
     }
 
     /// @inheritdoc ISecurityCouncilManager
     function secondCohortIncludes(address account) public view returns (bool) {
-        return _cohortIncludes(Cohort.SECOND, account);
+        return cohortIncludes(Cohort.SECOND, account);
     }
 
-    function _cohortIncludes(Cohort cohort, address account) internal view returns (bool) {
+    function cohortIncludes(Cohort cohort, address account) public view returns (bool) {
         address[] memory cohortMembers = cohort == Cohort.FIRST ? firstCohort : secondCohort;
         return SecurityCouncilMgmtUtils.isInArray(account, cohortMembers);
     }

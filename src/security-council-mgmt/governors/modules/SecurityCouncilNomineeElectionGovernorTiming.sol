@@ -6,7 +6,10 @@ import "../../interfaces/ISecurityCouncilManager.sol";
 import "@openzeppelin/contracts-upgradeable/governance/GovernorUpgradeable.sol";
 import "lib/solady/src/utils/DateTimeLib.sol";
 
-abstract contract SecurityCouncilNomineeElectionGovernorTiming is Initializable, GovernorUpgradeable {
+abstract contract SecurityCouncilNomineeElectionGovernorTiming is
+    Initializable,
+    GovernorUpgradeable
+{
     /// @notice Date struct for convenience
     struct Date {
         uint256 year;
@@ -57,7 +60,9 @@ abstract contract SecurityCouncilNomineeElectionGovernorTiming is Initializable,
         nomineeVettingDuration = _nomineeVettingDuration;
     }
 
-    /************** view/pure functions **************/
+    /**
+     * view/pure functions *************
+     */
 
     /// @notice Returns the deadline for the nominee vetting period for a given `proposalId`
     function proposalVettingDeadline(uint256 proposalId) public view returns (uint256) {
@@ -66,11 +71,7 @@ abstract contract SecurityCouncilNomineeElectionGovernorTiming is Initializable,
 
     /// @notice Returns the start timestamp of an election
     /// @param electionIndex The index of the election
-    function electionToTimestamp(uint256 electionIndex)
-        public
-        view
-        returns (uint256)
-    {
+    function electionToTimestamp(uint256 electionIndex) public view returns (uint256) {
         // subtract one to make month 0 indexed
         uint256 month = firstNominationStartDate.month - 1;
 

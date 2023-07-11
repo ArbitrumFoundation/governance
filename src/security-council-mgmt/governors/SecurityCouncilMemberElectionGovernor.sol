@@ -30,7 +30,6 @@ contract SecurityCouncilMemberElectionGovernor is
     /// @param _token The token used for voting
     /// @param _owner The owner of the governor
     /// @param _votingPeriod The duration of voting on a proposal
-    /// @param _targetMemberCount The target number of members to elect
     /// @param _fullWeightDuration Duration of full weight voting (blocks)
     function initialize(
         SecurityCouncilNomineeElectionGovernor _nomineeElectionGovernor,
@@ -38,7 +37,6 @@ contract SecurityCouncilMemberElectionGovernor is
         IVotesUpgradeable _token,
         address _owner,
         uint256 _votingPeriod,
-        uint256 _targetMemberCount, // HENRY: TODO: remove this, won't do it now because it messes with factory
         uint256 _fullWeightDuration
     ) public initializer {
         require(
@@ -76,16 +74,10 @@ contract SecurityCouncilMemberElectionGovernor is
             new address[](1),
             new uint256[](1),
             new bytes[](1),
-            nomineeElectionIndexToDescription(nomineeElectionGovernor.electionCount() - 1)
+            nomineeElectionGovernor.electionIndexToDescription(
+                nomineeElectionGovernor.electionCount() - 1
+            )
         );
-    }
-
-    /// @notice Calls the securityCouncilManager to execute the election result.
-    function executeElectionResult(address[] memory _newCohort, Cohort _cohort)
-        external
-        onlyNomineeElectionGovernor
-    {
-        securityCouncilManager.replaceCohort(_newCohort, _cohort);
     }
 
     /// @notice Allows the owner to make calls from the governor
@@ -116,7 +108,9 @@ contract SecurityCouncilMemberElectionGovernor is
         // we know that the list is full because we checked it in _voteSucceeded
         securityCouncilManager.replaceCohort({
             _newCohort: topNominees(proposalId),
-            _cohort: nomineeElectionGovernor.cohortOfMostRecentElection()
+            _cohort: nomineeElectionGovernor.electionIndexToCohort(
+                nomineeElectionGovernor.electionCount() - 1
+                )
         });
     }
 
@@ -141,40 +135,29 @@ contract SecurityCouncilMemberElectionGovernor is
         return 0;
     }
 
-    /// @notice Returns the description of a proposal given the nominee election index.
-    function nomineeElectionIndexToDescription(uint256 electionIndex)
-        public
-        pure
-        returns (string memory)
-    {
-        return string.concat(
-            "Member Election for Nominee Election #", StringsUpgradeable.toString(electionIndex)
-        );
-    }
-
-    /// @notice Returns the proposalId for a given `electionIndex`
-    function nomineeElectionIndexToProposalId(uint256 electionIndex) public pure returns (uint256) {
-        return hashProposal(
-            new address[](1),
-            new uint256[](1),
-            new bytes[](1),
-            keccak256(bytes(nomineeElectionIndexToDescription(electionIndex)))
-        );
-    }
-
     /**
      * internal view/pure functions *************
      */
 
     /// @dev returns true if the account is a compliant nominee.
-    ///      checks the SecurityCouncilNomineeElectionGovernor to see if the account is a compliant nominee of the most recent nominee election
-    function _isCompliantNomineeForMostRecentElection(address possibleNominee)
+    ///      checks the SecurityCouncilNomineeElectionGovernor to see if the account is a compliant nominee
+    function _isCompliantNominee(uint256 proposalId, address possibleNominee)
         internal
         view
         override
         returns (bool)
     {
-        return nomineeElectionGovernor.isCompliantNomineeForMostRecentElection(possibleNominee);
+        return nomineeElectionGovernor.isCompliantNominee(proposalId, possibleNominee);
+    }
+
+    // CHRIS: TODO: docs
+    function _compliantNominees(uint256 proposalId)
+        internal
+        view
+        override
+        returns (address[] memory)
+    {
+        return nomineeElectionGovernor.compliantNominees(proposalId);
     }
 
     /// @inheritdoc SecurityCouncilMemberElectionGovernorCountingUpgradeable
