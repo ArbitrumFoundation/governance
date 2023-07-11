@@ -32,6 +32,20 @@ struct SecurityCouncilData {
 }
 
 interface ISecurityCouncilManager {
+    // security council cohort errors
+    error NotAMember(address member);
+    error MemberInCohort(address member, Cohort cohort);
+    error CohortFull(Cohort cohort);
+    error InvalidNewCohortLength(address[] cohort);
+
+    // security council data errors
+
+    error MaxSecurityCouncils(uint256 securityCouncilCount);
+    error SecurityCouncilZeroChainID(SecurityCouncilData securiyCouncilData);
+    error SecurityCouncilNotInRouter(SecurityCouncilData securiyCouncilData);
+    error SecurityCouncilNotInManager(SecurityCouncilData securiyCouncilData);
+    error SecurityCouncilAlreadyInRouter(SecurityCouncilData securiyCouncilData);
+
     // TODO
     function initialize(
         address[] memory _firstCohort,

@@ -158,7 +158,7 @@ contract SecurityCouncilManagerTest is Test {
         scm.removeMember(rando);
 
         vm.prank(roles.memberRemovers[0]);
-        vm.expectRevert(abi.encodeWithSelector(NotAMember.selector, rando));
+        vm.expectRevert(abi.encodeWithSelector(ISecurityCouncilManager.NotAMember.selector, rando));
         scm.removeMember(rando);
     }
 
@@ -183,14 +183,18 @@ contract SecurityCouncilManagerTest is Test {
         scm.addMember(memberToAdd, Cohort.FIRST);
 
         vm.prank(roles.memberAdder);
-        vm.expectRevert(abi.encodeWithSelector(CohortFull.selector, Cohort.FIRST));
+        vm.expectRevert(
+            abi.encodeWithSelector(ISecurityCouncilManager.CohortFull.selector, Cohort.FIRST)
+        );
         scm.addMember(memberToAdd, Cohort.FIRST);
 
         removeFirstMember();
 
         vm.prank(roles.memberAdder);
         vm.expectRevert(
-            abi.encodeWithSelector(MemberInCohort.selector, firstCohort[1], Cohort.FIRST)
+            abi.encodeWithSelector(
+                ISecurityCouncilManager.MemberInCohort.selector, firstCohort[1], Cohort.FIRST
+            )
         );
         scm.addMember(firstCohort[1], Cohort.FIRST);
     }
@@ -251,16 +255,22 @@ contract SecurityCouncilManagerTest is Test {
         scm.replaceMember(rando, rando);
 
         vm.startPrank(roles.memberReplacer);
-        vm.expectRevert(abi.encodeWithSelector(NotAMember.selector, memberToAdd));
+        vm.expectRevert(
+            abi.encodeWithSelector(ISecurityCouncilManager.NotAMember.selector, memberToAdd)
+        );
         scm.replaceMember(memberToAdd, rando);
 
         vm.expectRevert(
-            abi.encodeWithSelector(MemberInCohort.selector, firstCohort[1], Cohort.FIRST)
+            abi.encodeWithSelector(
+                ISecurityCouncilManager.MemberInCohort.selector, firstCohort[1], Cohort.FIRST
+            )
         );
         scm.replaceMember(firstCohort[0], firstCohort[1]);
 
         vm.expectRevert(
-            abi.encodeWithSelector(MemberInCohort.selector, secondCohort[0], Cohort.SECOND)
+            abi.encodeWithSelector(
+                ISecurityCouncilManager.MemberInCohort.selector, secondCohort[0], Cohort.SECOND
+            )
         );
         scm.replaceMember(firstCohort[0], secondCohort[0]);
         vm.stopPrank();
@@ -315,7 +325,11 @@ contract SecurityCouncilManagerTest is Test {
         scm.addSecurityCouncil(scToAdd);
 
         vm.startPrank(roles.admin);
-        vm.expectRevert(abi.encodeWithSelector(SecurityCouncilAlreadyInRouter.selector, firstSC));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ISecurityCouncilManager.SecurityCouncilAlreadyInRouter.selector, firstSC
+            )
+        );
         scm.addSecurityCouncil(firstSC);
 
         SecurityCouncilData memory scWithChainNotInRouter = SecurityCouncilData({
@@ -324,7 +338,9 @@ contract SecurityCouncilManagerTest is Test {
             chainId: 4
         });
         vm.expectRevert(
-            abi.encodeWithSelector(SecurityCouncilNotInRouter.selector, scWithChainNotInRouter)
+            abi.encodeWithSelector(
+                ISecurityCouncilManager.SecurityCouncilNotInRouter.selector, scWithChainNotInRouter
+            )
         );
         scm.addSecurityCouncil(scWithChainNotInRouter);
         vm.stopPrank();
@@ -349,7 +365,11 @@ contract SecurityCouncilManagerTest is Test {
         scm.removeSecurityCouncil(firstSC);
 
         vm.prank(roles.admin);
-        vm.expectRevert(abi.encodeWithSelector(SecurityCouncilNotInManager.selector, scToAdd));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ISecurityCouncilManager.SecurityCouncilNotInManager.selector, scToAdd
+            )
+        );
         scm.removeSecurityCouncil(scToAdd);
     }
 
@@ -367,7 +387,11 @@ contract SecurityCouncilManagerTest is Test {
         vm.startPrank(roles.cohortUpdator);
         address[] memory newSmallCohort = new address[](1);
         newSmallCohort[0] = rando;
-        vm.expectRevert(abi.encodeWithSelector(InvalidNewCohortLength.selector, newSmallCohort));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ISecurityCouncilManager.InvalidNewCohortLength.selector, newSmallCohort
+            )
+        );
         scm.replaceCohort(newSmallCohort, Cohort.FIRST);
         vm.stopPrank();
     }
