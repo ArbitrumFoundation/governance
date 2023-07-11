@@ -12,7 +12,7 @@ import "@arbitrum/nitro-contracts/src/precompiles/ArbSys.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import "./errors.sol";
+import "./Common.sol";
 
 /// @title  The Security Council Manager
 /// @notice The source of truth for an array of Security Council that are under management

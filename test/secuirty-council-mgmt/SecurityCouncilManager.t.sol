@@ -7,7 +7,7 @@ import "../../src/UpgradeExecRouterBuilder.sol";
 
 import "../util/TestUtil.sol";
 import "../util/MockArbSys.sol";
-import "../../src/security-council-mgmt/errors.sol";
+import "../../src/security-council-mgmt/Common.sol";
 
 contract MockArbitrumTimelock {
     event CallScheduled(
