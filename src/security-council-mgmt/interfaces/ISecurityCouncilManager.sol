@@ -72,6 +72,8 @@ interface ISecurityCouncilManager {
     function firstCohortIncludes(address account) external view returns (bool);
     /// @notice Is the account a member of the second cohort
     function secondCohortIncludes(address account) external view returns (bool);
+    /// @notice Is the account a member of the specified cohort
+    function cohortIncludes(Cohort cohort, address account) external view returns (bool);
     /// @notice All members of the first cohort
     function getFirstCohort() external view returns (address[] memory);
     /// @notice All members of the second cohort
