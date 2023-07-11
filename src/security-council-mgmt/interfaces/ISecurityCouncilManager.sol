@@ -78,7 +78,9 @@ interface ISecurityCouncilManager {
     function getFirstCohort() external view returns (address[] memory);
     /// @notice All members of the second cohort
     function getSecondCohort() external view returns (address[] memory);
-    /// @notice length of security councils array
+    /// @notice All members of both cohorts
+    function getBothCohorts() external view returns (address[] memory);
+    /// @notice Length of security councils array
     function securityCouncilsLength() external view returns (uint256);
     /// @notice Add new security council to be included in security council management system.
     /// @param _securityCouncilData Security council info

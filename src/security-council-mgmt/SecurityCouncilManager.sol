@@ -311,6 +311,18 @@ contract SecurityCouncilManager is
         return secondCohort;
     }
 
+    /// @inheritdoc ISecurityCouncilManager
+    function getBothCohorts() public view returns (address[] memory) {
+        address[] memory members = new address[](firstCohort.length + secondCohort.length);
+        for (uint256 i = 0; i < firstCohort.length; i++) {
+            members[i] = firstCohort[i];
+        }
+        for (uint256 i = 0; i < secondCohort.length; i++) {
+            members[firstCohort.length + i] = secondCohort[i];
+        }
+        return members;
+    }
+
     function securityCouncilsLength() public view returns (uint256) {
         return securityCouncils.length;
     }
@@ -344,17 +356,11 @@ contract SecurityCouncilManager is
         // TODO: enforce ordering (on the L1 side) with a nonce? is no contract level ordering guarunee for updates ok?
 
         // build a union array of security council members
-        address[] memory newMembers = new address[](firstCohort.length + secondCohort.length);
-        for (uint256 i = 0; i < firstCohort.length; i++) {
-            newMembers[i] = firstCohort[i];
-        }
-        for (uint256 i = 0; i < secondCohort.length; i++) {
-            newMembers[firstCohort.length + i] = secondCohort[i];
-        }
+        address[] memory newMembers = getBothCohorts();
 
         // build batch call to L1 timelock
         address[] memory actionAddresses = new address[](securityCouncils.length);
-        bytes[] memory actionData = new bytes[](securityCouncils.length);
+        bytes[] memory actionDatas = new bytes[](securityCouncils.length);
         uint256[] memory chainIds = new uint256[](securityCouncils.length);
 
         for (uint256 i = 0; i < securityCouncils.length; i++) {
@@ -362,7 +368,7 @@ contract SecurityCouncilManager is
 
             actionAddresses[i] = securityCouncilData.updateAction;
             chainIds[i] = securityCouncilData.chainId;
-            actionData[i] = abi.encodeWithSelector(
+            actionDatas[i] = abi.encodeWithSelector(
                 SecurityCouncilUpgradeAction.perform.selector,
                 securityCouncilData.securityCouncil,
                 newMembers
@@ -373,7 +379,7 @@ contract SecurityCouncilManager is
             chainIds,
             actionAddresses,
             new uint256[](securityCouncils.length), // all values are always 0
-            actionData,
+            actionDatas,
             this.generateSalt(newMembers) // must be unique as the proposal hash is used for replay protection in the L1 timelock
         );
 
