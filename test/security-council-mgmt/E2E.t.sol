@@ -385,14 +385,15 @@ contract E2E is Test {
             )
         );
         {
-            (address[] memory newMembers, address to, bytes memory data) = vars.secDeployedContracts.securityCouncilManager.getScheduleUpdateData();
+            (address[] memory newMembers, address to, bytes memory data) =
+                vars.secDeployedContracts.securityCouncilManager.getScheduleUpdateData();
             vars.newMembers = newMembers;
             vars.to = to;
             vars.data = data;
         }
 
         vm.warp(block.timestamp + l2MinTimelockDelay);
-        
+
         // CHRIS: TODO: use vm.etch to capture the data that's sent to arbsys, and execute it via the outbox
 
         l2DeployedCoreContracts.coreTimelock.execute(
@@ -402,7 +403,6 @@ contract E2E is Test {
             0,
             vars.secDeployedContracts.securityCouncilManager.generateSalt(vars.newMembers)
         );
-
 
         // call through the outbox - use an outbox mock if necessary
         // execute in the l1 timelock

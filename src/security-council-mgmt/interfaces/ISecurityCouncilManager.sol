@@ -92,6 +92,9 @@ interface ISecurityCouncilManager {
     /// @param _router new router address
     function setUpgradeExecRouterBuilder(UpgradeExecRouterBuilder _router) external;
     // CHRIS: TODO: add docs
-    function getScheduleUpdateData() external view returns(address[] memory, address, bytes memory);
+    function getScheduleUpdateData()
+        external
+        view
+        returns (address[] memory, address, bytes memory);
     function generateSalt(address[] memory _members) external view returns (bytes32);
 }

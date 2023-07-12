@@ -344,7 +344,11 @@ contract SecurityCouncilManager is
     }
 
     // CHRIS: TODO: docs
-    function getScheduleUpdateData() public view returns(address[] memory, address, bytes memory) {
+    function getScheduleUpdateData()
+        public
+        view
+        returns (address[] memory, address, bytes memory)
+    {
         // build a union array of security council members
         address[] memory newMembers = new address[](firstCohort.length + secondCohort.length);
         for (uint256 i = 0; i < firstCohort.length; i++) {
