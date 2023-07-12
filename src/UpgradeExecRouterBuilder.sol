@@ -4,6 +4,7 @@ pragma solidity 0.8.16;
 import "@arbitrum/nitro-contracts/src/precompiles/ArbSys.sol";
 import "./UpgradeExecutor.sol";
 import "./L1ArbitrumTimelock.sol";
+import "./security-council-mgmt/Common.sol";
 
 interface DefaultGovAction {
     function perform() external;
@@ -28,6 +29,11 @@ struct ChainAndUpExecLocation {
 ///         Upgrade executors can only be reached by going through a withdrawal and L1 timelock, so this contract
 ///         also include these stages when creating/scheduling a route
 contract UpgradeExecRouterBuilder {
+    error UpgadeExecDoesntExist(uint256 chainId);
+    error UpgradeExecAlreadyExists(uint256 chindId);
+    error ParamLengthMismatch(uint256 len1, uint256 len2);
+    error EmptyActionBytesData(bytes[]);
+
     // Used as a magic value to indicate that a retryable ticket should be created by the L1 timelock
     address public constant RETRYABLE_TICKET_MAGIC = 0xa723C008e76E379c55599D2E4d93879BeaFDa79C;
     // Default args for creating a proposal, used by createProposalWithDefaulArgs and createProposalBatchWithDefaultArgs
@@ -51,21 +57,18 @@ contract UpgradeExecRouterBuilder {
         address _l1ArbitrumTimelock,
         uint256 _l1TimelockMinDelay
     ) {
-        require(
-            _l1ArbitrumTimelock != address(0),
-            "UpgradeExecRouterBuilder: _l1ArbitrumTimelock cannot be address(0)"
-        );
+        if (_l1ArbitrumTimelock == address(0)) {
+            revert ZeroAddress();
+        }
 
         for (uint256 i = 0; i < _upgradeExecutors.length; i++) {
             ChainAndUpExecLocation memory chainAndUpExecLocation = _upgradeExecutors[i];
-            require(
-                chainAndUpExecLocation.location.upgradeExecutor != address(0),
-                "UpgradeExecRouterBuilder: upgradeExecutor cannot be address(0)"
-            );
-            require(
-                !upExecLocationExists(chainAndUpExecLocation.chainId),
-                "UpgradeExecRouterBuilder: location already added"
-            );
+            if (chainAndUpExecLocation.location.upgradeExecutor == address(0)) {
+                revert ZeroAddress();
+            }
+            if (upExecLocationExists(chainAndUpExecLocation.chainId)) {
+                revert UpgradeExecAlreadyExists(chainAndUpExecLocation.chainId);
+            }
             upExecLocations[chainAndUpExecLocation.chainId] = chainAndUpExecLocation.location;
         }
 
@@ -92,9 +95,15 @@ contract UpgradeExecRouterBuilder {
         bytes[] memory actionDatas,
         bytes32 timelockSalt
     ) public view returns (address, bytes memory) {
-        require(chainIds.length == actionAddresses.length, "CoreProposalCreator: length mismatch");
-        require(chainIds.length == actionValues.length, "CoreProposalCreator: length mismatch");
-        require(chainIds.length == actionDatas.length, "CoreProposalCreator: length mismatch");
+        if (chainIds.length != actionAddresses.length) {
+            revert ParamLengthMismatch(chainIds.length, actionAddresses.length);
+        }
+        if (chainIds.length != actionValues.length) {
+            revert ParamLengthMismatch(chainIds.length, actionValues.length);
+        }
+        if (chainIds.length != actionDatas.length) {
+            revert ParamLengthMismatch(chainIds.length, actionDatas.length);
+        }
 
         address[] memory schedTargets = new address[](chainIds.length);
         uint256[] memory schedValues = new uint256[](chainIds.length);
@@ -102,11 +111,12 @@ contract UpgradeExecRouterBuilder {
 
         for (uint256 i = 0; i < chainIds.length; i++) {
             UpExecLocation memory upExecLocation = upExecLocations[chainIds[i]];
-            require(
-                upExecLocation.upgradeExecutor != address(0),
-                "UpgradeExecRouter: Upgrade exec location does not exist"
-            );
-            require(actionDatas[i].length > 0, "UpgradeExecRouter: 0 bytes data");
+            if (upExecLocation.upgradeExecutor == address(0)) {
+                revert UpgadeExecDoesntExist(chainIds[i]);
+            }
+            if (actionDatas[i].length == 0) {
+                revert EmptyActionBytesData(actionDatas);
+            }
 
             bytes memory executorData = abi.encodeWithSelector(
                 UpgradeExecutor.execute.selector, actionAddresses[i], actionDatas[i]
