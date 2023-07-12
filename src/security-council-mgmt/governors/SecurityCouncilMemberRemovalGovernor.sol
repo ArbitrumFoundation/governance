@@ -15,13 +15,13 @@ contract SecurityCouncilMemberRemovalGovernor is L2ArbitrumGovernor {
     event MemberRemovalProposed(address memberToRemove, string description);
 
     error InvalidOperationsLength();
-    error TargetNotManager();
+    error TargetNotManager(address target);
     error ValueNotZero();
     error UnexpectedCalldataLength();
-    error CallNotRemoveMember();
-    error MemberNotFound();
+    error CallNotRemoveMember(bytes4 selector);
+    error MemberNotFound(address memberToRemove);
     error AbstainDisallowed();
-    error InvalidVoteSuccessNumerator();
+    error InvalidVoteSuccessNumerator(uint256 voteSuccessNumerator);
 
     /// @notice Initialize the contract
     /// @dev this method does not include an initializer modifier; it calls its parent's initiaze method which itself prevents repeated initialize calls
@@ -78,7 +78,7 @@ contract SecurityCouncilMemberRemovalGovernor is L2ArbitrumGovernor {
         // length equality of targets, values, and calldatas is checked in  GovernorUpgradeable.propose
 
         if (targets[0] != address(securityCouncilManager)) {
-            revert TargetNotManager();
+            revert TargetNotManager(targets[0]);
         }
         if (values[0] != 0) {
             revert ValueNotZero();
@@ -90,13 +90,13 @@ contract SecurityCouncilMemberRemovalGovernor is L2ArbitrumGovernor {
         (bytes4 selector, address memberToRemove) = abi.decode(calldatas[0], (bytes4, address));
 
         if (selector != ISecurityCouncilManager.removeMember.selector) {
-            revert CallNotRemoveMember();
+            revert CallNotRemoveMember(selector);
         }
         if (
             !securityCouncilManager.firstCohortIncludes(memberToRemove) &&
             !securityCouncilManager.secondCohortIncludes(memberToRemove)
         ) {
-            revert MemberNotFound();
+            revert MemberNotFound(memberToRemove);
         }
 
         GovernorUpgradeable.propose(targets, values, calldatas, description);
@@ -140,7 +140,7 @@ contract SecurityCouncilMemberRemovalGovernor is L2ArbitrumGovernor {
 
     function _setVoteSuccessNumerator(uint256 _voteSuccessNumerator) internal {
         if (!(0 < _voteSuccessNumerator && _voteSuccessNumerator <= voteSuccessDenominator)) {
-            revert InvalidVoteSuccessNumerator();
+            revert InvalidVoteSuccessNumerator(_voteSuccessNumerator);
         }
         voteSuccessNumerator = _voteSuccessNumerator;
         emit VoteSuccessNumeratorSet(_voteSuccessNumerator);

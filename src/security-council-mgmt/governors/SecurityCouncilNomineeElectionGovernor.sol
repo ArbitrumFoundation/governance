@@ -86,15 +86,14 @@ contract SecurityCouncilNomineeElectionGovernor is
 
     error OnlyNomineeVetter();
     error CreateTooEarly(uint256 startTime);
-    error AlreadyContender();
-    error ProposalNotActive();
+    error AlreadyContender(address contender);
+    error ProposalNotActive(ProposalState state);
     error AccountInOtherCohort(Cohort cohort, address account);
-    error ProposalNotSuccessful();
     error ProposalNotInVettingPeriod();
-    error NomineeAlreadyExcluded();
+    error NomineeAlreadyExcluded(address nominee);
     error CompliantNomineeTargetHit();
     error ProposalInVettingPeriod();
-    error InsufficientCompliantNomineeCount();
+    error InsufficientCompliantNomineeCount(uint256 compliantNomineeCount);
     error ProposeDisabled();
 
     constructor() {
@@ -162,13 +161,13 @@ contract SecurityCouncilNomineeElectionGovernor is
         ElectionInfo storage election = _elections[proposalId];
 
         if (election.isContender[msg.sender]) {
-            revert AlreadyContender();
+            revert AlreadyContender(msg.sender);
         }
 
         ProposalState state = state(proposalId);
 
         if (state != ProposalState.Active) {
-            revert ProposalNotActive();
+            revert ProposalNotActive(state);
         }
 
         // check to make sure the contender is not part of the other cohort (the cohort not currently up for election)
@@ -205,7 +204,7 @@ contract SecurityCouncilNomineeElectionGovernor is
     function excludeNominee(uint256 proposalId, address account) external onlyNomineeVetterInVettingPeriod(proposalId) {
         ElectionInfo storage election = _elections[proposalId];
         if (election.isExcluded[account]) {
-            revert NomineeAlreadyExcluded();
+            revert NomineeAlreadyExcluded(account);
         }
 
         election.isExcluded[account] = true;
@@ -262,7 +261,7 @@ contract SecurityCouncilNomineeElectionGovernor is
         uint256 compliantNomineeCount = nomineeCount(proposalId) - election.excludedNomineeCount;
 
         if (compliantNomineeCount < targetNomineeCount) {
-            revert InsufficientCompliantNomineeCount();
+            revert InsufficientCompliantNomineeCount(compliantNomineeCount);
         }
 
         securityCouncilMemberElectionGovernor.proposeFromNomineeElectionGovernor();
@@ -371,9 +370,6 @@ contract SecurityCouncilNomineeElectionGovernor is
         override
         returns (uint256)
     {
-        // revert(
-        //     "SecurityCouncilNomineeElectionGovernor: Proposing is not allowed, call createElection instead"
-        // );
         revert ProposeDisabled();
     }
 }

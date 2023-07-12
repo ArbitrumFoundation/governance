@@ -51,7 +51,7 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
         uint256 weightReceived
     );
 
-    error FullWeightDurationGreaterThanVotingPeriod();
+    error FullWeightDurationGreaterThanVotingPeriod(uint256 fullWeightDuration, uint256 votingPeriod);
     error MustVoteWithParams();
     error NotCompliantNominee();
     error ZeroWeightVote();
@@ -73,7 +73,7 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
     /// @notice Set the full weight duration numerator and total duration denominator
     function setFullWeightDuration(uint256 newFullWeightDuration) public onlyGovernance {
         if (newFullWeightDuration > votingPeriod()) {
-            revert FullWeightDurationGreaterThanVotingPeriod();
+            revert FullWeightDurationGreaterThanVotingPeriod(newFullWeightDuration, votingPeriod());
         }
 
         fullWeightDuration = newFullWeightDuration;
