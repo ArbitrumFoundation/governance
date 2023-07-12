@@ -92,7 +92,7 @@ yarn test:integration
 
 Install dependencies
 ```
-brew install genhtml lcov
+brew install lcov
 ```
 
 Generate Report
