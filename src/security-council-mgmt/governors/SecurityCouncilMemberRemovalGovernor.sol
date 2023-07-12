@@ -3,6 +3,7 @@ pragma solidity 0.8.16;
 
 import "../../L2ArbitrumGovernor.sol";
 import "./../interfaces/ISecurityCouncilManager.sol";
+import "../../Util.sol";
 
 contract SecurityCouncilMemberRemovalGovernor is L2ArbitrumGovernor {
     uint256 public constant voteSuccessDenominator = 10_000;
@@ -87,7 +88,9 @@ contract SecurityCouncilMemberRemovalGovernor is L2ArbitrumGovernor {
             revert UnexpectedCalldataLength();
         }
 
-        (bytes4 selector, address memberToRemove) = abi.decode(calldatas[0], (bytes4, address));
+        bytes4 selector = getSelector(calldatas[0]);
+        address memberToRemove = abi.decode(removeSelector(calldatas[0]), (address));
+
 
         if (selector != ISecurityCouncilManager.removeMember.selector) {
             revert CallNotRemoveMember(selector);
