@@ -35,7 +35,7 @@ contract SecurityCouncilNomineeElectionGovernor is
     /// @param nomineeVetter Address of the nominee vetter
     /// @param securityCouncilManager Security council manager contract
     /// @param token Token used for voting
-    /// @param owner Owner of the governor
+    /// @param owner Owner of the governor (the Arbitrum DAO)
     /// @param quorumNumeratorValue Numerator of the quorum fraction (0.2% = 20)
     /// @param votingPeriod Duration of the voting period (expressed in blocks)
     struct InitParams {
@@ -120,7 +120,7 @@ contract SecurityCouncilNomineeElectionGovernor is
      */
 
     /// @notice Creates a new nominee election proposal.
-    ///         Can be called by anyone every `nominationFrequency` seconds.
+    ///         Can be called by anyone every 6 months.
     /// @return proposalId The id of the proposal
     function createElection() external returns (uint256 proposalId) {
         // CHRIS: TODO: we need to check elections cannot have a time less than all the stages put together when initialising
@@ -157,11 +157,9 @@ contract SecurityCouncilNomineeElectionGovernor is
             "SecurityCouncilNomineeElectionGovernor: Proposal is not active"
         );
 
-        // check to make sure the contender is not part of the other cohort
-        // do electionCount instead of electionCount - 1 to get the other cohort
-        Cohort otherCohort = electionIndexToCohort(electionCount);
+        // check to make sure the contender is not part of the other cohort (the cohort not currently up for election)
         require(
-            !securityCouncilManager.cohortIncludes(otherCohort, msg.sender),
+            !securityCouncilManager.cohortIncludes(otherCohort(), msg.sender),
             "SecurityCouncilNomineeElectionGovernor: Account is a member of the opposite cohort"
         );
 
@@ -189,7 +187,7 @@ contract SecurityCouncilNomineeElectionGovernor is
     }
 
     /// @notice Allows the nomineeVetter to exclude a noncompliant nominee.
-    /// @dev    Can be called only after a proposal has succeeded (voting has ended) and before the nominee vetting period has ended.
+    /// @dev    Can be called only after a nomninee election proposal has "succeeded" (voting has ended) and before the nominee vetting period has ended.
     ///         Will revert if the provided account is not a nominee (had less than the required votes).
     function excludeNominee(uint256 proposalId, address account) external onlyNomineeVetter {
         require(
@@ -210,7 +208,7 @@ contract SecurityCouncilNomineeElectionGovernor is
         emit NomineeExcluded(proposalId, account);
     }
 
-    /// @notice Allows the nomineeVetter to explicitly include a nominee
+    /// @notice Allows the nomineeVetter to explicitly include a nominee if there are fewer nominees than the target.
     /// @dev    Can be called only after a proposal has succeeded (voting has ended) and before the nominee vetting period has ended.
     ///         Will revert if the provided account is already a nominee
     function includeNominee(uint256 proposalId, address account) external onlyNomineeVetter {
@@ -234,17 +232,13 @@ contract SecurityCouncilNomineeElectionGovernor is
             "SecurityCouncilNomineeElectionGovernor: Compliant nominee count at target"
         );
 
-        // cant include nominees from the other cohort
-        // do electionCount instead of electionCount - 1 to get the other cohort
-        Cohort otherCohort = electionIndexToCohort(electionCount);
+        // can't include nominees from the other cohort
         require(
-            !securityCouncilManager.cohortIncludes(otherCohort, account),
+            !securityCouncilManager.cohortIncludes(otherCohort(), account),
             "SecurityCouncilNomineeElectionGovernor: Account is a member of the opposite cohort"
         );
 
         _addNominee(proposalId, account);
-
-        emit NewNominee(proposalId, account);
     }
 
     /**
@@ -255,10 +249,6 @@ contract SecurityCouncilNomineeElectionGovernor is
     ///         Can be called by anyone via `execute` after voting and nominee vetting periods have ended.
     ///         If the number of compliant nominees is > the target number of nominees,
     ///         we move on to the next phase by calling the SecurityCouncilMemberElectionGovernor.
-    ///         If the number of compliant nominees is == the target number of nominees,
-    ///         we execute the election result immediately by calling the SecurityCouncilManager.
-    ///         If the number of compliant nominees is < the target number of nominees,
-    ///         we randomly add some members from the current cohort to the list of nominees and then call the SecurityCouncilManager.
     /// @param  proposalId The id of the proposal
     function _execute(
         uint256 proposalId,
@@ -314,6 +304,16 @@ contract SecurityCouncilNomineeElectionGovernor is
         return SecurityCouncilMgmtUtils.filterAddressesWithExcludeList(
             maybeCompliantNominees, election.isExcluded
         );
+    }
+
+    /// @notice returns cohort currently up for election
+    function currentCohort() public view returns (Cohort) {
+        return electionIndexToCohort(electionCount - 1);
+    }
+
+    /// @notice returns cohort not currently up for election
+    function otherCohort() public view returns (Cohort) {
+        return electionIndexToCohort(electionCount);
     }
 
     /// @notice Returns the cohort for a given `electionIndex`

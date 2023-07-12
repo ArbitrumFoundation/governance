@@ -12,12 +12,13 @@ import "@arbitrum/nitro-contracts/src/precompiles/ArbSys.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import "@openzeppelin/contracts/utils/Address.sol";
+import "./Common.sol";
 
 /// @title  The Security Council Manager
 /// @notice The source of truth for an array of Security Council that are under management
 ///         Can be used to change members, and replace whole cohorts, ensuring that all managed
 ///         Security Councils stay in sync
+
 contract SecurityCouncilManager is
     Initializable,
     AccessControlUpgradeable,
@@ -62,6 +63,8 @@ contract SecurityCouncilManager is
 
     /// @notice Nonce to ensure that scheduled updates create unique entries in the timelocks
     uint256 public updateNonce;
+
+    uint256 public constant STANDARD_COHORT_LENGTH = 6;
 
     /// @notice Magic value used by the L1 timelock to indicate that a retryable ticket should be created
     ///         Value is defined in L1ArbitrumTimelock contract https://etherscan.io/address/0xE6841D92B0C345144506576eC13ECf5103aC7f49#readProxyContract#F5
@@ -115,8 +118,9 @@ contract SecurityCouncilManager is
         external
         onlyRole(ELECTION_EXECUTOR_ROLE)
     {
-        require(_newCohort.length == 6, "SecurityCouncilManager: invalid cohort length");
-        // TODO: ensure no duplicates accross cohorts, and that there are no address(0)s. This should be enforced in nomination process.
+        if (_newCohort.length != STANDARD_COHORT_LENGTH) {
+            revert InvalidNewCohortLength({cohort: _newCohort});
+        }
         if (_cohort == Cohort.FIRST) {
             firstCohort = _newCohort;
         } else if (_cohort == Cohort.SECOND) {
@@ -129,15 +133,16 @@ contract SecurityCouncilManager is
 
     function _addMemberToCohortArray(address _newMember, Cohort _cohort) internal {
         address[] storage cohort = _cohort == Cohort.FIRST ? firstCohort : secondCohort;
-        require(cohort.length < 6, "SecurityCouncilManager: cohort is full");
-        require(
-            !firstCohortIncludes(_newMember),
-            "SecurityCouncilManager: member already in first cohort"
-        );
-        require(
-            !secondCohortIncludes(_newMember),
-            "SecurityCouncilManager: member already in second cohort"
-        );
+        if (cohort.length == STANDARD_COHORT_LENGTH) {
+            revert CohortFull({cohort: _cohort});
+        }
+        if (firstCohortIncludes(_newMember)) {
+            revert MemberInCohort({member: _newMember, cohort: Cohort.FIRST});
+        }
+        if (secondCohortIncludes(_newMember)) {
+            revert MemberInCohort({member: _newMember, cohort: Cohort.SECOND});
+        }
+
         cohort.push(_newMember);
     }
 
@@ -152,14 +157,14 @@ contract SecurityCouncilManager is
                 }
             }
         }
-        revert("SecurityCouncilManager: member to remove not found");
+        revert NotAMember({member: _member});
     }
 
     /// @inheritdoc ISecurityCouncilManager
     function addMember(address _newMember, Cohort _cohort) external onlyRole(MEMBER_ADDER_ROLE) {
-        require(
-            _newMember != address(0), "SecurityCouncilManager: new member can't be zero address"
-        );
+        if (_newMember == address(0)) {
+            revert ZeroAddress();
+        }
         _addMemberToCohortArray(_newMember, _cohort);
         _scheduleUpdate();
         emit MemberAdded(_newMember, _cohort);
@@ -167,7 +172,9 @@ contract SecurityCouncilManager is
 
     /// @inheritdoc ISecurityCouncilManager
     function removeMember(address _member) external onlyRole(MEMBER_REMOVER_ROLE) {
-        require(_member != address(0), "SecurityCouncilManager: member can't be zero address");
+        if (_member == address(0)) {
+            revert ZeroAddress();
+        }
         Cohort cohort = _removeMemberFromCohortArray(_member);
         _scheduleUpdate();
         emit MemberRemoved({member: _member, cohort: cohort});
@@ -203,10 +210,9 @@ contract SecurityCouncilManager is
         internal
         returns (Cohort)
     {
-        require(
-            _addressToRemove != address(0) && _addressToAdd != address(0),
-            "SecurityCouncilManager: members can't be zero address"
-        );
+        if (_addressToRemove == address(0) || _addressToAdd == address(0)) {
+            revert ZeroAddress();
+        }
         Cohort cohort = _removeMemberFromCohortArray(_addressToRemove);
         _addMemberToCohortArray(_addressToAdd, cohort);
         _scheduleUpdate();
@@ -214,35 +220,34 @@ contract SecurityCouncilManager is
     }
 
     function _addSecurityCouncil(SecurityCouncilData memory _securityCouncilData) internal {
-        require(
-            securityCouncils.length < MAX_SECURITY_COUNCILS,
-            "SecurityCouncilManager: max security council's reached"
-        );
-        require(
-            _securityCouncilData.updateAction != address(0),
-            "SecurityCouncilManager: zero updateAction"
-        );
-        require(
-            _securityCouncilData.securityCouncil != address(0),
-            "SecurityCouncilManager: zero securityCouncil"
-        );
-        require(_securityCouncilData.chainId != 0, "SecurityCouncilManager: zero chain id");
+        if (securityCouncils.length == MAX_SECURITY_COUNCILS) {
+            revert MaxSecurityCouncils(securityCouncils.length);
+        }
 
-        require(
-            router.upExecLocationExists(_securityCouncilData.chainId),
-            "SecurityCouncilManager: security council not in UpgradeExecRouterBuilder"
-        );
+        if (
+            _securityCouncilData.updateAction == address(0)
+                || _securityCouncilData.securityCouncil == address(0)
+        ) {
+            revert ZeroAddress();
+        }
+
+        if (_securityCouncilData.chainId == 0) {
+            revert SecurityCouncilZeroChainID(_securityCouncilData);
+        }
+
+        if (!router.upExecLocationExists(_securityCouncilData.chainId)) {
+            revert SecurityCouncilNotInRouter(_securityCouncilData);
+        }
 
         for (uint256 i = 0; i < securityCouncils.length; i++) {
             SecurityCouncilData storage existantSecurityCouncil = securityCouncils[i];
-            require(
-                !(
-                    existantSecurityCouncil.chainId == _securityCouncilData.chainId
-                        && existantSecurityCouncil.securityCouncil
-                            == _securityCouncilData.securityCouncil
-                ),
-                "SecurityCouncilManager: security council already included"
-            );
+
+            if (
+                existantSecurityCouncil.chainId == _securityCouncilData.chainId
+                    && existantSecurityCouncil.securityCouncil == _securityCouncilData.securityCouncil
+            ) {
+                revert SecurityCouncilAlreadyInRouter(_securityCouncilData);
+            }
         }
 
         securityCouncils.push(_securityCouncilData);
@@ -287,7 +292,7 @@ contract SecurityCouncilManager is
                 return true;
             }
         }
-        revert("SecurityCouncilManager: security council not found");
+        revert SecurityCouncilNotInManager(_securityCouncilData);
     }
 
     /// @inheritdoc ISecurityCouncilManager
@@ -299,12 +304,14 @@ contract SecurityCouncilManager is
     }
 
     function _setUpgradeExecRouterBuilder(UpgradeExecRouterBuilder _router) internal {
-        require(
-            Address.isContract(address(_router)),
-            "SecurityCouncilManager: new router not a contract"
-        );
+        address routerAddress = address(_router);
+
+        if (!Address.isContract(routerAddress)) {
+            revert NotAContract({account: routerAddress});
+        }
+
         router = _router;
-        emit UpgradeExecRouterBuilderSet(address(_router));
+        emit UpgradeExecRouterBuilderSet(routerAddress);
     }
 
     /// @inheritdoc ISecurityCouncilManager
@@ -315,6 +322,18 @@ contract SecurityCouncilManager is
     /// @inheritdoc ISecurityCouncilManager
     function getSecondCohort() external view returns (address[] memory) {
         return secondCohort;
+    }
+
+    /// @inheritdoc ISecurityCouncilManager
+    function getBothCohorts() public view returns (address[] memory) {
+        address[] memory members = new address[](firstCohort.length + secondCohort.length);
+        for (uint256 i = 0; i < firstCohort.length; i++) {
+            members[i] = firstCohort[i];
+        }
+        for (uint256 i = 0; i < secondCohort.length; i++) {
+            members[firstCohort.length + i] = secondCohort[i];
+        }
+        return members;
     }
 
     function securityCouncilsLength() public view returns (uint256) {
@@ -350,17 +369,11 @@ contract SecurityCouncilManager is
         returns (address[] memory, address, bytes memory)
     {
         // build a union array of security council members
-        address[] memory newMembers = new address[](firstCohort.length + secondCohort.length);
-        for (uint256 i = 0; i < firstCohort.length; i++) {
-            newMembers[i] = firstCohort[i];
-        }
-        for (uint256 i = 0; i < secondCohort.length; i++) {
-            newMembers[firstCohort.length + i] = secondCohort[i];
-        }
+        address[] memory newMembers = getBothCohorts();
 
         // build batch call to L1 timelock
         address[] memory actionAddresses = new address[](securityCouncils.length);
-        bytes[] memory actionData = new bytes[](securityCouncils.length);
+        bytes[] memory actionDatas = new bytes[](securityCouncils.length);
         uint256[] memory chainIds = new uint256[](securityCouncils.length);
 
         for (uint256 i = 0; i < securityCouncils.length; i++) {
@@ -368,7 +381,7 @@ contract SecurityCouncilManager is
 
             actionAddresses[i] = securityCouncilData.updateAction;
             chainIds[i] = securityCouncilData.chainId;
-            actionData[i] = abi.encodeWithSelector(
+            actionDatas[i] = abi.encodeWithSelector(
                 SecurityCouncilUpgradeAction.perform.selector,
                 securityCouncilData.securityCouncil,
                 newMembers
@@ -379,7 +392,7 @@ contract SecurityCouncilManager is
             chainIds,
             actionAddresses,
             new uint256[](securityCouncils.length), // all values are always 0
-            actionData,
+            actionDatas,
             this.generateSalt(newMembers) // must be unique as the proposal hash is used for replay protection in the L1 timelock
         );
         return (newMembers, to, data);

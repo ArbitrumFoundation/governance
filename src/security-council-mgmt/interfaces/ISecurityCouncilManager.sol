@@ -2,14 +2,7 @@
 pragma solidity 0.8.16;
 
 import "../../UpgradeExecRouterBuilder.sol";
-
-/// @notice Security councils members are members of one of two cohorts.
-///         Periodically all the positions on a cohort are put up for election,
-///         and the members replaced with new ones.
-enum Cohort {
-    FIRST,
-    SECOND
-}
+import "../Common.sol";
 
 /// @notice Addresses to be given specific roles on the Security Council Manager
 struct SecurityCouncilManagerRoles {
@@ -32,6 +25,20 @@ struct SecurityCouncilData {
 }
 
 interface ISecurityCouncilManager {
+    // security council cohort errors
+    error NotAMember(address member);
+    error MemberInCohort(address member, Cohort cohort);
+    error CohortFull(Cohort cohort);
+    error InvalidNewCohortLength(address[] cohort);
+
+    // security council data errors
+
+    error MaxSecurityCouncils(uint256 securityCouncilCount);
+    error SecurityCouncilZeroChainID(SecurityCouncilData securiyCouncilData);
+    error SecurityCouncilNotInRouter(SecurityCouncilData securiyCouncilData);
+    error SecurityCouncilNotInManager(SecurityCouncilData securiyCouncilData);
+    error SecurityCouncilAlreadyInRouter(SecurityCouncilData securiyCouncilData);
+
     // TODO
     function initialize(
         address[] memory _firstCohort,
@@ -78,7 +85,9 @@ interface ISecurityCouncilManager {
     function getFirstCohort() external view returns (address[] memory);
     /// @notice All members of the second cohort
     function getSecondCohort() external view returns (address[] memory);
-    /// @notice length of security councils array
+    /// @notice All members of both cohorts
+    function getBothCohorts() external view returns (address[] memory);
+    /// @notice Length of security councils array
     function securityCouncilsLength() external view returns (uint256);
     /// @notice Add new security council to be included in security council management system.
     /// @param _securityCouncilData Security council info
