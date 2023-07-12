@@ -21,6 +21,7 @@ contract SecurityCouncilMemberRemovalGovernor is L2ArbitrumGovernor {
     error CallNotRemoveMember();
     error MemberNotFound();
     error AbstainDisallowed();
+    error InvalidVoteSuccessNumerator();
 
     /// @notice Initialize the contract
     /// @dev this method does not include an initializer modifier; it calls its parent's initiaze method which itself prevents repeated initialize calls
@@ -137,7 +138,6 @@ contract SecurityCouncilMemberRemovalGovernor is L2ArbitrumGovernor {
         _setVoteSuccessNumerator(_voteSuccessNumerator);
     }
 
-    error InvalidVoteSuccessNumerator();
     function _setVoteSuccessNumerator(uint256 _voteSuccessNumerator) internal {
         if (!(0 < _voteSuccessNumerator && _voteSuccessNumerator <= voteSuccessDenominator)) {
             revert InvalidVoteSuccessNumerator();
