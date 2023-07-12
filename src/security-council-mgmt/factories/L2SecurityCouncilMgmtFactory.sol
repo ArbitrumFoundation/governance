@@ -12,6 +12,7 @@ import "../interfaces/ISecurityCouncilManager.sol";
 import "../../ArbitrumTimelock.sol";
 import "@openzeppelin/contracts-upgradeable/governance/utils/IVotesUpgradeable.sol";
 import "../../UpgradeExecRouterBuilder.sol";
+import "../Common.sol";
 
 struct DeployParams {
     ChainAndUpExecLocation[] _upgradeExecutors;
@@ -57,26 +58,25 @@ contract L2SecurityCouncilMgmtFactory is Ownable {
     }
 
     function deploy(DeployParams memory dp) external onlyOwner returns (DeployedContracts memory) {
-        require(
-            Address.isContract(dp._govChainEmergencySecurityCouncil),
-            "L2SecurityCouncilMgmtFactory: _govChainEmergencySecurityCouncil is not a contract"
-        );
-        require(
-            Address.isContract(dp._proxyAdmin),
-            "L2SecurityCouncilMgmtFactory: _proxyAdmin is not a contract"
-        );
-        require(
-            Address.isContract(dp.l2UpgradeExecutor),
-            "L2SecurityCouncilMgmtFactory: l2UpgradeExecutor is not a contract"
-        );
-        require(
-            Address.isContract(dp.arbToken),
-            "L2SecurityCouncilMgmtFactory: arbToken is not a contract"
-        );
-        require(
-            dp.nomineeVetter != address(0),
-            "L2SecurityCouncilMgmtFactory: nomineeVetter must be non zero"
-        );
+        if (!Address.isContract(dp._govChainEmergencySecurityCouncil)) {
+            revert NotAContract(dp._govChainEmergencySecurityCouncil);
+        }
+
+        if (!Address.isContract(dp._proxyAdmin)) {
+            revert NotAContract(dp._proxyAdmin);
+        }
+
+        if (!Address.isContract(dp.l2UpgradeExecutor)) {
+            revert NotAContract(dp.l2UpgradeExecutor);
+        }
+
+        if (!Address.isContract(dp.arbToken)) {
+            revert NotAContract(dp.arbToken);
+        }
+
+        if (dp.nomineeVetter == address(0)) {
+            revert ZeroAddress();
+        }
 
         DeployedContracts memory deployedContracts;
 
