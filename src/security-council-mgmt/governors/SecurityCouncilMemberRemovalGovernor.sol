@@ -14,6 +14,15 @@ contract SecurityCouncilMemberRemovalGovernor is L2ArbitrumGovernor {
     event VoteSuccessNumeratorSet(uint256 indexed voteSuccessNumerator);
     event MemberRemovalProposed(address memberToRemove, string description);
 
+    error InvalidOperationsLength();
+    error TargetNotManager(address target);
+    error ValueNotZero();
+    error UnexpectedCalldataLength();
+    error CallNotRemoveMember(bytes4 selector);
+    error MemberNotFound(address memberToRemove);
+    error AbstainDisallowed();
+    error InvalidVoteSuccessNumerator(uint256 voteSuccessNumerator);
+
     /// @notice Initialize the contract
     /// @dev this method does not include an initializer modifier; it calls its parent's initiaze method which itself prevents repeated initialize calls
     /// @param _voteSuccessNumerator value that with denominator 10_000 determines the ration of for/against votes required for success
@@ -63,34 +72,32 @@ contract SecurityCouncilMemberRemovalGovernor is L2ArbitrumGovernor {
         bytes[] memory calldatas,
         string memory description
     ) public override(GovernorUpgradeable, IGovernorUpgradeable) returns (uint256) {
-        require(
-            targets.length == 1, "SecurityCouncilMemberRemovalGovernor: operations length must be 1"
-        );
+        if (targets.length != 1) {
+            revert InvalidOperationsLength();
+        }
         // length equality of targets, values, and calldatas is checked in  GovernorUpgradeable.propose
 
-        require(
-            targets[0] == address(securityCouncilManager),
-            "SecurityCouncilMemberRemovalGovernor: target must be SecurityCouncilManager"
-        );
-        require(values[0] == 0, "SecurityCouncilMemberRemovalGovernor: value must be 0");
-
-        require(
-            calldatas[0].length == 36,
-            "SecurityCouncilMemberRemovalGovernor: unexpected calldata length"
-        );
+        if (targets[0] != address(securityCouncilManager)) {
+            revert TargetNotManager(targets[0]);
+        }
+        if (values[0] != 0) {
+            revert ValueNotZero();
+        }
+        if (calldatas[0].length != 36) {
+            revert UnexpectedCalldataLength();
+        }
 
         (bytes4 selector, address memberToRemove) = abi.decode(calldatas[0], (bytes4, address));
 
-        require(
-            selector == ISecurityCouncilManager.removeMember.selector,
-            "SecurityCouncilMemberRemovalGovernor: call must be to removeMember"
-        );
-
-        require(
-            securityCouncilManager.firstCohortIncludes(memberToRemove)
-                || securityCouncilManager.secondCohortIncludes(memberToRemove),
-            "SecurityCouncilMemberRemovalGovernor: member not found"
-        );
+        if (selector != ISecurityCouncilManager.removeMember.selector) {
+            revert CallNotRemoveMember(selector);
+        }
+        if (
+            !securityCouncilManager.firstCohortIncludes(memberToRemove) &&
+            !securityCouncilManager.secondCohortIncludes(memberToRemove)
+        ) {
+            revert MemberNotFound(memberToRemove);
+        }
 
         GovernorUpgradeable.propose(targets, values, calldatas, description);
         emit MemberRemovalProposed(memberToRemove, description);
@@ -105,7 +112,7 @@ contract SecurityCouncilMemberRemovalGovernor is L2ArbitrumGovernor {
         override(GovernorCountingSimpleUpgradeable, GovernorUpgradeable)
         returns (bool)
     {
-        (uint256 againstVotes, uint256 forVotes, uint256 __) = proposalVotes(proposalId);
+        (uint256 againstVotes, uint256 forVotes,) = proposalVotes(proposalId);
 
         return voteSuccessNumerator * forVotes > againstVotes * voteSuccessDenominator;
     }
@@ -119,10 +126,9 @@ contract SecurityCouncilMemberRemovalGovernor is L2ArbitrumGovernor {
         bytes memory params
     ) internal virtual override(GovernorCountingSimpleUpgradeable, GovernorUpgradeable) {
         // TODO: confirm / finalize this decision
-        require(
-            VoteType(support) != VoteType.Abstain,
-            "SecurityCouncilMemberRemovalGovernor: cannot vote abstain"
-        );
+        if (VoteType(support) == VoteType.Abstain) {
+            revert AbstainDisallowed();
+        }
         GovernorCountingSimpleUpgradeable._countVote(proposalId, account, support, weight, params);
     }
 
@@ -133,10 +139,9 @@ contract SecurityCouncilMemberRemovalGovernor is L2ArbitrumGovernor {
     }
 
     function _setVoteSuccessNumerator(uint256 _voteSuccessNumerator) internal {
-        require(
-            _voteSuccessNumerator > 0 && _voteSuccessNumerator <= voteSuccessDenominator,
-            "SecurityCouncilMemberRemovalGovernor: _voteSuccessNumerator must be within [1, voteSuccessDenominator]"
-        );
+        if (!(0 < _voteSuccessNumerator && _voteSuccessNumerator <= voteSuccessDenominator)) {
+            revert InvalidVoteSuccessNumerator(_voteSuccessNumerator);
+        }
         voteSuccessNumerator = _voteSuccessNumerator;
         emit VoteSuccessNumeratorSet(_voteSuccessNumerator);
     }
