@@ -9,7 +9,6 @@ import "../../src/UpgradeExecutor.sol";
 
 import "../../src/security-council-mgmt/SecurityCouncilUpgradeAction.sol";
 import "../../src/security-council-mgmt/interfaces/IGnosisSafe.sol";
-import "../util/TestUtil.sol";
 
 contract SecurityCouncilUpgradeActionTest is Test, DeployGnosisWithModule {
     address admin = address(1111);
@@ -123,8 +122,41 @@ contract SecurityCouncilUpgradeActionTest is Test, DeployGnosisWithModule {
 
         bytes memory upgradeCallData =
             abi.encodeWithSelector(SecurityCouncilUpgradeAction.perform.selector, safe, newMembers);
+
+        // [8], [9], [10] sucessfully get removed, leaving [11]'s previous owner to be [7]; removing [11] reverts as it's below the theshold,
+        bytes memory revertingRemoveMemberCall = abi.encodeWithSelector(
+            IGnosisSafe.removeOwner.selector, prevMembers[7], prevMembers[11], 9
+        );
         vm.prank(executor);
-        vm.expectRevert("SecurityCouncilUpgradeAction: execTransactionFromModule failed");
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                SecurityCouncilUpgradeAction.ExecFromModuleError.selector,
+                revertingRemoveMemberCall,
+                safe
+            )
+        );
         upgradeExecutor.execute(action, upgradeCallData);
+    }
+
+    function testGetPrevOwner() public {
+        UpgradeExecutor upgradeExecutor =
+            UpgradeExecutor(TestUtil.deployProxy(address(new UpgradeExecutor())));
+        address[] memory executors = new address[](1);
+        executors[0] = executor;
+        upgradeExecutor.initialize(admin, executors);
+
+        IGnosisSafe safe = IGnosisSafe(deploySafe(owners, 9, address(upgradeExecutor)));
+
+        SecurityCouncilUpgradeAction action = new SecurityCouncilUpgradeAction();
+
+        assertEq(
+            action.SENTINEL_OWNERS(),
+            action.getPrevOwner(safe, owners[0]),
+            "sentinal owners is first owner's prev owner"
+        );
+
+        for (uint256 i = 1; i < owners.length; i++) {
+            assertEq(owners[i - 1], action.getPrevOwner(safe, owners[i]), "prev owner as exected");
+        }
     }
 }
