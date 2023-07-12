@@ -88,6 +88,18 @@ Finally run integration tests against local node
 yarn test:integration
 ```
 
+## Generate Code Coverage Report
+
+Install dependencies
+```
+brew install genhtml lcov
+```
+
+Generate Report
+```
+yarn coverage:report
+```
+
 ## Governance deployer
 
 Arbitrum governance consists of multiple L1, Arbitrum One and Nova contracts. Those contracts are interdependent and they require careful deployment and initialization flow. We have automated all the deployment steps in `governanceDeployer.ts` script. On a high level script does the following:
