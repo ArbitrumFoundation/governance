@@ -9,5 +9,13 @@ enum Cohort {
     SECOND
 }
 
+/// @notice Date struct for convenience
+struct Date {
+    uint256 year;
+    uint256 month;
+    uint256 day;
+    uint256 hour;
+}
+
 error ZeroAddress();
 error NotAContract(address account);
