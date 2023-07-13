@@ -71,4 +71,13 @@ library TestUtil {
         }
         return addresses;
     }
+
+    function indexOf(address[] memory array, address element) public pure returns (uint256) {
+        for (uint256 i = 0; i < array.length; i++) {
+            if (array[i] == element) {
+                return i;
+            }
+        }
+        return type(uint256).max;
+    }
 }
