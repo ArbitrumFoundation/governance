@@ -51,6 +51,13 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
         uint256 weightReceived
     );
 
+    error FullWeightDurationGreaterThanVotingPeriod(uint256 fullWeightDuration, uint256 votingPeriod);
+    error MustVoteWithParams();
+    error NotCompliantNominee();
+    error ZeroWeightVote();
+    error InsufficientVotes();
+    error LengthsDontMatch();
+
     /// @param initialFullWeightDuration Duration of full weight voting (expressed in blocks)
     function __SecurityCouncilMemberElectionGovernorCounting_init(uint256 initialFullWeightDuration)
         internal
@@ -65,10 +72,9 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
 
     /// @notice Set the full weight duration numerator and total duration denominator
     function setFullWeightDuration(uint256 newFullWeightDuration) public onlyGovernance {
-        require(
-            newFullWeightDuration <= votingPeriod(),
-            "SecurityCouncilMemberElectionGovernorCountingUpgradeable: Full weight duration must be <= votingPeriod"
-        );
+        if (newFullWeightDuration > votingPeriod()) {
+            revert FullWeightDurationGreaterThanVotingPeriod(newFullWeightDuration, votingPeriod());
+        }
 
         fullWeightDuration = newFullWeightDuration;
     }
@@ -93,33 +99,29 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
         uint256 availableVotes,
         bytes memory params
     ) internal virtual override {
-        require(
-            params.length == 64,
-            "SecurityCouncilMemberElectionGovernorCountingUpgradeable: Must cast vote with abi encoded (nominee, votes)"
-        );
+        if (params.length != 64) {
+            revert MustVoteWithParams();
+        }
 
         (address nominee, uint256 votes) = abi.decode(params, (address, uint256));
 
-        require(
-            _isCompliantNominee(proposalId, nominee),
-            "SecurityCouncilMemberElectionGovernorCountingUpgradeable: Nominee is not compliant"
-        );
+        if (!_isCompliantNominee(proposalId, nominee)) {
+            revert NotCompliantNominee();
+        }
 
         uint256 weight = votesToWeight(proposalId, block.number, votes);
 
-        require(
-            weight > 0,
-            "SecurityCouncilMemberElectionGovernorCountingUpgradeable: Cannot cast 0 weight vote"
-        );
+        if (weight == 0) {
+            revert ZeroWeightVote();
+        }
 
         ElectionInfo storage election = _elections[proposalId];
 
         uint256 prevVotesUsed = election.votesUsed[account];
 
-        require(
-            prevVotesUsed + votes <= availableVotes,
-            "SecurityCouncilMemberElectionGovernorCountingUpgradeable: Cannot use more votes than available"
-        );
+        if (prevVotesUsed + votes > availableVotes) {
+            revert InsufficientVotes();
+        }
 
         uint256 prevWeightReceived = election.weightReceived[nominee];
 
@@ -189,10 +191,9 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
         pure
         returns (address[] memory)
     {
-        require(
-            nominees.length == weights.length,
-            "SecurityCouncilMemberElectionGovernorCountingUpgradeable: Nominees and weights must have same length"
-        );
+        if (nominees.length != weights.length) {
+            revert LengthsDontMatch();
+        }
 
         uint256[] memory topNomineesPacked = new uint256[](k);
 

@@ -21,6 +21,9 @@ abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is
         mapping(address => bool) isNominee;
     }
 
+    // proposalId => NomineeElectionCountingInfo
+    mapping(uint256 => NomineeElectionCountingInfo) private _elections;
+
     // would this be more useful if reason was included?
     /// @notice Emitted when a vote is cast for a contender
     /// @param proposalId The id of the proposal
@@ -40,8 +43,10 @@ abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is
 
     event NewNominee(uint256 indexed proposalId, address indexed nominee);
 
-    // proposalId => NomineeElectionCountingInfo
-    mapping(uint256 => NomineeElectionCountingInfo) private _elections;
+    error MustVoteWithParams();
+    error NotEligibleContender();
+    error NomineeAlreadyAdded();
+    error InsufficientTokens();
 
     function __SecurityCouncilNomineeElectionGovernorCounting_init() internal onlyInitializing {}
 
@@ -63,31 +68,26 @@ abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is
         uint256 weight,
         bytes memory params
     ) internal virtual override {
-        require(
-            params.length == 64,
-            "SecurityCouncilNomineeElectionGovernorCountingUpgradeable: Must cast vote with abi encoded (contender, votes)"
-        );
+        if (params.length != 64) {
+            revert MustVoteWithParams();
+        }
 
         // params is encoded as (address contender, uint256 votes)
         (address contender, uint256 votes) = abi.decode(params, (address, uint256));
 
-        require(
-            isContender(proposalId, contender),
-            "SecurityCouncilNomineeElectionGovernorCountingUpgradeable: Contender is not eligible"
-        );
-
-        require(
-            !isNominee(proposalId, contender),
-            "SecurityCouncilNomineeElectionGovernorCountingUpgradeable: Nominee already added"
-        );
+        if (!isContender(proposalId, contender)) {
+            revert NotEligibleContender();
+        }
+        if (isNominee(proposalId, contender)) {
+            revert NomineeAlreadyAdded();
+        }
 
         NomineeElectionCountingInfo storage election = _elections[proposalId];
         uint256 prevVotesUsed = election.votesUsed[account];
 
-        require(
-            votes + prevVotesUsed <= weight,
-            "SecurityCouncilNomineeElectionGovernorCountingUpgradeable: Not enough tokens to cast this vote"
-        );
+        if (votes + prevVotesUsed > weight) {
+            revert InsufficientTokens();
+        }
 
         uint256 prevVotesReceived = election.votesReceived[contender];
         uint256 votesThreshold = quorum(proposalSnapshot(proposalId));
