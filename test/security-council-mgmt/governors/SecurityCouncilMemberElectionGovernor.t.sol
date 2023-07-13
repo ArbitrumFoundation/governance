@@ -107,28 +107,6 @@ contract SecurityCouncilMemberElectionGovernorTest is Test {
         _propose(0);
     }
 
-
-    function testSelectTopNominees() public {
-        // make a random list of addresses and weights
-        uint256[] memory weights = TestUtil.randomArray(100, 0);
-        address[] memory addresses = TestUtil.randomAddresses(100, 1);
-
-        // call selectTopNominees
-        address[] memory topNominees = governor.selectTopNominees(addresses, weights, 6);
-
-        // pack and sort original, compare to selectTopNominees
-        uint256[] memory packed = new uint256[](100);
-        for (uint256 i = 0; i < 100; i++) {
-            packed[i] = (weights[i] << 16) | i;
-        }
-
-        LibSort.sort(packed);
-
-        for (uint256 i = 0; i < 6; i++) {
-            assertEq(topNominees[5 - i], addresses[packed[99 - i] & 0xffff]);
-        }
-    }
-
     function testExecute() public {
         // we need to create a proposal, and vote for 6 nominees
         uint256 proposalId = _createProposalAndVoteForSomeNominees(0, initParams.maxNominees);
@@ -156,6 +134,166 @@ contract SecurityCouncilMemberElectionGovernorTest is Test {
             calldatas: new bytes[](1),
             descriptionHash: descriptionHash
         });
+    }
+
+    function testSetFullWeightDuration() public {
+        // ensure onlyGovernance
+        vm.expectRevert("Governor: onlyGovernance");
+        governor.setFullWeightDuration(0);
+
+        // make sure governor can call
+        vm.prank(address(governor));
+        governor.setFullWeightDuration(0);
+        assertEq(governor.fullWeightDuration(), 0);
+
+        // make sure the duration cannot be longer than votingPeriod
+        vm.prank(address(governor));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                SecurityCouncilMemberElectionGovernorCountingUpgradeable
+                    .FullWeightDurationGreaterThanVotingPeriod
+                    .selector,
+                initParams.votingPeriod + 1,
+                initParams.votingPeriod
+            )
+        );
+        governor.setFullWeightDuration(initParams.votingPeriod + 1);
+    }
+
+    function testNoVoteForNonCompliantNominee() public {
+        uint256 proposalId = _propose(0);
+
+        // make sure the nomineeElectionGovernor says the nominee is not compliant
+        _setCompliantNominee(proposalId, _nominee(0), false);
+
+        // make sure the voter has enough votes
+        _mockGetPastVotes({
+            account: _voter(0),
+            blockNumber: governor.proposalSnapshot(proposalId),
+            votes: 100
+        });
+
+        vm.roll(governor.proposalSnapshot(proposalId) + 1);
+        vm.prank(_voter(0));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                SecurityCouncilMemberElectionGovernorCountingUpgradeable
+                    .NotCompliantNominee
+                    .selector
+            )
+        );
+        governor.castVoteWithReasonAndParams({
+            proposalId: proposalId,
+            support: 0,
+            reason: "",
+            params: abi.encode(_nominee(0), 100)
+        });
+    }
+
+    function testNoZeroWeightVotes() public {
+        uint256 proposalId = _propose(0);
+
+        // make sure the nomineeElectionGovernor says the nominee is not compliant
+        _setCompliantNominee(proposalId, _nominee(0), true);
+
+        // make sure the voter has enough votes
+        _mockGetPastVotes({
+            account: _voter(0),
+            blockNumber: governor.proposalSnapshot(proposalId),
+            votes: 100
+        });
+
+        vm.roll(governor.proposalSnapshot(proposalId) + 1);
+        vm.prank(_voter(0));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                SecurityCouncilMemberElectionGovernorCountingUpgradeable
+                    .ZeroWeightVote
+                    .selector
+            )
+        );
+        governor.castVoteWithReasonAndParams({
+            proposalId: proposalId,
+            support: 0,
+            reason: "",
+            params: abi.encode(_nominee(0), 0)
+        });
+    }
+
+    function testCannotUseMoreVotesThanAvailable() public {
+        uint256 proposalId = _propose(0);
+
+        // make sure the nomineeElectionGovernor says the nominee is compliant
+        _setCompliantNominee(proposalId, _nominee(0), true);
+
+        // make sure the voter has some votes
+        _mockGetPastVotes({
+            account: _voter(0),
+            blockNumber: governor.proposalSnapshot(proposalId),
+            votes: 100
+        });
+
+        // roll to the start of voting
+        vm.roll(governor.proposalSnapshot(proposalId) + 1);
+
+        // try to use more votes than available
+        vm.prank(_voter(0));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                SecurityCouncilMemberElectionGovernorCountingUpgradeable.InsufficientVotes.selector
+            )
+        );
+        governor.castVoteWithReasonAndParams({
+            proposalId: proposalId,
+            support: 0,
+            reason: "",
+            params: abi.encode(_nominee(0), 101)
+        });
+
+        // use some amount of votes that is less than available
+        vm.prank(_voter(0));
+        governor.castVoteWithReasonAndParams({
+            proposalId: proposalId,
+            support: 0,
+            reason: "",
+            params: abi.encode(_nominee(0), 50)
+        });
+
+        // now try to use more votes than available
+        vm.prank(_voter(0));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                SecurityCouncilMemberElectionGovernorCountingUpgradeable.InsufficientVotes.selector
+            )
+        );
+        governor.castVoteWithReasonAndParams({
+            proposalId: proposalId,
+            support: 0,
+            reason: "",
+            params: abi.encode(_nominee(0), 51)
+        });
+    }
+
+    function testSelectTopNominees(uint256 seed) public {
+        vm.assume(seed > 0);
+        // make a random list of addresses and weights
+        uint256[] memory weights = TestUtil.randomArray(100, seed);
+        address[] memory addresses = TestUtil.randomAddresses(100, seed - 1);
+
+        // call selectTopNominees
+        address[] memory topNominees = governor.selectTopNominees(addresses, weights, 6);
+
+        // pack and sort original, compare to selectTopNominees
+        uint256[] memory packed = new uint256[](100);
+        for (uint256 i = 0; i < 100; i++) {
+            packed[i] = (weights[i] << 16) | i;
+        }
+
+        LibSort.sort(packed);
+
+        for (uint256 i = 0; i < 6; i++) {
+            assertEq(topNominees[5 - i], addresses[packed[99 - i] & 0xffff]);
+        }
     }
 
     function testVotesToWeight() public {
@@ -228,94 +366,7 @@ contract SecurityCouncilMemberElectionGovernorTest is Test {
         );
     }
 
-    function testNoVoteForNonCompliantNominee() public {
-        uint256 proposalId = _propose(0);
-
-        // make sure the nomineeElectionGovernor says the nominee is not compliant
-        _setCompliantNominee(proposalId, _nominee(0), false);
-
-        // make sure the voter has enough votes
-        _mockGetPastVotes({
-            account: _voter(0),
-            blockNumber: governor.proposalSnapshot(proposalId),
-            votes: 100
-        });
-
-        vm.roll(governor.proposalSnapshot(proposalId) + 1);
-        vm.prank(_voter(0));
-        // vm.expectRevert(
-        //     "SecurityCouncilMemberElectionGovernorCountingUpgradeable: Nominee is not compliant"
-        // );
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                SecurityCouncilMemberElectionGovernorCountingUpgradeable
-                    .NotCompliantNominee
-                    .selector
-            )
-        );
-        governor.castVoteWithReasonAndParams({
-            proposalId: proposalId,
-            support: 0,
-            reason: "",
-            params: abi.encode(_nominee(0), 100)
-        });
-    }
-
-    function testCannotUseMoreVotesThanAvailable() public {
-        uint256 proposalId = _propose(0);
-
-        // make sure the nomineeElectionGovernor says the nominee is compliant
-        _setCompliantNominee(proposalId, _nominee(0), true);
-
-        // make sure the voter has some votes
-        _mockGetPastVotes({
-            account: _voter(0),
-            blockNumber: governor.proposalSnapshot(proposalId),
-            votes: 100
-        });
-
-        // roll to the start of voting
-        vm.roll(governor.proposalSnapshot(proposalId) + 1);
-
-        // try to use more votes than available
-        vm.prank(_voter(0));
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                SecurityCouncilMemberElectionGovernorCountingUpgradeable.InsufficientVotes.selector
-            )
-        );
-        governor.castVoteWithReasonAndParams({
-            proposalId: proposalId,
-            support: 0,
-            reason: "",
-            params: abi.encode(_nominee(0), 101)
-        });
-
-        // use some amount of votes that is less than available
-        vm.prank(_voter(0));
-        governor.castVoteWithReasonAndParams({
-            proposalId: proposalId,
-            support: 0,
-            reason: "",
-            params: abi.encode(_nominee(0), 50)
-        });
-
-        // now try to use more votes than available
-        vm.prank(_voter(0));
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                SecurityCouncilMemberElectionGovernorCountingUpgradeable.InsufficientVotes.selector
-            )
-        );
-        governor.castVoteWithReasonAndParams({
-            proposalId: proposalId,
-            support: 0,
-            reason: "",
-            params: abi.encode(_nominee(0), 51)
-        });
-    }
-
-    function testHasVotedAndVotesUsed() public {
+    function testMiscVotesViews() public {
         uint256 proposalId = _propose(0);
 
         vm.roll(governor.proposalSnapshot(proposalId) + 1);
@@ -333,6 +384,7 @@ contract SecurityCouncilMemberElectionGovernorTest is Test {
 
         assertEq(governor.hasVoted(proposalId, _voter(0)), true);
         assertEq(governor.votesUsed(proposalId, _voter(0)), 100);
+        assertEq(governor.weightReceived(proposalId, _nominee(0)), 100);
     }
 
     // helpers
@@ -408,21 +460,39 @@ contract SecurityCouncilMemberElectionGovernorTest is Test {
             ),
             abi.encode(ans)
         );
+        if (ans) {
+            // add the nominee to the list in this contract's storage if it isn't already there
+            // then mock the call to nomineeElectionGovernor.compliantNominees(uint)
+            uint256 index = TestUtil.indexOf(compliantNominees, account);
+            if (index == type(uint256).max) {
+                compliantNominees.push(account);
+            }
 
-        // add the nominee to the list in this contract's storage if it isn't already there
-        // then mock the call to nomineeElectionGovernor.compliantNominees(uint)
-        uint256 index = TestUtil.indexOf(compliantNominees, account);
-        if (index == type(uint256).max) {
-            compliantNominees.push(account);
+            vm.mockCall(
+                address(initParams.nomineeElectionGovernor),
+                abi.encodeWithSelector(
+                    initParams.nomineeElectionGovernor.compliantNominees.selector, proposalId
+                ),
+                abi.encode(compliantNominees)
+            );
         }
+        else {
+            // we should remove the nominee from the list in this contract's storage if it is there
+            // then mock the call to nomineeElectionGovernor.compliantNominees(uint)
+            uint256 index = TestUtil.indexOf(compliantNominees, account);
+            if (index != type(uint256).max) {
+                compliantNominees[index] = compliantNominees[compliantNominees.length - 1];
+                compliantNominees.pop();
+            }
 
-        vm.mockCall(
-            address(initParams.nomineeElectionGovernor),
-            abi.encodeWithSelector(
-                initParams.nomineeElectionGovernor.compliantNominees.selector, proposalId
-            ),
-            abi.encode(compliantNominees)
-        );
+            vm.mockCall(
+                address(initParams.nomineeElectionGovernor),
+                abi.encodeWithSelector(
+                    initParams.nomineeElectionGovernor.compliantNominees.selector, proposalId
+                ),
+                abi.encode(compliantNominees)
+            );
+        }
     }
 
     function _castVoteForCompliantNominee(
