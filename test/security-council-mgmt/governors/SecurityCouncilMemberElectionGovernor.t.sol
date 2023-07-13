@@ -107,27 +107,6 @@ contract SecurityCouncilMemberElectionGovernorTest is Test {
         _propose(0);
     }
 
-    // function testExecuteElectionResult() public {
-    //     // should only be callable by the nominee election governor
-    //     vm.expectRevert(
-    //         "SecurityCouncilMemberElectionGovernor: Only the nominee election governor can call this function"
-    //     );
-    //     governor.executeElectionResult(new address[](0), Cohort.FIRST);
-
-    //     // should just call replaceCohort on the security council manager
-    //     vm.prank(address(initParams.nomineeElectionGovernor));
-    //     vm.mockCall(address(initParams.securityCouncilManager), "", ""); // make sure calls do not revert
-    //     vm.expectCall(
-    //         address(initParams.securityCouncilManager),
-    //         0,
-    //         abi.encodeWithSelector(
-    //             initParams.securityCouncilManager.replaceCohort.selector,
-    //             new address[](8), // 8 is just a random number
-    //             Cohort.FIRST
-    //         )
-    //     );
-    //     governor.executeElectionResult(new address[](8), Cohort.FIRST);
-    // }
 
     function testSelectTopNominees() public {
         // make a random list of addresses and weights
