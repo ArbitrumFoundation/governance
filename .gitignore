@@ -20,3 +20,6 @@ files/local/l1ArbTokenBridgeTransferTXs.json
 files/local/l1NovaProtocolTransferTXs.json
 files/local/l1NovaTokenBridgeTransferTXs.json
 dist/
+report/
+lcov.info
+lcov.info.pruned

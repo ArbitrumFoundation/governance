@@ -9,15 +9,18 @@ import "lib/solady/src/utils/LibSort.sol";
 /// @notice Counting module for the SecurityCouncilMemberElectionGovernor.
 ///         Voters can spread their votes across multiple nominees.
 ///         Implements linearly decreasing voting weights over time.
-///         Uses AccountRankerUpgradeable to keep track of the top K nominees and their weights (where K is the number of nominees we want to select to become members).
+///         The top k nominees with the most votes are selected as the winners
 abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
     Initializable,
     GovernorUpgradeable
 {
     struct ElectionInfo {
+        /// @dev The total votes used by a delegate.
         mapping(address => uint256) votesUsed;
+        /// @dev The weight of votes received by a nominee. At the start of the election
+        ///      each vote has weight 1, however after a cutoff point the weight of each
+        ///      vote decreases linearly until it is 0 by the end of the election
         mapping(address => uint256) weightReceived;
-        address[] nomineesWithWeight;
     }
 
     uint256 private constant WAD = 1e18;
@@ -48,10 +51,18 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
         uint256 weightReceived
     );
 
+    error FullWeightDurationGreaterThanVotingPeriod(uint256 fullWeightDuration, uint256 votingPeriod);
+    error MustVoteWithParams();
+    error NotCompliantNominee();
+    error ZeroWeightVote();
+    error InsufficientVotes();
+    error LengthsDontMatch();
+
     /// @param initialFullWeightDuration Duration of full weight voting (expressed in blocks)
-    function __SecurityCouncilMemberElectionGovernorCounting_init(
-        uint256 initialFullWeightDuration
-    ) internal onlyInitializing {
+    function __SecurityCouncilMemberElectionGovernorCounting_init(uint256 initialFullWeightDuration)
+        internal
+        onlyInitializing
+    {
         fullWeightDuration = initialFullWeightDuration;
     }
 
@@ -61,10 +72,9 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
 
     /// @notice Set the full weight duration numerator and total duration denominator
     function setFullWeightDuration(uint256 newFullWeightDuration) public onlyGovernance {
-        require(
-            newFullWeightDuration <= votingPeriod(),
-            "SecurityCouncilMemberElectionGovernorCountingUpgradeable: Full weight duration must be <= votingPeriod"
-        );
+        if (newFullWeightDuration > votingPeriod()) {
+            revert FullWeightDurationGreaterThanVotingPeriod(newFullWeightDuration, votingPeriod());
+        }
 
         fullWeightDuration = newFullWeightDuration;
     }
@@ -89,42 +99,34 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
         uint256 availableVotes,
         bytes memory params
     ) internal virtual override {
-        require(
-            params.length == 64,
-            "SecurityCouncilMemberElectionGovernorCountingUpgradeable: Must cast vote with abi encoded (nominee, votes)"
-        );
+        if (params.length != 64) {
+            revert MustVoteWithParams();
+        }
 
         (address nominee, uint256 votes) = abi.decode(params, (address, uint256));
 
-        require(
-            _isCompliantNomineeForMostRecentElection(nominee),
-            "SecurityCouncilMemberElectionGovernorCountingUpgradeable: Nominee is not compliant"
-        );
+        if (!_isCompliantNominee(proposalId, nominee)) {
+            revert NotCompliantNominee();
+        }
 
         uint256 weight = votesToWeight(proposalId, block.number, votes);
 
-        require(
-            weight > 0,
-            "SecurityCouncilMemberElectionGovernorCountingUpgradeable: Cannot cast 0 weight vote"
-        );
+        if (weight == 0) {
+            revert ZeroWeightVote();
+        }
 
         ElectionInfo storage election = _elections[proposalId];
 
         uint256 prevVotesUsed = election.votesUsed[account];
 
-        require(
-            prevVotesUsed + votes <= availableVotes,
-            "SecurityCouncilMemberElectionGovernorCountingUpgradeable: Cannot use more votes than available"
-        );
+        if (prevVotesUsed + votes > availableVotes) {
+            revert InsufficientVotes();
+        }
 
         uint256 prevWeightReceived = election.weightReceived[nominee];
 
         election.votesUsed[account] = prevVotesUsed + votes;
         election.weightReceived[nominee] = prevWeightReceived + weight;
-
-        if (prevWeightReceived == 0) {
-            election.nomineesWithWeight.push(nominee);
-        }
 
         emit VoteCastForNominee({
             voter: account,
@@ -154,7 +156,7 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
     /// @notice Returns weight received by a nominee for a given proposal
     function weightReceived(uint256 proposalId, address nominee) public view returns (uint256) {
         return _elections[proposalId].weightReceived[nominee];
-    }    
+    }
 
     /// @notice Returns true if the account has voted any amount for any nominee in the proposal
     function hasVoted(uint256 proposalId, address account) public view override returns (bool) {
@@ -167,9 +169,11 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
         return startBlock + fullWeightDuration;
     }
 
+    // CHRIS: TODO: we have cohort size set in a number of places - we should have only one place for that
+
     // gas usage is probably a little bit more than (4200 + 1786)n. With 500 that's 2,993,000
     function topNominees(uint256 proposalId) public view returns (address[] memory) {
-        address[] memory nominees = _elections[proposalId].nomineesWithWeight;
+        address[] memory nominees = _compliantNominees(proposalId);
         uint256[] memory weights = new uint256[](nominees.length);
         ElectionInfo storage election = _elections[proposalId];
         for (uint256 i = 0; i < nominees.length; i++) {
@@ -187,26 +191,19 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
         pure
         returns (address[] memory)
     {
-        require(
-            nominees.length == weights.length,
-            "SecurityCouncilMemberElectionGovernorCountingUpgradeable: Nominees and weights must have same length"
-        );
+        if (nominees.length != weights.length) {
+            revert LengthsDontMatch();
+        }
 
         uint256[] memory topNomineesPacked = new uint256[](k);
-        uint256 topNomineesPackedLength = 0;
 
         for (uint16 i = 0; i < nominees.length; i++) {
             uint256 weight = weights[i];
+            // CHRIS: TODO: we need to put guards in here to make sure we dont overflow bounds
+            // CHRIS: TODO: alternative is to roll our own sort here, which sholdnt be too difficult
             uint256 packed = (weight << 16) | i;
 
-            if (topNomineesPackedLength < k - 1) {
-                topNomineesPacked[topNomineesPackedLength] = packed;
-                topNomineesPackedLength++;
-            } else if (topNomineesPackedLength == k - 1) {
-                topNomineesPacked[topNomineesPackedLength] = packed;
-                topNomineesPackedLength++;
-                LibSort.insertionSort(topNomineesPacked);
-            } else if (topNomineesPacked[0] < packed) {
+            if (topNomineesPacked[0] < packed) {
                 topNomineesPacked[0] = packed;
                 LibSort.insertionSort(topNomineesPacked);
             }
@@ -269,16 +266,24 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
     }
 
     /// @notice Returns true if votes have been cast for at least K nominees
-    function _voteSucceeded(uint256 proposalId) internal view override returns (bool) {
-        return _elections[proposalId].nomineesWithWeight.length >= _targetMemberCount();
+    function _voteSucceeded(uint256) internal pure override returns (bool) {
+        // CHRIS: TODO: is this necessary, could be always true and just pick top 6?
+        return true;
     }
 
     /// @dev Returns true if the possibleNominee is a compliant nominee for the most recent election
-    function _isCompliantNomineeForMostRecentElection(address possibleNominee)
+    function _isCompliantNominee(uint256 proposalId, address possibleNominee)
         internal
         view
         virtual
         returns (bool);
+
+    // CHRIS: TODO: docs - I dont like the coupling in these contracts - counting vs gov
+    function _compliantNominees(uint256 proposalId)
+        internal
+        view
+        virtual
+        returns (address[] memory);
 
     /// @dev Returns the target number of members to elect
     function _targetMemberCount() internal view virtual returns (uint256);

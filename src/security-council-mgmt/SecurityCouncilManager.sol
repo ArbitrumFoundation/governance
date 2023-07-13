@@ -12,12 +12,13 @@ import "@arbitrum/nitro-contracts/src/precompiles/ArbSys.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import "@openzeppelin/contracts/utils/Address.sol";
+import "./Common.sol";
 
 /// @title  The Security Council Manager
 /// @notice The source of truth for an array of Security Council that are under management
 ///         Can be used to change members, and replace whole cohorts, ensuring that all managed
 ///         Security Councils stay in sync
+
 contract SecurityCouncilManager is
     Initializable,
     AccessControlUpgradeable,
@@ -63,6 +64,8 @@ contract SecurityCouncilManager is
     /// @notice Nonce to ensure that scheduled updates create unique entries in the timelocks
     uint256 public updateNonce;
 
+    uint256 public constant STANDARD_COHORT_LENGTH = 6;
+
     /// @notice Magic value used by the L1 timelock to indicate that a retryable ticket should be created
     ///         Value is defined in L1ArbitrumTimelock contract https://etherscan.io/address/0xE6841D92B0C345144506576eC13ECf5103aC7f49#readProxyContract#F5
     address public constant RETRYABLE_TICKET_MAGIC = 0xa723C008e76E379c55599D2E4d93879BeaFDa79C;
@@ -87,7 +90,6 @@ contract SecurityCouncilManager is
     ) external initializer {
         firstCohort = _firstCohort;
         secondCohort = _secondCohort;
-        // TODO: ensure first + second cohort = all signers?
         _grantRole(DEFAULT_ADMIN_ROLE, _roles.admin);
         _grantRole(ELECTION_EXECUTOR_ROLE, _roles.cohortUpdator);
         _grantRole(MEMBER_ADDER_ROLE, _roles.memberAdder);
@@ -95,13 +97,14 @@ contract SecurityCouncilManager is
             _grantRole(MEMBER_REMOVER_ROLE, _roles.memberRemovers[i]);
         }
         _grantRole(MEMBER_ROTATOR_ROLE, _roles.memberRotator);
+        _grantRole(MEMBER_REPLACER_ROLE, _roles.memberReplacer);
 
         l2CoreGovTimelock = _l2CoreGovTimelock;
 
+        _setUpgradeExecRouterBuilder(_router);
         for (uint256 i = 0; i < _securityCouncils.length; i++) {
             _addSecurityCouncil(_securityCouncils[i]);
         }
-        _setUpgradeExecRouterBuilder(_router);
     }
 
     /// @inheritdoc ISecurityCouncilManager
@@ -109,8 +112,9 @@ contract SecurityCouncilManager is
         external
         onlyRole(ELECTION_EXECUTOR_ROLE)
     {
-        require(_newCohort.length == 6, "SecurityCouncilManager: invalid cohort length");
-        // TODO: ensure no duplicates accross cohorts, and that there are no address(0)s. This should be enforced in nomination process.
+        if (_newCohort.length != STANDARD_COHORT_LENGTH) {
+            revert InvalidNewCohortLength({cohort: _newCohort});
+        }
         if (_cohort == Cohort.FIRST) {
             firstCohort = _newCohort;
         } else if (_cohort == Cohort.SECOND) {
@@ -123,15 +127,16 @@ contract SecurityCouncilManager is
 
     function _addMemberToCohortArray(address _newMember, Cohort _cohort) internal {
         address[] storage cohort = _cohort == Cohort.FIRST ? firstCohort : secondCohort;
-        require(cohort.length < 6, "SecurityCouncilManager: cohort is full");
-        require(
-            !SecurityCouncilMgmtUtils.isInArray(_newMember, firstCohort),
-            "SecurityCouncilManager: member already in march cohort"
-        );
-        require(
-            !SecurityCouncilMgmtUtils.isInArray(_newMember, secondCohort),
-            "SecurityCouncilManager: member already in secondCohort cohort"
-        );
+        if (cohort.length == STANDARD_COHORT_LENGTH) {
+            revert CohortFull({cohort: _cohort});
+        }
+        if (firstCohortIncludes(_newMember)) {
+            revert MemberInCohort({member: _newMember, cohort: Cohort.FIRST});
+        }
+        if (secondCohortIncludes(_newMember)) {
+            revert MemberInCohort({member: _newMember, cohort: Cohort.SECOND});
+        }
+
         cohort.push(_newMember);
     }
 
@@ -142,18 +147,18 @@ contract SecurityCouncilManager is
                 if (_member == cohort[j]) {
                     cohort[j] = cohort[cohort.length - 1];
                     cohort.pop();
-                    return j == 0 ? Cohort.FIRST : Cohort.SECOND;
+                    return i == 0 ? Cohort.FIRST : Cohort.SECOND;
                 }
             }
         }
-        revert("SecurityCouncilManager: member to remove not found");
+        revert NotAMember({member: _member});
     }
 
     /// @inheritdoc ISecurityCouncilManager
     function addMember(address _newMember, Cohort _cohort) external onlyRole(MEMBER_ADDER_ROLE) {
-        require(
-            _newMember != address(0), "SecurityCouncilManager: new member can't be zero address"
-        );
+        if (_newMember == address(0)) {
+            revert ZeroAddress();
+        }
         _addMemberToCohortArray(_newMember, _cohort);
         _scheduleUpdate();
         emit MemberAdded(_newMember, _cohort);
@@ -161,7 +166,9 @@ contract SecurityCouncilManager is
 
     /// @inheritdoc ISecurityCouncilManager
     function removeMember(address _member) external onlyRole(MEMBER_REMOVER_ROLE) {
-        require(_member != address(0), "SecurityCouncilManager: member can't be zero address");
+        if (_member == address(0)) {
+            revert ZeroAddress();
+        }
         Cohort cohort = _removeMemberFromCohortArray(_member);
         _scheduleUpdate();
         emit MemberRemoved({member: _member, cohort: cohort});
@@ -172,13 +179,7 @@ contract SecurityCouncilManager is
         external
         onlyRole(MEMBER_REPLACER_ROLE)
     {
-        require(
-            _memberToReplace != address(0) && _newMember != address(0),
-            "SecurityCouncilManager: members can't be zero address"
-        );
-        Cohort cohort = _removeMemberFromCohortArray(_memberToReplace);
-        _addMemberToCohortArray(_newMember, cohort);
-        _scheduleUpdate();
+        Cohort cohort = _swapMembers(_memberToReplace, _newMember);
         emit MemberReplaced({
             replacedMember: _memberToReplace,
             newMember: _newMember,
@@ -186,22 +187,12 @@ contract SecurityCouncilManager is
         });
     }
 
-    /// @notice Security council member can rotate out their address for a new one; _currentAddress and _newAddress are of the same identity.
-    ///         Rotation must be initiated by the security council, and member rotating out must give explicit
-    ///         consent via signature
-    /// @param _currentAddress  Address to rotate out
-    /// @param _newAddress      Address to rotate in
+    /// @inheritdoc ISecurityCouncilManager
     function rotateMember(address _currentAddress, address _newAddress)
         external
         onlyRole(MEMBER_ROTATOR_ROLE)
     {
-        require(
-            _currentAddress != address(0) && _newAddress != address(0),
-            "SecurityCouncilManager: members can't be zero address"
-        );
-        Cohort cohort = _removeMemberFromCohortArray(_currentAddress);
-        _addMemberToCohortArray(_newAddress, cohort);
-        _scheduleUpdate();
+        Cohort cohort = _swapMembers(_currentAddress, _newAddress);
         emit MemberRotated({
             replacedAddress: _currentAddress,
             newAddress: _newAddress,
@@ -209,20 +200,49 @@ contract SecurityCouncilManager is
         });
     }
 
+    function _swapMembers(address _addressToRemove, address _addressToAdd)
+        internal
+        returns (Cohort)
+    {
+        if (_addressToRemove == address(0) || _addressToAdd == address(0)) {
+            revert ZeroAddress();
+        }
+        Cohort cohort = _removeMemberFromCohortArray(_addressToRemove);
+        _addMemberToCohortArray(_addressToAdd, cohort);
+        _scheduleUpdate();
+        return cohort;
+    }
+
     function _addSecurityCouncil(SecurityCouncilData memory _securityCouncilData) internal {
-        require(
-            securityCouncils.length < MAX_SECURITY_COUNCILS,
-            "SecurityCouncilManager: max security council's reached"
-        );
-        require(
-            _securityCouncilData.updateAction != address(0),
-            "SecurityCouncilManager: zero updateAction"
-        );
-        require(
-            _securityCouncilData.securityCouncil != address(0),
-            "SecurityCouncilManager: zero securityCouncil"
-        );
-        require(_securityCouncilData.chainId != 0, "SecurityCouncilManager: zero securityCouncil");
+        if (securityCouncils.length == MAX_SECURITY_COUNCILS) {
+            revert MaxSecurityCouncils(securityCouncils.length);
+        }
+
+        if (
+            _securityCouncilData.updateAction == address(0)
+                || _securityCouncilData.securityCouncil == address(0)
+        ) {
+            revert ZeroAddress();
+        }
+
+        if (_securityCouncilData.chainId == 0) {
+            revert SecurityCouncilZeroChainID(_securityCouncilData);
+        }
+
+        if (!router.upExecLocationExists(_securityCouncilData.chainId)) {
+            revert SecurityCouncilNotInRouter(_securityCouncilData);
+        }
+
+        for (uint256 i = 0; i < securityCouncils.length; i++) {
+            SecurityCouncilData storage existantSecurityCouncil = securityCouncils[i];
+
+            if (
+                existantSecurityCouncil.chainId == _securityCouncilData.chainId
+                    && existantSecurityCouncil.securityCouncil == _securityCouncilData.securityCouncil
+            ) {
+                revert SecurityCouncilAlreadyInRouter(_securityCouncilData);
+            }
+        }
 
         securityCouncils.push(_securityCouncilData);
         emit SecurityCouncilAdded(
@@ -237,26 +257,36 @@ contract SecurityCouncilManager is
         external
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
-        // CHRIS: TODO: do we also want to check for duplicates when adding here?
         _addSecurityCouncil(_securityCouncilData);
     }
 
     /// @inheritdoc ISecurityCouncilManager
-    function removeSecurityCouncil(uint256 _index) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        // CHRIS: TODO: I wonder if this should be based on address, or some other identifying behaviour?
-        SecurityCouncilData storage securityCouncilToRemove = securityCouncils[_index];
-        SecurityCouncilData storage lastSecurityCouncil =
-            securityCouncils[securityCouncils.length - 1];
+    function removeSecurityCouncil(SecurityCouncilData memory _securityCouncilData)
+        external
+        onlyRole(DEFAULT_ADMIN_ROLE)
+        returns (bool)
+    {
+        for (uint256 i = 0; i < securityCouncils.length; i++) {
+            SecurityCouncilData storage securityCouncilData = securityCouncils[i];
+            if (
+                securityCouncilData.securityCouncil == _securityCouncilData.securityCouncil
+                    && securityCouncilData.chainId == _securityCouncilData.chainId
+                    && securityCouncilData.updateAction == _securityCouncilData.updateAction
+            ) {
+                SecurityCouncilData storage lastSecurityCouncil =
+                    securityCouncils[securityCouncils.length - 1];
 
-        securityCouncils[_index] = lastSecurityCouncil;
-        securityCouncils.pop();
-        emit SecurityCouncilRemoved(
-            securityCouncilToRemove.securityCouncil,
-            // securityCouncilToRemove.upgradeExecutor,
-            securityCouncilToRemove.updateAction,
-            // securityCouncilToRemove.inbox,
-            securityCouncils.length
-        );
+                securityCouncils[i] = lastSecurityCouncil;
+                securityCouncils.pop();
+                emit SecurityCouncilRemoved(
+                    securityCouncilData.securityCouncil,
+                    securityCouncilData.updateAction,
+                    securityCouncils.length
+                );
+                return true;
+            }
+        }
+        revert SecurityCouncilNotInManager(_securityCouncilData);
     }
 
     /// @inheritdoc ISecurityCouncilManager
@@ -268,12 +298,14 @@ contract SecurityCouncilManager is
     }
 
     function _setUpgradeExecRouterBuilder(UpgradeExecRouterBuilder _router) internal {
-        require(
-            Address.isContract(address(_router)),
-            "SecurityCouncilManager: new router not a contract"
-        );
+        address routerAddress = address(_router);
+
+        if (!Address.isContract(routerAddress)) {
+            revert NotAContract({account: routerAddress});
+        }
+
         router = _router;
-        emit UpgradeExecRouterBuilderSet(address(_router));
+        emit UpgradeExecRouterBuilderSet(routerAddress);
     }
 
     /// @inheritdoc ISecurityCouncilManager
@@ -287,16 +319,32 @@ contract SecurityCouncilManager is
     }
 
     /// @inheritdoc ISecurityCouncilManager
-    function firstCohortIncludes(address account) external view returns (bool) {
-        return _cohortIncludes(Cohort.FIRST, account);
+    function getBothCohorts() public view returns (address[] memory) {
+        address[] memory members = new address[](firstCohort.length + secondCohort.length);
+        for (uint256 i = 0; i < firstCohort.length; i++) {
+            members[i] = firstCohort[i];
+        }
+        for (uint256 i = 0; i < secondCohort.length; i++) {
+            members[firstCohort.length + i] = secondCohort[i];
+        }
+        return members;
+    }
+
+    function securityCouncilsLength() public view returns (uint256) {
+        return securityCouncils.length;
     }
 
     /// @inheritdoc ISecurityCouncilManager
-    function secondCohortIncludes(address account) external view returns (bool) {
-        return _cohortIncludes(Cohort.SECOND, account);
+    function firstCohortIncludes(address account) public view returns (bool) {
+        return cohortIncludes(Cohort.FIRST, account);
     }
 
-    function _cohortIncludes(Cohort cohort, address account) internal view returns (bool) {
+    /// @inheritdoc ISecurityCouncilManager
+    function secondCohortIncludes(address account) public view returns (bool) {
+        return cohortIncludes(Cohort.SECOND, account);
+    }
+
+    function cohortIncludes(Cohort cohort, address account) public view returns (bool) {
         address[] memory cohortMembers = cohort == Cohort.FIRST ? firstCohort : secondCohort;
         return SecurityCouncilMgmtUtils.isInArray(account, cohortMembers);
     }
@@ -315,17 +363,11 @@ contract SecurityCouncilManager is
         // TODO: enforce ordering (on the L1 side) with a nonce? is no contract level ordering guarunee for updates ok?
 
         // build a union array of security council members
-        address[] memory newMembers = new address[](firstCohort.length + secondCohort.length);
-        for (uint256 i = 0; i < firstCohort.length; i++) {
-            newMembers[i] = firstCohort[i];
-        }
-        for (uint256 i = 0; i < secondCohort.length; i++) {
-            newMembers[firstCohort.length + i] = secondCohort[i];
-        }
+        address[] memory newMembers = getBothCohorts();
 
         // build batch call to L1 timelock
         address[] memory actionAddresses = new address[](securityCouncils.length);
-        bytes[] memory actionData = new bytes[](securityCouncils.length);
+        bytes[] memory actionDatas = new bytes[](securityCouncils.length);
         uint256[] memory chainIds = new uint256[](securityCouncils.length);
 
         for (uint256 i = 0; i < securityCouncils.length; i++) {
@@ -333,7 +375,7 @@ contract SecurityCouncilManager is
 
             actionAddresses[i] = securityCouncilData.updateAction;
             chainIds[i] = securityCouncilData.chainId;
-            actionData[i] = abi.encodeWithSelector(
+            actionDatas[i] = abi.encodeWithSelector(
                 SecurityCouncilUpgradeAction.perform.selector,
                 securityCouncilData.securityCouncil,
                 newMembers
@@ -344,7 +386,7 @@ contract SecurityCouncilManager is
             chainIds,
             actionAddresses,
             new uint256[](securityCouncils.length), // all values are always 0
-            actionData,
+            actionDatas,
             this.generateSalt(newMembers) // must be unique as the proposal hash is used for replay protection in the L1 timelock
         );
 
