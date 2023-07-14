@@ -95,6 +95,7 @@ contract SecurityCouncilNomineeElectionGovernor is
     error ProposalInVettingPeriod();
     error InsufficientCompliantNomineeCount(uint256 compliantNomineeCount);
     error ProposeDisabled();
+    error NotNominee(address nominee);
 
     constructor() {
         _disableInitializers();
@@ -201,16 +202,19 @@ contract SecurityCouncilNomineeElectionGovernor is
     /// @notice Allows the nomineeVetter to exclude a noncompliant nominee.
     /// @dev    Can be called only after a nomninee election proposal has "succeeded" (voting has ended) and before the nominee vetting period has ended.
     ///         Will revert if the provided account is not a nominee (had less than the required votes).
-    function excludeNominee(uint256 proposalId, address account) external onlyNomineeVetterInVettingPeriod(proposalId) {
+    function excludeNominee(uint256 proposalId, address nominee) external onlyNomineeVetterInVettingPeriod(proposalId) {
         ElectionInfo storage election = _elections[proposalId];
-        if (election.isExcluded[account]) {
-            revert NomineeAlreadyExcluded(account);
+        if (election.isExcluded[nominee]) {
+            revert NomineeAlreadyExcluded(nominee);
+        }
+        if (!isNominee(proposalId, nominee)) {
+            revert NotNominee(nominee);
         }
 
-        election.isExcluded[account] = true;
+        election.isExcluded[nominee] = true;
         election.excludedNomineeCount++;
 
-        emit NomineeExcluded(proposalId, account);
+        emit NomineeExcluded(proposalId, nominee);
     }
 
     /// @notice Allows the nomineeVetter to explicitly include a nominee if there are fewer nominees than the target.
@@ -299,6 +303,9 @@ contract SecurityCouncilNomineeElectionGovernor is
             maybeCompliantNominees, election.isExcluded
         );
     }
+
+    // henry: todo: `compliantNomineeCount(uint) public`, so we don't have to do the subtraction in multiple places
+    // also test it in the testExcludeNominee test
 
     /// @notice returns cohort currently up for election
     function currentCohort() public view returns (Cohort) {
