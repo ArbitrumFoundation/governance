@@ -9,6 +9,7 @@ import "../SecurityCouncilManager.sol";
 import "../governors/SecurityCouncilMemberRemovalGovernor.sol";
 import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import "../interfaces/ISecurityCouncilManager.sol";
+import "../interfaces/IGnosisSafe.sol";
 import "../../ArbitrumTimelock.sol";
 import "@openzeppelin/contracts-upgradeable/governance/utils/IVotesUpgradeable.sol";
 import "../../UpgradeExecRouterBuilder.sol";
@@ -56,6 +57,9 @@ contract L2SecurityCouncilMgmtFactory is Ownable {
         UpgradeExecRouterBuilder upgradeExecRouterBuilder;
     }
 
+    error AddressNotInCouncil(address[] securityCouncil, address account);
+    error InvalidCohortsSize(uint256 councilSize, uint256 firstCohortSize, uint256 secondCohortSize);
+
     function deploy(DeployParams memory dp) external onlyOwner returns (DeployedContracts memory) {
         if (!Address.isContract(dp.govChainEmergencySecurityCouncil)) {
             revert NotAContract(dp.govChainEmergencySecurityCouncil);
@@ -75,6 +79,23 @@ contract L2SecurityCouncilMgmtFactory is Ownable {
 
         if (dp.nomineeVetter == address(0)) {
             revert ZeroAddress();
+        }
+        IGnosisSafe govChainEmergencySCSafe = IGnosisSafe(dp.govChainEmergencySecurityCouncil);
+        address[] memory owners = govChainEmergencySCSafe.getOwners();
+        if (owners.length != (dp.firstCohort.length + dp.secondCohort.length)) {
+            revert InvalidCohortsSize(owners.length, dp.firstCohort.length, dp.secondCohort.length);
+        }
+
+        for (uint256 i = 0; i < dp.firstCohort.length; i++) {
+            if (!govChainEmergencySCSafe.isOwner(dp.firstCohort[i])) {
+                revert AddressNotInCouncil(owners, dp.firstCohort[i]);
+            }
+        }
+
+        for (uint256 i = 0; i < dp.secondCohort.length; i++) {
+            if (!govChainEmergencySCSafe.isOwner(dp.secondCohort[i])) {
+                revert AddressNotInCouncil(owners, dp.secondCohort[i]);
+            }
         }
 
         DeployedContracts memory deployedContracts;

@@ -4,6 +4,7 @@ pragma solidity 0.8.16;
 
 import "forge-std/Test.sol";
 import "../util/TestUtil.sol";
+import "../util/DeployGnosisWithModule.sol";
 
 import "../../src/security-council-mgmt/factories/L2SecurityCouncilMgmtFactory.sol";
 import "../../src/security-council-mgmt/governors/SecurityCouncilMemberRemovalGovernor.sol";
@@ -13,7 +14,7 @@ import "../../src/security-council-mgmt/SecurityCouncilManager.sol";
 
 import "../../src/security-council-mgmt/interfaces/IGnosisSafe.sol";
 
-contract L2SecurityCouncilMgmtFactoryTest is Test {
+contract L2SecurityCouncilMgmtFactoryTest is Test, DeployGnosisWithModule {
     ChainAndUpExecLocation[] upgradeExecutors;
     address govChainEmergencySecurityCouncil;
     address l1ArbitrumTimelock = address(333);
@@ -47,17 +48,24 @@ contract L2SecurityCouncilMgmtFactoryTest is Test {
 
     address rando = address(11_114);
 
+    address firstCohortMember = address(3456);
+    address secondCohortMember = address(7654);
+
     function getDeployParams() public returns (DeployParams memory deployParams) {
         ChainAndUpExecLocation[] memory upgradeExecutors;
 
-        govChainEmergencySecurityCouncil = TestUtil.deployStubContract();
+        address[] memory scOwners = new address[](2);
+        scOwners[0] = firstCohortMember;
+        scOwners[1] = secondCohortMember;
+
+        govChainEmergencySecurityCouncil = deploySafe(scOwners, 1, address(123));
         govChainProxyAdmin = TestUtil.deployStubContract();
         l2UpgradeExecutor = TestUtil.deployStubContract();
         arbToken = TestUtil.deployStubContract();
         l2CoreGovTimelock = TestUtil.deployStubContract();
 
-        firstCohort[0] = address(3456);
-        secondCohort[0] = address(7654);
+        firstCohort[0] = firstCohortMember;
+        secondCohort[0] = secondCohortMember;
 
         vm.prank(owner);
         fac = new L2SecurityCouncilMgmtFactory();
