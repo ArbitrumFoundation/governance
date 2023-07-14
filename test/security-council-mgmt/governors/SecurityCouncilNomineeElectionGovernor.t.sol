@@ -8,13 +8,14 @@ import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.so
 import "../../util/TestUtil.sol";
 
 import "../../../src/security-council-mgmt/governors/SecurityCouncilNomineeElectionGovernor.sol";
+import "../../../src/security-council-mgmt/Common.sol";
 
 contract SecurityCouncilNomineeElectionGovernorTest is Test {
     SecurityCouncilNomineeElectionGovernor governor;
 
     SecurityCouncilNomineeElectionGovernor.InitParams initParams = SecurityCouncilNomineeElectionGovernor.InitParams({
         targetNomineeCount: 6,
-        firstNominationStartDate: SecurityCouncilNomineeElectionGovernorTiming.Date({year: 2030, month: 1, day: 1, hour: 0}),
+        firstNominationStartDate: Date({year: 2030, month: 1, day: 1, hour: 0}),
         nomineeVettingDuration: 1 days,
         nomineeVetter: address(0x11),
         securityCouncilManager: ISecurityCouncilManager(address(0x22)),
@@ -57,14 +58,14 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
 
     function testInvalidStartDate() public {
         SecurityCouncilNomineeElectionGovernor.InitParams memory invalidParams = initParams;
-        invalidParams.firstNominationStartDate = SecurityCouncilNomineeElectionGovernorTiming.Date({year: 2022, month: 1, day: 1, hour: 0});
+        invalidParams.firstNominationStartDate = Date({year: 2022, month: 1, day: 1, hour: 0});
 
         governor = _deployGovernor();
 
         vm.expectRevert(abi.encodeWithSelector(SecurityCouncilNomineeElectionGovernorTiming.StartDateTooEarly.selector));
         governor.initialize(invalidParams);
 
-        invalidParams.firstNominationStartDate = SecurityCouncilNomineeElectionGovernorTiming.Date({year: 2000, month: 13, day: 1, hour: 0});
+        invalidParams.firstNominationStartDate = Date({year: 2000, month: 13, day: 1, hour: 0});
         vm.expectRevert(abi.encodeWithSelector(SecurityCouncilNomineeElectionGovernorTiming.InvalidStartDate.selector));
         governor.initialize(invalidParams);
     }
@@ -106,7 +107,7 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
         return address(uint160(0x2200 + i));
     }
     
-    function _datePlusMonthsToTimestamp(SecurityCouncilNomineeElectionGovernorTiming.Date memory date, uint256 months) internal pure returns (uint256) {
+    function _datePlusMonthsToTimestamp(Date memory date, uint256 months) internal pure returns (uint256) {
         return DateTimeLib.dateTimeToTimestamp({
             year: date.year,
             month: date.month + months,
