@@ -30,7 +30,7 @@ library SecurityCouncilMgmtUpgradeLib {
         IGnosisSafe _safe1,
         IGnosisSafe safe2,
         uint256 _expectedThreshold
-    ) internal {
+    ) internal view {
         uint256 newSecurityCouncilThreshold = safe2.getThreshold();
         require(
             _safe1.getThreshold() == newSecurityCouncilThreshold,
