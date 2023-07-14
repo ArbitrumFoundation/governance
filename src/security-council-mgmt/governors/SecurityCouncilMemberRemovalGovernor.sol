@@ -4,6 +4,7 @@ pragma solidity 0.8.16;
 import "../../L2ArbitrumGovernor.sol";
 import "./../interfaces/ISecurityCouncilManager.sol";
 import "../../Util.sol";
+import "../Common.sol";
 
 contract SecurityCouncilMemberRemovalGovernor is L2ArbitrumGovernor {
     uint256 public constant voteSuccessDenominator = 10_000;
@@ -48,8 +49,11 @@ contract SecurityCouncilMemberRemovalGovernor is L2ArbitrumGovernor {
         uint256 _proposalThreshold,
         uint64 _minPeriodAfterQuorum
     ) public {
-        _setVoteSuccessNumerator(_voteSuccessNumerator);
+        if (!Address.isContract(address(_securityCouncilManager))) {
+            revert NotAContract(address(_securityCouncilManager));
+        }
         securityCouncilManager = _securityCouncilManager;
+        _setVoteSuccessNumerator(_voteSuccessNumerator);
         this.initialize(
             _token,
             _timelock,
@@ -91,19 +95,18 @@ contract SecurityCouncilMemberRemovalGovernor is L2ArbitrumGovernor {
         bytes4 selector = getSelector(calldatas[0]);
         address memberToRemove = abi.decode(removeSelector(calldatas[0]), (address));
 
-
         if (selector != ISecurityCouncilManager.removeMember.selector) {
             revert CallNotRemoveMember(selector);
         }
         if (
-            !securityCouncilManager.firstCohortIncludes(memberToRemove) &&
-            !securityCouncilManager.secondCohortIncludes(memberToRemove)
+            !securityCouncilManager.firstCohortIncludes(memberToRemove)
+                && !securityCouncilManager.secondCohortIncludes(memberToRemove)
         ) {
             revert MemberNotFound(memberToRemove);
         }
 
-        GovernorUpgradeable.propose(targets, values, calldatas, description);
         emit MemberRemovalProposed(memberToRemove, description);
+        return GovernorUpgradeable.propose(targets, values, calldatas, description);
     }
 
     /// @notice override to allow for required vote success ratio that isn't 0.5
