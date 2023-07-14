@@ -5,19 +5,12 @@ import "../../interfaces/ISecurityCouncilManager.sol";
 
 import "@openzeppelin/contracts-upgradeable/governance/GovernorUpgradeable.sol";
 import "lib/solady/src/utils/DateTimeLib.sol";
+import "../../Common.sol";
 
 abstract contract SecurityCouncilNomineeElectionGovernorTiming is
     Initializable,
     GovernorUpgradeable
 {
-    /// @notice Date struct for convenience
-    struct Date {
-        uint256 year;
-        uint256 month;
-        uint256 day;
-        uint256 hour;
-    }
-
     /// @notice First election start date
     Date public firstNominationStartDate;
 
