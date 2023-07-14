@@ -109,6 +109,7 @@ contract SecurityCouncilManagerTest is Test {
         for (uint256 i = 0; i < 6; i++) {
             secondCohort[i] = _secondCohort[i];
             firstCohort[i] = _firstCohort[i];
+            newCohort[i] = _newCohort[i];
         }
         address prox = TestUtil.deployProxy(address(new SecurityCouncilManager()));
         scm = SecurityCouncilManager(payable(prox));
@@ -131,7 +132,7 @@ contract SecurityCouncilManagerTest is Test {
 
         assertTrue(scm.hasRole(scm.DEFAULT_ADMIN_ROLE(), roles.admin), "admin role set");
         assertTrue(
-            scm.hasRole(scm.ELECTION_EXECUTOR_ROLE(), roles.cohortUpdator),
+            scm.hasRole(scm.COHORT_REPLACER_ROLE(), roles.cohortUpdator),
             "election executor role set"
         );
         assertTrue(scm.hasRole(scm.MEMBER_ADDER_ROLE(), roles.memberAdder), "member adder role set");
@@ -389,7 +390,9 @@ contract SecurityCouncilManagerTest is Test {
         newSmallCohort[0] = rando;
         vm.expectRevert(
             abi.encodeWithSelector(
-                ISecurityCouncilManager.InvalidNewCohortLength.selector, newSmallCohort
+                ISecurityCouncilManager.InvalidNewCohortLength.selector,
+                newSmallCohort,
+                newCohort.length
             )
         );
         scm.replaceCohort(newSmallCohort, Cohort.FIRST);

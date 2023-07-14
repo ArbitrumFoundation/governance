@@ -29,7 +29,8 @@ interface ISecurityCouncilManager {
     error NotAMember(address member);
     error MemberInCohort(address member, Cohort cohort);
     error CohortFull(Cohort cohort);
-    error InvalidNewCohortLength(address[] cohort);
+    error InvalidNewCohortLength(address[] cohort, uint256 cohortSize);
+    error CohortLengthMismatch(address[] cohort1, address[] cohort2);
 
     // security council data errors
 

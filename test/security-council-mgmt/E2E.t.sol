@@ -18,6 +18,7 @@ import "@gnosis.pm/safe-contracts/contracts/GnosisSafeL2.sol";
 import "@gnosis.pm/safe-contracts/contracts/proxies/GnosisSafeProxyFactory.sol";
 import "../../src/gov-action-contracts/address-registries/L2AddressRegistry.sol";
 import "../util/DeployGnosisWithModule.sol";
+import "../../src/security-council-mgmt/Common.sol";
 
 contract ArbSysMock {
     event ArbSysL2ToL1Tx(address from, address to, uint256 value, bytes data);
@@ -189,8 +190,7 @@ contract E2E is Test, DeployGnosisWithModule {
     uint256 nomineeVotingPeriod = 51;
     uint256 memberVotingPeriod = 53;
     uint256 fullWeightDuration = 39;
-    SecurityCouncilNomineeElectionGovernorTiming.Date nominationStart =
-        SecurityCouncilNomineeElectionGovernorTiming.Date(1988, 1, 1, 1);
+    Date nominationStart = Date(1988, 1, 1, 1);
 
     uint256 chain1Id = 937;
     uint256 chain2Id = 837;
@@ -318,30 +318,30 @@ contract E2E is Test, DeployGnosisWithModule {
         );
 
         DeployParams memory secDeployParams = DeployParams({
-            _upgradeExecutors: vars.cExecLocs,
-            _govChainEmergencySecurityCouncil: address(vars.moduleL2Safe),
-            _l1ArbitrumTimelock: address(vars.l1Timelock),
-            _l2CoreGovTimelock: address(l2DeployedCoreContracts.coreTimelock),
-            _proxyAdmin: address(l2DeployedCoreContracts.proxyAdmin),
-            _secondCohort: cohort2,
-            _firstCohort: cohort1,
+            upgradeExecutors: vars.cExecLocs,
+            govChainEmergencySecurityCouncil: address(vars.moduleL2Safe),
+            l1ArbitrumTimelock: address(vars.l1Timelock),
+            l2CoreGovTimelock: address(l2DeployedCoreContracts.coreTimelock),
+            govChainProxyAdmin: address(l2DeployedCoreContracts.proxyAdmin),
+            secondCohort: cohort2,
+            firstCohort: cohort1,
             l2UpgradeExecutor: address(l2DeployedCoreContracts.executor),
             arbToken: address(l2DeployedCoreContracts.token),
-            _l1TimelockMinDelay: l1MinTimelockDelay,
-            _removalGovVotingDelay: removalGovVotingDelay,
-            _removalGovVotingPeriod: removalGovVotingPeriod,
-            _removalGovQuorumNumerator: removalGovQuorumNumerator,
-            _removalGovProposalThreshold: removalGovProposalThreshold,
-            _removalGovVoteSuccessNumerator: removalGovVoteSuccessNumerator,
-            _removalGovMinPeriodAfterQuorum: removalGovMinPeriodAfterQuorum,
-            _securityCouncils: vars.councilData,
+            l1TimelockMinDelay: l1MinTimelockDelay,
+            removalGovVotingDelay: removalGovVotingDelay,
+            removalGovVotingPeriod: removalGovVotingPeriod,
+            removalGovQuorumNumerator: removalGovQuorumNumerator,
+            removalGovProposalThreshold: removalGovProposalThreshold,
+            removalGovVoteSuccessNumerator: removalGovVoteSuccessNumerator,
+            removalGovMinPeriodAfterQuorum: removalGovMinPeriodAfterQuorum,
+            securityCouncils: vars.councilData,
             firstNominationStartDate: nominationStart,
             nomineeVettingDuration: nomineeVettingDuration,
             nomineeVetter: nomineeVetter,
             nomineeQuorumNumerator: nomineeQuorumNumerator,
             nomineeVotingPeriod: nomineeVotingPeriod,
             memberVotingPeriod: memberVotingPeriod,
-            _fullWeightDuration: fullWeightDuration
+            fullWeightDuration: fullWeightDuration
         });
 
         vars.secDeployedContracts = vars.secFac.deploy(secDeployParams);

@@ -64,13 +64,14 @@ contract SecurityCouncilManager is
     /// @notice Nonce to ensure that scheduled updates create unique entries in the timelocks
     uint256 public updateNonce;
 
-    uint256 public constant STANDARD_COHORT_LENGTH = 6;
+    /// @notice Size of cohort under ordinary circumstancces
+    uint256 public cohortSize;
 
     /// @notice Magic value used by the L1 timelock to indicate that a retryable ticket should be created
     ///         Value is defined in L1ArbitrumTimelock contract https://etherscan.io/address/0xE6841D92B0C345144506576eC13ECf5103aC7f49#readProxyContract#F5
     address public constant RETRYABLE_TICKET_MAGIC = 0xa723C008e76E379c55599D2E4d93879BeaFDa79C;
 
-    bytes32 public constant ELECTION_EXECUTOR_ROLE = keccak256("ELECTION_EXECUTOR");
+    bytes32 public constant COHORT_REPLACER_ROLE = keccak256("COHORT_REPLACER");
     bytes32 public constant MEMBER_ADDER_ROLE = keccak256("MEMBER_ADDER");
     bytes32 public constant MEMBER_REPLACER_ROLE = keccak256("MEMBER_REPLACER");
     bytes32 public constant MEMBER_ROTATOR_ROLE = keccak256("MEMBER_ROTATOR");
@@ -88,16 +89,14 @@ contract SecurityCouncilManager is
         address payable _l2CoreGovTimelock,
         UpgradeExecRouterBuilder _router
     ) external initializer {
-        // CHRIS: TODO: ensure that the first and second cohort are disjoint
-        // TODO: ensure first + second cohort = all signers?
-        require(
-            _firstCohort.length == _secondCohort.length,
-            "SecurityCouncilManager: cohorts must be the same length"
-        );
+        if (_firstCohort.length != _secondCohort.length) {
+            revert CohortLengthMismatch(_firstCohort, _secondCohort);
+        }
         firstCohort = _firstCohort;
         secondCohort = _secondCohort;
+        cohortSize = _firstCohort.length;
         _grantRole(DEFAULT_ADMIN_ROLE, _roles.admin);
-        _grantRole(ELECTION_EXECUTOR_ROLE, _roles.cohortUpdator);
+        _grantRole(COHORT_REPLACER_ROLE, _roles.cohortUpdator);
         _grantRole(MEMBER_ADDER_ROLE, _roles.memberAdder);
         for (uint256 i = 0; i < _roles.memberRemovers.length; i++) {
             _grantRole(MEMBER_REMOVER_ROLE, _roles.memberRemovers[i]);
@@ -116,10 +115,10 @@ contract SecurityCouncilManager is
     /// @inheritdoc ISecurityCouncilManager
     function replaceCohort(address[] memory _newCohort, Cohort _cohort)
         external
-        onlyRole(ELECTION_EXECUTOR_ROLE)
+        onlyRole(COHORT_REPLACER_ROLE)
     {
-        if (_newCohort.length != STANDARD_COHORT_LENGTH) {
-            revert InvalidNewCohortLength({cohort: _newCohort});
+        if (_newCohort.length != cohortSize) {
+            revert InvalidNewCohortLength({cohort: _newCohort, cohortSize: cohortSize});
         }
         if (_cohort == Cohort.FIRST) {
             firstCohort = _newCohort;
@@ -133,7 +132,7 @@ contract SecurityCouncilManager is
 
     function _addMemberToCohortArray(address _newMember, Cohort _cohort) internal {
         address[] storage cohort = _cohort == Cohort.FIRST ? firstCohort : secondCohort;
-        if (cohort.length == STANDARD_COHORT_LENGTH) {
+        if (cohort.length == cohortSize) {
             revert CohortFull({cohort: _cohort});
         }
         if (firstCohortIncludes(_newMember)) {
