@@ -7,8 +7,11 @@ import "./SecurityCouncilMgmtUtils.sol";
 /// @notice Action contract for updating security council members. Used by the security council management system.
 ///         Expected to be delegate called into by an Upgrade Executor
 contract SecurityCouncilMemberSyncAction {
+    error PreviousOwnerNotFound(address targetOwner, address securityCouncil);
+    error ExecFromModuleError(bytes data, address securityCouncil);
+
     /// @dev Used in the gnosis safe as the first entry in their ownership linked list
-    address internal constant SENTINEL_OWNERS = address(0x1);
+    address public constant SENTINEL_OWNERS = address(0x1);
 
     /// @notice Updates members of security council multisig to match provided array
     /// @dev    This function contains O(n^2) operations, so doesnt scale for large numbers of members. Expected count is 12, which is acceptable.
@@ -49,7 +52,7 @@ contract SecurityCouncilMemberSyncAction {
     function _removeMember(IGnosisSafe securityCouncil, address _member, uint256 _threshold)
         internal
     {
-        address previousOwner = _getPrevOwner(securityCouncil, _member);
+        address previousOwner = getPrevOwner(securityCouncil, _member);
         _execFromModule(
             securityCouncil,
             abi.encodeWithSelector(
@@ -58,8 +61,8 @@ contract SecurityCouncilMemberSyncAction {
         );
     }
 
-    function _getPrevOwner(IGnosisSafe securityCouncil, address _owner)
-        internal
+    function getPrevOwner(IGnosisSafe securityCouncil, address _owner)
+        public
         view
         returns (address)
     {
@@ -73,16 +76,20 @@ contract SecurityCouncilMemberSyncAction {
             }
             previousOwner = currentOwner;
         }
-        revert("SecurityCouncilMemberSyncAction: Prev owner not found");
+        revert PreviousOwnerNotFound({
+            targetOwner: _owner,
+            securityCouncil: address(securityCouncil)
+        });
     }
 
     /// @notice Execute provided operation via gnosis safe's trusted execTransactionFromModule entry point
     function _execFromModule(IGnosisSafe securityCouncil, bytes memory data) internal {
-        require(
-            securityCouncil.execTransactionFromModule(
+        if (
+            !securityCouncil.execTransactionFromModule(
                 address(securityCouncil), 0, data, OpEnum.Operation.Call
-            ),
-            "SecurityCouncilMemberSyncAction: execTransactionFromModule failed"
-        );
+            )
+        ) {
+            revert ExecFromModuleError({data: data, securityCouncil: address(securityCouncil)});
+        }
     }
 }

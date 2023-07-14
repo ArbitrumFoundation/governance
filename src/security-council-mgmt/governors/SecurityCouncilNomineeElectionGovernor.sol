@@ -61,10 +61,6 @@ contract SecurityCouncilNomineeElectionGovernor is
         uint256 excludedNomineeCount;
     }
 
-    event NomineeVetterChanged(address indexed oldNomineeVetter, address indexed newNomineeVetter);
-    event ContenderAdded(uint256 indexed proposalId, address indexed contender);
-    event NomineeExcluded(uint256 indexed proposalId, address indexed nominee);
-
     /// @notice The target number of nominees to elect (6)
     uint256 public targetNomineeCount;
 
@@ -83,6 +79,22 @@ contract SecurityCouncilNomineeElectionGovernor is
 
     /// @notice Maps proposalId to ElectionInfo
     mapping(uint256 => ElectionInfo) internal _elections;
+
+    event NomineeVetterChanged(address indexed oldNomineeVetter, address indexed newNomineeVetter);
+    event ContenderAdded(uint256 indexed proposalId, address indexed contender);
+    event NomineeExcluded(uint256 indexed proposalId, address indexed nominee);
+
+    error OnlyNomineeVetter();
+    error CreateTooEarly(uint256 startTime);
+    error AlreadyContender(address contender);
+    error ProposalNotActive(ProposalState state);
+    error AccountInOtherCohort(Cohort cohort, address account);
+    error ProposalNotInVettingPeriod();
+    error NomineeAlreadyExcluded(address nominee);
+    error CompliantNomineeTargetHit();
+    error ProposalInVettingPeriod();
+    error InsufficientCompliantNomineeCount(uint256 compliantNomineeCount);
+    error ProposeDisabled();
 
     constructor() {
         _disableInitializers();
@@ -107,11 +119,13 @@ contract SecurityCouncilNomineeElectionGovernor is
     }
 
     /// @notice Allows the nominee vetter to call certain functions
-    modifier onlyNomineeVetter() {
-        require(
-            msg.sender == nomineeVetter,
-            "SecurityCouncilNomineeElectionGovernor: Only the nomineeVetter can call this function"
-        );
+    modifier onlyNomineeVetterInVettingPeriod(uint256 proposalId) {
+        if (msg.sender != nomineeVetter) {
+            revert OnlyNomineeVetter();
+        }
+        if (state(proposalId) != ProposalState.Succeeded || block.number > proposalVettingDeadline(proposalId)) {
+            revert ProposalNotInVettingPeriod();
+        }
         _;
     }
 
@@ -126,10 +140,9 @@ contract SecurityCouncilNomineeElectionGovernor is
         // CHRIS: TODO: we need to check elections cannot have a time less than all the stages put together when initialising
         uint256 thisElectionStartTs = electionToTimestamp(electionCount);
 
-        require(
-            block.timestamp >= thisElectionStartTs,
-            "SecurityCouncilNomineeElectionGovernor: Not enough time has passed since the last election"
-        );
+        if (block.timestamp < thisElectionStartTs) {
+            revert CreateTooEarly(thisElectionStartTs);
+        }
 
         proposalId = GovernorUpgradeable.propose(
             new address[](1),
@@ -146,22 +159,21 @@ contract SecurityCouncilNomineeElectionGovernor is
     ///         A contender cannot be a member of the opposite cohort.
     function addContender(uint256 proposalId) external {
         ElectionInfo storage election = _elections[proposalId];
-        require(
-            !election.isContender[msg.sender],
-            "SecurityCouncilNomineeElectionGovernor: Account is already a contender"
-        );
+
+        if (election.isContender[msg.sender]) {
+            revert AlreadyContender(msg.sender);
+        }
 
         ProposalState state = state(proposalId);
-        require(
-            state == ProposalState.Active,
-            "SecurityCouncilNomineeElectionGovernor: Proposal is not active"
-        );
+
+        if (state != ProposalState.Active) {
+            revert ProposalNotActive(state);
+        }
 
         // check to make sure the contender is not part of the other cohort (the cohort not currently up for election)
-        require(
-            !securityCouncilManager.cohortIncludes(otherCohort(), msg.sender),
-            "SecurityCouncilNomineeElectionGovernor: Account is a member of the opposite cohort"
-        );
+        if (securityCouncilManager.cohortIncludes(otherCohort(), msg.sender)) {
+            revert AccountInOtherCohort(otherCohort(), msg.sender);
+        }
 
         election.isContender[msg.sender] = true;
 
@@ -189,18 +201,11 @@ contract SecurityCouncilNomineeElectionGovernor is
     /// @notice Allows the nomineeVetter to exclude a noncompliant nominee.
     /// @dev    Can be called only after a nomninee election proposal has "succeeded" (voting has ended) and before the nominee vetting period has ended.
     ///         Will revert if the provided account is not a nominee (had less than the required votes).
-    function excludeNominee(uint256 proposalId, address account) external onlyNomineeVetter {
-        require(
-            state(proposalId) == ProposalState.Succeeded,
-            "SecurityCouncilNomineeElectionGovernor: Proposal has not succeeded"
-        );
-        require(
-            block.number <= proposalVettingDeadline(proposalId),
-            "SecurityCouncilNomineeElectionGovernor: Proposal is no longer in the nominee vetting period"
-        );
-
+    function excludeNominee(uint256 proposalId, address account) external onlyNomineeVetterInVettingPeriod(proposalId) {
         ElectionInfo storage election = _elections[proposalId];
-        require(!election.isExcluded[account], "Nominee already excluded");
+        if (election.isExcluded[account]) {
+            revert NomineeAlreadyExcluded(account);
+        }
 
         election.isExcluded[account] = true;
         election.excludedNomineeCount++;
@@ -211,32 +216,22 @@ contract SecurityCouncilNomineeElectionGovernor is
     /// @notice Allows the nomineeVetter to explicitly include a nominee if there are fewer nominees than the target.
     /// @dev    Can be called only after a proposal has succeeded (voting has ended) and before the nominee vetting period has ended.
     ///         Will revert if the provided account is already a nominee
-    function includeNominee(uint256 proposalId, address account) external onlyNomineeVetter {
-        require(
-            state(proposalId) == ProposalState.Succeeded,
-            "SecurityCouncilNomineeElectionGovernor: Proposal has not succeeded"
-        );
-        require(
-            block.number <= proposalVettingDeadline(proposalId),
-            "SecurityCouncilNomineeElectionGovernor: Proposal is no longer in the nominee vetting period"
-        );
-        require(
-            !isNominee(proposalId, account),
-            "SecurityCouncilNomineeElectionGovernor: Nominee already added"
-        );
+    function includeNominee(uint256 proposalId, address account) external onlyNomineeVetterInVettingPeriod(proposalId) {
+        if (isNominee(proposalId, account)) {
+            revert NomineeAlreadyAdded();
+        }
 
         uint256 compliantNomineeCount =
             nomineeCount(proposalId) - _elections[proposalId].excludedNomineeCount;
-        require(
-            compliantNomineeCount < targetNomineeCount,
-            "SecurityCouncilNomineeElectionGovernor: Compliant nominee count at target"
-        );
+
+        if (compliantNomineeCount >= targetNomineeCount) {
+            revert CompliantNomineeTargetHit();
+        }
 
         // can't include nominees from the other cohort
-        require(
-            !securityCouncilManager.cohortIncludes(otherCohort(), account),
-            "SecurityCouncilNomineeElectionGovernor: Account is a member of the opposite cohort"
-        );
+        if (securityCouncilManager.cohortIncludes(otherCohort(), account)) {
+            revert AccountInOtherCohort(otherCohort(), account);
+        }
 
         _addNominee(proposalId, account);
     }
@@ -257,19 +252,18 @@ contract SecurityCouncilNomineeElectionGovernor is
         bytes[] memory, /* calldatas */
         bytes32 /*descriptionHash*/
     ) internal virtual override {
-        require(
-            block.number > proposalVettingDeadline(proposalId),
-            "SecurityCouncilNomineeElectionGovernor: Proposal is still in the nominee vetting period"
-        );
+        if (block.number <= proposalVettingDeadline(proposalId)) {
+            revert ProposalInVettingPeriod();
+        }
 
         ElectionInfo storage election = _elections[proposalId];
 
         uint256 compliantNomineeCount = nomineeCount(proposalId) - election.excludedNomineeCount;
 
-        require(
-            compliantNomineeCount >= targetNomineeCount,
-            "SecurityCouncilNomineeElectionGovernor: Insufficient compliant nominees"
-        );
+        if (compliantNomineeCount < targetNomineeCount) {
+            revert InsufficientCompliantNomineeCount(compliantNomineeCount);
+        }
+
         securityCouncilMemberElectionGovernor.proposeFromNomineeElectionGovernor();
     }
 
@@ -376,8 +370,6 @@ contract SecurityCouncilNomineeElectionGovernor is
         override
         returns (uint256)
     {
-        revert(
-            "SecurityCouncilNomineeElectionGovernor: Proposing is not allowed, call createElection instead"
-        );
+        revert ProposeDisabled();
     }
 }

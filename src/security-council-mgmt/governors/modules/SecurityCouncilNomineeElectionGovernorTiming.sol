@@ -25,21 +25,25 @@ abstract contract SecurityCouncilNomineeElectionGovernorTiming is
     /// @dev    This is the amount of time after voting ends that the nomineeVetter can exclude noncompliant nominees
     uint256 public nomineeVettingDuration;
 
+    error InvalidStartDate();
+    error StartDateTooEarly();
+
     function __SecurityCouncilNomineeElectionGovernorIndexingTiming_init(
         Date memory _firstNominationStartDate,
         uint256 _nomineeVettingDuration
     ) internal onlyInitializing {
-        require(
-            DateTimeLib.isSupportedDateTime({
-                year: _firstNominationStartDate.year,
-                month: _firstNominationStartDate.month,
-                day: _firstNominationStartDate.day,
-                hour: _firstNominationStartDate.hour,
-                minute: 0,
-                second: 0
-            }),
-            "SecurityCouncilNomineeElectionGovernor: Invalid first nomination start date"
-        );
+        bool isSupportedDateTime = DateTimeLib.isSupportedDateTime({
+            year: _firstNominationStartDate.year,
+            month: _firstNominationStartDate.month,
+            day: _firstNominationStartDate.day,
+            hour: _firstNominationStartDate.hour,
+            minute: 0,
+            second: 0
+        });
+
+        if (!isSupportedDateTime) {
+            revert InvalidStartDate();
+        }
 
         // make sure the start date is in the future
         uint256 startTimestamp = DateTimeLib.dateTimeToTimestamp({
@@ -51,10 +55,9 @@ abstract contract SecurityCouncilNomineeElectionGovernorTiming is
             second: 0
         });
 
-        require(
-            startTimestamp > block.timestamp,
-            "SecurityCouncilNomineeElectionGovernor: First nomination start date must be in the future"
-        );
+        if (startTimestamp <= block.timestamp) {
+            revert StartDateTooEarly();
+        }
 
         firstNominationStartDate = _firstNominationStartDate;
         nomineeVettingDuration = _nomineeVettingDuration;
