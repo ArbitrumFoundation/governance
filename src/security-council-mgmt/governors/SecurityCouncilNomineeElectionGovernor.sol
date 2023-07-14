@@ -304,6 +304,9 @@ contract SecurityCouncilNomineeElectionGovernor is
         );
     }
 
+    // henry: todo: `compliantNomineeCount(uint) public`, so we don't have to do the subtraction in multiple places
+    // also test it in the testExcludeNominee test
+
     /// @notice returns cohort currently up for election
     function currentCohort() public view returns (Cohort) {
         return electionIndexToCohort(electionCount - 1);

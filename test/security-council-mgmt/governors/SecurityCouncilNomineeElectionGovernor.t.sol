@@ -268,6 +268,8 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
         vm.roll(governor.proposalDeadline(proposalId) + 1);
         vm.prank(initParams.nomineeVetter);
         governor.excludeNominee(proposalId, _contender(0));
+
+        // make sure state is correct
         assertTrue(governor.isExcluded(proposalId, _contender(0)));
         assertEq(governor.excludedNomineeCount(proposalId), 1);
 
@@ -280,6 +282,65 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
             )
         );
         governor.excludeNominee(proposalId, _contender(0));
+    }
+
+    function testIncludeNominee() public {
+        // going to skip cases checking the onlyNomineeVetterInVettingPeriod modifier
+
+        uint256 proposalId = _propose();
+
+        // create a nominee
+        vm.roll(governor.proposalDeadline(proposalId));
+        _addContender(proposalId, _contender(0));
+        _mockGetPastVotes(_voter(0), governor.quorum(proposalId));
+        _castVoteForContender(proposalId, _voter(0), _contender(0), governor.quorum(proposalId));
+
+        // should fail if the account is already a nominee
+        vm.roll(governor.proposalDeadline(proposalId) + 1);
+        vm.prank(initParams.nomineeVetter);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                SecurityCouncilNomineeElectionGovernorCountingUpgradeable.NomineeAlreadyAdded.selector
+            )
+        );
+        governor.includeNominee(proposalId, _contender(0));
+
+        // should fail if the account is part of the other cohort
+        _mockCohortIncludes(Cohort.SECOND, _contender(1), true);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                SecurityCouncilNomineeElectionGovernor.AccountInOtherCohort.selector,
+                Cohort.SECOND,
+                _contender(1)
+            )
+        );
+        vm.prank(initParams.nomineeVetter);
+        governor.includeNominee(proposalId, _contender(1));
+
+        // should succeed if the account is not a nominee, we havent reached the target nominee count, and the account is not a member of the opposite cohort
+        _mockCohortIncludes(Cohort.SECOND, _contender(1), false);
+        vm.prank(initParams.nomineeVetter);
+        governor.includeNominee(proposalId, _contender(1));
+
+        // make sure state is correct
+        assertTrue(governor.isNominee(proposalId, _contender(1)));
+        assertEq(governor.nomineeCount(proposalId), 2);
+
+        // make sure that we can't add more nominees than the target count
+        for (uint8 i = 0; i < initParams.targetNomineeCount - 2; i++) {
+            _mockCohortIncludes(Cohort.SECOND, _contender(i + 2), false);
+            vm.prank(initParams.nomineeVetter);
+            governor.includeNominee(proposalId, _contender(i + 2));
+        }
+        _mockCohortIncludes(Cohort.SECOND, _contender(uint8(initParams.targetNomineeCount)), false);
+        vm.prank(initParams.nomineeVetter);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                SecurityCouncilNomineeElectionGovernor.CompliantNomineeTargetHit
+                    .selector
+            )
+        );
+        governor.includeNominee(proposalId, _contender(uint8(initParams.targetNomineeCount)));
     }
 
     // helpers
@@ -328,6 +389,18 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
             address(initParams.token),
             abi.encodeWithSelector(initParams.token.getPastTotalSupply.selector),
             abi.encode(amount)
+        );
+    }
+
+    function _mockCohortIncludes(Cohort cohort, address member, bool ans) internal {
+        vm.mockCall(
+            address(initParams.securityCouncilManager),
+            abi.encodeWithSelector(
+                initParams.securityCouncilManager.cohortIncludes.selector,
+                cohort,
+                member
+            ),
+            abi.encode(ans)
         );
     }
 
