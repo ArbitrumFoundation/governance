@@ -378,6 +378,67 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
         _execute(descriptionHash);
     }
 
+    function testCountVote() public {
+        uint256 proposalId = _propose();
+
+        // mock some votes for the whole test here
+        _mockGetPastVotes(_voter(0), governor.quorum(proposalId) * 2);
+
+        // make sure params is 64 bytes long
+        vm.expectRevert(abi.encodeWithSelector(SecurityCouncilNomineeElectionGovernorCountingUpgradeable.MustVoteWithParams.selector));
+        vm.prank(_voter(0));
+        governor.castVoteWithReasonAndParams({
+            proposalId: proposalId,
+            support: 0,
+            reason: "",
+            params: abi.encode(_contender(0))
+        });
+
+        // cannot vote for a contender who hasn't added themself
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                SecurityCouncilNomineeElectionGovernorCountingUpgradeable.NotEligibleContender.selector
+            )
+        );
+        _castVoteForContender(proposalId, _voter(0), _contender(0), 1);
+
+        // can vote for a contender who has added themself
+        _addContender(proposalId, _contender(0));
+        _castVoteForContender(proposalId, _voter(0), _contender(0), 1);
+
+        // check state
+        assertEq(governor.votesUsed(proposalId, _voter(0)), 1);
+        assertEq(governor.votesReceived(proposalId, _contender(0)), 1);
+        assertTrue(governor.hasVoted(proposalId, _voter(0)));
+        assertFalse(governor.isNominee(proposalId, _contender(0)));
+
+        // push the candidate over the line, make sure that any excess votes aren't used
+        _castVoteForContender(proposalId, _voter(0), _contender(0), governor.quorum(proposalId) + 100);
+        assertEq(governor.votesUsed(proposalId, _voter(0)), governor.quorum(proposalId));
+        assertEq(governor.votesReceived(proposalId, _contender(0)), governor.quorum(proposalId));
+        assertTrue(governor.isNominee(proposalId, _contender(0)));
+        assertEq(governor.nomineeCount(proposalId), 1);
+
+        // make sure that we can't vote for a nominee
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                SecurityCouncilNomineeElectionGovernorCountingUpgradeable.NomineeAlreadyAdded.selector
+            )
+        );
+        _castVoteForContender(proposalId, _voter(0), _contender(0), 1);
+
+        // make sure we can't use more votes than we have
+        _addContender(proposalId, _contender(1));
+        _addContender(proposalId, _contender(2));
+        _castVoteForContender(proposalId, _voter(0), _contender(1), governor.quorum(proposalId));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                SecurityCouncilNomineeElectionGovernorCountingUpgradeable.InsufficientTokens.selector
+            )
+        );
+        _castVoteForContender(proposalId, _voter(0), _contender(2), 1);
+    }
+
     // helpers
 
     function _voter(uint8 i) internal pure returns (address) {
