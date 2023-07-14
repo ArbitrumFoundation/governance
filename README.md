@@ -4,6 +4,7 @@ This project contains smart contracts for Arbitrum token and governance. Please 
 * [Proposal lifecycle](./docs/proposal_lifecycle_example.md)
 * [Governance Action Contracts](./src/gov-action-contracts/README.md)
 * [Security Audit](./audits/trail_of_bits_governance_report_1_6_2023.pdf)
+* [Gotchas](./docs/gotchas.md)
 
 ## Run Foundry unit tests
 
