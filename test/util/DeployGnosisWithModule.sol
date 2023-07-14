@@ -19,8 +19,10 @@ contract DeployGnosisWithModule is Test {
         safe.setup(
             _owners, _threshold, address(0), "0x", address(0), address(0), 0, payable(address(0))
         );
-        vm.prank(address(safe));
-        safe.enableModule(_module);
+        if (_module != address(0)) {
+            vm.prank(address(safe));
+            safe.enableModule(_module);
+        }
         return address(safe);
     }
 }

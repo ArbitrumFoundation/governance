@@ -6,7 +6,7 @@ import "../UpgradeExecutor.sol";
 import "../L1ArbitrumTimelock.sol";
 import "./SecurityCouncilMgmtUtils.sol";
 import "./interfaces/ISecurityCouncilManager.sol";
-import "./SecurityCouncilUpgradeAction.sol";
+import "./SecurityCouncilMemberSyncAction.sol";
 import "../UpgradeExecRouterBuilder.sol";
 import "@arbitrum/nitro-contracts/src/precompiles/ArbSys.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
@@ -357,16 +357,16 @@ contract SecurityCouncilManager is
     /// @notice Generate unique salt for timelock scheduling
     /// @param _members Data to input / hash
     function generateSalt(address[] memory _members) external view returns (bytes32) {
+        // CHRIS: TODO: make this func pure by providing the update nonce
         return keccak256(abi.encodePacked(_members, updateNonce));
     }
 
-    /// @dev Create a union of the second and first cohort, then update all Security Councils under management with that unioned array.
-    ///      Councils on other chains will need to be scheduled through timelocks and target upgrade executors
-    function _scheduleUpdate() internal {
-        // always update the nonce - this is used to ensure that proposals in the timelocks are unique
-        updateNonce++;
-        // TODO: enforce ordering (on the L1 side) with a nonce? is no contract level ordering guarunee for updates ok?
-
+    // CHRIS: TODO: docs
+    function getScheduleUpdateData()
+        public
+        view
+        returns (address[] memory, address, bytes memory)
+    {
         // build a union array of security council members
         address[] memory newMembers = getBothCohorts();
 
@@ -381,7 +381,7 @@ contract SecurityCouncilManager is
             actionAddresses[i] = securityCouncilData.updateAction;
             chainIds[i] = securityCouncilData.chainId;
             actionDatas[i] = abi.encodeWithSelector(
-                SecurityCouncilUpgradeAction.perform.selector,
+                SecurityCouncilMemberSyncAction.perform.selector,
                 securityCouncilData.securityCouncil,
                 newMembers
             );
@@ -394,6 +394,16 @@ contract SecurityCouncilManager is
             actionDatas,
             this.generateSalt(newMembers) // must be unique as the proposal hash is used for replay protection in the L1 timelock
         );
+        return (newMembers, to, data);
+    }
+
+    /// @dev Create a union of the second and first cohort, then update all Security Councils under management with that unioned array.
+    ///      Councils on other chains will need to be scheduled through timelocks and target upgrade executors
+    function _scheduleUpdate() internal {
+        // always update the nonce - this is used to ensure that proposals in the timelocks are unique
+        updateNonce++;
+        // TODO: enforce ordering (on the L1 side) with a nonce? is no contract level ordering guarunee for updates ok?
+        (address[] memory newMembers, address to, bytes memory data) = this.getScheduleUpdateData();
 
         ArbitrumTimelock(l2CoreGovTimelock).schedule({
             target: to, // ArbSys address - this will trigger a call from L2->L1

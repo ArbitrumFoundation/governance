@@ -6,7 +6,7 @@ import "./SecurityCouncilMgmtUtils.sol";
 
 /// @notice Action contract for updating security council members. Used by the security council management system.
 ///         Expected to be delegate called into by an Upgrade Executor
-contract SecurityCouncilUpgradeAction {
+contract SecurityCouncilMemberSyncAction {
     error PreviousOwnerNotFound(address targetOwner, address securityCouncil);
     error ExecFromModuleError(bytes data, address securityCouncil);
 

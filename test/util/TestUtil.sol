@@ -54,4 +54,30 @@ library TestUtil {
 
         return true;
     }
+
+    function randomArray(uint256 length, uint256 seed) public pure returns (uint256[] memory) {
+        uint256[] memory arr = new uint256[](length);
+        for (uint256 i = 0; i < length; i++) {
+            arr[i] = uint256(keccak256(abi.encode(seed, i)));
+        }
+        return arr;
+    }
+
+    function randomAddresses(uint256 length, uint256 seed) public pure returns (address[] memory) {
+        uint256[] memory arr = randomArray(length, seed);
+        address[] memory addresses = new address[](length);
+        for (uint256 i = 0; i < length; i++) {
+            addresses[i] = address(uint160(arr[i]));
+        }
+        return addresses;
+    }
+
+    function indexOf(address[] memory array, address element) public pure returns (uint256) {
+        for (uint256 i = 0; i < array.length; i++) {
+            if (array[i] == element) {
+                return i;
+            }
+        }
+        return type(uint256).max;
+    }
 }
