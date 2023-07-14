@@ -5,6 +5,7 @@ import "../../L2ArbitrumGovernor.sol";
 import "./../interfaces/ISecurityCouncilManager.sol";
 import "../../Util.sol";
 import "../Common.sol";
+import "forge-std/Test.sol";
 
 contract SecurityCouncilMemberRemovalGovernor is L2ArbitrumGovernor {
     uint256 public constant voteSuccessDenominator = 10_000;
@@ -18,7 +19,7 @@ contract SecurityCouncilMemberRemovalGovernor is L2ArbitrumGovernor {
 
     error InvalidOperationsLength();
     error TargetNotManager(address target);
-    error ValueNotZero();
+    error ValueNotZero(uint256 value);
     error UnexpectedCalldataLength();
     error CallNotRemoveMember(bytes4 selector);
     error MemberNotFound(address memberToRemove);
@@ -86,7 +87,7 @@ contract SecurityCouncilMemberRemovalGovernor is L2ArbitrumGovernor {
             revert TargetNotManager(targets[0]);
         }
         if (values[0] != 0) {
-            revert ValueNotZero();
+            revert ValueNotZero(values[0]);
         }
         if (calldatas[0].length != 36) {
             revert UnexpectedCalldataLength();
@@ -120,7 +121,8 @@ contract SecurityCouncilMemberRemovalGovernor is L2ArbitrumGovernor {
     {
         (uint256 againstVotes, uint256 forVotes,) = proposalVotes(proposalId);
 
-        return voteSuccessNumerator * forVotes > againstVotes * voteSuccessDenominator;
+        // for-votes / total-votes  >  success-numerator/ success-denominator
+        return voteSuccessDenominator * forVotes > (forVotes + againstVotes) * voteSuccessNumerator;
     }
 
     ///@notice A removal proposal if a theshold of all cast votes vote in favor of removal. Thus, abstaining would be exactly equivalent to voting against. Thus, to prevent any confusing, abstaining is disallowed.

@@ -12,9 +12,15 @@ import "./../util/TestUtil.sol";
 
 import "@openzeppelin/contracts-upgradeable/governance/IGovernorUpgradeable.sol";
 
+address constant memberToRemove = address(999_999);
+
 contract MockSecurityCouncilManager {
     function firstCohortIncludes(address x) external returns (bool) {
-        return true;
+        return x == memberToRemove;
+    }
+
+    function secondCohortIncludes(address x) external returns (bool) {
+        return false;
     }
 }
 
@@ -23,7 +29,7 @@ contract SecurityCouncilMemberRemovalGovernorTest is Test {
     uint256 initialTokenSupply = 50_000;
     address tokenOwner = address(238);
     uint256 votingPeriod = 180_000;
-    uint256 votingDelay = 0;
+    uint256 votingDelay = 10;
     address excludeListMember = address(339);
     uint256 quorumNumerator = 500;
     uint256 proposalThreshold = 0;
@@ -31,58 +37,225 @@ contract SecurityCouncilMemberRemovalGovernorTest is Test {
 
     address[] stubAddressArray = [address(640)];
     address someRando = address(741);
-    address executor = address(842);
-    uint256 _voteSuccessNumerator = 2;
+    address owner = address(842);
+    uint256 voteSuccessNumerator = 6000;
     ISecurityCouncilManager securityCouncilManager;
-    SecurityCouncilMemberRemovalGovernor securityCouncilMemberRemovalGovernor;
+    SecurityCouncilMemberRemovalGovernor scRemovalGov;
 
-    address memberToRemove = address(999_999);
+    address[] validTargets = new address[](1);
+    uint256[] validValues = new uint256[](1);
+
+    bytes[] validCallDatas = new bytes[](1);
+
+    string description = "xyz";
+
+    address rando = address(98_765);
+
+    uint256 newVoteSuccessNumerator = 3;
+
+    address secondTokenHolder = address(23_456_789);
+    address thirdTokenHolder = address(3_389_234);
 
     function setUp() public returns (SecurityCouncilMemberRemovalGovernor) {
         L2ArbitrumToken token =
             L2ArbitrumToken(TestUtil.deployProxy(address(new L2ArbitrumToken())));
         token.initialize(l1TokenAddress, initialTokenSupply, tokenOwner);
 
+        vm.startPrank(tokenOwner);
+        token.delegate(tokenOwner);
+        token.transfer(secondTokenHolder, 19_999);
+        token.transfer(thirdTokenHolder, 5001);
+        vm.stopPrank();
+
+        vm.prank(secondTokenHolder);
+        token.delegate(secondTokenHolder);
+
+        vm.prank(thirdTokenHolder);
+        token.delegate(thirdTokenHolder);
+
         ArbitrumTimelock timelock =
             ArbitrumTimelock(payable(TestUtil.deployProxy(address(new ArbitrumTimelock()))));
         timelock.initialize(1, stubAddressArray, stubAddressArray);
 
-        securityCouncilMemberRemovalGovernor = SecurityCouncilMemberRemovalGovernor(
+        scRemovalGov = SecurityCouncilMemberRemovalGovernor(
             payable(TestUtil.deployProxy(address(new SecurityCouncilMemberRemovalGovernor())))
         );
 
         securityCouncilManager = ISecurityCouncilManager(address(new MockSecurityCouncilManager()));
-        securityCouncilMemberRemovalGovernor.initialize(
-            _voteSuccessNumerator,
+        scRemovalGov.initialize(
+            voteSuccessNumerator,
             securityCouncilManager,
             token,
             timelock,
-            executor,
+            owner,
             votingDelay,
             votingPeriod,
             quorumNumerator,
             proposalThreshold,
             initialVoteExtension
         );
-        return securityCouncilMemberRemovalGovernor;
+        validTargets[0] = address(securityCouncilManager);
+        validCallDatas[0] =
+            abi.encodeWithSelector(ISecurityCouncilManager.removeMember.selector, memberToRemove);
+
+        return scRemovalGov;
     }
 
     function testSuccessfulProposalAndCantAbstain() public {
-        address[] memory targets = new address[](1);
-        targets[0] = address(securityCouncilManager);
-
-        uint256[] memory values = new uint256[](1);
-
-        bytes[] memory calldatas = new bytes[](1);
-        calldatas[0] =
-            abi.encodeWithSelector(ISecurityCouncilManager.removeMember.selector, memberToRemove);
-
-        string memory description = "xyz";
-
         uint256 proposalId =
-            securityCouncilMemberRemovalGovernor.propose(targets, values, calldatas, description);
+            scRemovalGov.propose(validTargets, validValues, validCallDatas, description);
 
-        // securityCouncilMemberRemovalGovernor.castVote(proposalId, 2);
+        assertTrue(
+            scRemovalGov.state(proposalId) == IGovernorUpgradeable.ProposalState.Pending,
+            "proposal created"
+        );
+        vm.roll(block.number + votingDelay + 1);
+        vm.expectRevert(
+            abi.encodeWithSelector(SecurityCouncilMemberRemovalGovernor.AbstainDisallowed.selector)
+        );
+        scRemovalGov.castVote(proposalId, 2);
     }
 
+    function testProposalCreationTargetRestriction() public {
+        validTargets[0] = rando;
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                SecurityCouncilMemberRemovalGovernor.TargetNotManager.selector, rando
+            )
+        );
+        uint256 proposalId =
+            scRemovalGov.propose(validTargets, validValues, validCallDatas, description);
+    }
+
+    function testProposalCreationValuesRestriction() public {
+        validValues[0] = 1;
+
+        vm.expectRevert(
+            abi.encodeWithSelector(SecurityCouncilMemberRemovalGovernor.ValueNotZero.selector, 1)
+        );
+
+        uint256 proposalId =
+            scRemovalGov.propose(validTargets, validValues, validCallDatas, description);
+    }
+
+    function testProposalCreationCallRestriction() public {
+        validCallDatas[0] =
+            abi.encodeWithSelector(ISecurityCouncilManager.addMember.selector, memberToRemove);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                SecurityCouncilMemberRemovalGovernor.CallNotRemoveMember.selector,
+                ISecurityCouncilManager.addMember.selector
+            )
+        );
+        uint256 proposalId =
+            scRemovalGov.propose(validTargets, validValues, validCallDatas, description);
+    }
+
+    function testProposalCreationCallParamRestriction() public {
+        validCallDatas[0] =
+            abi.encodeWithSelector(ISecurityCouncilManager.removeMember.selector, rando);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                SecurityCouncilMemberRemovalGovernor.MemberNotFound.selector, rando
+            )
+        );
+        uint256 proposalId =
+            scRemovalGov.propose(validTargets, validValues, validCallDatas, description);
+    }
+
+    function testSetVoteSuccessNumeratorAffordance() public {
+        vm.prank(rando);
+        vm.expectRevert("Ownable: caller is not the owner");
+        scRemovalGov.setVoteSuccessNumerator(newVoteSuccessNumerator);
+
+        vm.prank(owner);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                SecurityCouncilMemberRemovalGovernor.InvalidVoteSuccessNumerator.selector, 0
+            )
+        );
+        scRemovalGov.setVoteSuccessNumerator(0);
+
+        vm.prank(owner);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                SecurityCouncilMemberRemovalGovernor.InvalidVoteSuccessNumerator.selector, 10_001
+            )
+        );
+        scRemovalGov.setVoteSuccessNumerator(10_001);
+    }
+
+    function testSetVoteSuccessNumerator() public {
+        vm.prank(owner);
+        scRemovalGov.setVoteSuccessNumerator(newVoteSuccessNumerator);
+        assertEq(
+            scRemovalGov.voteSuccessNumerator(),
+            newVoteSuccessNumerator,
+            "newVoteSuccessNumerator set"
+        );
+    }
+
+    function testSuccessNumeratorInsufficientVotes() public {
+        uint256 proposalId =
+            scRemovalGov.propose(validTargets, validValues, validCallDatas, description);
+
+        assertTrue(
+            scRemovalGov.state(proposalId) == IGovernorUpgradeable.ProposalState.Pending,
+            "proposal created"
+        );
+        vm.roll(block.number + votingDelay + 1);
+        assertTrue(
+            scRemovalGov.state(proposalId) == IGovernorUpgradeable.ProposalState.Active,
+            "proposal active"
+        );
+
+        vm.prank(tokenOwner);
+        scRemovalGov.castVote(proposalId, 1);
+
+        vm.prank(secondTokenHolder);
+        scRemovalGov.castVote(proposalId, 0);
+
+        vm.prank(thirdTokenHolder);
+        scRemovalGov.castVote(proposalId, 0);
+
+        vm.roll(block.number + votingPeriod + 1);
+
+        assertTrue(
+            scRemovalGov.state(proposalId) == IGovernorUpgradeable.ProposalState.Defeated,
+            "prposal fails if 50% for in favor"
+        );
+    }
+
+    function testSuccessNumeratorSufficientVotes() public {
+        uint256 proposalId =
+            scRemovalGov.propose(validTargets, validValues, validCallDatas, description);
+
+        assertTrue(
+            scRemovalGov.state(proposalId) == IGovernorUpgradeable.ProposalState.Pending,
+            "proposal created"
+        );
+        vm.roll(block.number + votingDelay + 1);
+        assertTrue(
+            scRemovalGov.state(proposalId) == IGovernorUpgradeable.ProposalState.Active,
+            "proposal active"
+        );
+
+        vm.prank(tokenOwner);
+        scRemovalGov.castVote(proposalId, 1);
+
+        vm.prank(secondTokenHolder);
+        scRemovalGov.castVote(proposalId, 0);
+
+        vm.prank(thirdTokenHolder);
+        scRemovalGov.castVote(proposalId, 1);
+
+        vm.roll(block.number + votingPeriod + 1);
+
+        assertTrue(
+            scRemovalGov.state(proposalId) == IGovernorUpgradeable.ProposalState.Succeeded,
+            "proposal succeeds when over 60% vote in favor"
+        );
+    }
 }
