@@ -6,7 +6,7 @@ import "../UpgradeExecutor.sol";
 import "../L1ArbitrumTimelock.sol";
 import "./SecurityCouncilMgmtUtils.sol";
 import "./interfaces/ISecurityCouncilManager.sol";
-import "./SecurityCouncilUpgradeAction.sol";
+import "./SecurityCouncilMemberSyncAction.sol";
 import "../UpgradeExecRouterBuilder.sol";
 import "@arbitrum/nitro-contracts/src/precompiles/ArbSys.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
@@ -382,7 +382,7 @@ contract SecurityCouncilManager is
             actionAddresses[i] = securityCouncilData.updateAction;
             chainIds[i] = securityCouncilData.chainId;
             actionDatas[i] = abi.encodeWithSelector(
-                SecurityCouncilUpgradeAction.perform.selector,
+                SecurityCouncilMemberSyncAction.perform.selector,
                 securityCouncilData.securityCouncil,
                 newMembers
             );

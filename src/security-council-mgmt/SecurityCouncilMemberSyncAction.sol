@@ -6,7 +6,7 @@ import "./SecurityCouncilMgmtUtils.sol";
 
 /// @notice Action contract for updating security council members. Used by the security council management system.
 ///         Expected to be delegate called into by an Upgrade Executor
-contract SecurityCouncilUpgradeAction {
+contract SecurityCouncilMemberSyncAction {
     /// @dev Used in the gnosis safe as the first entry in their ownership linked list
     address internal constant SENTINEL_OWNERS = address(0x1);
 
@@ -73,7 +73,7 @@ contract SecurityCouncilUpgradeAction {
             }
             previousOwner = currentOwner;
         }
-        revert("SecurityCouncilUpgradeAction: Prev owner not found");
+        revert("SecurityCouncilMemberSyncAction: Prev owner not found");
     }
 
     /// @notice Execute provided operation via gnosis safe's trusted execTransactionFromModule entry point
@@ -82,7 +82,7 @@ contract SecurityCouncilUpgradeAction {
             securityCouncil.execTransactionFromModule(
                 address(securityCouncil), 0, data, OpEnum.Operation.Call
             ),
-            "SecurityCouncilUpgradeAction: execTransactionFromModule failed"
+            "SecurityCouncilMemberSyncAction: execTransactionFromModule failed"
         );
     }
 }

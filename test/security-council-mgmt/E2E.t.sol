@@ -17,8 +17,69 @@ import
 import "@gnosis.pm/safe-contracts/contracts/GnosisSafeL2.sol";
 import "@gnosis.pm/safe-contracts/contracts/proxies/GnosisSafeProxyFactory.sol";
 import "../../src/gov-action-contracts/address-registries/L2AddressRegistry.sol";
+import "../util/DeployGnosisWithModule.sol";
 
-contract E2E is Test {
+contract ArbSysMock {
+    event ArbSysL2ToL1Tx(address from, address to, uint256 value, bytes data);
+
+    uint256 counter;
+
+    struct L2ToL1Tx {
+        address from;
+        address to;
+        uint256 value;
+        bytes data;
+    }
+
+    L2ToL1Tx[] public txs;
+
+    function sendTxToL1(address destination, bytes calldata calldataForL1)
+        external
+        payable
+        returns (uint256 exitNum)
+    {
+        exitNum = counter;
+        counter = exitNum + 1;
+        txs.push(L2ToL1Tx(msg.sender, destination, msg.value, calldataForL1));
+        emit ArbSysL2ToL1Tx(msg.sender, destination, msg.value, calldataForL1);
+        return exitNum;
+    }
+
+    function getTx(uint256 index) public view returns (L2ToL1Tx memory) {
+        return txs[index];
+    }
+}
+
+library Parser {
+    // create a struct for all the arguments to the scheduleBatch function
+    struct ScheduleBatchArgs {
+        address[] targets;
+        uint256[] values;
+        bytes[] payloads;
+        bytes32 predecessor;
+        bytes32 salt;
+        uint256 delay;
+    }
+
+    function scheduleBatchArgs(bytes calldata data)
+        public
+        pure
+        returns (ScheduleBatchArgs memory)
+    {
+        (
+            address[] memory targets,
+            uint256[] memory values,
+            bytes[] memory payloads,
+            bytes32 predecessor,
+            bytes32 salt,
+            uint256 delay
+        ) = abi.decode(data[4:], (address[], uint256[], bytes[], bytes32, bytes32, uint256));
+
+        return ScheduleBatchArgs(targets, values, payloads, predecessor, salt, delay);
+    }
+}
+
+contract E2E is Test, DeployGnosisWithModule {
     uint160 constant offset = uint160(0x1111000000000000000000000000000000001111);
 
     function applyL1ToL2Alias(address l1Address) internal pure returns (address) {
@@ -63,19 +124,13 @@ contract E2E is Test {
         member9,
         member10,
         member11,
-        member12,
-        member13,
-        member14,
-        member15,
-        member16,
-        member17,
-        member18
+        member12
     ];
     address[] cohort1 = [member1, member2, member3, member4, member5, member6];
     address[] cohort2 = [member7, member8, member9, member10, member11, member12];
     address[] newCohort1 = [member13, member14, member15, member16, member17, member18];
 
-    uint256 secCouncilThreshold = 4;
+    uint256 secCouncilThreshold = 9;
 
     // token
     address l1Token = address(139);
@@ -121,8 +176,6 @@ contract E2E is Test {
         _l2TreasuryMinTimelockDelay: l2TreasuryMinTimelockDelay
     });
 
-    address bridge = address(10_002);
-
     uint256 removalGovVotingDelay = 47;
     uint256 removalGovVotingPeriod = 48;
     uint256 removalGovQuorumNumerator = 200;
@@ -142,25 +195,26 @@ contract E2E is Test {
     uint256 chain1Id = 937;
     uint256 chain2Id = 837;
 
-    function deploySafe(address[] memory _owners, uint256 _threshold, address _module)
-        internal
-        returns (GnosisSafeL2)
-    {
-        // CHRIS: TODO: we should share this
-        GnosisSafeL2 safeLogic = new GnosisSafeL2();
-        GnosisSafeProxyFactory safeProxyFactory = new GnosisSafeProxyFactory();
-
-        GnosisSafeProxy safeProxy = safeProxyFactory.createProxy(address(safeLogic), "0x");
-        GnosisSafeL2 safe = GnosisSafeL2(payable(address(safeProxy)));
-        safe.setup(
-            _owners, _threshold, address(0), "0x", address(0), address(0), 0, payable(address(0))
-        );
-
-        if (_module != address(0)) {
-            vm.prank(address(safe));
-            safe.enableModule(_module);
+    function checkSafeUpdated(
+        GnosisSafeL2 safe,
+        address[] memory oldCohort1,
+        address[] memory oldCohort2,
+        address[] memory newCohort,
+        uint256 threshold
+    ) internal view {
+        address[] memory currentOwners = safe.getOwners();
+        require(currentOwners.length == 12, "not 12 owners");
+        require(safe.getThreshold() == threshold, "threshold changed");
+        // check that each cohort1 is a not an owner of moduleL1Safe
+        for (uint256 i = 0; i < oldCohort1.length; i++) {
+            require(!safe.isOwner(oldCohort1[i]), "old cohort 1 member not removed");
         }
-        return safe;
+        for (uint256 i = 0; i < oldCohort2.length; i++) {
+            require(safe.isOwner(oldCohort2[i]), "old cohort 2 member missing");
+        }
+        for (uint256 i = 0; i < newCohort.length; i++) {
+            require(safe.isOwner(newCohort[i]), "new cohort 1 member not added");
+        }
     }
 
     struct DeployData {
@@ -171,8 +225,8 @@ contract E2E is Test {
         GnosisSafeL2 moduleL2Safe;
         GnosisSafeL2 moduleL1Safe;
         GnosisSafeL2 moduleL2SafeNonEmergency;
-        SecurityCouncilUpgradeAction l2UpdateAction;
-        SecurityCouncilUpgradeAction l1UpdateAction;
+        SecurityCouncilMemberSyncAction l2UpdateAction;
+        SecurityCouncilMemberSyncAction l1UpdateAction;
         SecurityCouncilData[] councilData;
         ChainAndUpExecLocation[] cExecLocs;
         L2SecurityCouncilMgmtFactory.DeployedContracts secDeployedContracts;
@@ -185,6 +239,7 @@ contract E2E is Test {
     }
 
     function deploy() internal {
+        // set the current gas 
         vm.roll(1000);
         DeployData memory vars;
 
@@ -204,7 +259,7 @@ contract E2E is Test {
             DeployedTreasuryContracts memory l2DeployedTreasuryContracts
         ) = vars.l2GovFac.deployStep1(l2DeployParams);
 
-        vars.inbox = new InboxMock(bridge);
+        vars.inbox = new InboxMock(address(0));
         {
             (L1ArbitrumTimelock l1Timelock,, UpgradeExecutor l1Executor) = vars.l1GovFac.deployStep2(
                 address(upExecLogic),
@@ -217,7 +272,7 @@ contract E2E is Test {
             vars.l1Executor = l1Executor;
         }
 
-        vars.l2GovFac.deployStep3(applyL1ToL2Alias(address(vars.inbox)));
+        vars.l2GovFac.deployStep3(applyL1ToL2Alias(address(vars.l1Timelock)));
 
         // deploy sec council
         vars.l2AddressRegistry = new L2AddressRegistry(
@@ -229,14 +284,22 @@ contract E2E is Test {
 
         vars.secFac = new L2SecurityCouncilMgmtFactory();
 
-        vars.moduleL2Safe =
-            deploySafe(members, secCouncilThreshold, address(l2DeployedCoreContracts.executor));
-        vars.moduleL2SafeNonEmergency =
-            deploySafe(members, secCouncilThreshold, address(l2DeployedCoreContracts.executor));
-        vars.moduleL1Safe = deploySafe(members, secCouncilThreshold, address(vars.l1Executor));
+        vars.moduleL2Safe = GnosisSafeL2(
+            payable(
+                deploySafe(members, secCouncilThreshold, address(l2DeployedCoreContracts.executor))
+            )
+        );
+        vars.moduleL2SafeNonEmergency = GnosisSafeL2(
+            payable(
+                deploySafe(members, secCouncilThreshold, address(l2DeployedCoreContracts.executor))
+            )
+        );
+        vars.moduleL1Safe = GnosisSafeL2(
+            payable(deploySafe(members, secCouncilThreshold, address(vars.l1Executor)))
+        );
 
-        vars.l2UpdateAction = new SecurityCouncilUpgradeAction();
-        vars.l1UpdateAction = new SecurityCouncilUpgradeAction();
+        vars.l2UpdateAction = new SecurityCouncilMemberSyncAction();
+        vars.l1UpdateAction = new SecurityCouncilMemberSyncAction();
 
         vars.councilData = new SecurityCouncilData[](3);
         vars.councilData[0] =
@@ -283,8 +346,6 @@ contract E2E is Test {
 
         vars.secDeployedContracts = vars.secFac.deploy(secDeployParams);
 
-        // now install it - CHRIS: TODO: do this via a governance proposal
-        // CHRIS: TODO: add nova
         L1SCMgmtActivationAction installL1 = new L1SCMgmtActivationAction(
             IGnosisSafe(address(vars.moduleL1Safe)),
             IGnosisSafe(l1EmergencyCouncil),
@@ -293,6 +354,7 @@ contract E2E is Test {
             ICoreTimelock(address(vars.l1Timelock))
         );
 
+        // l1 sec council conducts the install
         vm.prank(l1EmergencyCouncil);
         vars.l1Executor.execute(
             address(installL1), abi.encodeWithSelector(L1SCMgmtActivationAction.perform.selector)
@@ -316,7 +378,7 @@ contract E2E is Test {
             abi.encodeWithSelector(GovernanceChainSCMgmtActivationAction.perform.selector)
         );
 
-        // setup complete, try an election
+        // setup complete, try an election - warp to the next election
         vm.warp(
             DateTimeLib.dateTimeToTimestamp({
                 year: nominationStart.year,
@@ -332,9 +394,11 @@ contract E2E is Test {
         vm.prank(l2InitialSupplyRecipient);
         l2DeployedCoreContracts.token.delegate(l2InitialSupplyRecipient);
 
+        // start the election
         uint256 propId = vars.secDeployedContracts.nomineeElectionGovernor.createElection();
         vm.roll(block.number + 1);
 
+        // contenders up for election - and vote for them
         for (uint256 i = 0; i < newCohort1.length; i++) {
             address newMember = newCohort1[i];
             vm.prank(newMember);
@@ -345,8 +409,8 @@ contract E2E is Test {
             );
         }
 
+        // nomination complete - transition to member election
         vm.roll(block.number + nomineeVotingPeriod + nomineeVettingDuration);
-
         vars.secDeployedContracts.nomineeElectionGovernor.execute(
             new address[](1),
             new uint256[](1),
@@ -360,8 +424,8 @@ contract E2E is Test {
             )
         );
 
+        // vote for the new members
         vm.roll(block.number + 1);
-
         for (uint256 i = 0; i < newCohort1.length; i++) {
             address newMember = newCohort1[i];
             vm.prank(l2InitialSupplyRecipient);
@@ -370,8 +434,8 @@ contract E2E is Test {
             );
         }
 
+        // member election complete - transition to timelock
         vm.roll(block.number + memberVotingPeriod);
-
         vars.secDeployedContracts.memberElectionGovernor.execute(
             new address[](1),
             new uint256[](1),
@@ -384,6 +448,8 @@ contract E2E is Test {
                 )
             )
         );
+
+        // exec in the l2 timelock
         {
             (address[] memory newMembers, address to, bytes memory data) =
                 vars.secDeployedContracts.securityCouncilManager.getScheduleUpdateData();
@@ -391,11 +457,8 @@ contract E2E is Test {
             vars.to = to;
             vars.data = data;
         }
-
         vm.warp(block.timestamp + l2MinTimelockDelay);
-
-        // CHRIS: TODO: use vm.etch to capture the data that's sent to arbsys, and execute it via the outbox
-
+        vm.etch(address(100), address(new ArbSysMock()).code);
         l2DeployedCoreContracts.coreTimelock.execute(
             vars.to,
             0,
@@ -404,14 +467,41 @@ contract E2E is Test {
             vars.secDeployedContracts.securityCouncilManager.generateSalt(vars.newMembers)
         );
 
-        // call through the outbox - use an outbox mock if necessary
-        // execute in the l1 timelock
-        // check the new council is set on l1
-        // check that correct retryable was set in the l1 inbox
-        // execute that retryable on l2
-        // check the council is set on l2
+        // execute in the outbox mock
+        ArbSysMock.L2ToL1Tx memory l2ToL1Tx = ArbSysMock(address(100)).getTx(0);
+        vars.inbox.setL2ToL1Sender(l2ToL1Tx.from);
+        vm.prank(address(vars.inbox.bridge()));
+        (bool success,) = address(l2ToL1Tx.to).call{value: l2ToL1Tx.value}(l2ToL1Tx.data);
+        require(success, "call failed");
 
-        // add a nova instance
+        // parse the schedule batch args
+        Parser.ScheduleBatchArgs memory args = Parser.scheduleBatchArgs(l2ToL1Tx.data);
+
+        // execute in the l1 timelock
+        vm.warp(block.timestamp + l1MinTimelockDelay);
+        vars.l1Timelock.executeBatch(
+            args.targets, args.values, args.payloads, args.predecessor, args.salt
+        );
+
+        // check the l1 safe updated
+        checkSafeUpdated(vars.moduleL1Safe, cohort1, cohort2, newCohort1, secCouncilThreshold);
+
+        // execute the retryables and check the safes
+        InboxMock.RetryableTicket memory ticket1 = vars.inbox.getRetryableTicket(0);
+        vm.prank(applyL1ToL2Alias(ticket1.from));
+        (bool success2,) = address(ticket1.to).call{value: ticket1.value}(ticket1.data);
+        require(success2, "call failed2");
+        checkSafeUpdated(vars.moduleL2Safe, cohort1, cohort2, newCohort1, secCouncilThreshold);
+
+        InboxMock.RetryableTicket memory ticket2 = vars.inbox.getRetryableTicket(1);
+        vm.prank(applyL1ToL2Alias(ticket2.from));
+        (bool success3,) = address(ticket2.to).call{value: ticket2.value}(ticket2.data);
+        require(success3, "call failed3");
+        checkSafeUpdated(
+            vars.moduleL2SafeNonEmergency, cohort1, cohort2, newCohort1, secCouncilThreshold
+        );
+
+        // CHRIS: TODO: add a nova instance to the above tests
     }
 
     function testE2E() public {

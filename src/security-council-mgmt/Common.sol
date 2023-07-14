@@ -11,4 +11,3 @@ enum Cohort {
 
 error ZeroAddress();
 error NotAContract(address account);
-

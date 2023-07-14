@@ -42,7 +42,7 @@ struct DeployParams {
 }
 
 /// @notice Factory for deploying L2 Security Council management contracts.
-/// Prerequisites: core Arb DAO governance contracts, and a SecurityCouncilUpgradeAction deployed for each governed security council (on each corresponding chain)
+/// Prerequisites: core Arb DAO governance contracts, and a SecurityCouncilMemberSyncAction deployed for each governed security council (on each corresponding chain)
 contract L2SecurityCouncilMgmtFactory is Ownable {
     event ContractsDeployed(DeployedContracts deployedContracts);
 
@@ -165,8 +165,8 @@ contract L2SecurityCouncilMgmtFactory is Ownable {
         );
 
         deployedContracts.securityCouncilManager.initialize(
-            dp._secondCohort,
             dp._firstCohort,
+            dp._secondCohort,
             dp._securityCouncils,
             roles,
             payable(dp._l2CoreGovTimelock),
