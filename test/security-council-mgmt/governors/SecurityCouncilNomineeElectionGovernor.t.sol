@@ -38,6 +38,9 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
         governor.initialize(initParams);
 
         vm.warp(1_689_281_541); // july 13, 2023
+
+        _mockGetPastVotes({account: 0x00000000000000000000000000000000000A4B86, votes: 0});
+        _mockGetPastTotalSupply(1_000_000_000e18);
     }
 
     function testProperInitialization() public {
@@ -183,6 +186,102 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
         assertTrue(governor.isContender(proposalId, _contender(0)));
     }
 
+    function testSetNomineeVetter() public {
+        // should only be callable by owner
+        vm.expectRevert("Ownable: caller is not the owner");
+        governor.setNomineeVetter(address(0));
+
+        // should succeed if called by owner
+        vm.prank(initParams.owner);
+        governor.setNomineeVetter(address(0));
+        assertEq(governor.nomineeVetter(), address(0));
+    }
+
+    function testRelay() public {
+        // make sure relay can only be called by owner
+        vm.expectRevert("Ownable: caller is not the owner");
+        governor.relay(address(0), 0, new bytes(0));
+
+        // make sure relay can be called by owner, and that we can call an onlyGovernance function
+        vm.prank(initParams.owner);
+        governor.relay(
+            address(governor), 0, abi.encodeWithSelector(governor.setVotingPeriod.selector, 121_212)
+        );
+        assertEq(governor.votingPeriod(), 121_212);
+    }
+
+    function testExcludeNominee() public {
+        uint256 proposalId = _propose();
+
+        // should fail if called by non-nominee vetter
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                SecurityCouncilNomineeElectionGovernor.OnlyNomineeVetter.selector
+            )
+        );
+        governor.excludeNominee(proposalId, address(0));
+
+        // should fail if called with invalid proposal id
+        vm.prank(initParams.nomineeVetter);
+        vm.expectRevert("Governor: unknown proposal id");
+        governor.excludeNominee(0, _contender(0));
+
+        // should fail if called while proposal is active
+        vm.roll(governor.proposalDeadline(proposalId) - 1); // state is active
+        vm.prank(initParams.nomineeVetter);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                SecurityCouncilNomineeElectionGovernor.ProposalNotInVettingPeriod.selector
+            )
+        );
+        governor.excludeNominee(proposalId, _contender(0));
+
+        // should fail if called after the vetting period has elapsed
+        vm.roll(governor.proposalDeadline(proposalId) + governor.nomineeVettingDuration() + 1);
+        vm.prank(initParams.nomineeVetter);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                SecurityCouncilNomineeElectionGovernor.ProposalNotInVettingPeriod.selector
+            )
+        );
+        governor.excludeNominee(proposalId, _contender(0));
+
+        // should fail if the account is not a nominee
+        vm.roll(governor.proposalDeadline(proposalId) + 1);
+        vm.prank(initParams.nomineeVetter);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                SecurityCouncilNomineeElectionGovernor.NotNominee.selector,
+                _contender(0)
+            )
+        );
+        governor.excludeNominee(proposalId, _contender(0));
+
+        // should succeed if called by nominee vetter, proposal is in vetting period, and account is a nominee
+        // make sure the account is a nominee
+        vm.roll(governor.proposalDeadline(proposalId));
+        _addContender(proposalId, _contender(0));
+        _mockGetPastVotes(_voter(0), governor.quorum(proposalId));
+        _castVoteForContender(proposalId, _voter(0), _contender(0), governor.quorum(proposalId));
+
+        // roll to the end of voting (into the vetting period) and exclude the nominee
+        vm.roll(governor.proposalDeadline(proposalId) + 1);
+        vm.prank(initParams.nomineeVetter);
+        governor.excludeNominee(proposalId, _contender(0));
+        assertTrue(governor.isExcluded(proposalId, _contender(0)));
+        assertEq(governor.excludedNomineeCount(proposalId), 1);
+
+        // should fail if contender is excluded twice
+        vm.prank(initParams.nomineeVetter);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                SecurityCouncilNomineeElectionGovernor.NomineeAlreadyExcluded.selector,
+                _contender(0)
+            )
+        );
+        governor.excludeNominee(proposalId, _contender(0));
+    }
+
     // helpers
 
     function _voter(uint8 i) internal pure returns (address) {
@@ -222,6 +321,39 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
             abi.encodeWithSelector(initParams.token.getPastVotes.selector, account),
             abi.encode(votes)
         );
+    }
+
+    function _mockGetPastTotalSupply(uint256 amount) internal {
+        vm.mockCall(
+            address(initParams.token),
+            abi.encodeWithSelector(initParams.token.getPastTotalSupply.selector),
+            abi.encode(amount)
+        );
+    }
+
+    function _addContender(uint256 proposalId, address contender) internal {
+        vm.mockCall(
+            address(initParams.securityCouncilManager),
+            abi.encodeWithSelector(
+                initParams.securityCouncilManager.cohortIncludes.selector,
+                Cohort.SECOND,
+                contender
+            ),
+            abi.encode(false)
+        );  
+
+        vm.prank(contender);
+        governor.addContender(proposalId);
+    }
+
+    function _castVoteForContender(uint256 proposalId, address voter, address contender, uint256 votes) internal {
+        vm.prank(voter);
+        governor.castVoteWithReasonAndParams({
+            proposalId: proposalId,
+            support: 0,
+            reason: "",
+            params: abi.encode(contender, votes)
+        });
     }
 
     function _propose() internal returns (uint256) {
