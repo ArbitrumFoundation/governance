@@ -13,13 +13,16 @@ import "../../../src/security-council-mgmt/Common.sol";
 contract SecurityCouncilNomineeElectionGovernorTest is Test {
     SecurityCouncilNomineeElectionGovernor governor;
 
-    SecurityCouncilNomineeElectionGovernor.InitParams initParams = SecurityCouncilNomineeElectionGovernor.InitParams({
+    SecurityCouncilNomineeElectionGovernor.InitParams initParams =
+    SecurityCouncilNomineeElectionGovernor.InitParams({
         targetNomineeCount: 6,
         firstNominationStartDate: Date({year: 2030, month: 1, day: 1, hour: 0}),
         nomineeVettingDuration: 1 days,
         nomineeVetter: address(0x11),
         securityCouncilManager: ISecurityCouncilManager(address(0x22)),
-        securityCouncilMemberElectionGovernor: SecurityCouncilMemberElectionGovernor(payable(address(0x33))),
+        securityCouncilMemberElectionGovernor: SecurityCouncilMemberElectionGovernor(
+            payable(address(0x33))
+            ),
         token: IVotesUpgradeable(address(0x44)),
         owner: address(0x55),
         quorumNumeratorValue: 10,
@@ -29,27 +32,32 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
     address proxyAdmin = address(0x66);
     address proposer = address(0x77);
 
-
     function setUp() public {
         governor = _deployGovernor();
 
         governor.initialize(initParams);
 
-        vm.warp(1689281541); // july 13, 2023
+        vm.warp(1_689_281_541); // july 13, 2023
     }
 
     function testProperInitialization() public {
         assertEq(governor.targetNomineeCount(), initParams.targetNomineeCount);
         assertEq(governor.nomineeVettingDuration(), initParams.nomineeVettingDuration);
         assertEq(governor.nomineeVetter(), initParams.nomineeVetter);
-        assertEq(address(governor.securityCouncilManager()), address(initParams.securityCouncilManager));
-        assertEq(address(governor.securityCouncilMemberElectionGovernor()), address(initParams.securityCouncilMemberElectionGovernor));
+        assertEq(
+            address(governor.securityCouncilManager()), address(initParams.securityCouncilManager)
+        );
+        assertEq(
+            address(governor.securityCouncilMemberElectionGovernor()),
+            address(initParams.securityCouncilMemberElectionGovernor)
+        );
         assertEq(address(governor.token()), address(initParams.token));
         assertEq(governor.owner(), initParams.owner);
         // assertEq(governor.quorumNumeratorValue(), initParams.quorumNumeratorValue);
         assertEq(governor.votingPeriod(), initParams.votingPeriod);
         // assertEq(governor.firstNominationStartDate(), initParams.firstNominationStartDate);
-        (uint256 year, uint256 month, uint256 day, uint256 hour) = governor.firstNominationStartDate();
+        (uint256 year, uint256 month, uint256 day, uint256 hour) =
+            governor.firstNominationStartDate();
         assertEq(year, initParams.firstNominationStartDate.year);
         assertEq(month, initParams.firstNominationStartDate.month);
         assertEq(day, initParams.firstNominationStartDate.day);
@@ -62,22 +70,36 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
 
         governor = _deployGovernor();
 
-        vm.expectRevert(abi.encodeWithSelector(SecurityCouncilNomineeElectionGovernorTiming.StartDateTooEarly.selector));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                SecurityCouncilNomineeElectionGovernorTiming.StartDateTooEarly.selector
+            )
+        );
         governor.initialize(invalidParams);
 
         invalidParams.firstNominationStartDate = Date({year: 2000, month: 13, day: 1, hour: 0});
-        vm.expectRevert(abi.encodeWithSelector(SecurityCouncilNomineeElectionGovernorTiming.InvalidStartDate.selector));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                SecurityCouncilNomineeElectionGovernorTiming.InvalidStartDate.selector
+            )
+        );
         governor.initialize(invalidParams);
     }
 
     function testCreateElection() public {
         // we need to mock getPastVotes for the proposer
         _mockGetPastVotes({account: address(this), votes: 0});
-        
+
         // we should not be able to create election before first nomination start date
-        uint256 expectedStartTimestamp = _datePlusMonthsToTimestamp(initParams.firstNominationStartDate, 0);
+        uint256 expectedStartTimestamp =
+            _datePlusMonthsToTimestamp(initParams.firstNominationStartDate, 0);
         vm.warp(expectedStartTimestamp - 1);
-        vm.expectRevert(abi.encodeWithSelector(SecurityCouncilNomineeElectionGovernor.CreateTooEarly.selector, expectedStartTimestamp));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                SecurityCouncilNomineeElectionGovernor.CreateTooEarly.selector,
+                expectedStartTimestamp
+            )
+        );
         governor.createElection();
 
         // we should be able to create an election at the timestamp
@@ -89,12 +111,76 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
         // we should not be able to create another election before 6 months have passed
         expectedStartTimestamp = _datePlusMonthsToTimestamp(initParams.firstNominationStartDate, 6);
         vm.warp(expectedStartTimestamp - 1);
-        vm.expectRevert(abi.encodeWithSelector(SecurityCouncilNomineeElectionGovernor.CreateTooEarly.selector, expectedStartTimestamp));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                SecurityCouncilNomineeElectionGovernor.CreateTooEarly.selector,
+                expectedStartTimestamp
+            )
+        );
         governor.createElection();
 
         // we should be able to create an election at the timestamp
         vm.warp(expectedStartTimestamp);
         governor.createElection();
+    }
+
+    function testAddContender() public {
+        // test invalid proposal id
+        vm.prank(_contender(0));
+        vm.expectRevert("Governor: unknown proposal id");
+        governor.addContender(0);
+
+        // make a valid proposal
+        uint256 proposalId = _propose();
+
+        // test in other cohort
+        vm.mockCall(
+            address(initParams.securityCouncilManager),
+            abi.encodeWithSelector(
+                initParams.securityCouncilManager.cohortIncludes.selector,
+                Cohort.SECOND,
+                _contender(0)
+            ),
+            abi.encode(true)
+        );
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                SecurityCouncilNomineeElectionGovernor.AccountInOtherCohort.selector,
+                Cohort.SECOND,
+                _contender(0)
+            )
+        );
+        vm.prank(_contender(0));
+        governor.addContender(proposalId);
+
+        // should fail if the proposal is not active
+        vm.mockCall(
+            address(initParams.securityCouncilManager),
+            abi.encodeWithSelector(
+                initParams.securityCouncilManager.cohortIncludes.selector,
+                Cohort.SECOND,
+                _contender(0)
+            ),
+            abi.encode(false)
+        );
+        vm.roll(governor.proposalDeadline(proposalId) + 1);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                SecurityCouncilNomineeElectionGovernor.ProposalNotActive.selector,
+                IGovernorUpgradeable.ProposalState.Succeeded
+            )
+        );
+        vm.prank(_contender(0));
+        governor.addContender(proposalId);
+
+        // should succeed if not in other cohort and proposal is active
+        vm.roll(governor.proposalDeadline(proposalId));
+        assertTrue(governor.state(proposalId) == IGovernorUpgradeable.ProposalState.Active);
+        vm.prank(_contender(0));
+        governor.addContender(proposalId);
+
+        // check that it correctly mutated the state
+        assertTrue(governor.isContender(proposalId, _contender(0)));
     }
 
     // helpers
@@ -103,11 +189,15 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
         return address(uint160(0x1100 + i));
     }
 
-    function _nominee(uint8 i) internal pure returns (address) {
+    function _contender(uint8 i) internal pure returns (address) {
         return address(uint160(0x2200 + i));
     }
-    
-    function _datePlusMonthsToTimestamp(Date memory date, uint256 months) internal pure returns (uint256) {
+
+    function _datePlusMonthsToTimestamp(Date memory date, uint256 months)
+        internal
+        pure
+        returns (uint256)
+    {
         return DateTimeLib.dateTimeToTimestamp({
             year: date.year,
             month: date.month + months,
@@ -138,8 +228,14 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
         // we need to mock getPastVotes for the proposer
         _mockGetPastVotes({account: address(proposer), votes: 0});
 
+        vm.warp(_datePlusMonthsToTimestamp(initParams.firstNominationStartDate, 0));
+
         vm.prank(proposer);
-        return governor.createElection();
+        uint256 proposalId = governor.createElection();
+
+        vm.roll(block.number + 1);
+
+        return proposalId;
     }
 
     function _deployGovernor() internal returns (SecurityCouncilNomineeElectionGovernor) {
