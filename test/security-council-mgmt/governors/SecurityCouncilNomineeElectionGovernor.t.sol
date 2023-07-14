@@ -343,6 +343,57 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
         governor.includeNominee(proposalId, _contender(uint8(initParams.targetNomineeCount)));
     }
 
+    function testExecute() public {
+        uint256 proposalId = _propose();
+
+        uint256 electionIndex = governor.electionCount() - 1;
+        bytes32 descriptionHash = keccak256(bytes(governor.electionIndexToDescription(electionIndex)));
+
+        // should fail if called during vetting period
+        vm.roll(governor.proposalDeadline(proposalId) + 1);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                SecurityCouncilNomineeElectionGovernor.ProposalInVettingPeriod.selector
+            )
+        );
+        _execute(descriptionHash);
+
+        // should fail if there aren't enough compliant nominees
+        // make some but not enough
+        for (uint8 i = 0; i < initParams.targetNomineeCount - 1; i++) {
+            _mockCohortIncludes(Cohort.SECOND, _contender(i), false);
+            vm.prank(initParams.nomineeVetter);
+            governor.includeNominee(proposalId, _contender(i));
+        }
+
+        vm.roll(governor.proposalVettingDeadline(proposalId) + 1);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                SecurityCouncilNomineeElectionGovernor.InsufficientCompliantNomineeCount.selector,
+                initParams.targetNomineeCount - 1
+            )
+        );
+        _execute(descriptionHash);
+
+        // should call the member election governor if there are enough compliant nominees
+        vm.roll(governor.proposalVettingDeadline(proposalId));
+        _mockCohortIncludes(Cohort.SECOND, _contender(uint8(initParams.targetNomineeCount - 1)), false);
+        vm.prank(initParams.nomineeVetter);
+        governor.includeNominee(
+            proposalId, _contender(uint8(initParams.targetNomineeCount - 1))
+        );
+        
+        vm.roll(governor.proposalVettingDeadline(proposalId) + 1);
+        vm.mockCall(address(initParams.securityCouncilMemberElectionGovernor), "", "");
+        vm.expectCall(
+            address(initParams.securityCouncilMemberElectionGovernor),
+            abi.encodeWithSelector(
+                initParams.securityCouncilMemberElectionGovernor.proposeFromNomineeElectionGovernor.selector
+            )
+        );
+        _execute(descriptionHash);
+    }
+
     // helpers
 
     function _voter(uint8 i) internal pure returns (address) {
@@ -402,6 +453,26 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
             ),
             abi.encode(ans)
         );
+    }
+
+    function _execute() internal {
+        uint256 electionIndex = governor.electionCount() - 1;
+        bytes32 descriptionHash = keccak256(bytes(governor.electionIndexToDescription(electionIndex)));
+        governor.execute({
+            targets: new address[](1),
+            values: new uint256[](1),
+            calldatas: new bytes[](1),
+            descriptionHash: descriptionHash
+        });
+    }
+
+    function _execute(bytes32 descriptionHash) internal {
+        governor.execute({
+            targets: new address[](1),
+            values: new uint256[](1),
+            calldatas: new bytes[](1),
+            descriptionHash: descriptionHash
+        });
     }
 
     function _addContender(uint256 proposalId, address contender) internal {
