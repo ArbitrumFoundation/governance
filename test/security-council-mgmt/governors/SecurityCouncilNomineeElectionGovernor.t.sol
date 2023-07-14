@@ -137,15 +137,7 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
         uint256 proposalId = _propose();
 
         // test in other cohort
-        vm.mockCall(
-            address(initParams.securityCouncilManager),
-            abi.encodeWithSelector(
-                initParams.securityCouncilManager.cohortIncludes.selector,
-                Cohort.SECOND,
-                _contender(0)
-            ),
-            abi.encode(true)
-        );
+        _mockCohortIncludes(Cohort.SECOND, _contender(0), true);
         vm.expectRevert(
             abi.encodeWithSelector(
                 SecurityCouncilNomineeElectionGovernor.AccountInOtherCohort.selector,
@@ -157,15 +149,7 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
         governor.addContender(proposalId);
 
         // should fail if the proposal is not active
-        vm.mockCall(
-            address(initParams.securityCouncilManager),
-            abi.encodeWithSelector(
-                initParams.securityCouncilManager.cohortIncludes.selector,
-                Cohort.SECOND,
-                _contender(0)
-            ),
-            abi.encode(false)
-        );
+        _mockCohortIncludes(Cohort.SECOND, _contender(0), false);
         vm.roll(governor.proposalDeadline(proposalId) + 1);
         vm.expectRevert(
             abi.encodeWithSelector(
@@ -476,15 +460,7 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
     }
 
     function _addContender(uint256 proposalId, address contender) internal {
-        vm.mockCall(
-            address(initParams.securityCouncilManager),
-            abi.encodeWithSelector(
-                initParams.securityCouncilManager.cohortIncludes.selector,
-                Cohort.SECOND,
-                contender
-            ),
-            abi.encode(false)
-        );  
+        _mockCohortIncludes(Cohort.SECOND, contender, false);
 
         vm.prank(contender);
         governor.addContender(proposalId);
