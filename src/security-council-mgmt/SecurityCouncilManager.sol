@@ -120,10 +120,15 @@ contract SecurityCouncilManager is
         if (_newCohort.length != cohortSize) {
             revert InvalidNewCohortLength({cohort: _newCohort, cohortSize: cohortSize});
         }
+
         if (_cohort == Cohort.FIRST) {
-            firstCohort = _newCohort;
+            delete firstCohort;
         } else if (_cohort == Cohort.SECOND) {
-            secondCohort = _newCohort;
+            delete secondCohort;
+        }
+
+        for (uint256 i = 0; i < _newCohort.length; i++) {
+            _addMemberToCohortArray(_newCohort[i], _cohort);
         }
 
         _scheduleUpdate();

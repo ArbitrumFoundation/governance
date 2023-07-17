@@ -39,15 +39,20 @@ contract MockArbitrumTimelock {
 contract SecurityCouncilManagerTest is Test {
     address[] firstCohort = new address[](6);
     address[6] _firstCohort =
-        [address(1111), address(1112), address(1113), address(1114), address(1114), address(1116)];
+        [address(1111), address(1112), address(1113), address(1114), address(1115), address(1116)];
 
     address[] secondCohort = new address[](6);
     address[6] _secondCohort =
-        [address(2221), address(2222), address(2223), address(2224), address(2224), address(2226)];
+        [address(2221), address(2222), address(2223), address(2224), address(2225), address(2226)];
 
     address[] newCohort = new address[](6);
     address[6] _newCohort =
-        [address(3331), address(3332), address(3333), address(3334), address(3334), address(3336)];
+        [address(3331), address(3332), address(3333), address(3334), address(3335), address(3336)];
+
+    address[] newCohortWithADup = new address[](6);
+    address dup = address(3335);
+    address[6] _newCohortWithADup =
+        [address(3331), address(3332), address(3333), address(3334), dup, dup];
 
     SecurityCouncilManager scm;
     UpgradeExecRouterBuilder uerb;
@@ -114,6 +119,7 @@ contract SecurityCouncilManagerTest is Test {
             bothCohorts.push(_firstCohort[i]);
             bothCohorts.push(_secondCohort[i]);
             newCohort[i] = _newCohort[i];
+            newCohortWithADup[i] = _newCohortWithADup[i];
         }
         address prox = TestUtil.deployProxy(address(new SecurityCouncilManager()));
         scm = SecurityCouncilManager(payable(prox));
@@ -457,6 +463,14 @@ contract SecurityCouncilManagerTest is Test {
             TestUtil.areAddressArraysEqual(firstCohort, scm.getFirstCohort()),
             "first cohort untouched"
         );
+    }
+
+    function testCantUpdateCohortWithADupt() public {
+        vm.startPrank(roles.cohortUpdator);
+        vm.expectRevert(
+            abi.encodeWithSelector(ISecurityCouncilManager.MemberInCohort.selector, dup, 1)
+        );
+        scm.replaceCohort(newCohortWithADup, Cohort.SECOND);
     }
 
     function testUpdateRouterAffordacnes() public {
