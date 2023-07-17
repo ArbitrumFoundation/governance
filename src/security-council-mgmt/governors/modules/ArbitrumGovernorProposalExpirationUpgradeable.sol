@@ -9,11 +9,10 @@ abstract contract ArbitrumGovernorProposalExpirationUpgradeable is
     Initializable,
     GovernorUpgradeable
 {
-    uint256 constant SECONDS_PER_WEEK = 604_800;
     uint256 constant BLOCK_TIME = 12;
 
     /// @notice Time (in blocks) after which a successful proposal expires
-    uint256 public constant PROPOSAL_EXPIRATION = 2 * SECONDS_PER_WEEK / BLOCK_TIME;
+    uint256 public constant PROPOSAL_EXPIRATION = 2 weeks / BLOCK_TIME;
 
     /// @inheritdoc GovernorUpgradeable
     function state(uint256 proposalId) public view virtual override returns (ProposalState) {
