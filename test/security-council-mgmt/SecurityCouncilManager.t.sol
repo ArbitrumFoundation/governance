@@ -465,7 +465,7 @@ contract SecurityCouncilManagerTest is Test {
         );
     }
 
-    function testCantUpdateCohortWithADupt() public {
+    function testCantUpdateCohortWithADup() public {
         vm.startPrank(roles.cohortUpdator);
         vm.expectRevert(
             abi.encodeWithSelector(ISecurityCouncilManager.MemberInCohort.selector, dup, 1)
