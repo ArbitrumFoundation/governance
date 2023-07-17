@@ -14,7 +14,8 @@ abstract contract ArbitrumGovernorProposalExpirationUpgradeable is
     /// @notice Time (in blocks) after which a successful proposal expires
     uint256 public constant PROPOSAL_EXPIRATION = 2 weeks / BLOCK_TIME;
 
-    /// @inheritdoc GovernorUpgradeable
+    /// @notice Returns the state of a proposal, given its id
+    /// @dev    Overridden to return Expired if the proposal has succeeded but has expired
     function state(uint256 proposalId) public view virtual override returns (ProposalState) {
         ProposalState currentState = super.state(proposalId);
 
@@ -28,6 +29,7 @@ abstract contract ArbitrumGovernorProposalExpirationUpgradeable is
         return currentState;
     }
 
+    /// @notice The block at which the proposal expires
     function proposalExpirationDeadline(uint256 proposalId)
         public
         view
