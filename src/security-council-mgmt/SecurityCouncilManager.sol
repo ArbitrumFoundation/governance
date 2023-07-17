@@ -136,6 +136,9 @@ contract SecurityCouncilManager is
     }
 
     function _addMemberToCohortArray(address _newMember, Cohort _cohort) internal {
+        if (_newMember == address(0)) {
+            revert ZeroAddress();
+        }
         address[] storage cohort = _cohort == Cohort.FIRST ? firstCohort : secondCohort;
         if (cohort.length == cohortSize) {
             revert CohortFull({cohort: _cohort});
@@ -166,9 +169,6 @@ contract SecurityCouncilManager is
 
     /// @inheritdoc ISecurityCouncilManager
     function addMember(address _newMember, Cohort _cohort) external onlyRole(MEMBER_ADDER_ROLE) {
-        if (_newMember == address(0)) {
-            revert ZeroAddress();
-        }
         _addMemberToCohortArray(_newMember, _cohort);
         _scheduleUpdate();
         emit MemberAdded(_newMember, _cohort);
