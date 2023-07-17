@@ -51,7 +51,9 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
         uint256 weightReceived
     );
 
-    error FullWeightDurationGreaterThanVotingPeriod(uint256 fullWeightDuration, uint256 votingPeriod);
+    error FullWeightDurationGreaterThanVotingPeriod(
+        uint256 fullWeightDuration, uint256 votingPeriod
+    );
     error MustVoteWithParams();
     error NotCompliantNominee();
     error ZeroWeightVote();

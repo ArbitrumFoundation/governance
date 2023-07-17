@@ -150,6 +150,7 @@ contract E2E is Test, DeployGnosisWithModule {
     uint64 minPeriodAfterQuorum = 41;
 
     // councils
+    address novaEmergencyCouncil = address(deploySafe(members, secCouncilThreshold, address(0)));
     address l2EmergencyCouncil = address(deploySafe(members, secCouncilThreshold, address(0)));
     address l1EmergencyCouncil = address(deploySafe(members, secCouncilThreshold, address(0)));
     address someRando = address(390);
@@ -194,6 +195,7 @@ contract E2E is Test, DeployGnosisWithModule {
 
     uint256 chain1Id = 937;
     uint256 chain2Id = 837;
+    uint256 chainNovaId = 737;
 
     function checkSafeUpdated(
         GnosisSafeL2 safe,
@@ -223,23 +225,49 @@ contract E2E is Test, DeployGnosisWithModule {
         L2AddressRegistry l2AddressRegistry;
         L2SecurityCouncilMgmtFactory secFac;
         GnosisSafeL2 moduleL2Safe;
+        GnosisSafeL2 moduleNovaSafe;
         GnosisSafeL2 moduleL1Safe;
         GnosisSafeL2 moduleL2SafeNonEmergency;
         SecurityCouncilMemberSyncAction l2UpdateAction;
+        SecurityCouncilMemberSyncAction novaUpdateAction;
         SecurityCouncilMemberSyncAction l1UpdateAction;
         SecurityCouncilData[] councilData;
         ChainAndUpExecLocation[] cExecLocs;
         L2SecurityCouncilMgmtFactory.DeployedContracts secDeployedContracts;
         InboxMock inbox;
+        InboxMock novaInbox;
         L1ArbitrumTimelock l1Timelock;
         UpgradeExecutor l1Executor;
         address[] newMembers;
         address to;
         bytes data;
+        address novaExecutor;
+    }
+
+    function deployNova(address l1Timelock) internal returns (address) {
+        ProxyAdmin novaAdmin = new ProxyAdmin();
+        UpgradeExecutor novaExecutorLogic = new UpgradeExecutor();
+        UpgradeExecutor novaExecutor = UpgradeExecutor(
+            address(
+                new TransparentUpgradeableProxy(
+                address(novaExecutorLogic),
+                address(novaAdmin),
+                ""
+                )
+            )
+        );
+        address[] memory executors = new address[](2);
+        executors[0] = applyL1ToL2Alias(l1Timelock);
+        executors[1] = novaEmergencyCouncil;
+        novaExecutor.initialize(address(novaExecutor), executors);
+
+        novaAdmin.transferOwnership(address(novaExecutor));
+
+        return address(novaExecutor);
     }
 
     function deploy() internal {
-        // set the current gas 
+        // set the current block
         vm.roll(1000);
         DeployData memory vars;
 
@@ -260,6 +288,7 @@ contract E2E is Test, DeployGnosisWithModule {
         ) = vars.l2GovFac.deployStep1(l2DeployParams);
 
         vars.inbox = new InboxMock(address(0));
+        vars.novaInbox = new InboxMock(address(0));
         {
             (L1ArbitrumTimelock l1Timelock,, UpgradeExecutor l1Executor) = vars.l1GovFac.deployStep2(
                 address(upExecLogic),
@@ -273,6 +302,8 @@ contract E2E is Test, DeployGnosisWithModule {
         }
 
         vars.l2GovFac.deployStep3(applyL1ToL2Alias(address(vars.l1Timelock)));
+
+        vars.novaExecutor = deployNova(address(vars.l1Timelock));
 
         // deploy sec council
         vars.l2AddressRegistry = new L2AddressRegistry(
@@ -297,11 +328,15 @@ contract E2E is Test, DeployGnosisWithModule {
         vars.moduleL1Safe = GnosisSafeL2(
             payable(deploySafe(members, secCouncilThreshold, address(vars.l1Executor)))
         );
+        vars.moduleNovaSafe = GnosisSafeL2(
+            payable(deploySafe(members, secCouncilThreshold, address(vars.novaExecutor)))
+        );
 
         vars.l2UpdateAction = new SecurityCouncilMemberSyncAction();
+        vars.novaUpdateAction = new SecurityCouncilMemberSyncAction();
         vars.l1UpdateAction = new SecurityCouncilMemberSyncAction();
 
-        vars.councilData = new SecurityCouncilData[](3);
+        vars.councilData = new SecurityCouncilData[](4);
         vars.councilData[0] =
             SecurityCouncilData(address(vars.moduleL2Safe), address(vars.l2UpdateAction), chain2Id);
         vars.councilData[1] = SecurityCouncilData(
@@ -309,12 +344,18 @@ contract E2E is Test, DeployGnosisWithModule {
         );
         vars.councilData[2] =
             SecurityCouncilData(address(vars.moduleL1Safe), address(vars.l1UpdateAction), chain1Id);
+        vars.councilData[3] = SecurityCouncilData(
+            address(vars.moduleNovaSafe), address(vars.novaUpdateAction), chainNovaId
+        );
 
-        vars.cExecLocs = new ChainAndUpExecLocation[](2);
+        vars.cExecLocs = new ChainAndUpExecLocation[](3);
         vars.cExecLocs[0] =
             ChainAndUpExecLocation(chain1Id, UpExecLocation(address(0), address(vars.l1Executor)));
         vars.cExecLocs[1] = ChainAndUpExecLocation(
             chain2Id, UpExecLocation(address(vars.inbox), address(l2DeployedCoreContracts.executor))
+        );
+        vars.cExecLocs[2] = ChainAndUpExecLocation(
+            chainNovaId, UpExecLocation(address(vars.novaInbox), address(vars.novaExecutor))
         );
 
         DeployParams memory secDeployParams = DeployParams({
@@ -471,8 +512,7 @@ contract E2E is Test, DeployGnosisWithModule {
         ArbSysMock.L2ToL1Tx memory l2ToL1Tx = ArbSysMock(address(100)).getTx(0);
         vars.inbox.setL2ToL1Sender(l2ToL1Tx.from);
         vm.prank(address(vars.inbox.bridge()));
-        (bool success,) = address(l2ToL1Tx.to).call{value: l2ToL1Tx.value}(l2ToL1Tx.data);
-        require(success, "call failed");
+        address(l2ToL1Tx.to).call{value: l2ToL1Tx.value}(l2ToL1Tx.data);
 
         // parse the schedule batch args
         Parser.ScheduleBatchArgs memory args = Parser.scheduleBatchArgs(l2ToL1Tx.data);
@@ -489,19 +529,20 @@ contract E2E is Test, DeployGnosisWithModule {
         // execute the retryables and check the safes
         InboxMock.RetryableTicket memory ticket1 = vars.inbox.getRetryableTicket(0);
         vm.prank(applyL1ToL2Alias(ticket1.from));
-        (bool success2,) = address(ticket1.to).call{value: ticket1.value}(ticket1.data);
-        require(success2, "call failed2");
+        address(ticket1.to).call{value: ticket1.value}(ticket1.data);
         checkSafeUpdated(vars.moduleL2Safe, cohort1, cohort2, newCohort1, secCouncilThreshold);
 
         InboxMock.RetryableTicket memory ticket2 = vars.inbox.getRetryableTicket(1);
         vm.prank(applyL1ToL2Alias(ticket2.from));
-        (bool success3,) = address(ticket2.to).call{value: ticket2.value}(ticket2.data);
-        require(success3, "call failed3");
+        address(ticket2.to).call{value: ticket2.value}(ticket2.data);
         checkSafeUpdated(
             vars.moduleL2SafeNonEmergency, cohort1, cohort2, newCohort1, secCouncilThreshold
         );
 
-        // CHRIS: TODO: add a nova instance to the above tests
+        InboxMock.RetryableTicket memory ticket3 = vars.novaInbox.getRetryableTicket(0);
+        vm.prank(applyL1ToL2Alias(ticket3.from));
+        address(ticket3.to).call{value: ticket3.value}(ticket3.data);
+        checkSafeUpdated(vars.moduleNovaSafe, cohort1, cohort2, newCohort1, secCouncilThreshold);
     }
 
     function testE2E() public {

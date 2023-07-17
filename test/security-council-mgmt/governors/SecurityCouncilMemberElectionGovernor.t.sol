@@ -207,9 +207,7 @@ contract SecurityCouncilMemberElectionGovernorTest is Test {
         vm.prank(_voter(0));
         vm.expectRevert(
             abi.encodeWithSelector(
-                SecurityCouncilMemberElectionGovernorCountingUpgradeable
-                    .ZeroWeightVote
-                    .selector
+                SecurityCouncilMemberElectionGovernorCountingUpgradeable.ZeroWeightVote.selector
             )
         );
         governor.castVoteWithReasonAndParams({
@@ -475,8 +473,7 @@ contract SecurityCouncilMemberElectionGovernorTest is Test {
                 ),
                 abi.encode(compliantNominees)
             );
-        }
-        else {
+        } else {
             // we should remove the nominee from the list in this contract's storage if it is there
             // then mock the call to nomineeElectionGovernor.compliantNominees(uint)
             uint256 index = TestUtil.indexOf(compliantNominees, account);

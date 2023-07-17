@@ -121,8 +121,9 @@ contract SecurityCouncilMemberSyncActionTest is Test, DeployGnosisWithModule {
 
         address action = address(new SecurityCouncilMemberSyncAction());
 
-        bytes memory upgradeCallData =
-            abi.encodeWithSelector(SecurityCouncilMemberSyncAction.perform.selector, safe, newMembers);
+        bytes memory upgradeCallData = abi.encodeWithSelector(
+            SecurityCouncilMemberSyncAction.perform.selector, safe, newMembers
+        );
 
         // [8], [9], [10] sucessfully get removed, leaving [11]'s previous owner to be [7]; removing [11] reverts as it's below the theshold,
         bytes memory revertingRemoveMemberCall = abi.encodeWithSelector(
