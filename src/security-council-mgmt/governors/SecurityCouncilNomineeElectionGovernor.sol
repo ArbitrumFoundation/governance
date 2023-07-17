@@ -9,11 +9,9 @@ import "./SecurityCouncilMemberElectionGovernor.sol";
 import "./modules/SecurityCouncilNomineeElectionGovernorCountingUpgradeable.sol";
 import "./modules/ArbitrumGovernorVotesQuorumFractionUpgradeable.sol";
 import "./modules/SecurityCouncilNomineeElectionGovernorTiming.sol";
+import "./modules/ArbitrumGovernorProposalExpirationUpgradeable.sol";
 
 import "../SecurityCouncilMgmtUtils.sol";
-
-// note: this contract assumes that there can only be one proposalId with state Active or Succeeded at a time
-// (easy to override state() to return `Expired` if a proposal succeeded but hasn't executed after some time)
 
 /// @title SecurityCouncilNomineeElectionGovernor
 /// @notice Governor contract for selecting Security Council Nominees (phase 1 of the Security Council election process).
@@ -25,7 +23,8 @@ contract SecurityCouncilNomineeElectionGovernor is
     ArbitrumGovernorVotesQuorumFractionUpgradeable,
     GovernorSettingsUpgradeable,
     OwnableUpgradeable,
-    SecurityCouncilNomineeElectionGovernorTiming
+    SecurityCouncilNomineeElectionGovernorTiming,
+    ArbitrumGovernorProposalExpirationUpgradeable
 {
     // todo: these parameters could be reordered to make more sense
     /// @notice parameters for `initialize`
@@ -362,6 +361,16 @@ contract SecurityCouncilNomineeElectionGovernor is
         returns (bool)
     {
         return _elections[proposalId].isContender[possibleContender];
+    }
+
+    /// @inheritdoc ArbitrumGovernorProposalExpirationUpgradeable
+    function state(uint256 proposalId) public view override(GovernorUpgradeable, ArbitrumGovernorProposalExpirationUpgradeable) returns (ProposalState) {
+        return ArbitrumGovernorProposalExpirationUpgradeable.state(proposalId);
+    }
+
+    /// @inheritdoc ArbitrumGovernorProposalExpirationUpgradeable
+    function _proposalExpirationCountdownStart(uint256 proposalId) internal view override returns (uint256) {
+        return proposalVettingDeadline(proposalId);
     }
 
     /**
