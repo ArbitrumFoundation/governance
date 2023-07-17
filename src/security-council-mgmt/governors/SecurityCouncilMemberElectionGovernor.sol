@@ -171,7 +171,7 @@ contract SecurityCouncilMemberElectionGovernor is
 
     /// @inheritdoc SecurityCouncilMemberElectionGovernorCountingUpgradeable
     function _targetMemberCount() internal view override returns (uint256) {
-        return nomineeElectionGovernor.targetNomineeCount();
+        return securityCouncilManager.cohortSize();
     }
 
     /**

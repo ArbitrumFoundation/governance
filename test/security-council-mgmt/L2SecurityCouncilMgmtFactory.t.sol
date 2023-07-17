@@ -209,12 +209,6 @@ contract L2SecurityCouncilMgmtFactoryTest is Test, DeployGnosisWithModule {
             deployed.nomineeElectionGovernor;
 
         assertEq(
-            nomineeElectionGovernor.targetNomineeCount(),
-            firstCohort.length,
-            "targetNomineeCount set"
-        );
-
-        assertEq(
             nomineeElectionGovernor.nomineeVettingDuration(),
             nomineeVettingDuration,
             "nomineeVettingDuration set"

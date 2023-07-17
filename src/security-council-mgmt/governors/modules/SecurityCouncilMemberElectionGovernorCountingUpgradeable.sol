@@ -169,8 +169,6 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
         return startBlock + fullWeightDuration;
     }
 
-    // CHRIS: TODO: we have cohort size set in a number of places - we should have only one place for that
-
     // gas usage is probably a little bit more than (4200 + 1786)n. With 500 that's 2,993,000
     function topNominees(uint256 proposalId) public view returns (address[] memory) {
         address[] memory nominees = _compliantNominees(proposalId);
