@@ -21,12 +21,20 @@ abstract contract ArbitrumGovernorProposalExpirationUpgradeable is
 
         if (
             currentState == ProposalState.Succeeded
-                && block.number > _proposalExpirationCountdownStart(proposalId) + PROPOSAL_EXPIRATION
+                && block.number > proposalExpirationDeadline(proposalId)
         ) {
             return ProposalState.Expired;
         }
 
         return currentState;
+    }
+
+    function proposalExpirationDeadline(uint256 proposalId)
+        public
+        view
+        returns (uint256)
+    {
+        return _proposalExpirationCountdownStart(proposalId) + PROPOSAL_EXPIRATION;
     }
 
     /// @notice Returns the block number at which the proposal expiration countdown starts
