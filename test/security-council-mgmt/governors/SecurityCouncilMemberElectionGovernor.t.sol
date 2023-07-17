@@ -387,6 +387,31 @@ contract SecurityCouncilMemberElectionGovernorTest is Test {
         assertEq(governor.weightReceived(proposalId, _nominee(0)), 100);
     }
 
+    // expiration stuff
+
+    function testProposalExpirationDeadline() public {
+        uint256 proposalId = _propose(0);
+
+        assertEq(
+            governor.proposalExpirationDeadline(proposalId),
+            governor.proposalDeadline(proposalId) + governor.PROPOSAL_EXPIRATION_DURATION()
+        );
+    }
+
+    function testProposalDoesExpire() public {
+        uint256 proposalId = _propose(0);
+
+        // roll to right before expiration
+        vm.roll(governor.proposalExpirationDeadline(proposalId));
+
+        assertTrue(governor.state(proposalId) == IGovernorUpgradeable.ProposalState.Succeeded);
+
+        // roll to the end of the expiration period
+        vm.roll(governor.proposalExpirationDeadline(proposalId) + 1);
+
+        assertTrue(governor.state(proposalId) == IGovernorUpgradeable.ProposalState.Expired);
+    }
+
     // helpers
 
     function _voter(uint8 i) internal pure returns (address) {

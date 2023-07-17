@@ -12,7 +12,7 @@ abstract contract ArbitrumGovernorProposalExpirationUpgradeable is
     uint256 constant BLOCK_TIME = 12;
 
     /// @notice Time (in blocks) after which a successful proposal expires
-    uint256 public constant PROPOSAL_EXPIRATION = 2 weeks / BLOCK_TIME;
+    uint256 public constant PROPOSAL_EXPIRATION_DURATION = 2 weeks / BLOCK_TIME;
 
     /// @notice Returns the state of a proposal, given its id
     /// @dev    Overridden to return Expired if the proposal has succeeded but has expired
@@ -35,7 +35,7 @@ abstract contract ArbitrumGovernorProposalExpirationUpgradeable is
         view
         returns (uint256)
     {
-        return _proposalExpirationCountdownStart(proposalId) + PROPOSAL_EXPIRATION;
+        return _proposalExpirationCountdownStart(proposalId) + PROPOSAL_EXPIRATION_DURATION;
     }
 
     /// @notice Returns the block number at which the proposal expiration countdown starts
