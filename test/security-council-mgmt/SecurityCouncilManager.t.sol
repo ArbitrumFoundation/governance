@@ -98,6 +98,8 @@ contract SecurityCouncilManagerTest is Test {
         location: UpExecLocation({inbox: address(9995), upgradeExecutor: address(9996)})
     });
 
+    address[] bothCohorts;
+
     function setUp() public {
         chainAndUpExecLocation.push(firstChainAndUpExecLocation);
         chainAndUpExecLocation.push(secondChainAndUpExecLocation);
@@ -109,6 +111,8 @@ contract SecurityCouncilManagerTest is Test {
         for (uint256 i = 0; i < 6; i++) {
             secondCohort[i] = _secondCohort[i];
             firstCohort[i] = _firstCohort[i];
+            bothCohorts.push(_firstCohort[i]);
+            bothCohorts.push(_secondCohort[i]);
             newCohort[i] = _newCohort[i];
         }
         address prox = TestUtil.deployProxy(address(new SecurityCouncilManager()));
@@ -320,6 +324,28 @@ contract SecurityCouncilManagerTest is Test {
         vm.stopPrank();
     }
 
+    function testRotateMember() public {
+        vm.startPrank(roles.memberRotator);
+        vm.recordLogs();
+        scm.rotateMember(firstCohort[0], memberToAdd);
+        checkScheduleWasCalled();
+
+        address[] memory newFirstCohortArray = new address[](6);
+        newFirstCohortArray[0] = memberToAdd;
+        for (uint256 i = 1; i < firstCohort.length; i++) {
+            newFirstCohortArray[i] = firstCohort[i];
+        }
+        assertTrue(
+            TestUtil.areAddressArraysEqual(newFirstCohortArray, scm.getFirstCohort()),
+            "first cohort rotated"
+        );
+        assertTrue(
+            TestUtil.areAddressArraysEqual(secondCohort, scm.getSecondCohort()),
+            "second cohort untouched"
+        );
+        vm.stopPrank();
+    }
+
     function testAddSCAffordances() public {
         vm.prank(rando);
         vm.expectRevert();
@@ -449,6 +475,18 @@ contract SecurityCouncilManagerTest is Test {
         vm.prank(roles.admin);
         scm.setUpgradeExecRouterBuilder(UpgradeExecRouterBuilder(newRouter));
         assertEq(address(newRouter), address(scm.router()), "router set");
+    }
+
+    function testCohortMethods() public {
+        assertTrue(scm.firstCohortIncludes(firstCohort[0]), "firstCohortIncludes works");
+        assertFalse(scm.firstCohortIncludes(secondCohort[0]), "firstCohortIncludes works");
+        assertTrue(scm.secondCohortIncludes(secondCohort[0]), "secondCohortIncludes works");
+        assertFalse(scm.secondCohortIncludes(firstCohort[0]), "secondCohortIncludes works");
+
+        assertTrue(
+            TestUtil.areAddressArraysEqual(scm.getBothCohorts(), bothCohorts),
+            "getBothCohorts works"
+        );
     }
 
     // // helpers
