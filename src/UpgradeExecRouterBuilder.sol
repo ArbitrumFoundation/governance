@@ -94,7 +94,7 @@ contract UpgradeExecRouterBuilder {
         return upExecLocations[_chainId].upgradeExecutor != address(0);
     }
 
-    /// @notice Creates the to address and calldata to be called to execute a route to an action contract
+    /// @notice Creates the to address and calldata to be called to execute a route to a batch of action contracts
     ///         See Governance Action Contracts for more details
     /// @param chainIds         Chain ids containing the actions to be called
     /// @param actionAddresses  Addresses of the action contracts to be called
