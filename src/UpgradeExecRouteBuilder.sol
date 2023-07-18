@@ -186,7 +186,7 @@ contract UpgradeExecRouteBuilder {
     function createActionRouteDataWithDefaults(
         uint256[] memory chainIds,
         address[] memory actionAddresses,
-        bytes32 timelockSalt // CHRIS: TODO: should this be a string instead of bytes32? basically this comes down to which is more painful - posting a big description into the tally ui, or posting it seomwhere else, hashing it and then pasting the result into tally?
+        bytes32 timelockSalt
     ) public view returns (address, bytes memory) {
         uint256[] memory values = new uint256[](chainIds.length);
         bytes[] memory actionDatas = new bytes[](chainIds.length);
