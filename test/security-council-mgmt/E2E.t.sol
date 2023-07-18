@@ -492,8 +492,12 @@ contract E2E is Test, DeployGnosisWithModule {
 
         // exec in the l2 timelock
         {
-            (address[] memory newMembers, address to, bytes memory data) =
-                vars.secDeployedContracts.securityCouncilManager.getScheduleUpdateData();
+            (address[] memory newMembers, address to, bytes memory data) = vars
+                .secDeployedContracts
+                .securityCouncilManager
+                .getScheduleUpdateInnerData(
+                vars.secDeployedContracts.securityCouncilManager.updateNonce()
+            );
             vars.newMembers = newMembers;
             vars.to = to;
             vars.data = data;
@@ -505,7 +509,9 @@ contract E2E is Test, DeployGnosisWithModule {
             0,
             vars.data,
             0,
-            vars.secDeployedContracts.securityCouncilManager.generateSalt(vars.newMembers)
+            vars.secDeployedContracts.securityCouncilManager.generateSalt(
+                vars.newMembers, vars.secDeployedContracts.securityCouncilManager.updateNonce()
+            )
         );
 
         // execute in the outbox mock

@@ -335,6 +335,7 @@ contract SecurityCouncilManager is
         return members;
     }
 
+    /// @inheritdoc ISecurityCouncilManager
     function securityCouncilsLength() public view returns (uint256) {
         return securityCouncils.length;
     }
@@ -349,20 +350,23 @@ contract SecurityCouncilManager is
         return cohortIncludes(Cohort.SECOND, account);
     }
 
+    /// @inheritdoc ISecurityCouncilManager
     function cohortIncludes(Cohort cohort, address account) public view returns (bool) {
         address[] memory cohortMembers = cohort == Cohort.FIRST ? firstCohort : secondCohort;
         return SecurityCouncilMgmtUtils.isInArray(account, cohortMembers);
     }
 
-    /// @notice Generate unique salt for timelock scheduling
-    /// @param _members Data to input / hash
-    function generateSalt(address[] memory _members) external view returns (bytes32) {
-        // CHRIS: TODO: make this func pure by providing the update nonce
-        return keccak256(abi.encodePacked(_members, updateNonce));
+    /// @inheritdoc ISecurityCouncilManager
+    function generateSalt(address[] memory _members, uint256 nonce)
+        external
+        pure
+        returns (bytes32)
+    {
+        return keccak256(abi.encodePacked(_members, nonce));
     }
 
-    // CHRIS: TODO: docs
-    function getScheduleUpdateData()
+    /// @inheritdoc ISecurityCouncilManager
+    function getScheduleUpdateInnerData(uint256 nonce)
         public
         view
         returns (address[] memory, address, bytes memory)
@@ -377,7 +381,6 @@ contract SecurityCouncilManager is
 
         for (uint256 i = 0; i < securityCouncils.length; i++) {
             SecurityCouncilData memory securityCouncilData = securityCouncils[i];
-
             actionAddresses[i] = securityCouncilData.updateAction;
             chainIds[i] = securityCouncilData.chainId;
             actionDatas[i] = abi.encodeWithSelector(
@@ -387,13 +390,17 @@ contract SecurityCouncilManager is
             );
         }
 
+        // unique salt used for replay protection in the L1 timelock
+        bytes32 salt = this.generateSalt(newMembers, nonce);
         (address to, bytes memory data) = router.createActionRouteData(
             chainIds,
             actionAddresses,
             new uint256[](securityCouncils.length), // all values are always 0
             actionDatas,
-            this.generateSalt(newMembers) // must be unique as the proposal hash is used for replay protection in the L1 timelock
+            0,
+            salt
         );
+
         return (newMembers, to, data);
     }
 
@@ -403,7 +410,8 @@ contract SecurityCouncilManager is
         // always update the nonce - this is used to ensure that proposals in the timelocks are unique
         updateNonce++;
         // TODO: enforce ordering (on the L1 side) with a nonce? is no contract level ordering guarunee for updates ok?
-        (address[] memory newMembers, address to, bytes memory data) = this.getScheduleUpdateData();
+        (address[] memory newMembers, address to, bytes memory data) =
+            getScheduleUpdateInnerData(updateNonce);
 
         ArbitrumTimelock(l2CoreGovTimelock).schedule({
             target: to, // ArbSys address - this will trigger a call from L2->L1
@@ -411,7 +419,10 @@ contract SecurityCouncilManager is
             // call to ArbSys.sendTxToL1; target the L1 timelock with the calldata previously constucted
             data: data,
             predecessor: bytes32(0),
-            salt: this.generateSalt(newMembers), // must be unique as the proposal hash is used for replay protection in the L2 timelock
+            // must be unique as the proposal hash is used for replay protection in the L2 timelock
+            // we cant be sure another proposal wont use this salt, and the same target + data
+            // but in that case the proposal will do what we want it to do anyway
+            salt: this.generateSalt(newMembers, updateNonce),
             delay: ArbitrumTimelock(l2CoreGovTimelock).getMinDelay()
         });
     }

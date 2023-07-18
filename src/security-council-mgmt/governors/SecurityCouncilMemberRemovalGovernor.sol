@@ -5,7 +5,6 @@ import "../../L2ArbitrumGovernor.sol";
 import "./../interfaces/ISecurityCouncilManager.sol";
 import "../../Util.sol";
 import "../Common.sol";
-import "forge-std/Test.sol";
 
 contract SecurityCouncilMemberRemovalGovernor is L2ArbitrumGovernor {
     uint256 public constant voteSuccessDenominator = 10_000;
@@ -67,6 +66,20 @@ contract SecurityCouncilMemberRemovalGovernor is L2ArbitrumGovernor {
         );
     }
 
+    /// @notice Assumes the passed in bytes is an abi encoded function call, and splits into the selector and the rest
+    /// @param calldataWithSelector The call data to split
+    /// @return The selector
+    /// @return The rest of the function call data
+    function separateSelector(bytes calldata calldataWithSelector)
+        external
+        pure
+        returns (bytes4, bytes memory)
+    {
+        bytes4 selector = bytes4(calldataWithSelector[:4]);
+        bytes memory rest = calldataWithSelector[4:];
+        return (selector, rest);
+    }
+
     /// @notice Propose a security council member removal. Method conforms to the governor propose interface but enforces that only calls to removeMember can be propsoed.
     /// @param targets Target contract operation; must be [securityCouncilManager]
     /// @param values Value for removeMmeber; must be [0]
@@ -93,8 +106,8 @@ contract SecurityCouncilMemberRemovalGovernor is L2ArbitrumGovernor {
             revert UnexpectedCalldataLength();
         }
 
-        bytes4 selector = getSelector(calldatas[0]);
-        address memberToRemove = abi.decode(removeSelector(calldatas[0]), (address));
+        (bytes4 selector, bytes memory rest) = this.separateSelector(calldatas[0]);
+        address memberToRemove = abi.decode(rest, (address));
 
         if (selector != ISecurityCouncilManager.removeMember.selector) {
             revert CallNotRemoveMember(selector);

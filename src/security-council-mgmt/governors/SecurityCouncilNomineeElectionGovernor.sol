@@ -38,6 +38,7 @@ contract SecurityCouncilNomineeElectionGovernor is
     /// @param owner Owner of the governor (the Arbitrum DAO)
     /// @param quorumNumeratorValue Numerator of the quorum fraction (0.2% = 20)
     /// @param votingPeriod Duration of the voting period (expressed in blocks)
+    ///                     Note that the voting period + nominee vetting duration must be << than 6 months to ensure elections dont overlap
     struct InitParams {
         uint256 targetNomineeCount;
         Date firstNominationStartDate;
@@ -141,7 +142,6 @@ contract SecurityCouncilNomineeElectionGovernor is
     ///         Can be called by anyone every 6 months.
     /// @return proposalId The id of the proposal
     function createElection() external returns (uint256 proposalId) {
-        // CHRIS: TODO: we need to check elections cannot have a time less than all the stages put together when initialising
         uint256 thisElectionStartTs = electionToTimestamp(electionCount);
 
         if (block.timestamp < thisElectionStartTs) {
@@ -331,7 +331,6 @@ contract SecurityCouncilNomineeElectionGovernor is
         return Cohort(electionIndex % 2);
     }
 
-    // CHRIS: TODO: put these in both governors? or in a lib?
     /// @notice Returns the description for a given `electionIndex`
     function electionIndexToDescription(uint256 electionIndex)
         public
@@ -340,16 +339,6 @@ contract SecurityCouncilNomineeElectionGovernor is
     {
         return
             string.concat("Security Council Election #", StringsUpgradeable.toString(electionIndex));
-    }
-
-    /// @notice Returns the proposalId for a given `electionIndex`
-    function electionIndexToProposalId(uint256 electionIndex) public pure returns (uint256) {
-        return hashProposal(
-            new address[](1),
-            new uint256[](1),
-            new bytes[](1),
-            keccak256(bytes(electionIndexToDescription(electionIndex)))
-        );
     }
 
     /// @notice returns true if the nominee has been excluded by the nomineeVetter for the given proposal

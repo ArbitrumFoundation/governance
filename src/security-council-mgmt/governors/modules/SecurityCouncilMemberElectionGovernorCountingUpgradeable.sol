@@ -171,8 +171,6 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
         return startBlock + fullWeightDuration;
     }
 
-    // CHRIS: TODO: we have cohort size set in a number of places - we should have only one place for that
-
     // gas usage is probably a little bit more than (4200 + 1786)n. With 500 that's 2,993,000
     function topNominees(uint256 proposalId) public view returns (address[] memory) {
         address[] memory nominees = _compliantNominees(proposalId);
@@ -226,36 +224,32 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
         view
         returns (uint256)
     {
-        // Votes cast before T+14 days will have 100% weight.
-        // Votes cast between T+14 days and T+28 days will have weight based on the time of casting,
-        // decreasing linearly with time, with 100% weight at T+14 days, decreasing linearly to 0% weight at T+28 days.
-
-        // 7 days full weight, 14 days decreasing weight
-
-        // do i have an off-by-one in here?
-
-        uint256 endBlock = proposalDeadline(proposalId);
+        // Before proposalSnapshot all votes have 0 weight
         uint256 startBlock = proposalSnapshot(proposalId);
-
-        if (blockNumber <= startBlock || blockNumber > endBlock) {
+        if (blockNumber <= startBlock) {
+            return 0;
+        }
+        // After proposalDeadline all votes have zero weight
+        uint256 endBlock = proposalDeadline(proposalId);
+        if (blockNumber > endBlock) {
             return 0;
         }
 
+        // Between proposalSnapshot and fullWeightVotingDeadline all votes will have 100% weight - each vote has weight 1
         uint256 fullWeightVotingDeadline_ = fullWeightVotingDeadline(proposalId);
-
         if (blockNumber <= fullWeightVotingDeadline_) {
             return votes;
         }
 
+        // Between the fullWeightVotingDeadline and the proposalDeadline each vote will have weight linearly decreased by time since fullWeightVotingDeadline
         // slope denominator
         uint256 decreasingWeightDuration = endBlock - fullWeightVotingDeadline_;
-
         // slope numerator is -votes, slope denominator is decreasingWeightDuration, delta x is blockNumber - fullWeightVotingDeadline_
         // y intercept is votes
         uint256 decreaseAmount =
-            WAD * votes * (blockNumber - fullWeightVotingDeadline_) / decreasingWeightDuration / WAD;
-
-        return decreaseAmount >= votes ? 0 : votes - decreaseAmount;
+            votes * (blockNumber - fullWeightVotingDeadline_) / decreasingWeightDuration;
+        // subtract the decreated amount to get the remaining weight
+        return votes - decreaseAmount;
     }
 
     /**
@@ -269,7 +263,6 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
 
     /// @notice Returns true if votes have been cast for at least K nominees
     function _voteSucceeded(uint256) internal pure override returns (bool) {
-        // CHRIS: TODO: is this necessary, could be always true and just pick top 6?
         return true;
     }
 
@@ -280,7 +273,7 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
         virtual
         returns (bool);
 
-    // CHRIS: TODO: docs - I dont like the coupling in these contracts - counting vs gov
+    /// @dev Returns all the compliant (non excluded) nominees for the requested proposal
     function _compliantNominees(uint256 proposalId)
         internal
         view
