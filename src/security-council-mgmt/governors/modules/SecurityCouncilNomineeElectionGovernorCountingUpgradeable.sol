@@ -14,6 +14,7 @@ abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is
     /// @param votesUsed The amount of votes the voter has used
     /// @param votesReceived The amount of votes the contender has received
     /// @param nominees The list of contenders who've received enough votes to become a nominee
+    /// @param isNominee A mapping of contenders to whether or not they are a nominee
     struct NomineeElectionCountingInfo {
         mapping(address => uint256) votesUsed;
         mapping(address => uint256) votesReceived;
@@ -21,10 +22,9 @@ abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is
         mapping(address => bool) isNominee;
     }
 
-    // proposalId => NomineeElectionCountingInfo
+    /// @dev proposalId => NomineeElectionCountingInfo
     mapping(uint256 => NomineeElectionCountingInfo) private _elections;
 
-    // would this be more useful if reason was included?
     /// @notice Emitted when a vote is cast for a contender
     /// @param proposalId The id of the proposal
     /// @param voter The account that is casting the vote
@@ -126,41 +126,54 @@ abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is
      * view/pure functions *************
      */
 
+    /// @inheritdoc IGovernorUpgradeable
     function COUNTING_MODE() public pure virtual override returns (string memory) {
         return "TODO: ???";
     }
 
     /// @notice returns true if the account has voted any amount for any contender in the proposal
+    /// @param  proposalId the id of the proposal
+    /// @param  account the account to check
     function hasVoted(uint256 proposalId, address account) public view override returns (bool) {
         return _elections[proposalId].votesUsed[account] > 0;
     }
 
     /// @notice Returns true if the contender has enough votes to be a nominee
+    /// @param  proposalId the id of the proposal
+    /// @param  contender the contender to check
     function isNominee(uint256 proposalId, address contender) public view returns (bool) {
         return _elections[proposalId].isNominee[contender];
     }
 
     /// @notice Returns the number of nominees for a given proposal
+    /// @param  proposalId the id of the proposal
     function nomineeCount(uint256 proposalId) public view returns (uint256) {
         return _elections[proposalId].nominees.length;
     }
 
     /// @notice Returns the list of nominees for a given proposal
+    /// @param  proposalId the id of the proposal
     function nominees(uint256 proposalId) public view returns (address[] memory) {
         return _elections[proposalId].nominees;
     }
 
     /// @notice Returns the amount of votes an account has used for a given proposal
+    /// @param  proposalId the id of the proposal
+    /// @param  account the account to check
     function votesUsed(uint256 proposalId, address account) public view returns (uint256) {
         return _elections[proposalId].votesUsed[account];
     }
 
     /// @notice Returns the amount of votes a contender has received for a given proposal
+    /// @param  proposalId the id of the proposal
+    /// @param  contender the contender to check
     function votesReceived(uint256 proposalId, address contender) public view returns (uint256) {
         return _elections[proposalId].votesReceived[contender];
     }
 
     /// @dev Returns true if the account is a contender for the proposal
+    /// @param proposalId the id of the proposal
+    /// @param possibleContender the account to check
     function isContender(uint256 proposalId, address possibleContender)
         public
         view

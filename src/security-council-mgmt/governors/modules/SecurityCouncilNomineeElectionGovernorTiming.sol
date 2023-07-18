@@ -21,6 +21,9 @@ abstract contract SecurityCouncilNomineeElectionGovernorTiming is
     error InvalidStartDate();
     error StartDateTooEarly();
 
+    /// @dev Initialize
+    /// @param _firstNominationStartDate The start date of the first election
+    /// @param _nomineeVettingDuration The duration of the nominee vetting period
     function __SecurityCouncilNomineeElectionGovernorIndexingTiming_init(
         Date memory _firstNominationStartDate,
         uint256 _nomineeVettingDuration
@@ -60,13 +63,14 @@ abstract contract SecurityCouncilNomineeElectionGovernorTiming is
      * view/pure functions *************
      */
 
-    /// @notice Returns the deadline for the nominee vetting period for a given `proposalId`
+    /// @notice Returns the deadline for the nominee vetting period for a given proposal
+    /// @param  proposalId The id of the proposal
     function proposalVettingDeadline(uint256 proposalId) public view returns (uint256) {
         return proposalDeadline(proposalId) + nomineeVettingDuration;
     }
 
     /// @notice Returns the start timestamp of an election
-    /// @param electionIndex The index of the election
+    /// @param  electionIndex The index of the election
     function electionToTimestamp(uint256 electionIndex) public view returns (uint256) {
         // subtract one to make month 0 indexed
         uint256 month = firstNominationStartDate.month - 1;
