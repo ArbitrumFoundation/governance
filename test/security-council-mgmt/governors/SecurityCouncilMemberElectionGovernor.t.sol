@@ -47,7 +47,7 @@ contract SecurityCouncilMemberElectionGovernorTest is Test {
             _fullWeightDuration: initParams.fullWeightDuration
         });
 
-        _mockTargetNomineeCount(initParams.maxNominees);
+        _mockCohortSize(initParams.maxNominees);
 
         compliantNominees = new address[](0);
 
@@ -451,14 +451,14 @@ contract SecurityCouncilMemberElectionGovernorTest is Test {
         return proposalId;
     }
 
-    function _mockTargetNomineeCount(uint256 count) internal {
+    function _mockCohortSize(uint256 count) internal {
         vm.mockCall(
-            address(initParams.nomineeElectionGovernor),
-            abi.encodeWithSelector(initParams.nomineeElectionGovernor.targetNomineeCount.selector),
+            address(initParams.securityCouncilManager),
+            abi.encodeWithSelector(initParams.securityCouncilManager.cohortSize.selector),
             abi.encode(count)
         );
 
-        assertEq(initParams.nomineeElectionGovernor.targetNomineeCount(), count);
+        assertEq(initParams.securityCouncilManager.cohortSize(), count);
     }
 
     function _mockGetPastVotes(address account, uint256 votes, uint256 blockNumber) internal {

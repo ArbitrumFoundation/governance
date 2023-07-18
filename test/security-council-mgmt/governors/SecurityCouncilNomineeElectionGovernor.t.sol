@@ -13,9 +13,10 @@ import "../../../src/security-council-mgmt/Common.sol";
 contract SecurityCouncilNomineeElectionGovernorTest is Test {
     SecurityCouncilNomineeElectionGovernor governor;
 
+    uint256 cohortSize = 6;
+
     SecurityCouncilNomineeElectionGovernor.InitParams initParams =
     SecurityCouncilNomineeElectionGovernor.InitParams({
-        targetNomineeCount: 6,
         firstNominationStartDate: Date({year: 2030, month: 1, day: 1, hour: 0}),
         nomineeVettingDuration: 1 days,
         nomineeVetter: address(0x11),
@@ -41,10 +42,10 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
 
         _mockGetPastVotes({account: 0x00000000000000000000000000000000000A4B86, votes: 0});
         _mockGetPastTotalSupply(1_000_000_000e18);
+        _mockCohortSize(cohortSize);
     }
 
     function testProperInitialization() public {
-        assertEq(governor.targetNomineeCount(), initParams.targetNomineeCount);
         assertEq(governor.nomineeVettingDuration(), initParams.nomineeVettingDuration);
         assertEq(governor.nomineeVetter(), initParams.nomineeVetter);
         assertEq(
@@ -311,12 +312,12 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
         assertEq(governor.nomineeCount(proposalId), 2);
 
         // make sure that we can't add more nominees than the target count
-        for (uint8 i = 0; i < initParams.targetNomineeCount - 2; i++) {
+        for (uint8 i = 0; i < cohortSize - 2; i++) {
             _mockCohortIncludes(Cohort.SECOND, _contender(i + 2), false);
             vm.prank(initParams.nomineeVetter);
             governor.includeNominee(proposalId, _contender(i + 2));
         }
-        _mockCohortIncludes(Cohort.SECOND, _contender(uint8(initParams.targetNomineeCount)), false);
+        _mockCohortIncludes(Cohort.SECOND, _contender(uint8(cohortSize)), false);
         vm.prank(initParams.nomineeVetter);
         vm.expectRevert(
             abi.encodeWithSelector(
@@ -324,7 +325,7 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
                     .selector
             )
         );
-        governor.includeNominee(proposalId, _contender(uint8(initParams.targetNomineeCount)));
+        governor.includeNominee(proposalId, _contender(uint8(cohortSize)));
     }
 
     function testExecute() public {
@@ -344,7 +345,7 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
 
         // should fail if there aren't enough compliant nominees
         // make some but not enough
-        for (uint8 i = 0; i < initParams.targetNomineeCount - 1; i++) {
+        for (uint8 i = 0; i < cohortSize - 1; i++) {
             _mockCohortIncludes(Cohort.SECOND, _contender(i), false);
             vm.prank(initParams.nomineeVetter);
             governor.includeNominee(proposalId, _contender(i));
@@ -354,17 +355,17 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
         vm.expectRevert(
             abi.encodeWithSelector(
                 SecurityCouncilNomineeElectionGovernor.InsufficientCompliantNomineeCount.selector,
-                initParams.targetNomineeCount - 1
+                cohortSize - 1
             )
         );
         _execute(descriptionHash);
 
         // should call the member election governor if there are enough compliant nominees
         vm.roll(governor.proposalVettingDeadline(proposalId));
-        _mockCohortIncludes(Cohort.SECOND, _contender(uint8(initParams.targetNomineeCount - 1)), false);
+        _mockCohortIncludes(Cohort.SECOND, _contender(uint8(cohortSize - 1)), false);
         vm.prank(initParams.nomineeVetter);
         governor.includeNominee(
-            proposalId, _contender(uint8(initParams.targetNomineeCount - 1))
+            proposalId, _contender(uint8(cohortSize - 1))
         );
         
         vm.roll(governor.proposalVettingDeadline(proposalId) + 1);
@@ -523,6 +524,16 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
             ),
             abi.encode(ans)
         );
+    }
+
+    function _mockCohortSize(uint256 count) internal {
+        vm.mockCall(
+            address(initParams.securityCouncilManager),
+            abi.encodeWithSelector(initParams.securityCouncilManager.cohortSize.selector),
+            abi.encode(count)
+        );
+
+        assertEq(initParams.securityCouncilManager.cohortSize(), count);
     }
 
     function _execute() internal {

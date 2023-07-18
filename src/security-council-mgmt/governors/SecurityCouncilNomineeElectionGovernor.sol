@@ -28,7 +28,6 @@ contract SecurityCouncilNomineeElectionGovernor is
 {
     // todo: these parameters could be reordered to make more sense
     /// @notice parameters for `initialize`
-    /// @param targetNomineeCount The target number of nominees to elect (6)
     /// @param firstNominationStartDate First election start date
     /// @param nomineeVettingDuration Duration of the nominee vetting period (expressed in blocks)
     /// @param nomineeVetter Address of the nominee vetter
@@ -38,7 +37,6 @@ contract SecurityCouncilNomineeElectionGovernor is
     /// @param quorumNumeratorValue Numerator of the quorum fraction (0.2% = 20)
     /// @param votingPeriod Duration of the voting period (expressed in blocks)
     struct InitParams {
-        uint256 targetNomineeCount;
         Date firstNominationStartDate;
         uint256 nomineeVettingDuration;
         address nomineeVetter;
@@ -59,9 +57,6 @@ contract SecurityCouncilNomineeElectionGovernor is
         mapping(address => bool) isExcluded;
         uint256 excludedNomineeCount;
     }
-
-    /// @notice The target number of nominees to elect (6)
-    uint256 public targetNomineeCount;
 
     /// @notice Address responsible for blocking non compliant nominees
     address public nomineeVetter;
@@ -112,7 +107,6 @@ contract SecurityCouncilNomineeElectionGovernor is
         );
         _transferOwnership(params.owner);
 
-        targetNomineeCount = params.targetNomineeCount;
         nomineeVetter = params.nomineeVetter;
         securityCouncilManager = params.securityCouncilManager;
         securityCouncilMemberElectionGovernor = params.securityCouncilMemberElectionGovernor;
@@ -236,7 +230,7 @@ contract SecurityCouncilNomineeElectionGovernor is
         uint256 compliantNomineeCount =
             nomineeCount(proposalId) - _elections[proposalId].excludedNomineeCount;
 
-        if (compliantNomineeCount >= targetNomineeCount) {
+        if (compliantNomineeCount >= securityCouncilManager.cohortSize()) {
             revert CompliantNomineeTargetHit();
         }
 
@@ -272,7 +266,7 @@ contract SecurityCouncilNomineeElectionGovernor is
 
         uint256 compliantNomineeCount = nomineeCount(proposalId) - election.excludedNomineeCount;
 
-        if (compliantNomineeCount < targetNomineeCount) {
+        if (compliantNomineeCount < securityCouncilManager.cohortSize()) {
             revert InsufficientCompliantNomineeCount(compliantNomineeCount);
         }
 
