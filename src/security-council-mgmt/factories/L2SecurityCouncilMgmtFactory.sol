@@ -257,7 +257,6 @@ contract L2SecurityCouncilMgmtFactory is Ownable {
     ) internal {
         nomineeElectionGovernor.initialize(
             SecurityCouncilNomineeElectionGovernor.InitParams({
-                targetNomineeCount: dp.secondCohort.length,
                 firstNominationStartDate: dp.firstNominationStartDate,
                 nomineeVettingDuration: dp.nomineeVettingDuration,
                 nomineeVetter: dp.nomineeVetter,

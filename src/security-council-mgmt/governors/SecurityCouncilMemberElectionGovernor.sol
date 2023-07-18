@@ -2,7 +2,6 @@
 pragma solidity 0.8.16;
 
 import "./modules/SecurityCouncilMemberElectionGovernorCountingUpgradeable.sol";
-import "./modules/ArbitrumGovernorProposalExpirationUpgradeable.sol";
 import "./SecurityCouncilNomineeElectionGovernor.sol";
 
 /// @title  SecurityCouncilMemberElectionGovernor
@@ -15,7 +14,6 @@ contract SecurityCouncilMemberElectionGovernor is
     GovernorVotesUpgradeable,
     SecurityCouncilMemberElectionGovernorCountingUpgradeable,
     GovernorSettingsUpgradeable,
-    ArbitrumGovernorProposalExpirationUpgradeable,
     OwnableUpgradeable
 {
     /// @notice The SecurityCouncilNomineeElectionGovernor that creates proposals for this governor and contains the list of compliant nominees
@@ -134,16 +132,6 @@ contract SecurityCouncilMemberElectionGovernor is
         return 0;
     }
 
-    /// @inheritdoc ArbitrumGovernorProposalExpirationUpgradeable
-    function state(uint256 proposalId)
-        public
-        view
-        override(GovernorUpgradeable, ArbitrumGovernorProposalExpirationUpgradeable)
-        returns (ProposalState)
-    {
-        return ArbitrumGovernorProposalExpirationUpgradeable.state(proposalId);
-    }
-
     /**
      * internal view/pure functions *************
      */
@@ -171,7 +159,7 @@ contract SecurityCouncilMemberElectionGovernor is
 
     /// @inheritdoc SecurityCouncilMemberElectionGovernorCountingUpgradeable
     function _targetMemberCount() internal view override returns (uint256) {
-        return nomineeElectionGovernor.targetNomineeCount();
+        return securityCouncilManager.cohortSize();
     }
 
     /**

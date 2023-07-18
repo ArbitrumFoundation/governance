@@ -47,7 +47,7 @@ contract SecurityCouncilMemberElectionGovernorTest is Test {
             _fullWeightDuration: initParams.fullWeightDuration
         });
 
-        _mockTargetNomineeCount(initParams.maxNominees);
+        _mockCohortSize(initParams.maxNominees);
 
         compliantNominees = new address[](0);
 
@@ -385,31 +385,6 @@ contract SecurityCouncilMemberElectionGovernorTest is Test {
         assertEq(governor.weightReceived(proposalId, _nominee(0)), 100);
     }
 
-    // expiration stuff
-
-    function testProposalExpirationDeadline() public {
-        uint256 proposalId = _propose(0);
-
-        assertEq(
-            governor.proposalExpirationDeadline(proposalId),
-            governor.proposalDeadline(proposalId) + governor.PROPOSAL_EXPIRATION_DURATION()
-        );
-    }
-
-    function testProposalDoesExpire() public {
-        uint256 proposalId = _propose(0);
-
-        // roll to right before expiration
-        vm.roll(governor.proposalExpirationDeadline(proposalId));
-
-        assertTrue(governor.state(proposalId) == IGovernorUpgradeable.ProposalState.Succeeded);
-
-        // roll to the end of the expiration period
-        vm.roll(governor.proposalExpirationDeadline(proposalId) + 1);
-
-        assertTrue(governor.state(proposalId) == IGovernorUpgradeable.ProposalState.Expired);
-    }
-
     // helpers
 
     function _voter(uint8 i) internal pure returns (address) {
@@ -449,14 +424,14 @@ contract SecurityCouncilMemberElectionGovernorTest is Test {
         return proposalId;
     }
 
-    function _mockTargetNomineeCount(uint256 count) internal {
+    function _mockCohortSize(uint256 count) internal {
         vm.mockCall(
-            address(initParams.nomineeElectionGovernor),
-            abi.encodeWithSelector(initParams.nomineeElectionGovernor.targetNomineeCount.selector),
+            address(initParams.securityCouncilManager),
+            abi.encodeWithSelector(initParams.securityCouncilManager.cohortSize.selector),
             abi.encode(count)
         );
 
-        assertEq(initParams.nomineeElectionGovernor.targetNomineeCount(), count);
+        assertEq(initParams.securityCouncilManager.cohortSize(), count);
     }
 
     function _mockGetPastVotes(address account, uint256 votes, uint256 blockNumber) internal {

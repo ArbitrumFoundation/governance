@@ -9,7 +9,6 @@ import "./SecurityCouncilMemberElectionGovernor.sol";
 import "./modules/SecurityCouncilNomineeElectionGovernorCountingUpgradeable.sol";
 import "./modules/ArbitrumGovernorVotesQuorumFractionUpgradeable.sol";
 import "./modules/SecurityCouncilNomineeElectionGovernorTiming.sol";
-import "./modules/ArbitrumGovernorProposalExpirationUpgradeable.sol";
 
 import "../SecurityCouncilMgmtUtils.sol";
 
@@ -23,12 +22,10 @@ contract SecurityCouncilNomineeElectionGovernor is
     ArbitrumGovernorVotesQuorumFractionUpgradeable,
     GovernorSettingsUpgradeable,
     OwnableUpgradeable,
-    SecurityCouncilNomineeElectionGovernorTiming,
-    ArbitrumGovernorProposalExpirationUpgradeable
+    SecurityCouncilNomineeElectionGovernorTiming
 {
     // todo: these parameters could be reordered to make more sense
     /// @notice parameters for `initialize`
-    /// @param targetNomineeCount The target number of nominees to elect (6)
     /// @param firstNominationStartDate First election start date
     /// @param nomineeVettingDuration Duration of the nominee vetting period (expressed in blocks)
     /// @param nomineeVetter Address of the nominee vetter
@@ -39,7 +36,6 @@ contract SecurityCouncilNomineeElectionGovernor is
     /// @param votingPeriod Duration of the voting period (expressed in blocks)
     ///                     Note that the voting period + nominee vetting duration must be << than 6 months to ensure elections dont overlap
     struct InitParams {
-        uint256 targetNomineeCount;
         Date firstNominationStartDate;
         uint256 nomineeVettingDuration;
         address nomineeVetter;
@@ -60,9 +56,6 @@ contract SecurityCouncilNomineeElectionGovernor is
         mapping(address => bool) isExcluded;
         uint256 excludedNomineeCount;
     }
-
-    /// @notice The target number of nominees to elect (6)
-    uint256 public targetNomineeCount;
 
     /// @notice Address responsible for blocking non compliant nominees
     address public nomineeVetter;
@@ -113,7 +106,6 @@ contract SecurityCouncilNomineeElectionGovernor is
         );
         _transferOwnership(params.owner);
 
-        targetNomineeCount = params.targetNomineeCount;
         nomineeVetter = params.nomineeVetter;
         securityCouncilManager = params.securityCouncilManager;
         securityCouncilMemberElectionGovernor = params.securityCouncilMemberElectionGovernor;
@@ -236,7 +228,7 @@ contract SecurityCouncilNomineeElectionGovernor is
         uint256 compliantNomineeCount =
             nomineeCount(proposalId) - _elections[proposalId].excludedNomineeCount;
 
-        if (compliantNomineeCount >= targetNomineeCount) {
+        if (compliantNomineeCount >= securityCouncilManager.cohortSize()) {
             revert CompliantNomineeTargetHit();
         }
 
@@ -272,7 +264,7 @@ contract SecurityCouncilNomineeElectionGovernor is
 
         uint256 compliantNomineeCount = nomineeCount(proposalId) - election.excludedNomineeCount;
 
-        if (compliantNomineeCount < targetNomineeCount) {
+        if (compliantNomineeCount < securityCouncilManager.cohortSize()) {
             revert InsufficientCompliantNomineeCount(compliantNomineeCount);
         }
 
@@ -359,26 +351,6 @@ contract SecurityCouncilNomineeElectionGovernor is
         returns (bool)
     {
         return _elections[proposalId].isContender[possibleContender];
-    }
-
-    /// @inheritdoc ArbitrumGovernorProposalExpirationUpgradeable
-    function state(uint256 proposalId)
-        public
-        view
-        override(GovernorUpgradeable, ArbitrumGovernorProposalExpirationUpgradeable)
-        returns (ProposalState)
-    {
-        return ArbitrumGovernorProposalExpirationUpgradeable.state(proposalId);
-    }
-
-    /// @inheritdoc ArbitrumGovernorProposalExpirationUpgradeable
-    function _proposalExpirationCountdownStart(uint256 proposalId)
-        internal
-        view
-        override
-        returns (uint256)
-    {
-        return proposalVettingDeadline(proposalId);
     }
 
     /**
