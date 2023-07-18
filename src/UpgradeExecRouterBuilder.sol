@@ -177,7 +177,7 @@ contract UpgradeExecRouterBuilder {
         );
     }
 
-    /// @notice Creates the to address and calldata to be called to execute a route to an action contract
+    /// @notice Creates the to address and calldata to be called to execute a route to a batch of action contracts
     ///         Uses common defaults using for value, calldata and predecessor
     ///         See Governance Action Contracts for more details
     /// @param chainIds         Chain ids containing the actions to be called
