@@ -21,7 +21,6 @@ contract GovernanceChainSCMgmtActivationAction {
 
     address public immutable securityCouncilManager;
     IL2AddressRegistry public immutable l2AddressRegistry;
-    bytes32 public immutable newConstitutionHash;
 
     constructor(
         IGnosisSafe _newEmergencySecurityCouncil,
@@ -31,8 +30,7 @@ contract GovernanceChainSCMgmtActivationAction {
         uint256 _emergencySecurityCouncilThreshold,
         uint256 _nonEmergencySecurityCouncilThreshold,
         address _securityCouncilManager,
-        IL2AddressRegistry _l2AddressRegistry,
-        bytes32 _newConstitutionHash
+        IL2AddressRegistry _l2AddressRegistry
     ) {
         newEmergencySecurityCouncil = _newEmergencySecurityCouncil;
         newNonEmergencySecurityCouncil = _newNonEmergencySecurityCouncil;
@@ -45,7 +43,6 @@ contract GovernanceChainSCMgmtActivationAction {
 
         securityCouncilManager = _securityCouncilManager;
         l2AddressRegistry = _l2AddressRegistry;
-        newConstitutionHash = _newConstitutionHash;
     }
 
     function perform() external {
@@ -113,12 +110,39 @@ contract GovernanceChainSCMgmtActivationAction {
 
         l2CoreGovTimelock.revokeRole(TIMELOCK_CANCELLER_ROLE, address(prevEmergencySecurityCouncil));
 
-        //  update consitution hash
-        // TODO: finalize desicion
-        IArbitrumDAOConstitution arbitrumDAOConstitution =
-            l2AddressRegistry.arbitrumDAOConstitution();
-        arbitrumDAOConstitution.setConstitutionHash(newConstitutionHash);
+        // confirm updates
+        bytes32 EXECUTOR_ROLE = upgradeExecutor.EXECUTOR_ROLE();
+        require(
+            upgradeExecutor.hasRole(EXECUTOR_ROLE, address(newEmergencySecurityCouncil)),
+            "NonGovernanceChainSCMgmtActivationAction: new emergency security council not set"
+        );
+        require(
+            !upgradeExecutor.hasRole(EXECUTOR_ROLE, address(prevEmergencySecurityCouncil)),
+            "NonGovernanceChainSCMgmtActivationAction: prev emergency security council still set"
+        );
 
-        // TODO: confim all state updates here?
+        require(
+            !l2CoreGovTimelock.hasRole(
+                TIMELOCK_PROPOSAL_ROLE, address(prevNonEmergencySecurityCouncil)
+            ),
+            "GovernanceChainSCMgmtActivationAction: prev nonemergency council still has proposal role"
+        );
+        require(
+            l2CoreGovTimelock.hasRole(
+                TIMELOCK_PROPOSAL_ROLE, address(newNonEmergencySecurityCouncil)
+            ),
+            "GovernanceChainSCMgmtActivationAction: new nonemergency doesn't have proposal role"
+        );
+
+        require(
+            l2CoreGovTimelock.hasRole(TIMELOCK_PROPOSAL_ROLE, securityCouncilManager),
+            "GovernanceChainSCMgmtActivationAction: securityCouncilManager doesn't have proposal role"
+        );
+        require(
+            !l2CoreGovTimelock.hasRole(
+                TIMELOCK_CANCELLER_ROLE, address(prevEmergencySecurityCouncil)
+            ),
+            "GovernanceChainSCMgmtActivationAction: prev emergency security council still has cancellor role"
+        );
     }
 }
