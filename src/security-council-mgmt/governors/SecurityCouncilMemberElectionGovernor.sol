@@ -147,7 +147,7 @@ contract SecurityCouncilMemberElectionGovernor is
         return nomineeElectionGovernor.isCompliantNominee(proposalId, possibleNominee);
     }
 
-    // CHRIS: TODO: docs
+    /// @dev Returns all the compliant (non excluded) nominees for the requested proposal
     function _compliantNominees(uint256 proposalId)
         internal
         view

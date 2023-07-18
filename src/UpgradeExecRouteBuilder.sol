@@ -10,8 +10,12 @@ interface DefaultGovAction {
     function perform() external;
 }
 
+/// @notice The location of an upgrade executor, relative to the host chain
+///         Inbox is set to address(0) if the upgrade executor is on the host chain
+///         Inbox is set to the address of the inbox of another Arbitrum chain if the upgrade executor is
+///         is not on the host chain
 struct UpExecLocation {
-    address inbox; // for L1, inbox should be set to address(0)
+    address inbox; // Inbox should be set to address(0) to signify that the upgrade executor is on the L1/host chain
     address upgradeExecutor;
 }
 
@@ -20,38 +24,46 @@ struct ChainAndUpExecLocation {
     UpExecLocation location;
 }
 
-// CHRIS: TODO: document the assumptions this exec router is making
-//              eg * on an L2
-//                 * only 1 up exec per chain
-//                 * chains are arb chains - reachable via inboxes — or L1 (in which case inbox is address(0))
-//                 * can schedule in L1 timelock
 /// @notice Router for target the execution of action contracts in upgrade executors that exist on other chains
-///         Upgrade executors can only be reached by going through a withdrawal and L1 timelock, so this contract
-///         also include these stages when creating/scheduling a route
-contract UpgradeExecRouterBuilder {
+///         Routes target an upgrade executor which is either on the host chain, or can be accessed via the inbox
+///         So routes are of two possible forms:
+///         1. Withdrawal => L1Timelock => UpgradeExecutor
+///         2. Withdrawal => L1Timelock => Inbox => UpgradeExecutor
+/// @dev    This contract makes the following assumptions:
+///         * It is deployed on an L2 - more specifically it has access to an ArbSys which allows it to make withdrawal
+///           transactions to a host chain
+///         * It can only target one upgrade executor per chain
+///         * The upgrade executors being targeted are either on the host chain, or are Arbitrum chains reachable
+///           via inboxes on the host chain
+///         * There exists a L1 timelock on the host chain
+contract UpgradeExecRouteBuilder {
     error UpgadeExecDoesntExist(uint256 chainId);
     error UpgradeExecAlreadyExists(uint256 chindId);
     error ParamLengthMismatch(uint256 len1, uint256 len2);
     error EmptyActionBytesData(bytes[]);
 
-    // Used as a magic value to indicate that a retryable ticket should be created by the L1 timelock
+    /// @notice The magic value used by the L1 timelock to indicate that a retryable ticket should be created
+    ///         See L1ArbitrumTimelock for more details
     address public constant RETRYABLE_TICKET_MAGIC = 0xa723C008e76E379c55599D2E4d93879BeaFDa79C;
-    // Default args for creating a proposal, used by createProposalWithDefaulArgs and createProposalBatchWithDefaultArgs
+    /// @notice Default args for creating a proposal, used by createProposalWithDefaulArgs and createProposalBatchWithDefaultArgs
+    ///         Default is function selector for a perform function with no args: 'function perform() external'
     bytes public constant DEFAULT_GOV_ACTION_CALLDATA =
         abi.encodeWithSelector(DefaultGovAction.perform.selector);
     uint256 public constant DEFAULT_VALUE = 0;
+    /// @notice Default predecessor used when calling the L1 timelock
     bytes32 public constant DEFAULT_PREDECESSOR = bytes32(0);
 
-    // address of l1 timelock for core governance route
+    /// @notice Address of the L1 timelock targetted by this route builder
     address public l1TimelockAddr;
-    // min delay for core l1 timelock, to be kept equivalent to value on L1. I.e., if L1 delay is increased, this should be redeployed with the new value
+    /// @notice The minimum delay of the L1 timelock targetted by this route builder
+    /// @dev    If the min delay for this timelock changes then a new route builder will need to be deployed
     uint256 public l1TimelockMinDelay;
+    /// @notice Upgrade Executor locations for each chain (chainId => location)
+    mapping(uint256 => UpExecLocation) public upExecLocations;
 
-    mapping(uint256 => UpExecLocation) upExecLocations;
-
-    /// @param _upgradeExecutors location data for upgrade executors
-    /// @param _l1ArbitrumTimelock minimum delay for L1 timelock
-    /// @param _l1TimelockMinDelay address of the core gov L1 timelock
+    /// @param _upgradeExecutors    Locations of the upgrade executors on each chain
+    /// @param _l1ArbitrumTimelock  Address of the core gov L1 timelock
+    /// @param _l1TimelockMinDelay  Minimum delay for L1 timelock
     constructor(
         ChainAndUpExecLocation[] memory _upgradeExecutors,
         address _l1ArbitrumTimelock,
@@ -75,24 +87,27 @@ contract UpgradeExecRouterBuilder {
         l1TimelockAddr = _l1ArbitrumTimelock;
         l1TimelockMinDelay = _l1TimelockMinDelay;
     }
-    /// @notice getter for UpExecLocation in upExecLocations mapping
-    /// @param _chainId chainId for target UpExecLocation
 
+    /// @notice Check if an upgrade executor exists for the supplied chain id
+    /// @param _chainId ChainId for target UpExecLocation
     function upExecLocationExists(uint256 _chainId) public view returns (bool) {
         return upExecLocations[_chainId].upgradeExecutor != address(0);
     }
 
-    /// @notice creates data for ArbSys for a batch of core governance operations
-    /// @param chainIds target chain ids for actions
-    /// @param actionAddresses address of action contracts (on their target chain)
-    /// @param actionValues callvalues for operations
-    /// @param actionDatas calldatas for actions
-    /// @param timelockSalt salt for core gov l1 timelock operation
+    /// @notice Creates the to address and calldata to be called to execute a route to a batch of action contracts
+    ///         See Governance Action Contracts for more details
+    /// @param chainIds         Chain ids containing the actions to be called
+    /// @param actionAddresses  Addresses of the action contracts to be called
+    /// @param actionValues     Values to call the action contracts with
+    /// @param actionDatas      Call data to call the action contracts with
+    /// @param predecessor      A predecessor value for the l1 timelock operation
+    /// @param timelockSalt     A salt for the l1 timelock operation
     function createActionRouteData(
         uint256[] memory chainIds,
         address[] memory actionAddresses,
         uint256[] memory actionValues,
         bytes[] memory actionDatas,
+        bytes32 predecessor,
         bytes32 timelockSalt
     ) public view returns (address, bytes memory) {
         if (chainIds.length != actionAddresses.length) {
@@ -109,6 +124,8 @@ contract UpgradeExecRouterBuilder {
         uint256[] memory schedValues = new uint256[](chainIds.length);
         bytes[] memory schedData = new bytes[](chainIds.length);
 
+        // for each chain create calldata that targets the upgrade executor
+        // from the l1 timelock
         for (uint256 i = 0; i < chainIds.length; i++) {
             UpExecLocation memory upExecLocation = upExecLocations[chainIds[i]];
             if (upExecLocation.upgradeExecutor == address(0)) {
@@ -142,31 +159,34 @@ contract UpgradeExecRouterBuilder {
             }
         }
 
-        // schedule that
+        // batch those calls to execute from the l1 timelock
         bytes memory timelockCallData = abi.encodeWithSelector(
             L1ArbitrumTimelock.scheduleBatch.selector,
             schedTargets,
             schedValues,
             schedData,
-            DEFAULT_PREDECESSOR, // CHRIS: TODO: should we allow others here? could be important? no, use the complex route?
+            predecessor,
             timelockSalt,
             l1TimelockMinDelay
         );
 
+        // create a message to initiate a withdrawal to the L1 timelock
         return (
             address(100),
             abi.encodeWithSelector(ArbSys.sendTxToL1.selector, l1TimelockAddr, timelockCallData)
         );
     }
-    /// @notice creates data for ArbSys for a batch of core governance operations, using common default values for calldata and callvalue
-    /// @param chainIds target chain ids for actions
-    /// @param actionAddresses address of action contracts (on their target chain)
-    /// @param timelockSalt salt for core gov l1 timelock operation
 
+    /// @notice Creates the to address and calldata to be called to execute a route to a batch of action contracts
+    ///         Uses common defaults using for value, calldata and predecessor
+    ///         See Governance Action Contracts for more details
+    /// @param chainIds         Chain ids containing the actions to be called
+    /// @param actionAddresses  Addresses of the action contracts to be called
+    /// @param timelockSalt     A salt for the l1 timelock operation
     function createActionRouteDataWithDefaults(
         uint256[] memory chainIds,
         address[] memory actionAddresses,
-        bytes32 timelockSalt // CHRIS: TODO: can we calculate this in the contract somehow?
+        bytes32 timelockSalt
     ) public view returns (address, bytes memory) {
         uint256[] memory values = new uint256[](chainIds.length);
         bytes[] memory actionDatas = new bytes[](chainIds.length);
@@ -174,6 +194,8 @@ contract UpgradeExecRouterBuilder {
             actionDatas[i] = DEFAULT_GOV_ACTION_CALLDATA;
             values[i] = DEFAULT_VALUE;
         }
-        return createActionRouteData(chainIds, actionAddresses, values, actionDatas, timelockSalt);
+        return createActionRouteData(
+            chainIds, actionAddresses, values, actionDatas, DEFAULT_PREDECESSOR, timelockSalt
+        );
     }
 }

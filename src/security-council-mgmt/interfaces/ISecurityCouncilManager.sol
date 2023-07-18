@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.16;
 
-import "../../UpgradeExecRouterBuilder.sol";
+import "../../UpgradeExecRouteBuilder.sol";
 import "../Common.sol";
 
 /// @notice Addresses to be given specific roles on the Security Council Manager
@@ -47,7 +47,7 @@ interface ISecurityCouncilManager {
         SecurityCouncilData[] memory _securityCouncils,
         SecurityCouncilManagerRoles memory _roles,
         address payable _l2CoreGovTimelock,
-        UpgradeExecRouterBuilder _router
+        UpgradeExecRouteBuilder _router
     ) external;
     /// @notice Replaces a whole cohort.
     /// @dev    Initiaties cross chain messages to update the individual Security Councils
@@ -100,13 +100,25 @@ interface ISecurityCouncilManager {
     function removeSecurityCouncil(SecurityCouncilData memory _securityCouncilData)
         external
         returns (bool);
-    /// @notice UpgradeExecRouterBuilder is immutable, so in lieu of upgrading it, it can be redeployed and reset here
+    /// @notice UpgradeExecRouteBuilder is immutable, so in lieu of upgrading it, it can be redeployed and reset here
     /// @param _router new router address
-    function setUpgradeExecRouterBuilder(UpgradeExecRouterBuilder _router) external;
-    // CHRIS: TODO: add docs
-    function getScheduleUpdateData()
+    function setUpgradeExecRouteBuilder(UpgradeExecRouteBuilder _router) external;
+    /// @notice Gets the data that will be used to update each of the security councils
+    /// @param nonce The nonce used to generate the timelock salts
+    /// @return The new members to be added to the councils
+    /// @return The address of the contract that will be called by the l2 timelock
+    /// @return The data that will be called from the l2 timelock
+    function getScheduleUpdateInnerData(uint256 nonce)
         external
         view
         returns (address[] memory, address, bytes memory);
-    function generateSalt(address[] memory _members) external view returns (bytes32);
+    /// @notice Generate the salt used in the timelocks when scheduling an update
+    /// @param _members The new members to be added
+    /// @param nonce    The manager nonce to make the salt unique - current nonce can be found by calling updateNonce
+    function generateSalt(address[] memory _members, uint256 nonce)
+        external
+        pure
+        returns (bytes32);
+    /// @notice Each update increments an internal nonce that keeps updates unique, current value stored here
+    function updateNonce() external returns (uint256);
 }
