@@ -24,7 +24,6 @@ contract SecurityCouncilNomineeElectionGovernor is
     OwnableUpgradeable,
     SecurityCouncilNomineeElectionGovernorTiming
 {
-    // todo: these parameters could be reordered to make more sense
     /// @notice parameters for `initialize`
     /// @param firstNominationStartDate First election start date
     /// @param nomineeVettingDuration Duration of the nominee vetting period (expressed in blocks)
@@ -225,10 +224,7 @@ contract SecurityCouncilNomineeElectionGovernor is
             revert NomineeAlreadyAdded();
         }
 
-        uint256 compliantNomineeCount =
-            nomineeCount(proposalId) - _elections[proposalId].excludedNomineeCount;
-
-        if (compliantNomineeCount >= securityCouncilManager.cohortSize()) {
+        if (compliantNomineeCount(proposalId) >= securityCouncilManager.cohortSize()) {
             revert CompliantNomineeTargetHit();
         }
 
@@ -260,12 +256,8 @@ contract SecurityCouncilNomineeElectionGovernor is
             revert ProposalInVettingPeriod();
         }
 
-        ElectionInfo storage election = _elections[proposalId];
-
-        uint256 compliantNomineeCount = nomineeCount(proposalId) - election.excludedNomineeCount;
-
-        if (compliantNomineeCount < securityCouncilManager.cohortSize()) {
-            revert InsufficientCompliantNomineeCount(compliantNomineeCount);
+        if (compliantNomineeCount(proposalId) < securityCouncilManager.cohortSize()) {
+            revert InsufficientCompliantNomineeCount(compliantNomineeCount(proposalId));
         }
 
         securityCouncilMemberElectionGovernor.proposeFromNomineeElectionGovernor();
@@ -295,6 +287,7 @@ contract SecurityCouncilNomineeElectionGovernor is
         return isNominee(proposalId, account) && !_elections[proposalId].isExcluded[account];
     }
 
+    /// @notice The list of compliant nominees for the given proposal
     function compliantNominees(uint256 proposalId) public view returns (address[] memory) {
         ElectionInfo storage election = _elections[proposalId];
         address[] memory maybeCompliantNominees =
@@ -304,8 +297,10 @@ contract SecurityCouncilNomineeElectionGovernor is
         );
     }
 
-    // henry: todo: `compliantNomineeCount(uint) public`, so we don't have to do the subtraction in multiple places
-    // also test it in the testExcludeNominee test
+    /// @notice Number of compliant nominees for the given proposal
+    function compliantNomineeCount(uint256 proposalId) public view returns (uint256) {
+        return nomineeCount(proposalId) - _elections[proposalId].excludedNomineeCount;
+    }
 
     /// @notice returns cohort currently up for election
     function currentCohort() public view returns (Cohort) {
