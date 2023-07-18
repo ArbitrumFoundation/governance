@@ -23,14 +23,12 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
         mapping(address => uint240) weightReceived;
     }
 
-    uint256 private constant WAD = 1e18;
-
     /// @notice Duration of full weight voting (expressed in blocks)
     uint256 public fullWeightDuration;
 
+    /// @dev proposalId => ElectionInfo
     mapping(uint256 => ElectionInfo) private _elections;
 
-    // would this be more useful if reason was included?
     /// @notice Emitted when a vote is cast for a nominee
     /// @param voter The account that is casting the vote
     /// @param proposalId The id of the proposal
@@ -74,6 +72,8 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
      */
 
     /// @notice Set the full weight duration numerator and total duration denominator
+    /// @dev    Only callable by this governor contract
+    /// @param  newFullWeightDuration The new full weight duration
     function setFullWeightDuration(uint256 newFullWeightDuration) public onlyGovernance {
         if (newFullWeightDuration > votingPeriod()) {
             revert FullWeightDurationGreaterThanVotingPeriod(newFullWeightDuration, votingPeriod());
@@ -146,33 +146,46 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
     /**
      * view/pure functions *************
      */
-
+    
+    /// @inheritdoc IGovernorUpgradeable
     function COUNTING_MODE() public pure virtual override returns (string memory) {
         return "TODO: ???";
     }
 
     /// @notice Returns the number of votes used by an account for a given proposal
+    /// @param  proposalId The id of the proposal
+    /// @param  account The account to check
     function votesUsed(uint256 proposalId, address account) public view returns (uint256) {
         return _elections[proposalId].votesUsed[account];
     }
 
     /// @notice Returns weight received by a nominee for a given proposal
+    /// @param  proposalId The id of the proposal
+    /// @param  nominee The nominee to check
     function weightReceived(uint256 proposalId, address nominee) public view returns (uint256) {
         return _elections[proposalId].weightReceived[nominee];
     }
 
     /// @notice Returns true if the account has voted any amount for any nominee in the proposal
+    /// @param  proposalId The id of the proposal
+    /// @param  account The account to check
     function hasVoted(uint256 proposalId, address account) public view override returns (bool) {
         return votesUsed(proposalId, account) > 0;
     }
 
+    /// @notice Deadline for full weight voting, after this block number the weight of votes will decrease linearly
+    /// @param  proposalId The id of the proposal
     function fullWeightVotingDeadline(uint256 proposalId) public view returns (uint256) {
         uint256 startBlock = proposalSnapshot(proposalId);
 
         return startBlock + fullWeightDuration;
     }
 
-    // gas usage is probably a little bit more than (4200 + 1786)n. With 500 that's 2,993,000
+    /// @notice Returns the top nominees by weight received for a given proposal
+    /// @dev    Gas usage is a little bit more than (4200 + 1786)n. (Where n is total number of nominees).
+    ///         With 500 nominees that's 2,993,000 gas.
+    ///         Take care when lowering the nominee threshold as this function could become very expensive.
+    /// @param  proposalId The id of the proposal
     function topNominees(uint256 proposalId) public view returns (address[] memory) {
         address[] memory nominees = _compliantNominees(proposalId);
         uint240[] memory weights = new uint240[](nominees.length);
@@ -183,10 +196,14 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
         return selectTopNominees(nominees, weights, _targetMemberCount());
     }
 
-    // todo: set a lower threshold bound in the nominee governor.
-    // gas usage with k = 6, n = nominees.length is approx 1786n. with 500 it is 902,346
-    // these numbers are for the worst case scenario where the nominees are in ascending order
-    // these numbers also include memory expansion cost (i think)
+
+    /// @notice Given some accounts and weights, return a list of the top k accounts by weight.
+    /// @dev    Gas usage with k = 6, n = nominees.length is approx 1786*n. with 500 it is 902,346.
+    ///         These numbers are for the worst case scenario where the nominees are in ascending order.
+    ///         These numbers also include memory expansion cost.
+    /// @param  nominees The list of accounts to select from
+    /// @param  weights The weights of the accounts
+    /// @param  k The number of accounts to select
     function selectTopNominees(address[] memory nominees, uint240[] memory weights, uint256 k)
         public
         pure
@@ -221,6 +238,9 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
 
     /// @notice Returns the weight of a vote for a given proposal, block number, and number of votes.
     /// @dev    Uses a piecewise linear function to determine the weight of a vote.
+    /// @param  proposalId The id of the proposal
+    /// @param  blockNumber The block number to calculate the weight for
+    /// @param  votes The number of votes to calculate the weight for
     function votesToWeight(uint256 proposalId, uint256 blockNumber, uint256 votes)
         public
         view
@@ -259,6 +279,7 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
      */
 
     /// @notice Downcasts a uint256 to a uint240, reverting if the input is too large
+    /// @param  x The uint256 to downcast to a uint240
     function _downCast(uint256 x) internal pure returns (uint240) {
         if (x > type(uint240).max) {
             revert UintTooLarge(x);
@@ -276,7 +297,9 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
         return true;
     }
 
-    /// @dev Returns true if the possibleNominee is a compliant nominee for the most recent election
+    /// @dev Whether the possibleNominee is a compliant nominee for the given election
+    /// @param proposalId The id of the proposal
+    /// @param possibleNominee The account that is being checked
     function _isCompliantNominee(uint256 proposalId, address possibleNominee)
         internal
         view
@@ -284,6 +307,7 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
         returns (bool);
 
     /// @dev Returns all the compliant (non excluded) nominees for the requested proposal
+    /// @param proposalId The id of the proposal
     function _compliantNominees(uint256 proposalId)
         internal
         view
@@ -298,5 +322,5 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
      * variables without shifting down storage in the inheritance chain.
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
      */
-    uint256[46] private __gap;
+    uint256[48] private __gap;
 }
