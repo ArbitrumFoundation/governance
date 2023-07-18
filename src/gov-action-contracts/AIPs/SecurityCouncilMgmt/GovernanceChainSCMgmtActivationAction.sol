@@ -69,6 +69,7 @@ contract GovernanceChainSCMgmtActivationAction {
         bytes32 TIMELOCK_PROPOSAL_ROLE = l2CoreGovTimelock.PROPOSER_ROLE();
         bytes32 TIMELOCK_CANCELLER_ROLE = l2CoreGovTimelock.CANCELLER_ROLE();
 
+        // switch proposal role from old to new nonemergency council
         require(
             l2CoreGovTimelock.hasRole(
                 TIMELOCK_PROPOSAL_ROLE, address(prevNonEmergencySecurityCouncil)
@@ -100,15 +101,22 @@ contract GovernanceChainSCMgmtActivationAction {
         );
         l2CoreGovTimelock.grantRole(TIMELOCK_PROPOSAL_ROLE, securityCouncilManager);
 
-        // revoke old security council cancel role
+        // switch cancellor role from old to new emergency council
         require(
             l2CoreGovTimelock.hasRole(
                 TIMELOCK_CANCELLER_ROLE, address(prevEmergencySecurityCouncil)
             ),
             "GovernanceChainSCMgmtActivationAction: prev emergency security council should have cancellor role"
         );
+        require(
+            !l2CoreGovTimelock.hasRole(
+                TIMELOCK_CANCELLER_ROLE, address(newEmergencySecurityCouncil)
+            ),
+            "GovernanceChainSCMgmtActivationAction: new emergency security council already has cancellor role"
+        );
 
         l2CoreGovTimelock.revokeRole(TIMELOCK_CANCELLER_ROLE, address(prevEmergencySecurityCouncil));
+        l2CoreGovTimelock.grantRole(TIMELOCK_CANCELLER_ROLE, address(newEmergencySecurityCouncil));
 
         // confirm updates
         bytes32 EXECUTOR_ROLE = upgradeExecutor.EXECUTOR_ROLE();
@@ -138,11 +146,18 @@ contract GovernanceChainSCMgmtActivationAction {
             l2CoreGovTimelock.hasRole(TIMELOCK_PROPOSAL_ROLE, securityCouncilManager),
             "GovernanceChainSCMgmtActivationAction: securityCouncilManager doesn't have proposal role"
         );
+        
         require(
             !l2CoreGovTimelock.hasRole(
                 TIMELOCK_CANCELLER_ROLE, address(prevEmergencySecurityCouncil)
             ),
             "GovernanceChainSCMgmtActivationAction: prev emergency security council still has cancellor role"
+        );
+        require(
+            l2CoreGovTimelock.hasRole(
+                TIMELOCK_CANCELLER_ROLE, address(newEmergencySecurityCouncil)
+            ),
+            "GovernanceChainSCMgmtActivationAction: new emergency security council doesn't have cancellor role"
         );
     }
 }
