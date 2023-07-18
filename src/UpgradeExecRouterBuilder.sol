@@ -29,7 +29,7 @@ struct ChainAndUpExecLocation {
 ///         So routes are of two possible forms:
 ///         1. Withdrawal => L1Timelock => UpgradeExecutor
 ///         2. Withdrawal => L1Timelock => Inbox => UpgradeExecutor
-/// @dev    This contract makes this following:
+/// @dev    This contract makes the following assumptions:
 ///         * It is deployed on an L2 - more specifically it has access to an ArbSys which allows it to make withdrawal
 ///           transactions to a host chain
 ///         * It can only target one upgrade executor per chain
