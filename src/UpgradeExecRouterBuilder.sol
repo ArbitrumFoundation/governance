@@ -170,7 +170,7 @@ contract UpgradeExecRouterBuilder {
             l1TimelockMinDelay
         );
 
-        // withdraw to the l1 timelock
+        // create a message to initiate a withdrawal to the L1 timelock
         return (
             address(100),
             abi.encodeWithSelector(ArbSys.sendTxToL1.selector, l1TimelockAddr, timelockCallData)
