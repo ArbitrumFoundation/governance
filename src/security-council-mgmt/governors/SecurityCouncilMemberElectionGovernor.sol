@@ -4,10 +4,6 @@ pragma solidity 0.8.16;
 import "./modules/SecurityCouncilMemberElectionGovernorCountingUpgradeable.sol";
 import "./SecurityCouncilNomineeElectionGovernor.sol";
 
-// CHRIS: TODO: address this comment
-// this contract assumes that any active or successful proposal corresponds to the last NomineeElectionGovernor election
-// we may want to override state() such that a successful proposal expires if it isn't executed after some time
-
 /// @title  SecurityCouncilMemberElectionGovernor
 /// @notice Narrows a set of nominees down to a set of members.
 /// @dev    Proposals are created by the SecurityCouncilNomineeElectionGovernor.
