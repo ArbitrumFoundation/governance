@@ -9,7 +9,6 @@ import "./SecurityCouncilMemberElectionGovernor.sol";
 import "./modules/SecurityCouncilNomineeElectionGovernorCountingUpgradeable.sol";
 import "./modules/ArbitrumGovernorVotesQuorumFractionUpgradeable.sol";
 import "./modules/SecurityCouncilNomineeElectionGovernorTiming.sol";
-import "./modules/ArbitrumGovernorProposalExpirationUpgradeable.sol";
 
 import "../SecurityCouncilMgmtUtils.sol";
 
@@ -23,8 +22,7 @@ contract SecurityCouncilNomineeElectionGovernor is
     ArbitrumGovernorVotesQuorumFractionUpgradeable,
     GovernorSettingsUpgradeable,
     OwnableUpgradeable,
-    SecurityCouncilNomineeElectionGovernorTiming,
-    ArbitrumGovernorProposalExpirationUpgradeable
+    SecurityCouncilNomineeElectionGovernorTiming
 {
     // todo: these parameters could be reordered to make more sense
     /// @notice parameters for `initialize`
@@ -364,26 +362,6 @@ contract SecurityCouncilNomineeElectionGovernor is
         returns (bool)
     {
         return _elections[proposalId].isContender[possibleContender];
-    }
-
-    /// @inheritdoc ArbitrumGovernorProposalExpirationUpgradeable
-    function state(uint256 proposalId)
-        public
-        view
-        override(GovernorUpgradeable, ArbitrumGovernorProposalExpirationUpgradeable)
-        returns (ProposalState)
-    {
-        return ArbitrumGovernorProposalExpirationUpgradeable.state(proposalId);
-    }
-
-    /// @inheritdoc ArbitrumGovernorProposalExpirationUpgradeable
-    function _proposalExpirationCountdownStart(uint256 proposalId)
-        internal
-        view
-        override
-        returns (uint256)
-    {
-        return proposalVettingDeadline(proposalId);
     }
 
     /**

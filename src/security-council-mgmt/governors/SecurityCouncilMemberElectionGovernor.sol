@@ -2,7 +2,6 @@
 pragma solidity 0.8.16;
 
 import "./modules/SecurityCouncilMemberElectionGovernorCountingUpgradeable.sol";
-import "./modules/ArbitrumGovernorProposalExpirationUpgradeable.sol";
 import "./SecurityCouncilNomineeElectionGovernor.sol";
 
 /// @title  SecurityCouncilMemberElectionGovernor
@@ -15,7 +14,6 @@ contract SecurityCouncilMemberElectionGovernor is
     GovernorVotesUpgradeable,
     SecurityCouncilMemberElectionGovernorCountingUpgradeable,
     GovernorSettingsUpgradeable,
-    ArbitrumGovernorProposalExpirationUpgradeable,
     OwnableUpgradeable
 {
     /// @notice The SecurityCouncilNomineeElectionGovernor that creates proposals for this governor and contains the list of compliant nominees
@@ -132,16 +130,6 @@ contract SecurityCouncilMemberElectionGovernor is
     /// @notice Quorum is always 0.
     function quorum(uint256) public pure override returns (uint256) {
         return 0;
-    }
-
-    /// @inheritdoc ArbitrumGovernorProposalExpirationUpgradeable
-    function state(uint256 proposalId)
-        public
-        view
-        override(GovernorUpgradeable, ArbitrumGovernorProposalExpirationUpgradeable)
-        returns (ProposalState)
-    {
-        return ArbitrumGovernorProposalExpirationUpgradeable.state(proposalId);
     }
 
     /**
