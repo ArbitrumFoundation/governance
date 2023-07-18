@@ -9,9 +9,11 @@ import "./SecurityCouncilMemberElectionGovernor.sol";
 import "./modules/SecurityCouncilNomineeElectionGovernorCountingUpgradeable.sol";
 import "./modules/ArbitrumGovernorVotesQuorumFractionUpgradeable.sol";
 import "./modules/SecurityCouncilNomineeElectionGovernorTiming.sol";
-import "./modules/ArbitrumGovernorProposalExpirationUpgradeable.sol";
 
 import "../SecurityCouncilMgmtUtils.sol";
+
+// note: this contract assumes that there can only be one proposalId with state Active or Succeeded at a time
+// (easy to override state() to return `Expired` if a proposal succeeded but hasn't executed after some time)
 
 /// @title SecurityCouncilNomineeElectionGovernor
 /// @notice Governor contract for selecting Security Council Nominees (phase 1 of the Security Council election process).
@@ -23,8 +25,7 @@ contract SecurityCouncilNomineeElectionGovernor is
     ArbitrumGovernorVotesQuorumFractionUpgradeable,
     GovernorSettingsUpgradeable,
     OwnableUpgradeable,
-    SecurityCouncilNomineeElectionGovernorTiming,
-    ArbitrumGovernorProposalExpirationUpgradeable
+    SecurityCouncilNomineeElectionGovernorTiming
 {
     // todo: these parameters could be reordered to make more sense
     /// @notice parameters for `initialize`
@@ -117,10 +118,7 @@ contract SecurityCouncilNomineeElectionGovernor is
         if (msg.sender != nomineeVetter) {
             revert OnlyNomineeVetter();
         }
-        if (
-            state(proposalId) != ProposalState.Succeeded
-                || block.number > proposalVettingDeadline(proposalId)
-        ) {
+        if (state(proposalId) != ProposalState.Succeeded || block.number > proposalVettingDeadline(proposalId)) {
             revert ProposalNotInVettingPeriod();
         }
         _;
@@ -198,10 +196,7 @@ contract SecurityCouncilNomineeElectionGovernor is
     /// @notice Allows the nomineeVetter to exclude a noncompliant nominee.
     /// @dev    Can be called only after a nomninee election proposal has "succeeded" (voting has ended) and before the nominee vetting period has ended.
     ///         Will revert if the provided account is not a nominee (had less than the required votes).
-    function excludeNominee(uint256 proposalId, address nominee)
-        external
-        onlyNomineeVetterInVettingPeriod(proposalId)
-    {
+    function excludeNominee(uint256 proposalId, address nominee) external onlyNomineeVetterInVettingPeriod(proposalId) {
         ElectionInfo storage election = _elections[proposalId];
         if (election.isExcluded[nominee]) {
             revert NomineeAlreadyExcluded(nominee);
@@ -219,10 +214,7 @@ contract SecurityCouncilNomineeElectionGovernor is
     /// @notice Allows the nomineeVetter to explicitly include a nominee if there are fewer nominees than the target.
     /// @dev    Can be called only after a proposal has succeeded (voting has ended) and before the nominee vetting period has ended.
     ///         Will revert if the provided account is already a nominee
-    function includeNominee(uint256 proposalId, address account)
-        external
-        onlyNomineeVetterInVettingPeriod(proposalId)
-    {
+    function includeNominee(uint256 proposalId, address account) external onlyNomineeVetterInVettingPeriod(proposalId) {
         if (isNominee(proposalId, account)) {
             revert NomineeAlreadyAdded();
         }
@@ -364,26 +356,6 @@ contract SecurityCouncilNomineeElectionGovernor is
         returns (bool)
     {
         return _elections[proposalId].isContender[possibleContender];
-    }
-
-    /// @inheritdoc ArbitrumGovernorProposalExpirationUpgradeable
-    function state(uint256 proposalId)
-        public
-        view
-        override(GovernorUpgradeable, ArbitrumGovernorProposalExpirationUpgradeable)
-        returns (ProposalState)
-    {
-        return ArbitrumGovernorProposalExpirationUpgradeable.state(proposalId);
-    }
-
-    /// @inheritdoc ArbitrumGovernorProposalExpirationUpgradeable
-    function _proposalExpirationCountdownStart(uint256 proposalId)
-        internal
-        view
-        override
-        returns (uint256)
-    {
-        return proposalVettingDeadline(proposalId);
     }
 
     /**
