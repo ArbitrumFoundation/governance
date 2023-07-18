@@ -20,7 +20,7 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
         /// @dev The weight of votes received by a nominee. At the start of the election
         ///      each vote has weight 1, however after a cutoff point the weight of each
         ///      vote decreases linearly until it is 0 by the end of the election
-        mapping(address => uint256) weightReceived;
+        mapping(address => uint240) weightReceived;
     }
 
     uint256 private constant WAD = 1e18;
@@ -59,6 +59,7 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
     error ZeroWeightVote();
     error InsufficientVotes();
     error LengthsDontMatch();
+    error UintTooLarge(uint256 x);
 
     /// @param initialFullWeightDuration Duration of full weight voting (expressed in blocks)
     function __SecurityCouncilMemberElectionGovernorCounting_init(uint256 initialFullWeightDuration)
@@ -111,7 +112,7 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
             revert NotCompliantNominee();
         }
 
-        uint256 weight = votesToWeight(proposalId, block.number, votes);
+        uint240 weight = votesToWeight(proposalId, block.number, votes);
 
         if (weight == 0) {
             revert ZeroWeightVote();
@@ -125,7 +126,7 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
             revert InsufficientVotes();
         }
 
-        uint256 prevWeightReceived = election.weightReceived[nominee];
+        uint240 prevWeightReceived = election.weightReceived[nominee];
 
         election.votesUsed[account] = prevVotesUsed + votes;
         election.weightReceived[nominee] = prevWeightReceived + weight;
@@ -174,7 +175,7 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
     // gas usage is probably a little bit more than (4200 + 1786)n. With 500 that's 2,993,000
     function topNominees(uint256 proposalId) public view returns (address[] memory) {
         address[] memory nominees = _compliantNominees(proposalId);
-        uint256[] memory weights = new uint256[](nominees.length);
+        uint240[] memory weights = new uint240[](nominees.length);
         ElectionInfo storage election = _elections[proposalId];
         for (uint256 i = 0; i < nominees.length; i++) {
             weights[i] = election.weightReceived[nominees[i]];
@@ -186,7 +187,7 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
     // gas usage with k = 6, n = nominees.length is approx 1786n. with 500 it is 902,346
     // these numbers are for the worst case scenario where the nominees are in ascending order
     // these numbers also include memory expansion cost (i think)
-    function selectTopNominees(address[] memory nominees, uint256[] memory weights, uint256 k)
+    function selectTopNominees(address[] memory nominees, uint240[] memory weights, uint256 k)
         public
         pure
         returns (address[] memory)
@@ -194,14 +195,15 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
         if (nominees.length != weights.length) {
             revert LengthsDontMatch();
         }
+        
+        if (k >= nominees.length) {
+            return nominees;
+        }
 
         uint256[] memory topNomineesPacked = new uint256[](k);
 
         for (uint16 i = 0; i < nominees.length; i++) {
-            uint256 weight = weights[i];
-            // CHRIS: TODO: we need to put guards in here to make sure we dont overflow bounds
-            // CHRIS: TODO: alternative is to roll our own sort here, which sholdnt be too difficult
-            uint256 packed = (weight << 16) | i;
+            uint256 packed = (uint256(weights[i]) << 16) | i;
 
             if (topNomineesPacked[0] < packed) {
                 topNomineesPacked[0] = packed;
@@ -210,7 +212,7 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
         }
 
         address[] memory topNomineesAddresses = new address[](k);
-        for (uint256 i = 0; i < k; i++) {
+        for (uint16 i = 0; i < k; i++) {
             topNomineesAddresses[i] = nominees[uint16(topNomineesPacked[i])];
         }
 
@@ -222,7 +224,7 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
     function votesToWeight(uint256 proposalId, uint256 blockNumber, uint256 votes)
         public
         view
-        returns (uint256)
+        returns (uint240)
     {
         // Before proposalSnapshot all votes have 0 weight
         uint256 startBlock = proposalSnapshot(proposalId);
@@ -238,7 +240,7 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
         // Between proposalSnapshot and fullWeightVotingDeadline all votes will have 100% weight - each vote has weight 1
         uint256 fullWeightVotingDeadline_ = fullWeightVotingDeadline(proposalId);
         if (blockNumber <= fullWeightVotingDeadline_) {
-            return votes;
+            return _downCast(votes);
         }
 
         // Between the fullWeightVotingDeadline and the proposalDeadline each vote will have weight linearly decreased by time since fullWeightVotingDeadline
@@ -249,12 +251,20 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
         uint256 decreaseAmount =
             votes * (blockNumber - fullWeightVotingDeadline_) / decreasingWeightDuration;
         // subtract the decreased amount to get the remaining weight
-        return votes - decreaseAmount;
+        return _downCast(votes - decreaseAmount);
     }
 
     /**
      * internal view/pure functions *************
      */
+
+    /// @notice Downcasts a uint256 to a uint240, reverting if the input is too large
+    function _downCast(uint256 x) internal pure returns (uint240) {
+        if (x > type(uint240).max) {
+            revert UintTooLarge(x);
+        }
+        return uint240(x);
+    }
 
     /// @notice Returns true, since there is no minimum quorum
     function _quorumReached(uint256) internal pure override returns (bool) {
