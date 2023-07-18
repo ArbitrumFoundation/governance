@@ -7,7 +7,7 @@ import "../L1ArbitrumTimelock.sol";
 import "./SecurityCouncilMgmtUtils.sol";
 import "./interfaces/ISecurityCouncilManager.sol";
 import "./SecurityCouncilMemberSyncAction.sol";
-import "../UpgradeExecRouterBuilder.sol";
+import "../UpgradeExecRouteBuilder.sol";
 import "@arbitrum/nitro-contracts/src/precompiles/ArbSys.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
@@ -35,7 +35,7 @@ contract SecurityCouncilManager is
     event SecurityCouncilRemoved(
         address securityCouncil, address updateAction, uint256 securityCouncilsLength
     );
-    event UpgradeExecRouterBuilderSet(address upgradeExecRouterBuilder);
+    event UpgradeExecRouteBuilderSet(address UpgradeExecRouteBuilder);
 
     // The Security Council members are separated into two cohorts, allowing a whole cohort to be replaced, as
     // specified by the Arbitrum Constitution.
@@ -52,8 +52,8 @@ contract SecurityCouncilManager is
     ///         will be pushed to each of these security councils, ensuring that they all stay in sync
     SecurityCouncilData[] public securityCouncils;
 
-    /// @notice Address of UpgradeExecRouterBuilder. Used to help create security council updates
-    UpgradeExecRouterBuilder public router;
+    /// @notice Address of UpgradeExecRouteBuilder. Used to help create security council updates
+    UpgradeExecRouteBuilder public router;
 
     // TODO: benchmark for reasonable number
     /// @notice Maximum possible number of Security Councils to manage
@@ -87,7 +87,7 @@ contract SecurityCouncilManager is
         SecurityCouncilData[] memory _securityCouncils,
         SecurityCouncilManagerRoles memory _roles,
         address payable _l2CoreGovTimelock,
-        UpgradeExecRouterBuilder _router
+        UpgradeExecRouteBuilder _router
     ) external initializer {
         if (_firstCohort.length != _secondCohort.length) {
             revert CohortLengthMismatch(_firstCohort, _secondCohort);
@@ -106,7 +106,7 @@ contract SecurityCouncilManager is
 
         l2CoreGovTimelock = _l2CoreGovTimelock;
 
-        _setUpgradeExecRouterBuilder(_router);
+        _setUpgradeExecRouteBuilder(_router);
         for (uint256 i = 0; i < _securityCouncils.length; i++) {
             _addSecurityCouncil(_securityCouncils[i]);
         }
@@ -300,14 +300,14 @@ contract SecurityCouncilManager is
     }
 
     /// @inheritdoc ISecurityCouncilManager
-    function setUpgradeExecRouterBuilder(UpgradeExecRouterBuilder _router)
+    function setUpgradeExecRouteBuilder(UpgradeExecRouteBuilder _router)
         external
         onlyRole(DEFAULT_ADMIN_ROLE)
     {
-        _setUpgradeExecRouterBuilder(_router);
+        _setUpgradeExecRouteBuilder(_router);
     }
 
-    function _setUpgradeExecRouterBuilder(UpgradeExecRouterBuilder _router) internal {
+    function _setUpgradeExecRouteBuilder(UpgradeExecRouteBuilder _router) internal {
         address routerAddress = address(_router);
 
         if (!Address.isContract(routerAddress)) {
@@ -315,7 +315,7 @@ contract SecurityCouncilManager is
         }
 
         router = _router;
-        emit UpgradeExecRouterBuilderSet(routerAddress);
+        emit UpgradeExecRouteBuilderSet(routerAddress);
     }
 
     /// @inheritdoc ISecurityCouncilManager

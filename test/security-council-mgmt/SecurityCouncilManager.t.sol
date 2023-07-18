@@ -3,7 +3,7 @@ pragma solidity 0.8.16;
 
 import "forge-std/Test.sol";
 import "../../src/security-council-mgmt/SecurityCouncilManager.sol";
-import "../../src/UpgradeExecRouterBuilder.sol";
+import "../../src/UpgradeExecRouteBuilder.sol";
 
 import "../util/TestUtil.sol";
 import "../util/MockArbSys.sol";
@@ -55,7 +55,7 @@ contract SecurityCouncilManagerTest is Test {
         [address(3331), address(3332), address(3333), address(3334), dup, dup];
 
     SecurityCouncilManager scm;
-    UpgradeExecRouterBuilder uerb;
+    UpgradeExecRouteBuilder uerb;
     address[] memberRemovers = new address[](2);
     address memberRemover1 = address(4444);
     address memberRemover2 = address(4445);
@@ -108,7 +108,7 @@ contract SecurityCouncilManagerTest is Test {
     function setUp() public {
         chainAndUpExecLocation.push(firstChainAndUpExecLocation);
         chainAndUpExecLocation.push(secondChainAndUpExecLocation);
-        uerb = new UpgradeExecRouterBuilder({
+        uerb = new UpgradeExecRouteBuilder({
             _upgradeExecutors:chainAndUpExecLocation,
             _l1ArbitrumTimelock: l1ArbitrumTimelock,
             _l1TimelockMinDelay: l1TimelockMinDelay
@@ -474,20 +474,20 @@ contract SecurityCouncilManagerTest is Test {
     }
 
     function testUpdateRouterAffordacnes() public {
-        UpgradeExecRouterBuilder newRouter = UpgradeExecRouterBuilder(TestUtil.deployStubContract());
+        UpgradeExecRouteBuilder newRouter = UpgradeExecRouteBuilder(TestUtil.deployStubContract());
         vm.prank(rando);
         vm.expectRevert();
-        scm.setUpgradeExecRouterBuilder(newRouter);
+        scm.setUpgradeExecRouteBuilder(newRouter);
 
         vm.prank(roles.admin);
         vm.expectRevert(abi.encodeWithSelector(NotAContract.selector, rando));
-        scm.setUpgradeExecRouterBuilder(UpgradeExecRouterBuilder(rando));
+        scm.setUpgradeExecRouteBuilder(UpgradeExecRouteBuilder(rando));
     }
 
     function testUpdateRouter() public {
-        UpgradeExecRouterBuilder newRouter = UpgradeExecRouterBuilder(TestUtil.deployStubContract());
+        UpgradeExecRouteBuilder newRouter = UpgradeExecRouteBuilder(TestUtil.deployStubContract());
         vm.prank(roles.admin);
-        scm.setUpgradeExecRouterBuilder(UpgradeExecRouterBuilder(newRouter));
+        scm.setUpgradeExecRouteBuilder(UpgradeExecRouteBuilder(newRouter));
         assertEq(address(newRouter), address(scm.router()), "router set");
     }
 

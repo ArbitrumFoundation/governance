@@ -36,7 +36,7 @@ struct ChainAndUpExecLocation {
 ///         * The upgrade executors being targeted are either on the host chain, or are Arbitrum chains reachable
 ///           via inboxes on the host chain
 ///         * There exists a L1 timelock on the host chain
-contract UpgradeExecRouterBuilder {
+contract UpgradeExecRouteBuilder {
     error UpgadeExecDoesntExist(uint256 chainId);
     error UpgradeExecAlreadyExists(uint256 chindId);
     error ParamLengthMismatch(uint256 len1, uint256 len2);

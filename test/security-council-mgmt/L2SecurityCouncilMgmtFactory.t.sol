@@ -167,7 +167,7 @@ contract L2SecurityCouncilMgmtFactoryTest is Test, DeployGnosisWithModule {
             "l2 core gov timelock set"
         );
         assertEq(
-            address(deployed.upgradeExecRouterBuilder),
+            address(deployed.UpgradeExecRouteBuilder),
             address(securityCouncilManager.router()),
             "l2 core gov timelock set"
         );

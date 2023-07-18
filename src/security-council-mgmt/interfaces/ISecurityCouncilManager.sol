@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.16;
 
-import "../../UpgradeExecRouterBuilder.sol";
+import "../../UpgradeExecRouteBuilder.sol";
 import "../Common.sol";
 
 /// @notice Addresses to be given specific roles on the Security Council Manager
@@ -47,7 +47,7 @@ interface ISecurityCouncilManager {
         SecurityCouncilData[] memory _securityCouncils,
         SecurityCouncilManagerRoles memory _roles,
         address payable _l2CoreGovTimelock,
-        UpgradeExecRouterBuilder _router
+        UpgradeExecRouteBuilder _router
     ) external;
     /// @notice Replaces a whole cohort.
     /// @dev    Initiaties cross chain messages to update the individual Security Councils
@@ -98,9 +98,9 @@ interface ISecurityCouncilManager {
     function removeSecurityCouncil(SecurityCouncilData memory _securityCouncilData)
         external
         returns (bool);
-    /// @notice UpgradeExecRouterBuilder is immutable, so in lieu of upgrading it, it can be redeployed and reset here
+    /// @notice UpgradeExecRouteBuilder is immutable, so in lieu of upgrading it, it can be redeployed and reset here
     /// @param _router new router address
-    function setUpgradeExecRouterBuilder(UpgradeExecRouterBuilder _router) external;
+    function setUpgradeExecRouteBuilder(UpgradeExecRouteBuilder _router) external;
     /// @notice Gets the data that will be used to update each of the security councils
     /// @param nonce The nonce used to generate the timelock salts
     /// @return The new members to be added to the councils

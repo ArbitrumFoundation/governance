@@ -12,7 +12,7 @@ import "../interfaces/ISecurityCouncilManager.sol";
 import "../interfaces/IGnosisSafe.sol";
 import "../../ArbitrumTimelock.sol";
 import "@openzeppelin/contracts-upgradeable/governance/utils/IVotesUpgradeable.sol";
-import "../../UpgradeExecRouterBuilder.sol";
+import "../../UpgradeExecRouteBuilder.sol";
 import "../Common.sol";
 
 struct DeployParams {
@@ -54,7 +54,7 @@ contract L2SecurityCouncilMgmtFactory is Ownable {
         ISecurityCouncilManager securityCouncilManager;
         SecurityCouncilMemberRemovalGovernor securityCouncilMemberRemoverGov;
         ArbitrumTimelock memberRemovalGovTimelock;
-        UpgradeExecRouterBuilder upgradeExecRouterBuilder;
+        UpgradeExecRouteBuilder UpgradeExecRouteBuilder;
     }
 
     error AddressNotInCouncil(address[] securityCouncil, address account);
@@ -170,7 +170,7 @@ contract L2SecurityCouncilMgmtFactory is Ownable {
             memberReplacer: dp.govChainEmergencySecurityCouncil
         });
 
-        deployedContracts.upgradeExecRouterBuilder = new UpgradeExecRouterBuilder({
+        deployedContracts.UpgradeExecRouteBuilder = new UpgradeExecRouteBuilder({
             _upgradeExecutors: dp.upgradeExecutors,
             _l1ArbitrumTimelock: dp.l1ArbitrumTimelock,
             _l1TimelockMinDelay: dp.l1TimelockMinDelay
@@ -190,7 +190,7 @@ contract L2SecurityCouncilMgmtFactory is Ownable {
             _securityCouncils: dp.securityCouncils,
             _roles: roles,
             _l2CoreGovTimelock: payable(dp.l2CoreGovTimelock),
-            _router: deployedContracts.upgradeExecRouterBuilder
+            _router: deployedContracts.UpgradeExecRouteBuilder
         });
 
         _initRemovalGov(
