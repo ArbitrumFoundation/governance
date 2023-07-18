@@ -203,8 +203,7 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
         uint256[] memory topNomineesPacked = new uint256[](k);
 
         for (uint16 i = 0; i < nominees.length; i++) {
-            uint256 weight = weights[i];
-            uint256 packed = (weight << 16) | i;
+            uint256 packed = (uint256(weights[i]) << 16) | i;
 
             if (topNomineesPacked[0] < packed) {
                 topNomineesPacked[0] = packed;
