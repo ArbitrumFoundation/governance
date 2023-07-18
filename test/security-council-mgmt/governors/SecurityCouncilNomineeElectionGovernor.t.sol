@@ -365,9 +365,7 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
         vm.roll(governor.proposalVettingDeadline(proposalId));
         _mockCohortIncludes(Cohort.SECOND, _contender(uint8(cohortSize - 1)), false);
         vm.prank(initParams.nomineeVetter);
-        governor.includeNominee(
-            proposalId, _contender(uint8(cohortSize - 1))
-        );
+        governor.includeNominee(proposalId, _contender(uint8(cohortSize - 1)));
 
         vm.roll(governor.proposalVettingDeadline(proposalId) + 1);
         vm.mockCall(address(initParams.securityCouncilMemberElectionGovernor), "", "");
