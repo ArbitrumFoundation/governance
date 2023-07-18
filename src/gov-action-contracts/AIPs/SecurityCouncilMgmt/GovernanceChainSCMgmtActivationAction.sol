@@ -100,7 +100,7 @@ contract GovernanceChainSCMgmtActivationAction {
         );
         l2CoreGovTimelock.grantRole(TIMELOCK_PROPOSAL_ROLE, securityCouncilManager);
 
-        // revoke old security council cancel role
+        // revoke old security council cancel role; it is unnecessary to grant it to explicitly grant it to new security council since the security council can already cancel via the core governor's relay method.
         require(
             l2CoreGovTimelock.hasRole(
                 TIMELOCK_CANCELLER_ROLE, address(prevEmergencySecurityCouncil)
