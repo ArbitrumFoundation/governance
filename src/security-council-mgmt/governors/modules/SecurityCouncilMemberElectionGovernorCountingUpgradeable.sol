@@ -248,7 +248,7 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
         // y intercept is votes
         uint256 decreaseAmount =
             votes * (blockNumber - fullWeightVotingDeadline_) / decreasingWeightDuration;
-        // subtract the decreated amount to get the remaining weight
+        // subtract the decreased amount to get the remaining weight
         return votes - decreaseAmount;
     }
 
