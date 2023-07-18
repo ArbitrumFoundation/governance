@@ -289,7 +289,7 @@ contract SecurityCouncilMemberElectionGovernorTest is Test {
         // pack and sort original, compare to selectTopNominees
         uint256[] memory packed = new uint256[](n);
         for (uint16 i = 0; i < n; i++) {
-            packed[i] = (weights[i] << 16) | i;
+            packed[i] = (uint256(weights[i]) << 16) | i;
         }
 
         LibSort.sort(packed);
