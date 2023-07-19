@@ -1,6 +1,6 @@
 import {
   L2SecurityCouncilMgmtFactory__factory,
-  SecurityCouncilUpgradeAction__factory,
+  SecurityCouncilMemberSyncAction__factory,
   L1ArbitrumTimelock__factory,
   IGnosisSafe__factory,
 } from "../../typechain-types";
@@ -59,7 +59,7 @@ export const deploySecurityCouncilMgmtContracts = async (deploymentConfig: Deplo
 
     const connectedSigner = chainIDToConnectedSigner[chainID];
     if (!connectedSigner) throw new Error(`Signer not connected for chain ${chainID}`);
-    const securityCouncilUpgradeAction = await new SecurityCouncilUpgradeAction__factory(
+    const securityCouncilUpgradeAction = await new SecurityCouncilMemberSyncAction__factory(
       connectedSigner
     ).deploy();
 
@@ -99,7 +99,7 @@ export const deploySecurityCouncilMgmtContracts = async (deploymentConfig: Deplo
     securityCouncilManager,
     securityCouncilMemberRemoverGov,
     memberRemovalGovTimelock,
-    upgradeExecRouterBuilder,
+    UpgradeExecRouteBuilder,
   } = l2DeployResult.deployedContracts;
   return {
     nomineeElectionGovernor,
@@ -107,7 +107,7 @@ export const deploySecurityCouncilMgmtContracts = async (deploymentConfig: Deplo
     securityCouncilManager,
     securityCouncilMemberRemoverGov,
     memberRemovalGovTimelock,
-    upgradeExecRouterBuilder,
+    UpgradeExecRouteBuilder,
     securityCouncilUpgradeActions: securityCouncilDatas.map((data) => {
       return {
         securityCouncilUpgradeAction: data.updateAction,
