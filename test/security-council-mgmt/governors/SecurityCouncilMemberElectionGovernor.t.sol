@@ -296,23 +296,28 @@ contract SecurityCouncilMemberElectionGovernorTest is Test {
 
     function testSelectTopNominees(uint256 seed) public {
         vm.assume(seed > 0);
+
+        uint16 n = 100;
+        uint16 k = 6;
+
         // make a random list of addresses and weights
-        uint256[] memory weights = TestUtil.randomArray(100, seed);
-        address[] memory addresses = TestUtil.randomAddresses(100, seed - 1);
+        uint240[] memory weights = TestUtil.randomUint240s(n, seed);
+        address[] memory addresses = TestUtil.randomAddresses(n, seed - 1);
 
         // call selectTopNominees
-        address[] memory topNominees = governor.selectTopNominees(addresses, weights, 6);
+        address[] memory topNominees = governor.selectTopNominees(addresses, weights, k);
+        assertEq(topNominees.length, k);
 
         // pack and sort original, compare to selectTopNominees
-        uint256[] memory packed = new uint256[](100);
-        for (uint256 i = 0; i < 100; i++) {
-            packed[i] = (weights[i] << 16) | i;
+        uint256[] memory packed = new uint256[](n);
+        for (uint16 i = 0; i < n; i++) {
+            packed[i] = (uint256(weights[i]) << 16) | i;
         }
 
         LibSort.sort(packed);
 
-        for (uint256 i = 0; i < 6; i++) {
-            assertEq(topNominees[5 - i], addresses[packed[99 - i] & 0xffff]);
+        for (uint256 i = 0; i < k; i++) {
+            assertEq(topNominees[k - i - 1], addresses[packed[n - i - 1] & 0xffff]);
         }
     }
 

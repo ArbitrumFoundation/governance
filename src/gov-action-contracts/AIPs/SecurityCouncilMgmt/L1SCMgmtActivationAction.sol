@@ -50,6 +50,14 @@ contract L1SCMgmtActivationAction {
         l1Timelock.revokeRole(TIMELOCK_CANCELLER_ROLE, address(prevEmergencySecurityCouncil));
         l1Timelock.grantRole(TIMELOCK_CANCELLER_ROLE, address(l1UpgradeExecutor));
 
-        // TODO: decide on proxy upgrade of L1 timelock
+        // confirm updates
+        require(
+            l1Timelock.hasRole(TIMELOCK_CANCELLER_ROLE, address(l1UpgradeExecutor)),
+            "GovernanceChainSCMgmtActivationAction: l1UpgradeExecutor canceller role not set"
+        );
+        require(
+            !l1Timelock.hasRole(TIMELOCK_CANCELLER_ROLE, address(prevEmergencySecurityCouncil)),
+            "GovernanceChainSCMgmtActivationAction: prevEmergencySecurityCouncil canceller role not revoked"
+        );
     }
 }

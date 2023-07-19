@@ -409,8 +409,7 @@ contract E2E is Test, DeployGnosisWithModule {
             secCouncilThreshold,
             secCouncilThreshold,
             address(vars.secDeployedContracts.securityCouncilManager),
-            vars.l2AddressRegistry,
-            constitutionHash
+            vars.l2AddressRegistry
         );
 
         vm.prank(l2EmergencyCouncil);

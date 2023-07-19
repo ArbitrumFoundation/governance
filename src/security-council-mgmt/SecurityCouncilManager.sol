@@ -418,7 +418,6 @@ contract SecurityCouncilManager is
     function _scheduleUpdate() internal {
         // always update the nonce - this is used to ensure that proposals in the timelocks are unique
         updateNonce++;
-        // TODO: enforce ordering (on the L1 side) with a nonce? is no contract level ordering guarunee for updates ok?
         (address[] memory newMembers, address to, bytes memory data) =
             getScheduleUpdateInnerData(updateNonce);
 

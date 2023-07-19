@@ -40,7 +40,13 @@ interface ISecurityCouncilManager {
     error SecurityCouncilNotInManager(SecurityCouncilData securiyCouncilData);
     error SecurityCouncilAlreadyInRouter(SecurityCouncilData securiyCouncilData);
 
-    // TODO
+    /// @notice initialize SecurityCouncilManager
+    /// @param _firstCohort addresses of first cohort
+    /// @param _secondCohort addresses of second cohort
+    /// @param _securityCouncils data of all security councils to manage
+    /// @param _roles permissions for triggering modifications to security councils
+    /// @param  _l2CoreGovTimelock timelock for core governance / constitutional proposal
+    /// @param _router UpgradeExecRouteBuilder address
     function initialize(
         address[] memory _firstCohort,
         address[] memory _secondCohort,
