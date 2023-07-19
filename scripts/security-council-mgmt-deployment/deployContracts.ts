@@ -8,11 +8,13 @@ import {
   SecurityCouncilDataStruct,
   ContractsDeployedEventObject,
 } from "../../typechain-types/src/security-council-mgmt/factories/L2SecurityCouncilMgmtFactory";
-import { DeploymentConfig } from "./types";
+import { DeploymentConfig, ChainIDToConnectedSigner } from "./types";
+import { JsonRpcProvider } from "@ethersproject/providers";
+import {  Wallet } from "ethers";
+
 
 export const deploySecurityCouncilMgmtContracts = async (deploymentConfig: DeploymentConfig) => {
-  const { mostDeployParams, securityCouncils, connectedGovChainSigner, l1Provider } =
-    deploymentConfig;
+  const { mostDeployParams, securityCouncils, chainIDs } = deploymentConfig;
   /**
    * TODO up front sanity checks:
    * - all wallets funded
@@ -20,10 +22,39 @@ export const deploySecurityCouncilMgmtContracts = async (deploymentConfig: Deplo
    * - all security councils have the same owners
    */
 
+  if (!process.env.ARB_KEY) throw new Error("need ARB_KEY");
+  if (!process.env.ETH_KEY) throw new Error("need ETH_KEY");
+
+  const govChainSigner = new Wallet(process.env.ARB_KEY, new JsonRpcProvider(process.env.ARB_URL));
+  const govChainID = await govChainSigner.getChainId();
+
+  if (govChainID != chainIDs.govChainID)
+    throw new Error(`connected to wrong gov chain: ${govChainID}, expected ${chainIDs.govChainID}`);
+
+  const l1Signer = new Wallet(process.env.ETH_KEY, new JsonRpcProvider(process.env.ETH_URL));
+  const l1ChainID = await l1Signer.getChainId();
+
+  if (l1ChainID != chainIDs.l1ChainID)
+    throw new Error(`connected to wrong l1 chain: ${l1ChainID}, expected ${chainIDs.l1ChainID}`);
+
+  const chainIDToConnectedSigner: ChainIDToConnectedSigner = {
+    [l1ChainID]: l1Signer,
+    [govChainID]: govChainSigner,
+  };
+
+  if (process.env.NOVA_KEY && process.env.NOVA_URL) {
+    const novaSigner = new Wallet(process.env.NOVA_KEY, new JsonRpcProvider(process.env.NOVA_URL));
+    const novaChainID = await novaSigner.getChainId();
+    chainIDToConnectedSigner[novaChainID] = novaSigner;
+  }
+
   const securityCouncilDatas: SecurityCouncilDataStruct[] = [];
 
   for (let securityCouncilAndSigner of securityCouncils) {
-    const { connectedSigner, securityCouncilAddress } = securityCouncilAndSigner;
+    const { chainID, securityCouncilAddress } = securityCouncilAndSigner;
+
+    const connectedSigner = chainIDToConnectedSigner[chainID];
+    if (!connectedSigner) throw new Error(`Signer not connected for chain ${chainID}`);
     const securityCouncilUpgradeAction = await new SecurityCouncilUpgradeAction__factory(
       connectedSigner
     ).deploy();
@@ -36,12 +67,12 @@ export const deploySecurityCouncilMgmtContracts = async (deploymentConfig: Deplo
   }
 
   const l2SecurityCouncilMgmtFactory = await new L2SecurityCouncilMgmtFactory__factory(
-    connectedGovChainSigner
+    govChainSigner
   ).deploy();
 
   const l1ArbitrumTimelock = L1ArbitrumTimelock__factory.connect(
     await mostDeployParams.l1ArbitrumTimelock,
-    l1Provider
+    l1Signer.provider
   );
   const l1TimelockMinDelay = l1ArbitrumTimelock.getMinDelay();
 

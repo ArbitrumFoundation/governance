@@ -1,31 +1,18 @@
 import { DeploymentConfig } from "../types";
-import { Address, L1ToL2MessageStatus, L1TransactionReceipt, getL2Network } from "@arbitrum/sdk";
-import { constants, Signer, Wallet } from "ethers";
+import {  getL2Network } from "@arbitrum/sdk";
+import { constants } from "ethers";
 import { DeployedContracts } from "../../../src-ts/types";
 import fs from "fs";
 import dotenv from "dotenv";
 dotenv.config();
-import { JsonRpcProvider } from "@ethersproject/providers";
 
 export const getMainnetConfig = async () => {
+  const l1Id = 1;
   const arbOneId = 42161;
   const novaId = 42170;
 
   const arbOne = await getL2Network(arbOneId);
   const nova = await getL2Network(novaId);
-  if (!process.env.ARB_KEY) throw new Error("need ARB_KEY");
-  if (!process.env.NOVA_KEY) throw new Error("need NOVA_KEY");
-  if (!process.env.ETH_KEY) throw new Error("need NOVA_KEY");
-
-  const arbOneProvider = new JsonRpcProvider(process.env.ARB_URL);
-  const arbOneSigner = new Wallet(process.env.ARB_KEY, arbOneProvider);
-
-  const novaProvider = new JsonRpcProvider(process.env.NOVA_URL);
-  const novaSigner = new Wallet(process.env.NOVA_KEY, novaProvider);
-
-  const l1Provider = new JsonRpcProvider(process.env.ETH_URL);
-  const l1Signer = new Wallet(process.env.ETH_KEY, l1Provider);
-
   const mainnetCoreGovContracts = JSON.parse(
     fs.readFileSync("./files/mainnet/deployedContracts.json").toString()
   ) as DeployedContracts;
@@ -34,7 +21,7 @@ export const getMainnetConfig = async () => {
     mostDeployParams: {
       upgradeExecutors: [
         {
-          chainId: 1,
+          chainId: l1Id,
           location: {
             inbox: constants.AddressZero,
             upgradeExecutor: mainnetCoreGovContracts.l1Executor,
@@ -97,22 +84,24 @@ export const getMainnetConfig = async () => {
       memberVotingPeriod: 0, // TODO
       fullWeightDuration: 0, // TODO
     },
-    connectedGovChainSigner: l1Signer,
     securityCouncils: [
       {
         securityCouncilAddress: "TOOD",
-        connectedSigner: l1Signer,
+        chainID: l1Id,
       },
       {
         securityCouncilAddress: "TOOD",
-        connectedSigner: arbOneSigner,
+        chainID: arbOneId,
       },
       {
         securityCouncilAddress: "TOOD",
-        connectedSigner: novaSigner,
+        chainID: novaId,
       },
     ],
-    l1Provider,
+    chainIDs: {
+      govChainID: arbOneId,
+      l1ChainID: l1Id,
+    },
   };
   return mainnetConfig;
 };

@@ -1,14 +1,21 @@
 import { DeployParamsStruct } from "../../typechain-types/src/security-council-mgmt/factories/L2SecurityCouncilMgmtFactory";
 import { Signer } from "ethers";
-import { JsonRpcProvider } from "@ethersproject/providers";
 
-export interface SecurityCouncilAndConnectedSigner {
+export interface SecurityCouncilAndChainID {
   securityCouncilAddress: string;
-  connectedSigner: Signer;
+  chainID: number;
+}
+
+export interface ChainIDs {
+  govChainID: number, 
+  l1ChainID: number,
 }
 export interface DeploymentConfig {
   mostDeployParams: Omit<DeployParamsStruct, "securityCouncils" | "l1TimelockMinDelay">;
-  securityCouncils: SecurityCouncilAndConnectedSigner[];
-  connectedGovChainSigner: Signer;
-  l1Provider: JsonRpcProvider;
+  securityCouncils: SecurityCouncilAndChainID[];
+  chainIDs: ChainIDs
+}
+
+export interface ChainIDToConnectedSigner {
+  [key: number]: Signer;
 }
