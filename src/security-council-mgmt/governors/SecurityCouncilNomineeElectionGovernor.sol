@@ -321,6 +321,7 @@ contract SecurityCouncilNomineeElectionGovernor is
         );
     }
 
+    /// @notice Current number of compliant nominees for the proposal
     function compliantNomineeCount(uint256 proposalId) public view returns (uint256) {
         return nomineeCount(proposalId) - _elections[proposalId].excludedNomineeCount;
     }
