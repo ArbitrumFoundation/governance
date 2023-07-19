@@ -2,6 +2,7 @@ import {
   L2SecurityCouncilMgmtFactory__factory,
   SecurityCouncilUpgradeAction__factory,
   L1ArbitrumTimelock__factory,
+  IGnosisSafe__factory,
 } from "../../typechain-types";
 import {
   DeployParamsStruct,
@@ -9,22 +10,16 @@ import {
   ContractsDeployedEventObject,
 } from "../../typechain-types/src/security-council-mgmt/factories/L2SecurityCouncilMgmtFactory";
 import { DeploymentConfig, ChainIDToConnectedSigner } from "./types";
-import { JsonRpcProvider } from "@ethersproject/providers";
-import {  Wallet } from "ethers";
-
+import { JsonRpcProvider, Provider } from "@ethersproject/providers";
+import { Wallet, constants } from "ethers";
 
 export const deploySecurityCouncilMgmtContracts = async (deploymentConfig: DeploymentConfig) => {
   const { mostDeployParams, securityCouncils, chainIDs } = deploymentConfig;
-  /**
-   * TODO up front sanity checks:
-   * - all wallets funded
-   * - all previously deployed contracts exist
-   * - all security councils have the same owners
-   */
 
   if (!process.env.ARB_KEY) throw new Error("need ARB_KEY");
   if (!process.env.ETH_KEY) throw new Error("need ETH_KEY");
 
+  // set up signers
   const govChainSigner = new Wallet(process.env.ARB_KEY, new JsonRpcProvider(process.env.ARB_URL));
   const govChainID = await govChainSigner.getChainId();
 
@@ -48,6 +43,15 @@ export const deploySecurityCouncilMgmtContracts = async (deploymentConfig: Deplo
     chainIDToConnectedSigner[novaChainID] = novaSigner;
   }
 
+  // pre deployment checks
+  await sanityChecks(
+    deploymentConfig,
+    govChainSigner.provider,
+    l1Signer.provider,
+    chainIDToConnectedSigner
+  );
+
+  // deploy action contracts
   const securityCouncilDatas: SecurityCouncilDataStruct[] = [];
 
   for (let securityCouncilAndSigner of securityCouncils) {
@@ -66,6 +70,7 @@ export const deploySecurityCouncilMgmtContracts = async (deploymentConfig: Deplo
     });
   }
 
+  // deploy sc mgmt
   const l2SecurityCouncilMgmtFactory = await new L2SecurityCouncilMgmtFactory__factory(
     govChainSigner
   ).deploy();
@@ -110,4 +115,42 @@ export const deploySecurityCouncilMgmtContracts = async (deploymentConfig: Deplo
       };
     }),
   };
+};
+
+const sanityChecks = async (
+  deploymentConfig: DeploymentConfig,
+  govChainProvider: Provider,
+  l1Provider: Provider,
+  chainIDToConnectedSigner: ChainIDToConnectedSigner
+) => {
+  // ensure all signers funded
+  for (let chainIdStr in Object.keys(chainIDToConnectedSigner)) {
+    const signer = chainIDToConnectedSigner[+chainIdStr];
+    if (await (await signer.getBalance()).gt(constants.Zero)) {
+      const address = await signer.getAddress();
+      throw new Error(`Signer ${address} on ${chainIdStr} not funded`);
+    }
+  }
+
+  // ensure all security councils have the same owners
+
+  const allScOwners: string[][] = [];
+
+  for (let scData of deploymentConfig.securityCouncils) {
+    const signer = chainIDToConnectedSigner[scData.chainID];
+    if (!signer) throw new Error(`No provider found for ${scData.chainID}`);
+
+    const safe = IGnosisSafe__factory.connect(scData.securityCouncilAddress, signer);
+    const owners = await safe.getOwners();
+    allScOwners.push(owners);
+  }
+  const ownersStr = allScOwners[0].sort().join(",");
+  for (let i = 1; i < allScOwners.length; i++) {
+    const currentOwnersStr = allScOwners[i].sort().join(",");
+    if (ownersStr != currentOwnersStr)
+      throw new Error(`Security council owners not equal: ${ownersStr} vs ${currentOwnersStr}`);
+  }
+  /**
+   * TODO ensure all previously deployed contracts (have deployed bytecode)
+   */
 };

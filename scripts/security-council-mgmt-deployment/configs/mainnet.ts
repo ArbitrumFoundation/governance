@@ -78,7 +78,7 @@ export const getMainnetConfig = async () => {
         hour: "TODO",
       },
       nomineeVettingDuration: 0, // TODO
-      nomineeVetter: "TODO",
+      nomineeVetter: "0xTODO",
       nomineeQuorumNumerator: 0, // TODO
       nomineeVotingPeriod: 0, // TODO
       memberVotingPeriod: 0, // TODO
@@ -86,15 +86,15 @@ export const getMainnetConfig = async () => {
     },
     securityCouncils: [
       {
-        securityCouncilAddress: "TOOD",
+        securityCouncilAddress: "0xTODO",
         chainID: l1Id,
       },
       {
-        securityCouncilAddress: "TOOD",
+        securityCouncilAddress: "0xTODO",
         chainID: arbOneId,
       },
       {
-        securityCouncilAddress: "TOOD",
+        securityCouncilAddress: "0xTODO",
         chainID: novaId,
       },
     ],
