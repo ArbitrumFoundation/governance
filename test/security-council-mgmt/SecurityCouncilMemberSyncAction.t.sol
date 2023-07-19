@@ -7,10 +7,10 @@ import "../util/TestUtil.sol";
 import "../util/DeployGnosisWithModule.sol";
 import "../../src/UpgradeExecutor.sol";
 
-import "../../src/security-council-mgmt/SecurityCouncilUpgradeAction.sol";
+import "../../src/security-council-mgmt/SecurityCouncilMemberSyncAction.sol";
 import "../../src/security-council-mgmt/interfaces/IGnosisSafe.sol";
 
-contract SecurityCouncilUpgradeActionTest is Test, DeployGnosisWithModule {
+contract SecurityCouncilMemberSyncActionTest is Test, DeployGnosisWithModule {
     address admin = address(1111);
     address executor = address(2222);
 
@@ -42,10 +42,11 @@ contract SecurityCouncilUpgradeActionTest is Test, DeployGnosisWithModule {
 
         address safe = deploySafe(initialMembers, threshold, address(upgradeExecutor));
 
-        address action = address(new SecurityCouncilUpgradeAction());
+        address action = address(new SecurityCouncilMemberSyncAction());
 
-        bytes memory upgradeCallData =
-            abi.encodeWithSelector(SecurityCouncilUpgradeAction.perform.selector, safe, newMembers);
+        bytes memory upgradeCallData = abi.encodeWithSelector(
+            SecurityCouncilMemberSyncAction.perform.selector, safe, newMembers
+        );
         vm.prank(executor);
         upgradeExecutor.execute(action, upgradeCallData);
         assertTrue(
@@ -118,10 +119,10 @@ contract SecurityCouncilUpgradeActionTest is Test, DeployGnosisWithModule {
 
         address safe = deploySafe(prevMembers, 9, address(upgradeExecutor));
 
-        address action = address(new SecurityCouncilUpgradeAction());
+        address action = address(new SecurityCouncilMemberSyncAction());
 
         bytes memory upgradeCallData =
-            abi.encodeWithSelector(SecurityCouncilUpgradeAction.perform.selector, safe, newMembers);
+            abi.encodeWithSelector(SecurityCouncilMemberSyncAction.perform.selector, safe, newMembers);
 
         // [8], [9], [10] sucessfully get removed, leaving [11]'s previous owner to be [7]; removing [11] reverts as it's below the theshold,
         bytes memory revertingRemoveMemberCall = abi.encodeWithSelector(
@@ -130,7 +131,7 @@ contract SecurityCouncilUpgradeActionTest is Test, DeployGnosisWithModule {
         vm.prank(executor);
         vm.expectRevert(
             abi.encodeWithSelector(
-                SecurityCouncilUpgradeAction.ExecFromModuleError.selector,
+                SecurityCouncilMemberSyncAction.ExecFromModuleError.selector,
                 revertingRemoveMemberCall,
                 safe
             )
@@ -147,7 +148,7 @@ contract SecurityCouncilUpgradeActionTest is Test, DeployGnosisWithModule {
 
         IGnosisSafe safe = IGnosisSafe(deploySafe(owners, 9, address(upgradeExecutor)));
 
-        SecurityCouncilUpgradeAction action = new SecurityCouncilUpgradeAction();
+        SecurityCouncilMemberSyncAction action = new SecurityCouncilMemberSyncAction();
 
         assertEq(
             action.SENTINEL_OWNERS(),

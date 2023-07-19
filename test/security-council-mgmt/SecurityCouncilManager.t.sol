@@ -39,15 +39,20 @@ contract MockArbitrumTimelock {
 contract SecurityCouncilManagerTest is Test {
     address[] firstCohort = new address[](6);
     address[6] _firstCohort =
-        [address(1111), address(1112), address(1113), address(1114), address(1114), address(1116)];
+        [address(1111), address(1112), address(1113), address(1114), address(1115), address(1116)];
 
     address[] secondCohort = new address[](6);
     address[6] _secondCohort =
-        [address(2221), address(2222), address(2223), address(2224), address(2224), address(2226)];
+        [address(2221), address(2222), address(2223), address(2224), address(2225), address(2226)];
 
     address[] newCohort = new address[](6);
     address[6] _newCohort =
-        [address(3331), address(3332), address(3333), address(3334), address(3334), address(3336)];
+        [address(3331), address(3332), address(3333), address(3334), address(3335), address(3336)];
+
+    address[] newCohortWithADup = new address[](6);
+    address dup = address(3335);
+    address[6] _newCohortWithADup =
+        [address(3331), address(3332), address(3333), address(3334), dup, dup];
 
     SecurityCouncilManager scm;
     UpgradeExecRouterBuilder uerb;
@@ -98,6 +103,8 @@ contract SecurityCouncilManagerTest is Test {
         location: UpExecLocation({inbox: address(9995), upgradeExecutor: address(9996)})
     });
 
+    address[] bothCohorts;
+
     function setUp() public {
         chainAndUpExecLocation.push(firstChainAndUpExecLocation);
         chainAndUpExecLocation.push(secondChainAndUpExecLocation);
@@ -109,6 +116,10 @@ contract SecurityCouncilManagerTest is Test {
         for (uint256 i = 0; i < 6; i++) {
             secondCohort[i] = _secondCohort[i];
             firstCohort[i] = _firstCohort[i];
+            bothCohorts.push(_firstCohort[i]);
+            bothCohorts.push(_secondCohort[i]);
+            newCohort[i] = _newCohort[i];
+            newCohortWithADup[i] = _newCohortWithADup[i];
         }
         address prox = TestUtil.deployProxy(address(new SecurityCouncilManager()));
         scm = SecurityCouncilManager(payable(prox));
@@ -131,7 +142,7 @@ contract SecurityCouncilManagerTest is Test {
 
         assertTrue(scm.hasRole(scm.DEFAULT_ADMIN_ROLE(), roles.admin), "admin role set");
         assertTrue(
-            scm.hasRole(scm.ELECTION_EXECUTOR_ROLE(), roles.cohortUpdator),
+            scm.hasRole(scm.COHORT_REPLACER_ROLE(), roles.cohortUpdator),
             "election executor role set"
         );
         assertTrue(scm.hasRole(scm.MEMBER_ADDER_ROLE(), roles.memberAdder), "member adder role set");
@@ -319,6 +330,28 @@ contract SecurityCouncilManagerTest is Test {
         vm.stopPrank();
     }
 
+    function testRotateMember() public {
+        vm.startPrank(roles.memberRotator);
+        vm.recordLogs();
+        scm.rotateMember(firstCohort[0], memberToAdd);
+        checkScheduleWasCalled();
+
+        address[] memory newFirstCohortArray = new address[](6);
+        newFirstCohortArray[0] = memberToAdd;
+        for (uint256 i = 1; i < firstCohort.length; i++) {
+            newFirstCohortArray[i] = firstCohort[i];
+        }
+        assertTrue(
+            TestUtil.areAddressArraysEqual(newFirstCohortArray, scm.getFirstCohort()),
+            "first cohort rotated"
+        );
+        assertTrue(
+            TestUtil.areAddressArraysEqual(secondCohort, scm.getSecondCohort()),
+            "second cohort untouched"
+        );
+        vm.stopPrank();
+    }
+
     function testAddSCAffordances() public {
         vm.prank(rando);
         vm.expectRevert();
@@ -389,7 +422,9 @@ contract SecurityCouncilManagerTest is Test {
         newSmallCohort[0] = rando;
         vm.expectRevert(
             abi.encodeWithSelector(
-                ISecurityCouncilManager.InvalidNewCohortLength.selector, newSmallCohort
+                ISecurityCouncilManager.InvalidNewCohortLength.selector,
+                newSmallCohort,
+                newCohort.length
             )
         );
         scm.replaceCohort(newSmallCohort, Cohort.FIRST);
@@ -430,6 +465,14 @@ contract SecurityCouncilManagerTest is Test {
         );
     }
 
+    function testCantUpdateCohortWithADup() public {
+        vm.startPrank(roles.cohortUpdator);
+        vm.expectRevert(
+            abi.encodeWithSelector(ISecurityCouncilManager.MemberInCohort.selector, dup, 1)
+        );
+        scm.replaceCohort(newCohortWithADup, Cohort.SECOND);
+    }
+
     function testUpdateRouterAffordacnes() public {
         UpgradeExecRouterBuilder newRouter = UpgradeExecRouterBuilder(TestUtil.deployStubContract());
         vm.prank(rando);
@@ -446,6 +489,18 @@ contract SecurityCouncilManagerTest is Test {
         vm.prank(roles.admin);
         scm.setUpgradeExecRouterBuilder(UpgradeExecRouterBuilder(newRouter));
         assertEq(address(newRouter), address(scm.router()), "router set");
+    }
+
+    function testCohortMethods() public {
+        assertTrue(scm.firstCohortIncludes(firstCohort[0]), "firstCohortIncludes works");
+        assertFalse(scm.firstCohortIncludes(secondCohort[0]), "firstCohortIncludes works");
+        assertTrue(scm.secondCohortIncludes(secondCohort[0]), "secondCohortIncludes works");
+        assertFalse(scm.secondCohortIncludes(firstCohort[0]), "secondCohortIncludes works");
+
+        assertTrue(
+            TestUtil.areAddressArraysEqual(scm.getBothCohorts(), bothCohorts),
+            "getBothCohorts works"
+        );
     }
 
     // // helpers

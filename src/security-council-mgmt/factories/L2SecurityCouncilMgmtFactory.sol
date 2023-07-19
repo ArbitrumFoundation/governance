@@ -9,41 +9,41 @@ import "../SecurityCouncilManager.sol";
 import "../governors/SecurityCouncilMemberRemovalGovernor.sol";
 import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import "../interfaces/ISecurityCouncilManager.sol";
+import "../interfaces/IGnosisSafe.sol";
 import "../../ArbitrumTimelock.sol";
 import "@openzeppelin/contracts-upgradeable/governance/utils/IVotesUpgradeable.sol";
 import "../../UpgradeExecRouterBuilder.sol";
 import "../Common.sol";
 
 struct DeployParams {
-    ChainAndUpExecLocation[] _upgradeExecutors;
-    address _govChainEmergencySecurityCouncil;
-    address _l1ArbitrumTimelock;
-    address _l2CoreGovTimelock;
-    address _proxyAdmin;
-    address[] _secondCohort;
-    address[] _firstCohort;
+    ChainAndUpExecLocation[] upgradeExecutors;
+    address govChainEmergencySecurityCouncil;
+    address l1ArbitrumTimelock;
+    address l2CoreGovTimelock;
+    address govChainProxyAdmin;
+    address[] secondCohort;
+    address[] firstCohort;
     address l2UpgradeExecutor;
     address arbToken;
-    uint256 _l1TimelockMinDelay;
-    uint256 _removalGovVotingDelay;
-    uint256 _removalGovVotingPeriod;
-    uint256 _removalGovQuorumNumerator;
-    uint256 _removalGovProposalThreshold;
-    uint256 _removalGovVoteSuccessNumerator;
-    uint64 _removalGovMinPeriodAfterQuorum;
-    SecurityCouncilData[] _securityCouncils;
-    // governor params
-    SecurityCouncilNomineeElectionGovernor.Date firstNominationStartDate;
+    uint256 l1TimelockMinDelay;
+    uint256 removalGovVotingDelay;
+    uint256 removalGovVotingPeriod;
+    uint256 removalGovQuorumNumerator;
+    uint256 removalGovProposalThreshold;
+    uint256 removalGovVoteSuccessNumerator;
+    uint64 removalGovMinPeriodAfterQuorum;
+    SecurityCouncilData[] securityCouncils;
+    Date firstNominationStartDate;
     uint256 nomineeVettingDuration;
     address nomineeVetter;
     uint256 nomineeQuorumNumerator;
     uint256 nomineeVotingPeriod;
     uint256 memberVotingPeriod;
-    uint256 _fullWeightDuration;
+    uint256 fullWeightDuration;
 }
 
 /// @notice Factory for deploying L2 Security Council management contracts.
-/// Prerequisites: core Arb DAO governance contracts, and a SecurityCouncilUpgradeAction deployed for each governed security council (on each corresponding chain)
+/// Prerequisites: core Arb DAO governance contracts, and a SecurityCouncilMemberSyncAction deployed for each governed security council (on each corresponding chain)
 contract L2SecurityCouncilMgmtFactory is Ownable {
     event ContractsDeployed(DeployedContracts deployedContracts);
 
@@ -57,13 +57,16 @@ contract L2SecurityCouncilMgmtFactory is Ownable {
         UpgradeExecRouterBuilder upgradeExecRouterBuilder;
     }
 
+    error AddressNotInCouncil(address[] securityCouncil, address account);
+    error InvalidCohortsSize(uint256 councilSize, uint256 firstCohortSize, uint256 secondCohortSize);
+
     function deploy(DeployParams memory dp) external onlyOwner returns (DeployedContracts memory) {
-        if (!Address.isContract(dp._govChainEmergencySecurityCouncil)) {
-            revert NotAContract(dp._govChainEmergencySecurityCouncil);
+        if (!Address.isContract(dp.govChainEmergencySecurityCouncil)) {
+            revert NotAContract(dp.govChainEmergencySecurityCouncil);
         }
 
-        if (!Address.isContract(dp._proxyAdmin)) {
-            revert NotAContract(dp._proxyAdmin);
+        if (!Address.isContract(dp.govChainProxyAdmin)) {
+            revert NotAContract(dp.govChainProxyAdmin);
         }
 
         if (!Address.isContract(dp.l2UpgradeExecutor)) {
@@ -77,6 +80,23 @@ contract L2SecurityCouncilMgmtFactory is Ownable {
         if (dp.nomineeVetter == address(0)) {
             revert ZeroAddress();
         }
+        IGnosisSafe govChainEmergencySCSafe = IGnosisSafe(dp.govChainEmergencySecurityCouncil);
+        address[] memory owners = govChainEmergencySCSafe.getOwners();
+        if (owners.length != (dp.firstCohort.length + dp.secondCohort.length)) {
+            revert InvalidCohortsSize(owners.length, dp.firstCohort.length, dp.secondCohort.length);
+        }
+
+        for (uint256 i = 0; i < dp.firstCohort.length; i++) {
+            if (!govChainEmergencySCSafe.isOwner(dp.firstCohort[i])) {
+                revert AddressNotInCouncil(owners, dp.firstCohort[i]);
+            }
+        }
+
+        for (uint256 i = 0; i < dp.secondCohort.length; i++) {
+            if (!govChainEmergencySCSafe.isOwner(dp.secondCohort[i])) {
+                revert AddressNotInCouncil(owners, dp.secondCohort[i]);
+            }
+        }
 
         DeployedContracts memory deployedContracts;
 
@@ -85,7 +105,7 @@ contract L2SecurityCouncilMgmtFactory is Ownable {
             payable(
                 new TransparentUpgradeableProxy(
                     address(new SecurityCouncilNomineeElectionGovernor()),
-                    dp._proxyAdmin,
+                    dp.govChainProxyAdmin,
                     bytes("")
                 )
             )
@@ -96,7 +116,7 @@ contract L2SecurityCouncilMgmtFactory is Ownable {
             payable(
                 new TransparentUpgradeableProxy(
                     address(new SecurityCouncilMemberElectionGovernor()),
-                    dp._proxyAdmin,
+                    dp.govChainProxyAdmin,
                     bytes("")
                 )
             )
@@ -107,7 +127,7 @@ contract L2SecurityCouncilMgmtFactory is Ownable {
             address(
                 new TransparentUpgradeableProxy(
                 address(new SecurityCouncilManager()),
-                dp._proxyAdmin,
+                dp.govChainProxyAdmin,
                 bytes(""))
             )
         );
@@ -118,7 +138,7 @@ contract L2SecurityCouncilMgmtFactory is Ownable {
                 address(
                     new TransparentUpgradeableProxy(
                     address(new SecurityCouncilMemberRemovalGovernor()),
-                    dp._proxyAdmin,
+                    dp.govChainProxyAdmin,
                     bytes("")
                     )
                 )
@@ -131,7 +151,7 @@ contract L2SecurityCouncilMgmtFactory is Ownable {
                 address(
                     new TransparentUpgradeableProxy(
                     address(new ArbitrumTimelock()),
-                    dp._proxyAdmin,
+                    dp.govChainProxyAdmin,
                     bytes("")
                     )
                 )
@@ -140,20 +160,20 @@ contract L2SecurityCouncilMgmtFactory is Ownable {
         // create council manager roles
         address[] memory memberRemovers = new address[](2);
         memberRemovers[0] = address(deployedContracts.memberRemovalGovTimelock);
-        memberRemovers[1] = dp._govChainEmergencySecurityCouncil;
+        memberRemovers[1] = dp.govChainEmergencySecurityCouncil;
         SecurityCouncilManagerRoles memory roles = SecurityCouncilManagerRoles({
             admin: dp.l2UpgradeExecutor,
             cohortUpdator: address(deployedContracts.memberElectionGovernor),
-            memberAdder: dp._govChainEmergencySecurityCouncil,
+            memberAdder: dp.govChainEmergencySecurityCouncil,
             memberRemovers: memberRemovers,
-            memberRotator: dp._govChainEmergencySecurityCouncil,
-            memberReplacer: dp._govChainEmergencySecurityCouncil
+            memberRotator: dp.govChainEmergencySecurityCouncil,
+            memberReplacer: dp.govChainEmergencySecurityCouncil
         });
 
         deployedContracts.upgradeExecRouterBuilder = new UpgradeExecRouterBuilder({
-            _upgradeExecutors: dp._upgradeExecutors,
-            _l1ArbitrumTimelock: dp._l1ArbitrumTimelock,
-            _l1TimelockMinDelay: dp._l1TimelockMinDelay
+            _upgradeExecutors: dp.upgradeExecutors,
+            _l1ArbitrumTimelock: dp.l1ArbitrumTimelock,
+            _l1TimelockMinDelay: dp.l1TimelockMinDelay
         });
 
         // init the deployed contracts
@@ -164,14 +184,14 @@ contract L2SecurityCouncilMgmtFactory is Ownable {
             deployedContracts.memberElectionGovernor
         );
 
-        deployedContracts.securityCouncilManager.initialize(
-            dp._secondCohort,
-            dp._firstCohort,
-            dp._securityCouncils,
-            roles,
-            payable(dp._l2CoreGovTimelock),
-            deployedContracts.upgradeExecRouterBuilder
-        );
+        deployedContracts.securityCouncilManager.initialize({
+            _firstCohort: dp.firstCohort,
+            _secondCohort: dp.secondCohort,
+            _securityCouncils: dp.securityCouncils,
+            _roles: roles,
+            _l2CoreGovTimelock: payable(dp.l2CoreGovTimelock),
+            _router: deployedContracts.upgradeExecRouterBuilder
+        });
 
         _initRemovalGov(
             dp,
@@ -217,15 +237,15 @@ contract L2SecurityCouncilMgmtFactory is Ownable {
     ) internal {
         securityCouncilMemberRemoverGov.initialize({
             _securityCouncilManager: _securityCouncilManager,
-            _voteSuccessNumerator: dp._removalGovVoteSuccessNumerator,
+            _voteSuccessNumerator: dp.removalGovVoteSuccessNumerator,
             _token: IVotesUpgradeable(dp.arbToken),
             _timelock: _memberRemovalGovTimelock,
             _owner: dp.l2UpgradeExecutor,
-            _votingDelay: dp._removalGovVotingDelay,
-            _votingPeriod: dp._removalGovVotingPeriod,
-            _quorumNumerator: dp._removalGovQuorumNumerator,
-            _proposalThreshold: dp._removalGovProposalThreshold,
-            _minPeriodAfterQuorum: dp._removalGovMinPeriodAfterQuorum
+            _votingDelay: dp.removalGovVotingDelay,
+            _votingPeriod: dp.removalGovVotingPeriod,
+            _quorumNumerator: dp.removalGovQuorumNumerator,
+            _proposalThreshold: dp.removalGovProposalThreshold,
+            _minPeriodAfterQuorum: dp.removalGovMinPeriodAfterQuorum
         });
     }
 
@@ -237,7 +257,6 @@ contract L2SecurityCouncilMgmtFactory is Ownable {
     ) internal {
         nomineeElectionGovernor.initialize(
             SecurityCouncilNomineeElectionGovernor.InitParams({
-                targetNomineeCount: dp._secondCohort.length,
                 firstNominationStartDate: dp.firstNominationStartDate,
                 nomineeVettingDuration: dp.nomineeVettingDuration,
                 nomineeVetter: dp.nomineeVetter,
@@ -256,7 +275,7 @@ contract L2SecurityCouncilMgmtFactory is Ownable {
             _token: IVotesUpgradeable(dp.arbToken),
             _owner: dp.l2UpgradeExecutor,
             _votingPeriod: dp.memberVotingPeriod,
-            _fullWeightDuration: dp._fullWeightDuration
+            _fullWeightDuration: dp.fullWeightDuration
         });
     }
 }

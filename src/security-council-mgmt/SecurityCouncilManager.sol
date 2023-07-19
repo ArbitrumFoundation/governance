@@ -6,7 +6,7 @@ import "../UpgradeExecutor.sol";
 import "../L1ArbitrumTimelock.sol";
 import "./SecurityCouncilMgmtUtils.sol";
 import "./interfaces/ISecurityCouncilManager.sol";
-import "./SecurityCouncilUpgradeAction.sol";
+import "./SecurityCouncilMemberSyncAction.sol";
 import "../UpgradeExecRouterBuilder.sol";
 import "@arbitrum/nitro-contracts/src/precompiles/ArbSys.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
@@ -64,13 +64,14 @@ contract SecurityCouncilManager is
     /// @notice Nonce to ensure that scheduled updates create unique entries in the timelocks
     uint256 public updateNonce;
 
-    uint256 public constant STANDARD_COHORT_LENGTH = 6;
+    /// @notice Size of cohort under ordinary circumstancces
+    uint256 public cohortSize;
 
     /// @notice Magic value used by the L1 timelock to indicate that a retryable ticket should be created
     ///         Value is defined in L1ArbitrumTimelock contract https://etherscan.io/address/0xE6841D92B0C345144506576eC13ECf5103aC7f49#readProxyContract#F5
     address public constant RETRYABLE_TICKET_MAGIC = 0xa723C008e76E379c55599D2E4d93879BeaFDa79C;
 
-    bytes32 public constant ELECTION_EXECUTOR_ROLE = keccak256("ELECTION_EXECUTOR");
+    bytes32 public constant COHORT_REPLACER_ROLE = keccak256("COHORT_REPLACER");
     bytes32 public constant MEMBER_ADDER_ROLE = keccak256("MEMBER_ADDER");
     bytes32 public constant MEMBER_REPLACER_ROLE = keccak256("MEMBER_REPLACER");
     bytes32 public constant MEMBER_ROTATOR_ROLE = keccak256("MEMBER_ROTATOR");
@@ -88,10 +89,14 @@ contract SecurityCouncilManager is
         address payable _l2CoreGovTimelock,
         UpgradeExecRouterBuilder _router
     ) external initializer {
+        if (_firstCohort.length != _secondCohort.length) {
+            revert CohortLengthMismatch(_firstCohort, _secondCohort);
+        }
         firstCohort = _firstCohort;
         secondCohort = _secondCohort;
+        cohortSize = _firstCohort.length;
         _grantRole(DEFAULT_ADMIN_ROLE, _roles.admin);
-        _grantRole(ELECTION_EXECUTOR_ROLE, _roles.cohortUpdator);
+        _grantRole(COHORT_REPLACER_ROLE, _roles.cohortUpdator);
         _grantRole(MEMBER_ADDER_ROLE, _roles.memberAdder);
         for (uint256 i = 0; i < _roles.memberRemovers.length; i++) {
             _grantRole(MEMBER_REMOVER_ROLE, _roles.memberRemovers[i]);
@@ -110,15 +115,20 @@ contract SecurityCouncilManager is
     /// @inheritdoc ISecurityCouncilManager
     function replaceCohort(address[] memory _newCohort, Cohort _cohort)
         external
-        onlyRole(ELECTION_EXECUTOR_ROLE)
+        onlyRole(COHORT_REPLACER_ROLE)
     {
-        if (_newCohort.length != STANDARD_COHORT_LENGTH) {
-            revert InvalidNewCohortLength({cohort: _newCohort});
+        if (_newCohort.length != cohortSize) {
+            revert InvalidNewCohortLength({cohort: _newCohort, cohortSize: cohortSize});
         }
+
         if (_cohort == Cohort.FIRST) {
-            firstCohort = _newCohort;
+            delete firstCohort;
         } else if (_cohort == Cohort.SECOND) {
-            secondCohort = _newCohort;
+            delete secondCohort;
+        }
+
+        for (uint256 i = 0; i < _newCohort.length; i++) {
+            _addMemberToCohortArray(_newCohort[i], _cohort);
         }
 
         _scheduleUpdate();
@@ -126,8 +136,11 @@ contract SecurityCouncilManager is
     }
 
     function _addMemberToCohortArray(address _newMember, Cohort _cohort) internal {
+        if (_newMember == address(0)) {
+            revert ZeroAddress();
+        }
         address[] storage cohort = _cohort == Cohort.FIRST ? firstCohort : secondCohort;
-        if (cohort.length == STANDARD_COHORT_LENGTH) {
+        if (cohort.length == cohortSize) {
             revert CohortFull({cohort: _cohort});
         }
         if (firstCohortIncludes(_newMember)) {
@@ -156,9 +169,6 @@ contract SecurityCouncilManager is
 
     /// @inheritdoc ISecurityCouncilManager
     function addMember(address _newMember, Cohort _cohort) external onlyRole(MEMBER_ADDER_ROLE) {
-        if (_newMember == address(0)) {
-            revert ZeroAddress();
-        }
         _addMemberToCohortArray(_newMember, _cohort);
         _scheduleUpdate();
         emit MemberAdded(_newMember, _cohort);
@@ -352,16 +362,16 @@ contract SecurityCouncilManager is
     /// @notice Generate unique salt for timelock scheduling
     /// @param _members Data to input / hash
     function generateSalt(address[] memory _members) external view returns (bytes32) {
+        // CHRIS: TODO: make this func pure by providing the update nonce
         return keccak256(abi.encodePacked(_members, updateNonce));
     }
 
-    /// @dev Create a union of the second and first cohort, then update all Security Councils under management with that unioned array.
-    ///      Councils on other chains will need to be scheduled through timelocks and target upgrade executors
-    function _scheduleUpdate() internal {
-        // always update the nonce - this is used to ensure that proposals in the timelocks are unique
-        updateNonce++;
-        // TODO: enforce ordering (on the L1 side) with a nonce? is no contract level ordering guarunee for updates ok?
-
+    // CHRIS: TODO: docs
+    function getScheduleUpdateData()
+        public
+        view
+        returns (address[] memory, address, bytes memory)
+    {
         // build a union array of security council members
         address[] memory newMembers = getBothCohorts();
 
@@ -376,7 +386,7 @@ contract SecurityCouncilManager is
             actionAddresses[i] = securityCouncilData.updateAction;
             chainIds[i] = securityCouncilData.chainId;
             actionDatas[i] = abi.encodeWithSelector(
-                SecurityCouncilUpgradeAction.perform.selector,
+                SecurityCouncilMemberSyncAction.perform.selector,
                 securityCouncilData.securityCouncil,
                 newMembers
             );
@@ -389,6 +399,16 @@ contract SecurityCouncilManager is
             actionDatas,
             this.generateSalt(newMembers) // must be unique as the proposal hash is used for replay protection in the L1 timelock
         );
+        return (newMembers, to, data);
+    }
+
+    /// @dev Create a union of the second and first cohort, then update all Security Councils under management with that unioned array.
+    ///      Councils on other chains will need to be scheduled through timelocks and target upgrade executors
+    function _scheduleUpdate() internal {
+        // always update the nonce - this is used to ensure that proposals in the timelocks are unique
+        updateNonce++;
+        // TODO: enforce ordering (on the L1 side) with a nonce? is no contract level ordering guarunee for updates ok?
+        (address[] memory newMembers, address to, bytes memory data) = this.getScheduleUpdateData();
 
         ArbitrumTimelock(l2CoreGovTimelock).schedule({
             target: to, // ArbSys address - this will trigger a call from L2->L1

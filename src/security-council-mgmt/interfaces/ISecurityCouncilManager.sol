@@ -29,7 +29,8 @@ interface ISecurityCouncilManager {
     error NotAMember(address member);
     error MemberInCohort(address member, Cohort cohort);
     error CohortFull(Cohort cohort);
-    error InvalidNewCohortLength(address[] cohort);
+    error InvalidNewCohortLength(address[] cohort, uint256 cohortSize);
+    error CohortLengthMismatch(address[] cohort1, address[] cohort2);
 
     // security council data errors
 
@@ -89,6 +90,8 @@ interface ISecurityCouncilManager {
     function getBothCohorts() external view returns (address[] memory);
     /// @notice Length of security councils array
     function securityCouncilsLength() external view returns (uint256);
+    /// @notice Size of cohort under ordinary circumstancces
+    function cohortSize() external view returns (uint256);
     /// @notice Add new security council to be included in security council management system.
     /// @param _securityCouncilData Security council info
     function addSecurityCouncil(SecurityCouncilData memory _securityCouncilData) external;
@@ -100,4 +103,10 @@ interface ISecurityCouncilManager {
     /// @notice UpgradeExecRouterBuilder is immutable, so in lieu of upgrading it, it can be redeployed and reset here
     /// @param _router new router address
     function setUpgradeExecRouterBuilder(UpgradeExecRouterBuilder _router) external;
+    // CHRIS: TODO: add docs
+    function getScheduleUpdateData()
+        external
+        view
+        returns (address[] memory, address, bytes memory);
+    function generateSalt(address[] memory _members) external view returns (bytes32);
 }
