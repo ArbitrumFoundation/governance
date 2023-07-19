@@ -57,6 +57,10 @@ contract SecurityCouncilNomineeElectionGovernor is
         uint256 excludedNomineeCount;
     }
 
+    bytes32 public constant contenderRequestTypeHash = keccak256(
+        "ContenderRequest(uint256 proposalId)"
+    );
+
     /// @notice Address responsible for blocking non compliant nominees
     address public nomineeVetter;
 
@@ -93,6 +97,7 @@ contract SecurityCouncilNomineeElectionGovernor is
     error ProposalIdMismatch(uint256 nomineeProposalId, uint256 memberProposalId);
     error QuorumNumeratorTooLow(uint256 quorumNumeratorValue);
     error CastVoteDisabled();
+    error InvalidSignature();
 
     constructor() {
         _disableInitializers();
@@ -168,14 +173,17 @@ contract SecurityCouncilNomineeElectionGovernor is
         electionCount++;
     }
 
-    /// @notice Put `msg.sender` up for nomination. Must be called before a contender can receive votes.
+    /// @notice Put a contender up for nomination. Must be called before a contender can receive votes.
     /// @dev    Can be called only while a proposal is active (in voting phase)
     ///         A contender cannot be a member of the opposite cohort.
-    function addContender(uint256 proposalId) external {
+    /// @param  proposalId The id of the proposal
+    /// @param  sig EIP712 signature of ContenderRequest(uint256 proposalId)
+    function addContender(uint256 proposalId, bytes memory sig) external {
+        address newContender = recoverContenderRequest(proposalId, sig);
         ElectionInfo storage election = _elections[proposalId];
 
-        if (election.isContender[msg.sender]) {
-            revert AlreadyContender(msg.sender);
+        if (election.isContender[newContender]) {
+            revert AlreadyContender(newContender);
         }
 
         ProposalState state = state(proposalId);
@@ -184,13 +192,13 @@ contract SecurityCouncilNomineeElectionGovernor is
         }
 
         // check to make sure the contender is not part of the other cohort (the cohort not currently up for election)
-        if (securityCouncilManager.cohortIncludes(otherCohort(), msg.sender)) {
-            revert AccountInOtherCohort(otherCohort(), msg.sender);
+        if (securityCouncilManager.cohortIncludes(otherCohort(), newContender)) {
+            revert AccountInOtherCohort(otherCohort(), newContender);
         }
 
-        election.isContender[msg.sender] = true;
+        election.isContender[newContender] = true;
 
-        emit ContenderAdded(proposalId, msg.sender);
+        emit ContenderAdded(proposalId, newContender);
     }
 
     /// @notice Allows the owner to change the nomineeVetter
@@ -359,6 +367,24 @@ contract SecurityCouncilNomineeElectionGovernor is
     /// @notice returns the number of excluded nominees for the given proposal
     function excludedNomineeCount(uint256 proposalId) public view returns (uint256) {
         return _elections[proposalId].excludedNomineeCount;
+    }
+
+    /// @notice Verifies an EIP712 signature for a ContenderRequest and returns the signer
+    /// @param  proposalId The id of the proposal
+    /// @param  sig EIP712 signature of ContenderRequest(uint256 proposalId)
+    function recoverContenderRequest(uint256 proposalId, bytes memory sig) public view returns (address) {
+        bytes32 digest = _hashTypedDataV4(keccak256(abi.encode(
+            contenderRequestTypeHash,
+            proposalId
+        )));
+
+        address contender = ECDSAUpgradeable.recover(digest, sig);
+
+        if (contender == address(0)) {
+            revert InvalidSignature();
+        }
+
+        return contender;
     }
 
     /// @inheritdoc SecurityCouncilNomineeElectionGovernorCountingUpgradeable
