@@ -110,7 +110,8 @@ contract SecurityCouncilNomineeElectionGovernor is
         securityCouncilMemberElectionGovernor = params.securityCouncilMemberElectionGovernor;
     }
 
-    /// @notice Allows the nominee vetter to call certain functions
+    /// @notice Allows the nominee vetter to call certain functions only during the vetting period
+    /// @param  proposalId The id of the proposal
     modifier onlyNomineeVetterInVettingPeriod(uint256 proposalId) {
         if (msg.sender != nomineeVetter) {
             revert OnlyNomineeVetter();
@@ -123,10 +124,6 @@ contract SecurityCouncilNomineeElectionGovernor is
         }
         _;
     }
-
-    /**
-     * permissionless state mutating functions *************
-     */
 
     /// @notice Creates a new nominee election proposal.
     ///         Can be called by anyone every 6 months.
@@ -151,6 +148,7 @@ contract SecurityCouncilNomineeElectionGovernor is
     /// @notice Put `msg.sender` up for nomination. Must be called before a contender can receive votes.
     /// @dev    Can be called only while a proposal is active (in voting phase)
     ///         A contender cannot be a member of the opposite cohort.
+    /// @param  proposalId The id of the proposal
     function addContender(uint256 proposalId) external {
         ElectionInfo storage election = _elections[proposalId];
 
@@ -175,6 +173,7 @@ contract SecurityCouncilNomineeElectionGovernor is
     }
 
     /// @notice Allows the owner to change the nomineeVetter
+    /// @param  _nomineeVetter The address of the new nomineeVetter
     function setNomineeVetter(address _nomineeVetter) external onlyOwner {
         address oldNomineeVetter = nomineeVetter;
         nomineeVetter = _nomineeVetter;
@@ -195,6 +194,8 @@ contract SecurityCouncilNomineeElectionGovernor is
     /// @notice Allows the nomineeVetter to exclude a noncompliant nominee.
     /// @dev    Can be called only after a nomninee election proposal has "succeeded" (voting has ended) and before the nominee vetting period has ended.
     ///         Will revert if the provided account is not a nominee (had less than the required votes).
+    /// @param  proposalId The id of the proposal
+    /// @param  nominee The account to exclude
     function excludeNominee(uint256 proposalId, address nominee)
         external
         onlyNomineeVetterInVettingPeriod(proposalId)
@@ -216,6 +217,8 @@ contract SecurityCouncilNomineeElectionGovernor is
     /// @notice Allows the nomineeVetter to explicitly include a nominee if there are fewer nominees than the target.
     /// @dev    Can be called only after a proposal has succeeded (voting has ended) and before the nominee vetting period has ended.
     ///         Will revert if the provided account is already a nominee
+    /// @param  proposalId The id of the proposal
+    /// @param  account The account to include
     function includeNominee(uint256 proposalId, address account)
         external
         onlyNomineeVetterInVettingPeriod(proposalId)
@@ -235,10 +238,6 @@ contract SecurityCouncilNomineeElectionGovernor is
 
         _addNominee(proposalId, account);
     }
-
-    /**
-     * internal/private state mutating functions
-     */
 
     /// @dev    `GovernorUpgradeable` function to execute a proposal overridden to handle nominee elections.
     ///         Can be called by anyone via `execute` after voting and nominee vetting periods have ended.
@@ -263,10 +262,6 @@ contract SecurityCouncilNomineeElectionGovernor is
         securityCouncilMemberElectionGovernor.proposeFromNomineeElectionGovernor();
     }
 
-    /**
-     * view/pure functions *************
-     */
-
     /// @notice Normally "the number of votes required in order for a voter to become a proposer." But in our case it is 0.
     /// @dev    Since we only want proposals to be created via `createElection`, we set the proposal threshold to 0.
     ///         `createElection` determines the rules for creating a proposal.
@@ -288,6 +283,7 @@ contract SecurityCouncilNomineeElectionGovernor is
     }
 
     /// @notice The list of compliant nominees for the given proposal
+    /// @param  proposalId The id of the proposal
     function compliantNominees(uint256 proposalId) public view returns (address[] memory) {
         ElectionInfo storage election = _elections[proposalId];
         address[] memory maybeCompliantNominees =
@@ -298,6 +294,7 @@ contract SecurityCouncilNomineeElectionGovernor is
     }
 
     /// @notice Number of compliant nominees for the given proposal
+    /// @param  proposalId The id of the proposal
     function compliantNomineeCount(uint256 proposalId) public view returns (uint256) {
         return nomineeCount(proposalId) - _elections[proposalId].excludedNomineeCount;
     }
@@ -313,11 +310,13 @@ contract SecurityCouncilNomineeElectionGovernor is
     }
 
     /// @notice Returns the cohort for a given `electionIndex`
+    /// @param  electionIndex The index of the election
     function electionIndexToCohort(uint256 electionIndex) public pure returns (Cohort) {
         return Cohort(electionIndex % 2);
     }
 
     /// @notice Returns the description for a given `electionIndex`
+    /// @param  electionIndex The index of the election
     function electionIndexToDescription(uint256 electionIndex)
         public
         pure
@@ -328,11 +327,14 @@ contract SecurityCouncilNomineeElectionGovernor is
     }
 
     /// @notice returns true if the nominee has been excluded by the nomineeVetter for the given proposal
+    /// @param  proposalId The id of the proposal
+    /// @param  possibleExcluded The account to check
     function isExcluded(uint256 proposalId, address possibleExcluded) public view returns (bool) {
         return _elections[proposalId].isExcluded[possibleExcluded];
     }
 
     /// @notice returns the number of excluded nominees for the given proposal
+    /// @param  proposalId The id of the proposal
     function excludedNomineeCount(uint256 proposalId) public view returns (uint256) {
         return _elections[proposalId].excludedNomineeCount;
     }

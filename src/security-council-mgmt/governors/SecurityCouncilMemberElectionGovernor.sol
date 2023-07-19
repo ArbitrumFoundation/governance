@@ -138,6 +138,8 @@ contract SecurityCouncilMemberElectionGovernor is
 
     /// @dev returns true if the account is a compliant nominee.
     ///      checks the SecurityCouncilNomineeElectionGovernor to see if the account is a compliant nominee
+    /// @param proposalId The proposal id
+    /// @param possibleNominee The account to check
     function _isCompliantNominee(uint256 proposalId, address possibleNominee)
         internal
         view
@@ -148,6 +150,7 @@ contract SecurityCouncilMemberElectionGovernor is
     }
 
     /// @dev Returns all the compliant (non excluded) nominees for the requested proposal
+    /// @param proposalId The proposal id
     function _compliantNominees(uint256 proposalId)
         internal
         view
