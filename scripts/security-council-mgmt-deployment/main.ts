@@ -6,6 +6,8 @@ import { getGoerliConfig } from "./configs/arbgoerli";
 /**
  * To run:
  *
+ * set params in configs/ file
+ * 
  * Set the following env vars:
  * ARB_KEY (pk for funded address on governance chain)
  * ETH_KEY (pk for funding address on l1)
