@@ -27,7 +27,6 @@ contract SecurityCouncilMemberElectionGovernor is
     error OnlyNomineeElectionGovernor();
     error ProposeDisabled();
     error CastVoteDisabled();
-    error ProposalIdMismatch(uint256 proposalId, uint256 electionId, ProposalState state);
 
     /// @param _nomineeElectionGovernor The SecurityCouncilNomineeElectionGovernor
     /// @param _securityCouncilManager The SecurityCouncilManager
