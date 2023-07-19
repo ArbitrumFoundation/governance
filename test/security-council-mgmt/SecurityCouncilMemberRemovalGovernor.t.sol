@@ -258,4 +258,20 @@ contract SecurityCouncilMemberRemovalGovernorTest is Test {
             "proposal succeeds when over 60% vote in favor"
         );
     }
+
+    function testSeparateSelector() public {
+        bytes memory calldataWithSelector = abi.encodeWithSelector(
+            MockSecurityCouncilManager.firstCohortIncludes.selector, memberToRemove
+        );
+        (bytes4 selector, bytes memory data) = scRemovalGov.separateSelector(calldataWithSelector);
+        assertEq(
+            selector,
+            MockSecurityCouncilManager.firstCohortIncludes.selector,
+            "separateSelector returns correct selector"
+        );
+        assertEq(data, abi.encode(memberToRemove), "separateSelector returns correct data");
+        assertEq(
+            abi.decode(data, (address)), memberToRemove, "separateSelector decodes to correct data"
+        );
+    }
 }
