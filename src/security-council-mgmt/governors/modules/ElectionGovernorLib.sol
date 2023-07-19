@@ -3,8 +3,14 @@ pragma solidity 0.8.16;
 
 import "@openzeppelin/contracts-upgradeable/utils/StringsUpgradeable.sol";
 
-// CHRIS: TODO: docs
+/// @notice Common functionality used by nominee and member election governors
 library ElectionGovernorLib {
+    /// @notice Generate arguments to be passed to the governor propose function
+    /// @param electionIndex The index of the election to create a proposal for
+    /// @return Targets
+    /// @return Values
+    /// @return Calldatas
+    /// @return Description
     function getProposeArgs(uint256 electionIndex)
         internal
         pure
@@ -21,10 +27,14 @@ library ElectionGovernorLib {
         );
     }
 
+    /// @notice Extract the election index from the call data
+    /// @param callDatas The proposal call data
     function extractElectionIndex(bytes[] memory callDatas) internal pure returns (uint256) {
         return abi.decode(callDatas[0], (uint256));
     }
 
+    /// @notice Proposal descriptions are created deterministically from the election index
+    /// @param electionIndex The index of the election to create a proposal for
     function electionIndexToDescription(uint256 electionIndex)
         internal
         pure

@@ -26,6 +26,7 @@ contract SecurityCouncilMemberElectionGovernor is
     error InvalidDurations(uint256 fullWeightDuration, uint256 votingPeriod);
     error OnlyNomineeElectionGovernor();
     error ProposeDisabled();
+    error CastVoteDisabled();
     error ProposalIdMismatch(uint256 proposalId, uint256 electionId, ProposalState state);
 
     /// @param _nomineeElectionGovernor The SecurityCouncilNomineeElectionGovernor
@@ -171,5 +172,30 @@ contract SecurityCouncilMemberElectionGovernor is
         returns (uint256)
     {
         revert ProposeDisabled();
+    }
+
+    /// @notice Always reverts. Use castVoteWithReasonAndParams instead
+    function castVote(uint256, uint8) public virtual override returns (uint256) {
+        revert CastVoteDisabled();
+    }
+
+    /// @notice Always reverts. Use castVoteWithReasonAndParams instead
+    function castVoteWithReason(uint256, uint8, string calldata)
+        public
+        virtual
+        override
+        returns (uint256)
+    {
+        revert CastVoteDisabled();
+    }
+
+    /// @notice Always reverts. Use castVoteWithReasonAndParamsBySig instead
+    function castVoteBySig(uint256, uint8, uint8, bytes32, bytes32)
+        public
+        virtual
+        override
+        returns (uint256)
+    {
+        revert CastVoteDisabled();
     }
 }

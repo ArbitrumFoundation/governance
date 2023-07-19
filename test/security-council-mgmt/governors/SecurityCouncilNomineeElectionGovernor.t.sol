@@ -26,7 +26,7 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
             ),
         token: IVotesUpgradeable(address(0x44)),
         owner: address(0x55),
-        quorumNumeratorValue: 10,
+        quorumNumeratorValue: 200,
         votingPeriod: 1 days
     });
 
@@ -101,6 +101,7 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
         vm.expectRevert(
             abi.encodeWithSelector(
                 SecurityCouncilNomineeElectionGovernor.CreateTooEarly.selector,
+                block.timestamp,
                 expectedStartTimestamp
             )
         );
@@ -118,6 +119,7 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
         vm.expectRevert(
             abi.encodeWithSelector(
                 SecurityCouncilNomineeElectionGovernor.CreateTooEarly.selector,
+                block.timestamp,
                 expectedStartTimestamp
             )
         );
@@ -173,13 +175,17 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
 
     function testSetNomineeVetter() public {
         // should only be callable by owner
-        vm.expectRevert("Ownable: caller is not the owner");
-        governor.setNomineeVetter(address(0));
+        vm.expectRevert("Governor: onlyGovernance");
+        governor.setNomineeVetter(address(137));
 
         // should succeed if called by owner
         vm.prank(initParams.owner);
-        governor.setNomineeVetter(address(0));
-        assertEq(governor.nomineeVetter(), address(0));
+        governor.relay(
+            address(governor),
+            0,
+            abi.encodeWithSelector(governor.setNomineeVetter.selector, address(137))
+        );
+        assertEq(governor.nomineeVetter(), address(137));
     }
 
     function testRelay() public {
@@ -212,11 +218,13 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
         governor.excludeNominee(0, _contender(0));
 
         // should fail if called while proposal is active
+        uint256 vettingDeadline = governor.proposalVettingDeadline(proposalId);
         vm.roll(governor.proposalDeadline(proposalId) - 1); // state is active
         vm.prank(initParams.nomineeVetter);
         vm.expectRevert(
             abi.encodeWithSelector(
-                SecurityCouncilNomineeElectionGovernor.ProposalNotInVettingPeriod.selector
+                SecurityCouncilNomineeElectionGovernor.ProposalNotSucceededState.selector,
+                1 // active
             )
         );
         governor.excludeNominee(proposalId, _contender(0));
@@ -226,7 +234,9 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
         vm.prank(initParams.nomineeVetter);
         vm.expectRevert(
             abi.encodeWithSelector(
-                SecurityCouncilNomineeElectionGovernor.ProposalNotInVettingPeriod.selector
+                SecurityCouncilNomineeElectionGovernor.ProposalNotInVettingPeriod.selector,
+                block.number,
+                vettingDeadline
             )
         );
         governor.excludeNominee(proposalId, _contender(0));
@@ -332,8 +342,6 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
         uint256 proposalId = _propose();
 
         uint256 electionIndex = governor.electionCount() - 1;
-        bytes32 descriptionHash =
-            keccak256(bytes(governor.electionIndexToDescription(electionIndex)));
 
         // should fail if called during vetting period
         vm.roll(governor.proposalDeadline(proposalId) + 1);
@@ -342,7 +350,7 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
                 SecurityCouncilNomineeElectionGovernor.ProposalInVettingPeriod.selector
             )
         );
-        _execute(descriptionHash);
+        _execute(electionIndex);
 
         // should fail if there aren't enough compliant nominees
         // make some but not enough
@@ -359,7 +367,7 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
                 cohortSize - 1
             )
         );
-        _execute(descriptionHash);
+        _execute(electionIndex);
 
         // should call the member election governor if there are enough compliant nominees
         vm.roll(governor.proposalVettingDeadline(proposalId));
@@ -368,17 +376,20 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
         governor.includeNominee(proposalId, _contender(uint8(cohortSize - 1)));
 
         vm.roll(governor.proposalVettingDeadline(proposalId) + 1);
-        vm.mockCall(address(initParams.securityCouncilMemberElectionGovernor), "", "");
+        vm.mockCall(
+            address(initParams.securityCouncilMemberElectionGovernor), "", abi.encode(proposalId)
+        );
         vm.expectCall(
             address(initParams.securityCouncilMemberElectionGovernor),
             abi.encodeWithSelector(
                 initParams
                     .securityCouncilMemberElectionGovernor
                     .proposeFromNomineeElectionGovernor
-                    .selector
+                    .selector,
+                electionIndex
             )
         );
-        _execute(descriptionHash);
+        _execute(electionIndex);
     }
 
     function testCountVote() public {
@@ -527,23 +538,23 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
 
     function _execute() internal {
         uint256 electionIndex = governor.electionCount() - 1;
-        bytes32 descriptionHash =
-            keccak256(bytes(governor.electionIndexToDescription(electionIndex)));
-        governor.execute({
-            targets: new address[](1),
-            values: new uint256[](1),
-            calldatas: new bytes[](1),
-            descriptionHash: descriptionHash
-        });
+        (
+            address[] memory targets,
+            uint256[] memory values,
+            bytes[] memory calldatas,
+            string memory description
+        ) = ElectionGovernorLib.getProposeArgs(electionIndex);
+        governor.execute(targets, values, calldatas, keccak256(bytes(description)));
     }
 
-    function _execute(bytes32 descriptionHash) internal {
-        governor.execute({
-            targets: new address[](1),
-            values: new uint256[](1),
-            calldatas: new bytes[](1),
-            descriptionHash: descriptionHash
-        });
+    function _execute(uint256 electionIndex) internal {
+        (
+            address[] memory targets,
+            uint256[] memory values,
+            bytes[] memory calldatas,
+            string memory description
+        ) = ElectionGovernorLib.getProposeArgs(electionIndex);
+        governor.execute(targets, values, calldatas, keccak256(bytes(description)));
     }
 
     function _addContender(uint256 proposalId, address contender) internal {

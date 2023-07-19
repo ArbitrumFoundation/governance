@@ -26,9 +26,9 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
     /// @notice Duration of full weight voting (expressed in blocks)
     uint256 public fullWeightDuration;
 
+    /// @dev proposalId => ElectionInfo
     mapping(uint256 => ElectionInfo) private _elections;
 
-    // would this be more useful if reason was included?
     /// @notice Emitted when a vote is cast for a nominee
     /// @param voter The account that is casting the vote
     /// @param proposalId The id of the proposal
@@ -52,11 +52,12 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
     error FullWeightDurationGreaterThanVotingPeriod(
         uint256 fullWeightDuration, uint256 votingPeriod
     );
-    error MustVoteWithParams();
-    error NotCompliantNominee();
-    error ZeroWeightVote();
-    error InsufficientVotes();
+    error UnexpectedParamsLength(uint256 paramLength);
+    error NotCompliantNominee(address nominee);
+    error ZeroWeightVote(uint256 blockNumber, uint256 votes);
+    error InsufficientVotes(uint256 prevVotesUsed, uint256 votes, uint256 availableVotes);
     error LengthsDontMatch();
+    error NotEnoughNominees(uint256 numNominees, uint256 k);
 
     /// @param initialFullWeightDuration Duration of full weight voting (expressed in blocks)
     function __SecurityCouncilMemberElectionGovernorCounting_init(uint256 initialFullWeightDuration)
@@ -92,31 +93,26 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
         bytes memory params
     ) internal virtual override {
         if (params.length != 64) {
-            revert MustVoteWithParams();
+            revert UnexpectedParamsLength(params.length);
         }
 
         (address nominee, uint256 votes) = abi.decode(params, (address, uint256));
-
         if (!_isCompliantNominee(proposalId, nominee)) {
-            revert NotCompliantNominee();
+            revert NotCompliantNominee(nominee);
         }
 
         uint256 weight = votesToWeight(proposalId, block.number, votes);
-
         if (weight == 0) {
-            revert ZeroWeightVote();
+            revert ZeroWeightVote(block.number, votes);
         }
 
         ElectionInfo storage election = _elections[proposalId];
-
         uint256 prevVotesUsed = election.votesUsed[account];
-
         if (prevVotesUsed + votes > availableVotes) {
-            revert InsufficientVotes();
+            revert InsufficientVotes(prevVotesUsed, votes, availableVotes);
         }
 
         uint256 prevWeightReceived = election.weightReceived[nominee];
-
         election.votesUsed[account] = prevVotesUsed + votes;
         election.weightReceived[nominee] = prevWeightReceived + weight;
 
@@ -152,13 +148,22 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
         return votesUsed(proposalId, account) > 0;
     }
 
+    /// @notice The deadline after which voting weight will linearly decrease
+    /// @param proposalId The proposal to check the deadline for
     function fullWeightVotingDeadline(uint256 proposalId) public view returns (uint256) {
         uint256 startBlock = proposalSnapshot(proposalId);
-
         return startBlock + fullWeightDuration;
     }
 
-    // gas usage is probably a little bit more than (4200 + 1786)n. With 500 that's 2,993,000
+    /// @notice Gets the top K nominees with greatest weight for a given proposal
+    ///         Where K is the manager.cohortSize()
+    /// @dev    Care must be taken of gas usage in this function.
+    ///         This is an O(n) operation on all compliant nominees in the nominees governor
+    ///         The maximum number of nominees is set by the threshold of votes required to become a nominee.
+    ///         Currently this is 0.2% of votable tokens, which corresponds to 500 max nominees.
+    ///         Rough estimate at (4200 + 1786)n. With 500 that's 2,993,000
+    ///         CHRIS: TODO: do we have a test for this - would be good to get gas cost
+    /// @param proposalId The proposal to find the top nominees for
     function topNominees(uint256 proposalId) public view returns (address[] memory) {
         address[] memory nominees = _compliantNominees(proposalId);
         uint256[] memory weights = new uint256[](nominees.length);
@@ -169,10 +174,10 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
         return selectTopNominees(nominees, weights, _targetMemberCount());
     }
 
-    // todo: set a lower threshold bound in the nominee governor.
-    // gas usage with k = 6, n = nominees.length is approx 1786n. with 500 it is 902,346
-    // these numbers are for the worst case scenario where the nominees are in ascending order
-    // these numbers also include memory expansion cost (i think)
+    /// @notice Gets the top K nominees from a list of nominees and weights.
+    /// @param nominees The nominees to select from
+    /// @param weights  The weights of the nominees
+    /// @param k        The number of nominees to select
     function selectTopNominees(address[] memory nominees, uint256[] memory weights, uint256 k)
         public
         pure
@@ -180,6 +185,9 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
     {
         if (nominees.length != weights.length) {
             revert LengthsDontMatch();
+        }
+        if (nominees.length < k) {
+            revert NotEnoughNominees(nominees.length, k);
         }
 
         uint256[] memory topNomineesPacked = new uint256[](k);
@@ -205,7 +213,8 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
     }
 
     /// @notice Returns the weight of a vote for a given proposal, block number, and number of votes.
-    /// @dev    Uses a piecewise linear function to determine the weight of a vote.
+    ///         Each vote has weight 1 until the fullWeightVotingDeadline is reached, after which each vote has linearly
+    ///         deacreasing weight, reaching 0 at the proposalDeadline.
     function votesToWeight(uint256 proposalId, uint256 blockNumber, uint256 votes)
         public
         view
@@ -244,7 +253,7 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
         return true;
     }
 
-    /// @notice Returns true if votes have been cast for at least K nominees
+    /// @notice Always returns true, since an election can only be only started if there are enough nominees and candidates cannot be excluded after the election has started
     function _voteSucceeded(uint256) internal pure override returns (bool) {
         return true;
     }

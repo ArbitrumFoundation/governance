@@ -24,7 +24,6 @@ abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is
     // proposalId => NomineeElectionCountingInfo
     mapping(uint256 => NomineeElectionCountingInfo) private _elections;
 
-    // would this be more useful if reason was included?
     /// @notice Emitted when a vote is cast for a contender
     /// @param proposalId The id of the proposal
     /// @param voter The account that is casting the vote
@@ -112,12 +111,14 @@ abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is
         });
     }
 
+    /// @dev Transitions an account to being a nominee
     function _addNominee(uint256 proposalId, address account) internal {
         _elections[proposalId].nominees.push(account);
         _elections[proposalId].isNominee[account] = true;
         emit NewNominee(proposalId, account);
     }
 
+    // TODO:
     function COUNTING_MODE() public pure virtual override returns (string memory) {
         return "TODO: ???";
     }
