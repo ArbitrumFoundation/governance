@@ -23,8 +23,6 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
         mapping(address => uint256) weightReceived;
     }
 
-    uint256 private constant WAD = 1e18;
-
     /// @notice Duration of full weight voting (expressed in blocks)
     uint256 public fullWeightDuration;
 
@@ -68,10 +66,6 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
         fullWeightDuration = initialFullWeightDuration;
     }
 
-    /**
-     * permissioned state mutating functions *************
-     */
-
     /// @notice Set the full weight duration numerator and total duration denominator
     function setFullWeightDuration(uint256 newFullWeightDuration) public onlyGovernance {
         if (newFullWeightDuration > votingPeriod()) {
@@ -80,10 +74,6 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
 
         fullWeightDuration = newFullWeightDuration;
     }
-
-    /**
-     * internal/private state mutating functions *************
-     */
 
     /// @notice Register a vote by some account for a proposal.
     /// @dev    Reverts if the account does not have enough votes.
@@ -142,11 +132,8 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
         });
     }
 
-    /**
-     * view/pure functions *************
-     */
-
     function COUNTING_MODE() public pure virtual override returns (string memory) {
+        // TODO:
         return "TODO: ???";
     }
 
@@ -252,10 +239,6 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
         return votes - decreaseAmount;
     }
 
-    /**
-     * internal view/pure functions *************
-     */
-
     /// @notice Returns true, since there is no minimum quorum
     function _quorumReached(uint256) internal pure override returns (bool) {
         return true;
@@ -288,5 +271,5 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
      * variables without shifting down storage in the inheritance chain.
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
      */
-    uint256[46] private __gap;
+    uint256[48] private __gap;
 }

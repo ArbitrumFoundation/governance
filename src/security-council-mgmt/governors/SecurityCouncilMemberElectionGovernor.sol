@@ -3,6 +3,7 @@ pragma solidity 0.8.16;
 
 import "./modules/SecurityCouncilMemberElectionGovernorCountingUpgradeable.sol";
 import "./SecurityCouncilNomineeElectionGovernor.sol";
+import "./modules/ElectionGovernorLib.sol";
 
 /// @title  SecurityCouncilMemberElectionGovernor
 /// @notice Narrows a set of nominees down to a set of members.
@@ -25,6 +26,7 @@ contract SecurityCouncilMemberElectionGovernor is
     error InvalidDurations(uint256 fullWeightDuration, uint256 votingPeriod);
     error OnlyNomineeElectionGovernor();
     error ProposeDisabled();
+    error ProposalIdMismatch(uint256 proposalId, uint256 electionId, ProposalState state);
 
     /// @param _nomineeElectionGovernor The SecurityCouncilNomineeElectionGovernor
     /// @param _securityCouncilManager The SecurityCouncilManager
@@ -63,20 +65,20 @@ contract SecurityCouncilMemberElectionGovernor is
         _;
     }
 
-    /**
-     * permissioned state mutating functions *************
-     */
-
     /// @notice Creates a new member election proposal from the most recent nominee election.
-    function proposeFromNomineeElectionGovernor() external onlyNomineeElectionGovernor {
-        GovernorUpgradeable.propose(
-            new address[](1),
-            new uint256[](1),
-            new bytes[](1),
-            nomineeElectionGovernor.electionIndexToDescription(
-                nomineeElectionGovernor.electionCount() - 1
-            )
-        );
+    function proposeFromNomineeElectionGovernor(uint256 electionIndex)
+        external
+        onlyNomineeElectionGovernor
+        returns (uint256)
+    {
+        // we use the same getProposeArgs to ensure the proposal id is consistent across governors
+        (
+            address[] memory targets,
+            uint256[] memory values,
+            bytes[] memory callDatas,
+            string memory description
+        ) = ElectionGovernorLib.getProposeArgs(electionIndex);
+        return GovernorUpgradeable.propose(targets, values, callDatas, description);
     }
 
     /// @notice Allows the owner to make calls from the governor
@@ -90,10 +92,6 @@ contract SecurityCouncilMemberElectionGovernor is
         AddressUpgradeable.functionCallWithValue(target, data, value);
     }
 
-    /**
-     * internal/private state mutating functions *************
-     */
-
     /// @dev    `GovernorUpgradeable` function to execute a proposal overridden to handle nominee elections.
     ///         We know that _getTopNominees will return a full list of nominees because we checked it in _voteSucceeded.
     ///         Calls `SecurityCouncilManager.replaceCohort` with the list of nominees.
@@ -101,19 +99,24 @@ contract SecurityCouncilMemberElectionGovernor is
         uint256 proposalId,
         address[] memory, /* targets */
         uint256[] memory, /* values */
-        bytes[] memory, /* calldatas */
+        bytes[] memory callDatas,
         bytes32 /* descriptionHash */
     ) internal override {
-        // we know that the list is full because we checked it in _voteSucceeded
+        // we know that the election index is part of the calldatas
+        uint256 electionIndex = ElectionGovernorLib.extractElectionIndex(callDatas);
+
+        // it's possible for this call to fail because of checks in the security council manager
+        // getting into a state inconsistent with the elections
+        // if it does then the DAO or the security council will need to take action to either
+        // remove this election (upgrade this contract and cancel the proposal), or update the
+        // manager state to be consistent with this election and allow the cohort to be replaced
+        // One of these actions should be taken otherwise the election will stay in this contract
+        // and could be executed at a later unintended date.
         securityCouncilManager.replaceCohort({
             _newCohort: topNominees(proposalId),
-            _cohort: nomineeElectionGovernor.currentCohort()
+            _cohort: nomineeElectionGovernor.electionIndexToCohort(electionIndex)
         });
     }
-
-    /**
-     * view/pure functions *************
-     */
 
     /// @notice Normally "the number of votes required in order for a voter to become a proposer." But in our case it is 0.
     /// @dev    Since we only want proposals to be created via `proposeFromNomineeElectionGovernor`, we set the proposal threshold to 0.
@@ -131,10 +134,6 @@ contract SecurityCouncilMemberElectionGovernor is
     function quorum(uint256) public pure override returns (uint256) {
         return 0;
     }
-
-    /**
-     * internal view/pure functions *************
-     */
 
     /// @dev returns true if the account is a compliant nominee.
     ///      checks the SecurityCouncilNomineeElectionGovernor to see if the account is a compliant nominee
@@ -161,10 +160,6 @@ contract SecurityCouncilMemberElectionGovernor is
     function _targetMemberCount() internal view override returns (uint256) {
         return securityCouncilManager.cohortSize();
     }
-
-    /**
-     * disabled functions *************
-     */
 
     /// @notice Always reverts.
     /// @dev    `GovernorUpgradeable` function to create a proposal overridden to just revert.

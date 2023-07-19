@@ -31,9 +31,9 @@ interface ISecurityCouncilManager {
     error CohortFull(Cohort cohort);
     error InvalidNewCohortLength(address[] cohort, uint256 cohortSize);
     error CohortLengthMismatch(address[] cohort1, address[] cohort2);
-
+    error InvalidCohort(Cohort cohort);
+    
     // security council data errors
-
     error MaxSecurityCouncils(uint256 securityCouncilCount);
     error SecurityCouncilZeroChainID(SecurityCouncilData securiyCouncilData);
     error SecurityCouncilNotInRouter(SecurityCouncilData securiyCouncilData);
@@ -58,6 +58,7 @@ interface ISecurityCouncilManager {
     ///         Cohorts cannot have more than 6 members, so the cohort must have less than 6 in order to call this.
     ///         New member cannot already be a member of either cohort
     /// @dev    Initiaties cross chain messages to update the individual Security Councils
+    ///         When adding a member, make sure that the key does not conflict with any candidates of ongoing electoins
     /// @param _newMember   New member to add
     /// @param _cohort      Cohort to add member to
     function addMember(address _newMember, Cohort _cohort) external;
@@ -68,11 +69,14 @@ interface ISecurityCouncilManager {
     function removeMember(address _member) external;
     /// @notice Replace a member in a council - equivalent to removing a member, then adding another in its place. Idendities of members should  be the different. Functionality is equivalent to replaceMember, tho emits a different event to distinguish the security council's intent (different identities).
     /// @dev    Initiaties cross chain messages to update the individual Security Councils
+    ///         When replacing a member, make sure that the key does not conflict with any candidates of ongoing electoins
     /// @param _memberToReplace Security Council member to remove
     /// @param _newMember       Security Council member to add in their place
     function replaceMember(address _memberToReplace, address _newMember) external;
     /// @notice Security council member can rotate out their address for a new one; _currentAddress and _newAddress should be of the same identity. Functionality is equivalent to replaceMember, tho emits a different event to distinguish the security council's intent (same identity).
     ///         Rotation must be initiated by the security council.
+    /// @dev    Initiaties cross chain messages to update the individual Security Councils
+    ///         When rotating a member, make sure that the key does not conflict with any candidates of ongoing electoins
     /// @param _currentAddress  Address to rotate out
     /// @param _newAddress      Address to rotate in
     function rotateMember(address _currentAddress, address _newAddress) external;

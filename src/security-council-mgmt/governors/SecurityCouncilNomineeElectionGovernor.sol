@@ -9,6 +9,7 @@ import "./SecurityCouncilMemberElectionGovernor.sol";
 import "./modules/SecurityCouncilNomineeElectionGovernorCountingUpgradeable.sol";
 import "./modules/ArbitrumGovernorVotesQuorumFractionUpgradeable.sol";
 import "./modules/SecurityCouncilNomineeElectionGovernorTiming.sol";
+import "./modules/ElectionGovernorLib.sol";
 
 import "../SecurityCouncilMgmtUtils.sol";
 
@@ -89,6 +90,7 @@ contract SecurityCouncilNomineeElectionGovernor is
     error InsufficientCompliantNomineeCount(uint256 compliantNomineeCount);
     error ProposeDisabled();
     error NotNominee(address nominee);
+    error ProposalIdMismatch(uint256 nomineeProposalId, uint256 memberProposalId);
 
     constructor() {
         _disableInitializers();
@@ -125,10 +127,6 @@ contract SecurityCouncilNomineeElectionGovernor is
         _;
     }
 
-    /**
-     * permissionless state mutating functions *************
-     */
-
     /// @notice Creates a new nominee election proposal.
     ///         Can be called by anyone every 6 months.
     /// @return proposalId The id of the proposal
@@ -139,12 +137,14 @@ contract SecurityCouncilNomineeElectionGovernor is
             revert CreateTooEarly(thisElectionStartTs);
         }
 
-        proposalId = GovernorUpgradeable.propose(
-            new address[](1),
-            new uint256[](1),
-            new bytes[](1),
-            electionIndexToDescription(electionCount)
-        );
+        (
+            address[] memory targets,
+            uint256[] memory values,
+            bytes[] memory callDatas,
+            string memory description
+        ) = ElectionGovernorLib.getProposeArgs(electionCount);
+
+        proposalId = GovernorUpgradeable.propose(targets, values, callDatas, description);
 
         electionCount++;
     }
@@ -240,10 +240,6 @@ contract SecurityCouncilNomineeElectionGovernor is
         _addNominee(proposalId, account);
     }
 
-    /**
-     * internal/private state mutating functions
-     */
-
     /// @dev    `GovernorUpgradeable` function to execute a proposal overridden to handle nominee elections.
     ///         Can be called by anyone via `execute` after voting and nominee vetting periods have ended.
     ///         If the number of compliant nominees is > the target number of nominees,
@@ -253,7 +249,7 @@ contract SecurityCouncilNomineeElectionGovernor is
         uint256 proposalId,
         address[] memory, /* targets */
         uint256[] memory, /* values */
-        bytes[] memory, /* calldatas */
+        bytes[] memory callDatas,
         bytes32 /*descriptionHash*/
     ) internal virtual override {
         if (block.number <= proposalVettingDeadline(proposalId)) {
@@ -268,12 +264,13 @@ contract SecurityCouncilNomineeElectionGovernor is
             revert InsufficientCompliantNomineeCount(compliantNomineeCount);
         }
 
-        securityCouncilMemberElectionGovernor.proposeFromNomineeElectionGovernor();
+        uint256 electionIndex = ElectionGovernorLib.extractElectionIndex(callDatas);
+        uint256 memberElectionProposalId =
+            securityCouncilMemberElectionGovernor.proposeFromNomineeElectionGovernor(electionIndex);
+        if (memberElectionProposalId != proposalId) {
+            revert ProposalIdMismatch(proposalId, memberElectionProposalId);
+        }
     }
-
-    /**
-     * view/pure functions *************
-     */
 
     /// @notice Normally "the number of votes required in order for a voter to become a proposer." But in our case it is 0.
     /// @dev    Since we only want proposals to be created via `createElection`, we set the proposal threshold to 0.
@@ -328,8 +325,7 @@ contract SecurityCouncilNomineeElectionGovernor is
         pure
         returns (string memory)
     {
-        return
-            string.concat("Security Council Election #", StringsUpgradeable.toString(electionIndex));
+        return ElectionGovernorLib.electionIndexToDescription(electionIndex);
     }
 
     /// @notice returns true if the nominee has been excluded by the nomineeVetter for the given proposal
@@ -352,10 +348,6 @@ contract SecurityCouncilNomineeElectionGovernor is
     {
         return _elections[proposalId].isContender[possibleContender];
     }
-
-    /**
-     * disabled functions *************
-     */
 
     /// @notice Always reverts.
     /// @dev    `GovernorUpgradeable` function to create a proposal overridden to just revert.

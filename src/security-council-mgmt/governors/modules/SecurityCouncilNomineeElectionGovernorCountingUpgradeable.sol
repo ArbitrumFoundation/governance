@@ -50,10 +50,6 @@ abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is
 
     function __SecurityCouncilNomineeElectionGovernorCounting_init() internal onlyInitializing {}
 
-    /**
-     * internal/private state mutating functions *************
-     */
-
     /// @dev This function is responsible for counting votes when they are cast.
     ///      If this vote pushes the contender over the line, then the contender is added to the nominees
     ///      and only the necessary amount of votes will be deducted from the voter.
@@ -122,10 +118,6 @@ abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is
         emit NewNominee(proposalId, account);
     }
 
-    /**
-     * view/pure functions *************
-     */
-
     function COUNTING_MODE() public pure virtual override returns (string memory) {
         return "TODO: ???";
     }
@@ -166,10 +158,6 @@ abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is
         view
         virtual
         returns (bool);
-
-    /**
-     * internal view/pure functions *************
-     */
 
     /// @dev there is no minimum quorum for nominations, so we just return true
     function _quorumReached(uint256) internal pure override returns (bool) {
