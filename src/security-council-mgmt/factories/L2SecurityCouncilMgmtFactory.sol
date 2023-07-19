@@ -42,7 +42,7 @@ struct DeployParams {
     uint256 fullWeightDuration;
 }
 
-library DeployProxy {
+library ProxyDeploy {
     function deploy(address proxyAdmin, address impl, bytes memory initData)
         public
         returns (address)
@@ -61,7 +61,7 @@ library SecurityCouncilNomineeElectionGovernorDeploy {
     function deploy(address proxyAdmin) public returns (SecurityCouncilNomineeElectionGovernor) {
         address impl = address(new SecurityCouncilNomineeElectionGovernor());
         return SecurityCouncilNomineeElectionGovernor(
-            payable(DeployProxy.deploy(proxyAdmin, impl, ""))
+            payable(ProxyDeploy.deploy(proxyAdmin, impl, ""))
         );
     }
 }
@@ -70,7 +70,7 @@ library SecurityCouncilMemberElectionGovernorDeploy {
     function deploy(address proxyAdmin) public returns (SecurityCouncilMemberElectionGovernor) {
         address impl = address(new SecurityCouncilMemberElectionGovernor());
         return SecurityCouncilMemberElectionGovernor(
-            payable(DeployProxy.deploy(proxyAdmin, impl, ""))
+            payable(ProxyDeploy.deploy(proxyAdmin, impl, ""))
         );
     }
 }
@@ -79,7 +79,7 @@ library SecurityCouncilMemberRemovalGovernorDeploy {
     function deploy(address proxyAdmin) public returns (SecurityCouncilMemberRemovalGovernor) {
         address impl = address(new SecurityCouncilMemberRemovalGovernor());
         return SecurityCouncilMemberRemovalGovernor(
-            payable(DeployProxy.deploy(proxyAdmin, impl, ""))
+            payable(ProxyDeploy.deploy(proxyAdmin, impl, ""))
         );
     }
 }
@@ -88,7 +88,7 @@ library SecurityCouncilManagerDeploy {
     function deploy(address proxyAdmin) public returns (ISecurityCouncilManager) {
         address impl = address(new SecurityCouncilManager());
         return ISecurityCouncilManager(
-            DeployProxy.deploy(proxyAdmin, impl, "")
+            ProxyDeploy.deploy(proxyAdmin, impl, "")
         );
     }
 }
@@ -97,7 +97,7 @@ library ArbitrumTimelockDeploy {
     function deploy(address proxyAdmin) public returns (ArbitrumTimelock) {
         address impl = address(new ArbitrumTimelock());
         return ArbitrumTimelock(
-            payable(DeployProxy.deploy(proxyAdmin, impl, ""))
+            payable(ProxyDeploy.deploy(proxyAdmin, impl, ""))
         );
     }
 }
