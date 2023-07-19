@@ -59,10 +59,6 @@ abstract contract SecurityCouncilNomineeElectionGovernorTiming is
         nomineeVettingDuration = _nomineeVettingDuration;
     }
 
-    /**
-     * view/pure functions *************
-     */
-
     /// @notice Returns the deadline for the nominee vetting period for a given proposal
     /// @param  proposalId The id of the proposal
     function proposalVettingDeadline(uint256 proposalId) public view returns (uint256) {

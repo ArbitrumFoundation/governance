@@ -67,10 +67,6 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
         fullWeightDuration = initialFullWeightDuration;
     }
 
-    /**
-     * permissioned state mutating functions *************
-     */
-
     /// @notice Set the full weight duration numerator and total duration denominator
     /// @dev    Only callable by this governor contract
     /// @param  newFullWeightDuration The new full weight duration
@@ -81,10 +77,6 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
 
         fullWeightDuration = newFullWeightDuration;
     }
-
-    /**
-     * internal/private state mutating functions *************
-     */
 
     /// @notice Register a vote by some account for a proposal.
     /// @dev    Reverts if the account does not have enough votes.
@@ -143,10 +135,6 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
         });
     }
 
-    /**
-     * view/pure functions *************
-     */
-    
     /// @inheritdoc IGovernorUpgradeable
     function COUNTING_MODE() public pure virtual override returns (string memory) {
         return "TODO: ???";
@@ -273,10 +261,6 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
         // subtract the decreased amount to get the remaining weight
         return _downCast(votes - decreaseAmount);
     }
-
-    /**
-     * internal view/pure functions *************
-     */
 
     /// @notice Downcasts a uint256 to a uint240, reverting if the input is too large
     /// @param  x The uint256 to downcast to a uint240
