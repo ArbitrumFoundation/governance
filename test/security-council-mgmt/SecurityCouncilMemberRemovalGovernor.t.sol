@@ -86,7 +86,6 @@ contract SecurityCouncilMemberRemovalGovernorTest is Test {
             voteSuccessNumerator,
             securityCouncilManager,
             token,
-            timelock,
             owner,
             votingDelay,
             votingPeriod,

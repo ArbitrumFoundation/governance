@@ -5,12 +5,20 @@ import "../../L2ArbitrumGovernor.sol";
 import "./../interfaces/ISecurityCouncilManager.sol";
 import "../../Util.sol";
 import "../Common.sol";
+import "./modules/ArbitrumGovernorVotesQuorumFractionUpgradeable.sol";
 
-contract SecurityCouncilMemberRemovalGovernor is L2ArbitrumGovernor {
+contract SecurityCouncilMemberRemovalGovernor is
+    Initializable,
+    GovernorUpgradeable,
+    GovernorVotesUpgradeable,
+    GovernorPreventLateQuorumUpgradeable,
+    GovernorCountingSimpleUpgradeable,
+    ArbitrumGovernorVotesQuorumFractionUpgradeable,
+    GovernorSettingsUpgradeable,
+    OwnableUpgradeable
+{
     uint256 public constant voteSuccessDenominator = 10_000;
-
     uint256 public voteSuccessNumerator;
-
     ISecurityCouncilManager public securityCouncilManager;
 
     event VoteSuccessNumeratorSet(uint256 indexed voteSuccessNumerator);
@@ -25,12 +33,15 @@ contract SecurityCouncilMemberRemovalGovernor is L2ArbitrumGovernor {
     error AbstainDisallowed();
     error InvalidVoteSuccessNumerator(uint256 voteSuccessNumerator);
 
+    constructor() {
+        _disableInitializers();
+    }
+
     /// @notice Initialize the contract
     /// @dev this method does not include an initializer modifier; it calls its parent's initiaze method which itself prevents repeated initialize calls
     /// @param _voteSuccessNumerator value that with denominator 10_000 determines the ration of for/against votes required for success
     /// @param _securityCouncilManager security council manager contract
     /// @param _token The address of the governance token
-    /// @param _timelock A time lock for proposal execution
     /// @param _owner The DAO (Upgrade Executor); admin over proposal role
     /// @param _votingDelay The delay between a proposal submission and voting starts
     /// @param _votingPeriod The period for which the vote lasts
@@ -41,29 +52,26 @@ contract SecurityCouncilMemberRemovalGovernor is L2ArbitrumGovernor {
         uint256 _voteSuccessNumerator,
         ISecurityCouncilManager _securityCouncilManager,
         IVotesUpgradeable _token,
-        TimelockControllerUpgradeable _timelock,
         address _owner,
         uint256 _votingDelay,
         uint256 _votingPeriod,
         uint256 _quorumNumerator,
         uint256 _proposalThreshold,
         uint64 _minPeriodAfterQuorum
-    ) public {
+    ) public initializer {
+        __GovernorSettings_init(_votingDelay, _votingPeriod, _proposalThreshold);
+        __GovernorCountingSimple_init();
+        __GovernorVotes_init(_token);
+        __ArbitrumGovernorVotesQuorumFraction_init(_quorumNumerator);
+        __GovernorPreventLateQuorum_init(_minPeriodAfterQuorum);
+        _transferOwnership(_owner);
+
         if (!Address.isContract(address(_securityCouncilManager))) {
             revert NotAContract(address(_securityCouncilManager));
         }
+
         securityCouncilManager = _securityCouncilManager;
         _setVoteSuccessNumerator(_voteSuccessNumerator);
-        this.initialize(
-            _token,
-            _timelock,
-            _owner,
-            _votingDelay,
-            _votingPeriod,
-            _quorumNumerator,
-            _proposalThreshold,
-            _minPeriodAfterQuorum
-        );
     }
 
     /// @notice Assumes the passed in bytes is an abi encoded function call, and splits into the selector and the rest
@@ -90,7 +98,7 @@ contract SecurityCouncilMemberRemovalGovernor is L2ArbitrumGovernor {
         uint256[] memory values,
         bytes[] memory calldatas,
         string memory description
-    ) public override(GovernorUpgradeable, IGovernorUpgradeable) returns (uint256) {
+    ) public override returns (uint256) {
         if (targets.length != 1) {
             revert InvalidOperationsLength();
         }
@@ -164,5 +172,50 @@ contract SecurityCouncilMemberRemovalGovernor is L2ArbitrumGovernor {
         }
         voteSuccessNumerator = _voteSuccessNumerator;
         emit VoteSuccessNumeratorSet(_voteSuccessNumerator);
+    }
+
+    /// @notice Allows the owner to make calls from the governor
+    /// @dev    See {L2ArbitrumGovernor-relay}
+    function relay(address target, uint256 value, bytes calldata data)
+        external
+        virtual
+        override
+        onlyOwner
+    {
+        AddressUpgradeable.functionCallWithValue(target, data, value);
+    }
+
+    function proposalThreshold()
+        public
+        view
+        override(GovernorUpgradeable, GovernorSettingsUpgradeable)
+        returns (uint256)
+    {
+        return GovernorSettingsUpgradeable.proposalThreshold();
+    }
+
+    function _castVote(
+        uint256 proposalId,
+        address account,
+        uint8 support,
+        string memory reason,
+        bytes memory params
+    )
+        internal
+        override(GovernorUpgradeable, GovernorPreventLateQuorumUpgradeable)
+        returns (uint256)
+    {
+        return GovernorPreventLateQuorumUpgradeable._castVote(
+            proposalId, account, support, reason, params
+        );
+    }
+
+    function proposalDeadline(uint256 proposalId)
+        public
+        view
+        override(GovernorUpgradeable, GovernorPreventLateQuorumUpgradeable)
+        returns (uint256)
+    {
+        return GovernorPreventLateQuorumUpgradeable.proposalDeadline(proposalId);
     }
 }

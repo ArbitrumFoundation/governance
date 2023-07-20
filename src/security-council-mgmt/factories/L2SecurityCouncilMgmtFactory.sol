@@ -69,36 +69,23 @@ library SecurityCouncilNomineeElectionGovernorDeploy {
 library SecurityCouncilMemberElectionGovernorDeploy {
     function deploy(address proxyAdmin) public returns (SecurityCouncilMemberElectionGovernor) {
         address impl = address(new SecurityCouncilMemberElectionGovernor());
-        return SecurityCouncilMemberElectionGovernor(
-            payable(ProxyDeploy.deploy(proxyAdmin, impl, ""))
-        );
+        return
+            SecurityCouncilMemberElectionGovernor(payable(ProxyDeploy.deploy(proxyAdmin, impl, "")));
     }
 }
 
 library SecurityCouncilMemberRemovalGovernorDeploy {
     function deploy(address proxyAdmin) public returns (SecurityCouncilMemberRemovalGovernor) {
         address impl = address(new SecurityCouncilMemberRemovalGovernor());
-        return SecurityCouncilMemberRemovalGovernor(
-            payable(ProxyDeploy.deploy(proxyAdmin, impl, ""))
-        );
+        return
+            SecurityCouncilMemberRemovalGovernor(payable(ProxyDeploy.deploy(proxyAdmin, impl, "")));
     }
 }
 
 library SecurityCouncilManagerDeploy {
     function deploy(address proxyAdmin) public returns (ISecurityCouncilManager) {
         address impl = address(new SecurityCouncilManager());
-        return ISecurityCouncilManager(
-            ProxyDeploy.deploy(proxyAdmin, impl, "")
-        );
-    }
-}
-
-library ArbitrumTimelockDeploy {
-    function deploy(address proxyAdmin) public returns (ArbitrumTimelock) {
-        address impl = address(new ArbitrumTimelock());
-        return ArbitrumTimelock(
-            payable(ProxyDeploy.deploy(proxyAdmin, impl, ""))
-        );
+        return ISecurityCouncilManager(ProxyDeploy.deploy(proxyAdmin, impl, ""));
     }
 }
 
@@ -113,7 +100,6 @@ contract L2SecurityCouncilMgmtFactory is Ownable {
         SecurityCouncilMemberElectionGovernor memberElectionGovernor;
         ISecurityCouncilManager securityCouncilManager;
         SecurityCouncilMemberRemovalGovernor securityCouncilMemberRemoverGov;
-        ArbitrumTimelock memberRemovalGovTimelock;
         UpgradeExecRouteBuilder upgradeExecRouteBuilder;
     }
 
@@ -165,28 +151,20 @@ contract L2SecurityCouncilMgmtFactory is Ownable {
             SecurityCouncilNomineeElectionGovernorDeploy.deploy(dp.govChainProxyAdmin);
 
         // deploy member election governor
-        deployedContracts.memberElectionGovernor = SecurityCouncilMemberElectionGovernorDeploy.deploy(
-            dp.govChainProxyAdmin
-        );
+        deployedContracts.memberElectionGovernor =
+            SecurityCouncilMemberElectionGovernorDeploy.deploy(dp.govChainProxyAdmin);
 
         // deploy security council manager
-        deployedContracts.securityCouncilManager = SecurityCouncilManagerDeploy.deploy(
-            dp.govChainProxyAdmin
-        );
+        deployedContracts.securityCouncilManager =
+            SecurityCouncilManagerDeploy.deploy(dp.govChainProxyAdmin);
 
         // deploy security council member remover gov
-        deployedContracts.securityCouncilMemberRemoverGov = SecurityCouncilMemberRemovalGovernorDeploy.deploy(
-            dp.govChainProxyAdmin
-        );
-
-        // deploy member removal gov timelock
-        deployedContracts.memberRemovalGovTimelock = ArbitrumTimelockDeploy.deploy(
-            dp.govChainProxyAdmin
-        );
+        deployedContracts.securityCouncilMemberRemoverGov =
+            SecurityCouncilMemberRemovalGovernorDeploy.deploy(dp.govChainProxyAdmin);
 
         // create council manager roles
         address[] memory memberRemovers = new address[](2);
-        memberRemovers[0] = address(deployedContracts.memberRemovalGovTimelock);
+        memberRemovers[0] = address(deployedContracts.securityCouncilMemberRemoverGov);
         memberRemovers[1] = dp.govChainEmergencySecurityCouncil;
         SecurityCouncilManagerRoles memory roles = SecurityCouncilManagerRoles({
             admin: dp.l2UpgradeExecutor,
@@ -223,33 +201,7 @@ contract L2SecurityCouncilMgmtFactory is Ownable {
         _initRemovalGov(
             dp,
             deployedContracts.securityCouncilManager,
-            deployedContracts.memberRemovalGovTimelock,
             deployedContracts.securityCouncilMemberRemoverGov
-        );
-
-        deployedContracts.memberRemovalGovTimelock.initialize(0, new address[](0), new address[](0));
-
-        // removal gov can propose to timelock
-        deployedContracts.memberRemovalGovTimelock.grantRole(
-            deployedContracts.memberRemovalGovTimelock.PROPOSER_ROLE(),
-            address(deployedContracts.securityCouncilMemberRemoverGov)
-        );
-        // anyone can execute
-        deployedContracts.memberRemovalGovTimelock.grantRole(
-            deployedContracts.memberRemovalGovTimelock.EXECUTOR_ROLE(), address(0)
-        );
-
-        // DAO (upgrade executor) is admin
-        deployedContracts.memberRemovalGovTimelock.grantRole(
-            deployedContracts.memberRemovalGovTimelock.TIMELOCK_ADMIN_ROLE(), dp.l2UpgradeExecutor
-        );
-        // revoke admin roles from the timelock and the deployer
-        deployedContracts.memberRemovalGovTimelock.revokeRole(
-            deployedContracts.memberRemovalGovTimelock.TIMELOCK_ADMIN_ROLE(),
-            address(deployedContracts.memberRemovalGovTimelock)
-        );
-        deployedContracts.memberRemovalGovTimelock.revokeRole(
-            deployedContracts.memberRemovalGovTimelock.TIMELOCK_ADMIN_ROLE(), address(this)
         );
 
         emit ContractsDeployed(deployedContracts);
@@ -259,14 +211,12 @@ contract L2SecurityCouncilMgmtFactory is Ownable {
     function _initRemovalGov(
         DeployParams memory dp,
         ISecurityCouncilManager _securityCouncilManager,
-        ArbitrumTimelock _memberRemovalGovTimelock,
         SecurityCouncilMemberRemovalGovernor securityCouncilMemberRemoverGov
     ) internal {
         securityCouncilMemberRemoverGov.initialize({
             _securityCouncilManager: _securityCouncilManager,
             _voteSuccessNumerator: dp.removalGovVoteSuccessNumerator,
             _token: IVotesUpgradeable(dp.arbToken),
-            _timelock: _memberRemovalGovTimelock,
             _owner: dp.l2UpgradeExecutor,
             _votingDelay: dp.removalGovVotingDelay,
             _votingPeriod: dp.removalGovVotingPeriod,

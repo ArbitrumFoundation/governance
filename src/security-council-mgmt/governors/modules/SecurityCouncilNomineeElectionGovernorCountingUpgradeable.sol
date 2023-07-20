@@ -88,7 +88,6 @@ abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is
         uint256 votesThreshold = quorum(proposalSnapshot(proposalId));
 
         uint256 actualVotes = votes;
-
         if (prevVotesReceived + votes >= votesThreshold) {
             // we pushed the contender over the line
             // we should only give the contender enough votes to get to the line so that we don't waste votes
