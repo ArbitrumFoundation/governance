@@ -9,6 +9,7 @@ import "./SecurityCouncilMemberElectionGovernor.sol";
 import "./modules/SecurityCouncilNomineeElectionGovernorCountingUpgradeable.sol";
 import "./modules/ArbitrumGovernorVotesQuorumFractionUpgradeable.sol";
 import "./modules/SecurityCouncilNomineeElectionGovernorTiming.sol";
+import "./modules/ElectionGovernor.sol";
 
 import "../SecurityCouncilMgmtUtils.sol";
 
@@ -22,9 +23,9 @@ contract SecurityCouncilNomineeElectionGovernor is
     ArbitrumGovernorVotesQuorumFractionUpgradeable,
     GovernorSettingsUpgradeable,
     OwnableUpgradeable,
-    SecurityCouncilNomineeElectionGovernorTiming
+    SecurityCouncilNomineeElectionGovernorTiming,
+    ElectionGovernor
 {
-    // todo: these parameters could be reordered to make more sense
     /// @notice parameters for `initialize`
     /// @param firstNominationStartDate First election start date
     /// @param nomineeVettingDuration Duration of the nominee vetting period (expressed in blocks)
@@ -78,17 +79,21 @@ contract SecurityCouncilNomineeElectionGovernor is
     event NomineeExcluded(uint256 indexed proposalId, address indexed nominee);
 
     error OnlyNomineeVetter();
-    error CreateTooEarly(uint256 startTime);
+    error CreateTooEarly(uint256 blockTimestamp, uint256 startTime);
     error AlreadyContender(address contender);
     error ProposalNotActive(ProposalState state);
     error AccountInOtherCohort(Cohort cohort, address account);
-    error ProposalNotInVettingPeriod();
+    error ProposalNotSucceededState(ProposalState state);
+    error ProposalNotInVettingPeriod(uint256 blockNumber, uint256 vettingDeadline);
     error NomineeAlreadyExcluded(address nominee);
     error CompliantNomineeTargetHit();
     error ProposalInVettingPeriod();
     error InsufficientCompliantNomineeCount(uint256 compliantNomineeCount);
     error ProposeDisabled();
     error NotNominee(address nominee);
+    error ProposalIdMismatch(uint256 nomineeProposalId, uint256 memberProposalId);
+    error QuorumNumeratorTooLow(uint256 quorumNumeratorValue);
+    error CastVoteDisabled();
 
     constructor() {
         _disableInitializers();
@@ -109,42 +114,57 @@ contract SecurityCouncilNomineeElectionGovernor is
         nomineeVetter = params.nomineeVetter;
         securityCouncilManager = params.securityCouncilManager;
         securityCouncilMemberElectionGovernor = params.securityCouncilMemberElectionGovernor;
+
+        // elsewhere we make assumptions that the number of nominees
+        // is not greater than 500
+        // This value can still be updated via updateQuorumNumerator to a lower value
+        // if it is deemed ok, however we put a quick check here as a reminder
+        if ((quorumDenominator() / params.quorumNumeratorValue) > 500) {
+            revert QuorumNumeratorTooLow(params.quorumNumeratorValue);
+        }
     }
 
     /// @notice Allows the nominee vetter to call certain functions
+    ///         Vetting takes places in a specific time period between voting and execution
+    ///         Vetting cannot occur outside of this time slot
     modifier onlyNomineeVetterInVettingPeriod(uint256 proposalId) {
         if (msg.sender != nomineeVetter) {
             revert OnlyNomineeVetter();
         }
-        if (
-            state(proposalId) != ProposalState.Succeeded
-                || block.number > proposalVettingDeadline(proposalId)
-        ) {
-            revert ProposalNotInVettingPeriod();
+
+        // voting is over and the proposal must have succeeded, not active or executed
+        ProposalState state = state(proposalId);
+        if (state != ProposalState.Succeeded) {
+            revert ProposalNotSucceededState(state);
         }
+
+        // the proposal must not have passed the vetting deadline
+        uint256 vettingDeadline = proposalVettingDeadline(proposalId);
+        if (block.number > vettingDeadline) {
+            revert ProposalNotInVettingPeriod(block.number, vettingDeadline);
+        }
+
         _;
     }
-
-    /**
-     * permissionless state mutating functions *************
-     */
 
     /// @notice Creates a new nominee election proposal.
     ///         Can be called by anyone every 6 months.
     /// @return proposalId The id of the proposal
     function createElection() external returns (uint256 proposalId) {
+        // each election has a deterministic start time
         uint256 thisElectionStartTs = electionToTimestamp(electionCount);
-
         if (block.timestamp < thisElectionStartTs) {
-            revert CreateTooEarly(thisElectionStartTs);
+            revert CreateTooEarly(block.timestamp, thisElectionStartTs);
         }
 
-        proposalId = GovernorUpgradeable.propose(
-            new address[](1),
-            new uint256[](1),
-            new bytes[](1),
-            electionIndexToDescription(electionCount)
-        );
+        (
+            address[] memory targets,
+            uint256[] memory values,
+            bytes[] memory callDatas,
+            string memory description
+        ) = getProposeArgs(electionCount);
+
+        proposalId = GovernorUpgradeable.propose(targets, values, callDatas, description);
 
         electionCount++;
     }
@@ -160,7 +180,6 @@ contract SecurityCouncilNomineeElectionGovernor is
         }
 
         ProposalState state = state(proposalId);
-
         if (state != ProposalState.Active) {
             revert ProposalNotActive(state);
         }
@@ -176,7 +195,7 @@ contract SecurityCouncilNomineeElectionGovernor is
     }
 
     /// @notice Allows the owner to change the nomineeVetter
-    function setNomineeVetter(address _nomineeVetter) external onlyOwner {
+    function setNomineeVetter(address _nomineeVetter) external onlyGovernance {
         address oldNomineeVetter = nomineeVetter;
         nomineeVetter = _nomineeVetter;
         emit NomineeVetterChanged(oldNomineeVetter, _nomineeVetter);
@@ -225,10 +244,8 @@ contract SecurityCouncilNomineeElectionGovernor is
             revert NomineeAlreadyAdded();
         }
 
-        uint256 compliantNomineeCount =
-            nomineeCount(proposalId) - _elections[proposalId].excludedNomineeCount;
-
-        if (compliantNomineeCount >= securityCouncilManager.cohortSize()) {
+        uint256 cnCount = compliantNomineeCount(proposalId);
+        if (cnCount >= securityCouncilManager.cohortSize()) {
             revert CompliantNomineeTargetHit();
         }
 
@@ -240,10 +257,6 @@ contract SecurityCouncilNomineeElectionGovernor is
         _addNominee(proposalId, account);
     }
 
-    /**
-     * internal/private state mutating functions
-     */
-
     /// @dev    `GovernorUpgradeable` function to execute a proposal overridden to handle nominee elections.
     ///         Can be called by anyone via `execute` after voting and nominee vetting periods have ended.
     ///         If the number of compliant nominees is > the target number of nominees,
@@ -253,27 +266,29 @@ contract SecurityCouncilNomineeElectionGovernor is
         uint256 proposalId,
         address[] memory, /* targets */
         uint256[] memory, /* values */
-        bytes[] memory, /* calldatas */
+        bytes[] memory callDatas,
         bytes32 /*descriptionHash*/
     ) internal virtual override {
+        // we can only execute when the vetting deadline has passed
         if (block.number <= proposalVettingDeadline(proposalId)) {
             revert ProposalInVettingPeriod();
         }
 
-        ElectionInfo storage election = _elections[proposalId];
-
-        uint256 compliantNomineeCount = nomineeCount(proposalId) - election.excludedNomineeCount;
-
-        if (compliantNomineeCount < securityCouncilManager.cohortSize()) {
-            revert InsufficientCompliantNomineeCount(compliantNomineeCount);
+        uint256 cnCount = compliantNomineeCount(proposalId);
+        if (cnCount < securityCouncilManager.cohortSize()) {
+            revert InsufficientCompliantNomineeCount(cnCount);
         }
 
-        securityCouncilMemberElectionGovernor.proposeFromNomineeElectionGovernor();
-    }
+        uint256 electionIndex = extractElectionIndex(callDatas);
+        uint256 memberElectionProposalId =
+            securityCouncilMemberElectionGovernor.proposeFromNomineeElectionGovernor(electionIndex);
 
-    /**
-     * view/pure functions *************
-     */
+        // proposals in the member and nominee governors should have the same ids
+        // so we do a quick safety check here to ensure this is the case
+        if (memberElectionProposalId != proposalId) {
+            revert ProposalIdMismatch(proposalId, memberElectionProposalId);
+        }
+    }
 
     /// @notice Normally "the number of votes required in order for a voter to become a proposer." But in our case it is 0.
     /// @dev    Since we only want proposals to be created via `createElection`, we set the proposal threshold to 0.
@@ -288,13 +303,16 @@ contract SecurityCouncilNomineeElectionGovernor is
         return 0;
     }
 
-    /// @notice returns true if the account is a nominee for the given proposal and has not been excluded
+    /// @notice Whether the account a compliant nominee for a given proposal
+    ///         A compliant nominee is one who is a nominee, and has not been excluded
     /// @param  proposalId The id of the proposal
     /// @param  account The account to check
     function isCompliantNominee(uint256 proposalId, address account) public view returns (bool) {
         return isNominee(proposalId, account) && !_elections[proposalId].isExcluded[account];
     }
 
+    /// @notice All compliant nominees of a given proposal
+    ///         A compliant nominee is one who is a nominee, and has not been excluded
     function compliantNominees(uint256 proposalId) public view returns (address[] memory) {
         ElectionInfo storage election = _elections[proposalId];
         address[] memory maybeCompliantNominees =
@@ -304,32 +322,21 @@ contract SecurityCouncilNomineeElectionGovernor is
         );
     }
 
-    // henry: todo: `compliantNomineeCount(uint) public`, so we don't have to do the subtraction in multiple places
-    // also test it in the testExcludeNominee test
+    /// @notice Current number of compliant nominees for the proposal
+    function compliantNomineeCount(uint256 proposalId) public view returns (uint256) {
+        return nomineeCount(proposalId) - _elections[proposalId].excludedNomineeCount;
+    }
 
-    /// @notice returns cohort currently up for election
+    /// @notice Returns cohort currently up for election
     function currentCohort() public view returns (Cohort) {
-        return electionIndexToCohort(electionCount - 1);
+        // current cohort is at electionCount - 1
+        return electionCount == 0 ? Cohort.FIRST : electionIndexToCohort(electionCount - 1);
     }
 
-    /// @notice returns cohort not currently up for election
+    /// @notice Returns cohort not currently up for election
     function otherCohort() public view returns (Cohort) {
-        return electionIndexToCohort(electionCount);
-    }
-
-    /// @notice Returns the cohort for a given `electionIndex`
-    function electionIndexToCohort(uint256 electionIndex) public pure returns (Cohort) {
-        return Cohort(electionIndex % 2);
-    }
-
-    /// @notice Returns the description for a given `electionIndex`
-    function electionIndexToDescription(uint256 electionIndex)
-        public
-        pure
-        returns (string memory)
-    {
-        return
-            string.concat("Security Council Election #", StringsUpgradeable.toString(electionIndex));
+        // previous cohort is at electionCount - 2
+        return (electionCount < 2) ? Cohort.SECOND : electionIndexToCohort(electionCount - 2);
     }
 
     /// @notice returns true if the nominee has been excluded by the nomineeVetter for the given proposal
@@ -353,10 +360,6 @@ contract SecurityCouncilNomineeElectionGovernor is
         return _elections[proposalId].isContender[possibleContender];
     }
 
-    /**
-     * disabled functions *************
-     */
-
     /// @notice Always reverts.
     /// @dev    `GovernorUpgradeable` function to create a proposal overridden to just revert.
     ///         We only want proposals to be created via `createElection`.
@@ -367,5 +370,30 @@ contract SecurityCouncilNomineeElectionGovernor is
         returns (uint256)
     {
         revert ProposeDisabled();
+    }
+
+    /// @notice Always reverts. Use castVoteWithReasonAndParams instead
+    function castVote(uint256, uint8) public virtual override returns (uint256) {
+        revert CastVoteDisabled();
+    }
+
+    /// @notice Always reverts. Use castVoteWithReasonAndParams instead
+    function castVoteWithReason(uint256, uint8, string calldata)
+        public
+        virtual
+        override
+        returns (uint256)
+    {
+        revert CastVoteDisabled();
+    }
+
+    /// @notice Always reverts. Use castVoteWithReasonAndParamsBySig instead
+    function castVoteBySig(uint256, uint8, uint8, bytes32, bytes32)
+        public
+        virtual
+        override
+        returns (uint256)
+    {
+        revert CastVoteDisabled();
     }
 }

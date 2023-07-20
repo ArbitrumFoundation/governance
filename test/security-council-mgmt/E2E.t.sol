@@ -449,20 +449,21 @@ contract E2E is Test, DeployGnosisWithModule {
             );
         }
 
-        // nomination complete - transition to member election
-        vm.roll(block.number + nomineeVotingPeriod + nomineeVettingDuration);
-        vars.secDeployedContracts.nomineeElectionGovernor.execute(
-            new address[](1),
-            new uint256[](1),
-            new bytes[](1),
-            keccak256(
-                bytes(
-                    vars.secDeployedContracts.nomineeElectionGovernor.electionIndexToDescription(
-                        vars.secDeployedContracts.nomineeElectionGovernor.electionCount() - 1
-                    )
-                )
-            )
-        );
+        {
+            // nomination complete - transition to member election
+            vm.roll(block.number + nomineeVotingPeriod + nomineeVettingDuration);
+            (
+                address[] memory targets,
+                uint256[] memory values,
+                bytes[] memory callDatas,
+                string memory description
+            ) = vars.secDeployedContracts.nomineeElectionGovernor.getProposeArgs(
+                vars.secDeployedContracts.nomineeElectionGovernor.electionCount() - 1
+            );
+            vars.secDeployedContracts.nomineeElectionGovernor.execute(
+                targets, values, callDatas, keccak256(bytes(description))
+            );
+        }
 
         // vote for the new members
         vm.roll(block.number + 1);
@@ -474,20 +475,21 @@ contract E2E is Test, DeployGnosisWithModule {
             );
         }
 
-        // member election complete - transition to timelock
-        vm.roll(block.number + memberVotingPeriod);
-        vars.secDeployedContracts.memberElectionGovernor.execute(
-            new address[](1),
-            new uint256[](1),
-            new bytes[](1),
-            keccak256(
-                bytes(
-                    vars.secDeployedContracts.nomineeElectionGovernor.electionIndexToDescription(
-                        vars.secDeployedContracts.nomineeElectionGovernor.electionCount() - 1
-                    )
-                )
-            )
-        );
+        {
+            // member election complete - transition to timelock
+            vm.roll(block.number + memberVotingPeriod);
+            (
+                address[] memory targets,
+                uint256[] memory values,
+                bytes[] memory callDatas,
+                string memory description
+            ) = vars.secDeployedContracts.nomineeElectionGovernor.getProposeArgs(
+                vars.secDeployedContracts.nomineeElectionGovernor.electionCount() - 1
+            );
+            vars.secDeployedContracts.memberElectionGovernor.execute(
+                targets, values, callDatas, keccak256(bytes(description))
+            );
+        }
 
         // exec in the l2 timelock
         {
