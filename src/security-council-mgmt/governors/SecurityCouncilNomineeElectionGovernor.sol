@@ -101,7 +101,7 @@ contract SecurityCouncilNomineeElectionGovernor is
 
     /// @notice Initializes the governor
     function initialize(InitParams memory params) public initializer {
-        __Governor_init("Security Council Nominee Election Governor");
+        __Governor_init("SecurityCouncilNomineeElectionGovernor");
         __GovernorVotes_init(params.token);
         __SecurityCouncilNomineeElectionGovernorCounting_init();
         __ArbitrumGovernorVotesQuorumFraction_init(params.quorumNumeratorValue);
@@ -170,6 +170,10 @@ contract SecurityCouncilNomineeElectionGovernor is
     }
 
     /// @notice Put `msg.sender` up for nomination. Must be called before a contender can receive votes.
+    ///         Contenders are expected to control an address than can create a signature that would be a 
+    ///         recognised by a Gnosis Safe. They need to be able to do this with this same address on each of the
+    ///         chains where the Security Council is active. It is expected that the nominee vetter will check this
+    ///         during the vetting phase and exclude any contenders which dont meet this criteria.
     /// @dev    Can be called only while a proposal is active (in voting phase)
     ///         A contender cannot be a member of the opposite cohort.
     function addContender(uint256 proposalId) external {
@@ -185,6 +189,11 @@ contract SecurityCouncilNomineeElectionGovernor is
         }
 
         // check to make sure the contender is not part of the other cohort (the cohort not currently up for election)
+        // this only checks against the current the current other cohort, and against the current cohort membership
+        // in the security council, so changes to those will mean this check will be inconsistent. 
+        // this check then is only a relevant check when the elections are running as expected - one at a time,
+        // every 6 months. Updates to the sec council manager using methods other than replaceCohort can effect this check
+        // and it's expected that the entity making those updates understands this.
         if (securityCouncilManager.cohortIncludes(otherCohort(), msg.sender)) {
             revert AccountInOtherCohort(otherCohort(), msg.sender);
         }
@@ -249,7 +258,12 @@ contract SecurityCouncilNomineeElectionGovernor is
             revert CompliantNomineeTargetHit();
         }
 
-        // can't include nominees from the other cohort
+        // can't include nominees from the other cohort (the cohort not currently up for election)
+        // this only checks against the current the current other cohort, and against the current cohort membership
+        // in the security council, so changes to those will mean this check will be inconsistent. 
+        // this check then is only a relevant check when the elections are running as expected - one at a time,
+        // every 6 months. Updates to the sec council manager using methods other than replaceCohort can effect this check
+        // and it's expected that the entity making those updates understands this.
         if (securityCouncilManager.cohortIncludes(otherCohort(), account)) {
             revert AccountInOtherCohort(otherCohort(), account);
         }
@@ -284,7 +298,7 @@ contract SecurityCouncilNomineeElectionGovernor is
             securityCouncilMemberElectionGovernor.proposeFromNomineeElectionGovernor(electionIndex);
 
         // proposals in the member and nominee governors should have the same ids
-        // so we do a quick safety check here to ensure this is the case
+        // so we do a safety check here to ensure this is the case
         if (memberElectionProposalId != proposalId) {
             revert ProposalIdMismatch(proposalId, memberElectionProposalId);
         }
