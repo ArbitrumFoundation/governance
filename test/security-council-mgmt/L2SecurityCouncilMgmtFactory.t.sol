@@ -38,7 +38,7 @@ contract L2SecurityCouncilMgmtFactoryTest is Test, DeployGnosisWithModule {
 
     uint256 nomineeVettingDuration = uint256(7);
     address nomineeVetter = address(111_456);
-    uint256 nomineeQuorumNumerator = uint256(8);
+    uint256 nomineeQuorumNumerator = uint256(200);
     uint256 nomineeVotingPeriod = uint256(9);
     uint256 memberVotingPeriod = uint256(112);
     uint256 fullWeightDuration = uint256(111);

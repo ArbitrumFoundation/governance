@@ -24,7 +24,6 @@ abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is
     // proposalId => NomineeElectionCountingInfo
     mapping(uint256 => NomineeElectionCountingInfo) private _elections;
 
-    // would this be more useful if reason was included?
     /// @notice Emitted when a vote is cast for a contender
     /// @param proposalId The id of the proposal
     /// @param voter The account that is casting the vote
@@ -49,10 +48,6 @@ abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is
     error InsufficientTokens();
 
     function __SecurityCouncilNomineeElectionGovernorCounting_init() internal onlyInitializing {}
-
-    /**
-     * internal/private state mutating functions *************
-     */
 
     /// @dev This function is responsible for counting votes when they are cast.
     ///      If this vote pushes the contender over the line, then the contender is added to the nominees
@@ -116,16 +111,14 @@ abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is
         });
     }
 
+    /// @dev Transitions an account to being a nominee
     function _addNominee(uint256 proposalId, address account) internal {
         _elections[proposalId].nominees.push(account);
         _elections[proposalId].isNominee[account] = true;
         emit NewNominee(proposalId, account);
     }
 
-    /**
-     * view/pure functions *************
-     */
-
+    // TODO:
     function COUNTING_MODE() public pure virtual override returns (string memory) {
         return "TODO: ???";
     }
@@ -166,10 +159,6 @@ abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is
         view
         virtual
         returns (bool);
-
-    /**
-     * internal view/pure functions *************
-     */
 
     /// @dev there is no minimum quorum for nominations, so we just return true
     function _quorumReached(uint256) internal pure override returns (bool) {
