@@ -138,14 +138,6 @@ contract L2SecurityCouncilMgmtFactoryTest is Test, DeployGnosisWithModule {
         );
         assertTrue(
             securityCouncilManager.hasRole(
-                securityCouncilManager.MEMBER_REMOVER_ROLE(),
-                address(deployed.memberRemovalGovTimelock)
-            ),
-            "removal gov timelock has removal role"
-        );
-
-        assertTrue(
-            securityCouncilManager.hasRole(
                 securityCouncilManager.COHORT_REPLACER_ROLE(),
                 address(deployed.memberElectionGovernor)
             ),

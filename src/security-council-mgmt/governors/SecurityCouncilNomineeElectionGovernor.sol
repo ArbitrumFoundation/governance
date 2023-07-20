@@ -170,7 +170,7 @@ contract SecurityCouncilNomineeElectionGovernor is
     }
 
     /// @notice Put `msg.sender` up for nomination. Must be called before a contender can receive votes.
-    ///         Contenders are expected to control an address than can create a signature that would be a 
+    ///         Contenders are expected to control an address than can create a signature that would be a
     ///         recognised by a Gnosis Safe. They need to be able to do this with this same address on each of the
     ///         chains where the Security Council is active. It is expected that the nominee vetter will check this
     ///         during the vetting phase and exclude any contenders which dont meet this criteria.
@@ -190,7 +190,7 @@ contract SecurityCouncilNomineeElectionGovernor is
 
         // check to make sure the contender is not part of the other cohort (the cohort not currently up for election)
         // this only checks against the current the current other cohort, and against the current cohort membership
-        // in the security council, so changes to those will mean this check will be inconsistent. 
+        // in the security council, so changes to those will mean this check will be inconsistent.
         // this check then is only a relevant check when the elections are running as expected - one at a time,
         // every 6 months. Updates to the sec council manager using methods other than replaceCohort can effect this check
         // and it's expected that the entity making those updates understands this.
@@ -260,7 +260,7 @@ contract SecurityCouncilNomineeElectionGovernor is
 
         // can't include nominees from the other cohort (the cohort not currently up for election)
         // this only checks against the current the current other cohort, and against the current cohort membership
-        // in the security council, so changes to those will mean this check will be inconsistent. 
+        // in the security council, so changes to those will mean this check will be inconsistent.
         // this check then is only a relevant check when the elections are running as expected - one at a time,
         // every 6 months. Updates to the sec council manager using methods other than replaceCohort can effect this check
         // and it's expected that the entity making those updates understands this.
