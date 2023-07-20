@@ -9,7 +9,7 @@ import "./SecurityCouncilMemberElectionGovernor.sol";
 import "./modules/SecurityCouncilNomineeElectionGovernorCountingUpgradeable.sol";
 import "./modules/ArbitrumGovernorVotesQuorumFractionUpgradeable.sol";
 import "./modules/SecurityCouncilNomineeElectionGovernorTiming.sol";
-import "./modules/ElectionGovernorLib.sol";
+import "./modules/ElectionGovernor.sol";
 
 import "../SecurityCouncilMgmtUtils.sol";
 

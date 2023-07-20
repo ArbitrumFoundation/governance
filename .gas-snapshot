@@ -134,7 +134,7 @@ SecurityCouncilMemberElectionGovernorTest:testOnlyNomineeElectionGovernorCanProp
 SecurityCouncilMemberElectionGovernorTest:testProperInitialization() (gas: 46273)
 SecurityCouncilMemberElectionGovernorTest:testProposeReverts() (gas: 32033)
 SecurityCouncilMemberElectionGovernorTest:testRelay() (gas: 42251)
-SecurityCouncilMemberElectionGovernorTest:testSelectTopNominees(uint256) (runs: 256, μ: 340074, ~: 339621)
+SecurityCouncilMemberElectionGovernorTest:testSelectTopNominees(uint256) (runs: 256, μ: 340004, ~: 339765)
 SecurityCouncilMemberElectionGovernorTest:testSetFullWeightDuration() (gas: 33841)
 SecurityCouncilMemberElectionGovernorTest:testVotesToWeight() (gas: 150718)
 SecurityCouncilMemberRemovalGovernorTest:testProposalCreationCallParamRestriction() (gas: 56139)

@@ -6,7 +6,7 @@ import "forge-std/Test.sol";
 import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 
 import "../../util/TestUtil.sol";
-import "../../../src/security-council-mgmt/governors/modules/ElectionGovernorLib.sol";
+import "../../../src/security-council-mgmt/governors/modules/ElectionGovernor.sol";
 
 import "../../../src/security-council-mgmt/governors/SecurityCouncilMemberElectionGovernor.sol";
 

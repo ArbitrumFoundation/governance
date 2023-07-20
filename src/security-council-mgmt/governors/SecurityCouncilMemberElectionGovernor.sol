@@ -3,7 +3,7 @@ pragma solidity 0.8.16;
 
 import "./modules/SecurityCouncilMemberElectionGovernorCountingUpgradeable.sol";
 import "./SecurityCouncilNomineeElectionGovernor.sol";
-import "./modules/ElectionGovernorLib.sol";
+import "./modules/ElectionGovernor.sol";
 
 /// @title  SecurityCouncilMemberElectionGovernor
 /// @notice Narrows a set of nominees down to a set of members.
