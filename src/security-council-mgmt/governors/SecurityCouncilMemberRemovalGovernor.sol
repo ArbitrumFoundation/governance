@@ -24,11 +24,11 @@ contract SecurityCouncilMemberRemovalGovernor is
     event VoteSuccessNumeratorSet(uint256 indexed voteSuccessNumerator);
     event MemberRemovalProposed(address memberToRemove, string description);
 
-    error InvalidOperationsLength();
+    error InvalidOperationsLength(uint256 len);
     error TargetNotManager(address target);
     error ValueNotZero(uint256 value);
-    error UnexpectedCalldataLength();
-    error CallNotRemoveMember(bytes4 selector);
+    error UnexpectedCalldataLength(uint256 len);
+    error CallNotRemoveMember(bytes4 selector, bytes4 expectedSelector);
     error MemberNotFound(address memberToRemove);
     error AbstainDisallowed();
     error InvalidVoteSuccessNumerator(uint256 voteSuccessNumerator);
@@ -100,7 +100,7 @@ contract SecurityCouncilMemberRemovalGovernor is
         string memory description
     ) public override returns (uint256) {
         if (targets.length != 1) {
-            revert InvalidOperationsLength();
+            revert InvalidOperationsLength(targets.length);
         }
         // length equality of targets, values, and calldatas is checked in  GovernorUpgradeable.propose
 
@@ -110,16 +110,17 @@ contract SecurityCouncilMemberRemovalGovernor is
         if (values[0] != 0) {
             revert ValueNotZero(values[0]);
         }
+        // selector + 1 word to hold the address
         if (calldatas[0].length != 36) {
-            revert UnexpectedCalldataLength();
+            revert UnexpectedCalldataLength(calldatas[0].length);
         }
 
         (bytes4 selector, bytes memory rest) = this.separateSelector(calldatas[0]);
-        address memberToRemove = abi.decode(rest, (address));
-
         if (selector != ISecurityCouncilManager.removeMember.selector) {
-            revert CallNotRemoveMember(selector);
+            revert CallNotRemoveMember(selector, ISecurityCouncilManager.removeMember.selector);
         }
+
+        address memberToRemove = abi.decode(rest, (address));
         if (
             !securityCouncilManager.firstCohortIncludes(memberToRemove)
                 && !securityCouncilManager.secondCohortIncludes(memberToRemove)
