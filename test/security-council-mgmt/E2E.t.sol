@@ -457,7 +457,7 @@ contract E2E is Test, DeployGnosisWithModule {
                 uint256[] memory values,
                 bytes[] memory callDatas,
                 string memory description
-            ) = ElectionGovernorLib.getProposeArgs(
+            ) = vars.secDeployedContracts.nomineeElectionGovernor.getProposeArgs(
                 vars.secDeployedContracts.nomineeElectionGovernor.electionCount() - 1
             );
             vars.secDeployedContracts.nomineeElectionGovernor.execute(
@@ -483,7 +483,7 @@ contract E2E is Test, DeployGnosisWithModule {
                 uint256[] memory values,
                 bytes[] memory callDatas,
                 string memory description
-            ) = ElectionGovernorLib.getProposeArgs(
+            ) = vars.secDeployedContracts.nomineeElectionGovernor.getProposeArgs(
                 vars.secDeployedContracts.nomineeElectionGovernor.electionCount() - 1
             );
             vars.secDeployedContracts.memberElectionGovernor.execute(

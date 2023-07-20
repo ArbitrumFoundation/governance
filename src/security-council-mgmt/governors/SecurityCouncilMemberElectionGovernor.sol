@@ -15,7 +15,8 @@ contract SecurityCouncilMemberElectionGovernor is
     GovernorVotesUpgradeable,
     SecurityCouncilMemberElectionGovernorCountingUpgradeable,
     GovernorSettingsUpgradeable,
-    OwnableUpgradeable
+    OwnableUpgradeable,
+    ElectionGovernor
 {
     /// @notice The SecurityCouncilNomineeElectionGovernor that creates proposals for this governor and contains the list of compliant nominees
     SecurityCouncilNomineeElectionGovernor public nomineeElectionGovernor;
@@ -77,7 +78,7 @@ contract SecurityCouncilMemberElectionGovernor is
             uint256[] memory values,
             bytes[] memory callDatas,
             string memory description
-        ) = ElectionGovernorLib.getProposeArgs(electionIndex);
+        ) = getProposeArgs(electionIndex);
         return GovernorUpgradeable.propose(targets, values, callDatas, description);
     }
 
@@ -103,7 +104,7 @@ contract SecurityCouncilMemberElectionGovernor is
         bytes32 /* descriptionHash */
     ) internal override {
         // we know that the election index is part of the calldatas
-        uint256 electionIndex = ElectionGovernorLib.extractElectionIndex(callDatas);
+        uint256 electionIndex = extractElectionIndex(callDatas);
 
         // it's possible for this call to fail because of checks in the security council manager
         // getting into a state inconsistent with the elections
@@ -114,7 +115,7 @@ contract SecurityCouncilMemberElectionGovernor is
         // and could be executed at a later unintended date.
         securityCouncilManager.replaceCohort({
             _newCohort: topNominees(proposalId),
-            _cohort: nomineeElectionGovernor.electionIndexToCohort(electionIndex)
+            _cohort: electionIndexToCohort(electionIndex)
         });
     }
 

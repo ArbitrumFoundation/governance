@@ -120,7 +120,7 @@ contract SecurityCouncilMemberElectionGovernorTest is Test {
             uint256[] memory values,
             bytes[] memory calldatas,
             string memory description
-        ) = ElectionGovernorLib.getProposeArgs(0);
+        ) = governor.getProposeArgs(0);
 
         vm.mockCall(
             address(initParams.nomineeElectionGovernor),
@@ -555,7 +555,7 @@ contract SecurityCouncilMemberElectionGovernorTest is Test {
             uint256[] memory values,
             bytes[] memory calldatas,
             string memory description
-        ) = ElectionGovernorLib.getProposeArgs(nomineeElectionIndex);
+        ) = governor.getProposeArgs(nomineeElectionIndex);
 
         return uint256(
             keccak256(abi.encode(targets, values, calldatas, keccak256(bytes(description))))

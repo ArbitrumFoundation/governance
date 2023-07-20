@@ -2,9 +2,10 @@
 pragma solidity 0.8.16;
 
 import "@openzeppelin/contracts-upgradeable/utils/StringsUpgradeable.sol";
+import "../../Common.sol";
 
 /// @notice Common functionality used by nominee and member election governors
-library ElectionGovernorLib {
+contract ElectionGovernor {
     /// @notice Generate arguments to be passed to the governor propose function
     /// @param electionIndex The index of the election to create a proposal for
     /// @return Targets
@@ -12,7 +13,7 @@ library ElectionGovernorLib {
     /// @return Calldatas
     /// @return Description
     function getProposeArgs(uint256 electionIndex)
-        internal
+        public
         pure
         returns (address[] memory, uint256[] memory, bytes[] memory, string memory)
     {
@@ -36,11 +37,23 @@ library ElectionGovernorLib {
     /// @notice Proposal descriptions are created deterministically from the election index
     /// @param electionIndex The index of the election to create a proposal for
     function electionIndexToDescription(uint256 electionIndex)
-        internal
+        public
         pure
         returns (string memory)
     {
         return
             string.concat("Security Council Election #", StringsUpgradeable.toString(electionIndex));
     }
+
+    /// @notice Returns the cohort for a given `electionIndex`
+    function electionIndexToCohort(uint256 electionIndex) public pure returns (Cohort) {
+        return Cohort(electionIndex % 2);
+    }
+
+    /**
+     * @dev This empty reserved space is put in place to allow future versions to add new
+     * variables without shifting down storage in the inheritance chain.
+     * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
+     */
+    uint256[50] private __gap;
 }

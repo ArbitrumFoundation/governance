@@ -345,12 +345,12 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
 
         // should fail if called during vetting period
         vm.roll(governor.proposalDeadline(proposalId) + 1);
-        vm.expectRevert(
+        _execute(
+            electionIndex,
             abi.encodeWithSelector(
                 SecurityCouncilNomineeElectionGovernor.ProposalInVettingPeriod.selector
             )
         );
-        _execute(electionIndex);
 
         // should fail if there aren't enough compliant nominees
         // make some but not enough
@@ -361,13 +361,13 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
         }
 
         vm.roll(governor.proposalVettingDeadline(proposalId) + 1);
-        vm.expectRevert(
+        _execute(
+            electionIndex,
             abi.encodeWithSelector(
                 SecurityCouncilNomineeElectionGovernor.InsufficientCompliantNomineeCount.selector,
                 cohortSize - 1
             )
         );
-        _execute(electionIndex);
 
         // should call the member election governor if there are enough compliant nominees
         vm.roll(governor.proposalVettingDeadline(proposalId));
@@ -389,7 +389,7 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
                 electionIndex
             )
         );
-        _execute(electionIndex);
+        _execute(electionIndex, "");
     }
 
     function testCountVote() public {
@@ -536,24 +536,16 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
         assertEq(initParams.securityCouncilManager.cohortSize(), count);
     }
 
-    function _execute() internal {
-        uint256 electionIndex = governor.electionCount() - 1;
+    function _execute(uint256 electionIndex, bytes memory revertMsg) internal {
         (
             address[] memory targets,
             uint256[] memory values,
             bytes[] memory calldatas,
             string memory description
-        ) = ElectionGovernorLib.getProposeArgs(electionIndex);
-        governor.execute(targets, values, calldatas, keccak256(bytes(description)));
-    }
-
-    function _execute(uint256 electionIndex) internal {
-        (
-            address[] memory targets,
-            uint256[] memory values,
-            bytes[] memory calldatas,
-            string memory description
-        ) = ElectionGovernorLib.getProposeArgs(electionIndex);
+        ) = governor.getProposeArgs(electionIndex);
+        if (revertMsg.length != 0) {
+            vm.expectRevert(revertMsg);
+        }
         governor.execute(targets, values, calldatas, keccak256(bytes(description)));
     }
 

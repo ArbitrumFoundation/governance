@@ -23,7 +23,8 @@ contract SecurityCouncilNomineeElectionGovernor is
     ArbitrumGovernorVotesQuorumFractionUpgradeable,
     GovernorSettingsUpgradeable,
     OwnableUpgradeable,
-    SecurityCouncilNomineeElectionGovernorTiming
+    SecurityCouncilNomineeElectionGovernorTiming,
+    ElectionGovernor
 {
     /// @notice parameters for `initialize`
     /// @param firstNominationStartDate First election start date
@@ -161,7 +162,7 @@ contract SecurityCouncilNomineeElectionGovernor is
             uint256[] memory values,
             bytes[] memory callDatas,
             string memory description
-        ) = ElectionGovernorLib.getProposeArgs(electionCount);
+        ) = getProposeArgs(electionCount);
 
         proposalId = GovernorUpgradeable.propose(targets, values, callDatas, description);
 
@@ -278,7 +279,7 @@ contract SecurityCouncilNomineeElectionGovernor is
             revert InsufficientCompliantNomineeCount(cnCount);
         }
 
-        uint256 electionIndex = ElectionGovernorLib.extractElectionIndex(callDatas);
+        uint256 electionIndex = extractElectionIndex(callDatas);
         uint256 memberElectionProposalId =
             securityCouncilMemberElectionGovernor.proposeFromNomineeElectionGovernor(electionIndex);
 
@@ -336,20 +337,6 @@ contract SecurityCouncilNomineeElectionGovernor is
     function otherCohort() public view returns (Cohort) {
         // previous cohort is at electionCount - 2
         return (electionCount < 2) ? Cohort.SECOND : electionIndexToCohort(electionCount - 2);
-    }
-
-    /// @notice Returns the cohort for a given `electionIndex`
-    function electionIndexToCohort(uint256 electionIndex) public pure returns (Cohort) {
-        return Cohort(electionIndex % 2);
-    }
-
-    /// @notice Returns the description for a given `electionIndex`
-    function electionIndexToDescription(uint256 electionIndex)
-        public
-        pure
-        returns (string memory)
-    {
-        return ElectionGovernorLib.electionIndexToDescription(electionIndex);
     }
 
     /// @notice returns true if the nominee has been excluded by the nomineeVetter for the given proposal
