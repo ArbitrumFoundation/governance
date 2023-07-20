@@ -23,7 +23,7 @@ const solidityProfiles = {
 }
 
 const config: HardhatUserConfig = {
-  solidity: solidityProfiles[process.env.SOLIDITY_PROFILE || "default"] || solidityProfiles.default,
+  solidity: solidityProfiles[process.env.FOUNDRY_PROFILE || "default"] || solidityProfiles.default,
   paths: {
     sources: "./src",
     tests: "./test-ts",
