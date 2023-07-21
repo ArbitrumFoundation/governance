@@ -454,7 +454,7 @@ contract E2E is Test, DeployGnosisWithModule {
             vars.secDeployedContracts.nomineeElectionGovernor.addContender(propId);
             vm.prank(l2InitialSupplyRecipient);
             vars.secDeployedContracts.nomineeElectionGovernor.castVoteWithReasonAndParams(
-                propId, 0, "vote for a nominee", abi.encode(newMember, 1 ether)
+                propId, 1, "vote for a nominee", abi.encode(newMember, 1 ether)
             );
         }
 
@@ -480,7 +480,7 @@ contract E2E is Test, DeployGnosisWithModule {
             address newMember = newCohort1[i];
             vm.prank(l2InitialSupplyRecipient);
             vars.secDeployedContracts.memberElectionGovernor.castVoteWithReasonAndParams(
-                propId, 0, "vote for a member", abi.encode(newMember, 1 ether)
+                propId, 1, "vote for a member", abi.encode(newMember, 1 ether)
             );
         }
 
