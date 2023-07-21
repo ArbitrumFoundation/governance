@@ -8,7 +8,6 @@ import "./SecurityCouncilMgmtUtils.sol";
 import "./interfaces/ISecurityCouncilManager.sol";
 import "./SecurityCouncilMemberSyncAction.sol";
 import "../UpgradeExecRouteBuilder.sol";
-import "@arbitrum/nitro-contracts/src/precompiles/ArbSys.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";

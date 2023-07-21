@@ -21,7 +21,7 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
         nomineeVettingDuration: 1 days,
         nomineeVetter: address(0x11),
         securityCouncilManager: ISecurityCouncilManager(address(0x22)),
-        securityCouncilMemberElectionGovernor: SecurityCouncilMemberElectionGovernor(
+        securityCouncilMemberElectionGovernor: ISecurityCouncilMemberElectionGovernor(
             payable(address(0x33))
             ),
         token: IVotesUpgradeable(address(0x44)),

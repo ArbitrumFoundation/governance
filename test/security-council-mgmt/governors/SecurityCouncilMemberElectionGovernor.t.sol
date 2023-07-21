@@ -9,10 +9,11 @@ import "../../util/TestUtil.sol";
 import "../../../src/security-council-mgmt/governors/modules/ElectionGovernor.sol";
 
 import "../../../src/security-council-mgmt/governors/SecurityCouncilMemberElectionGovernor.sol";
+import "../../../src/security-council-mgmt/governors/SecurityCouncilNomineeElectionGovernor.sol";
 
 contract SecurityCouncilMemberElectionGovernorTest is Test {
     struct InitParams {
-        SecurityCouncilNomineeElectionGovernor nomineeElectionGovernor;
+        ISecurityCouncilNomineeElectionGovernor nomineeElectionGovernor;
         ISecurityCouncilManager securityCouncilManager;
         IVotesUpgradeable token;
         address owner;
@@ -25,7 +26,7 @@ contract SecurityCouncilMemberElectionGovernorTest is Test {
     address proxyAdmin = address(0x11);
 
     InitParams initParams = InitParams({
-        nomineeElectionGovernor: SecurityCouncilNomineeElectionGovernor(payable(address(0x22))),
+        nomineeElectionGovernor: ISecurityCouncilNomineeElectionGovernor(payable(address(0x22))),
         securityCouncilManager: ISecurityCouncilManager(address(0x33)),
         token: IVotesUpgradeable(address(0x44)),
         owner: address(0x55),
@@ -161,7 +162,10 @@ contract SecurityCouncilMemberElectionGovernorTest is Test {
         vm.mockCall(
             address(initParams.nomineeElectionGovernor),
             abi.encodeWithSelector(
-                initParams.nomineeElectionGovernor.electionIndexToCohort.selector, 0
+                ElectionGovernor(address(initParams.nomineeElectionGovernor))
+                    .electionIndexToCohort
+                    .selector,
+                0
             ),
             abi.encode(0)
         );
@@ -692,7 +696,11 @@ contract SecurityCouncilMemberElectionGovernorTest is Test {
         // electionCount() returns 1
         vm.mockCall(
             address(initParams.nomineeElectionGovernor),
-            abi.encodeWithSelector(initParams.nomineeElectionGovernor.electionCount.selector),
+            abi.encodeWithSelector(
+                SecurityCouncilNomineeElectionGovernor(
+                    payable(address(initParams.nomineeElectionGovernor))
+                ).electionCount.selector
+            ),
             abi.encode(electionIndex + 1)
         );
 
@@ -700,7 +708,9 @@ contract SecurityCouncilMemberElectionGovernorTest is Test {
         vm.mockCall(
             address(initParams.nomineeElectionGovernor),
             abi.encodeWithSelector(
-                initParams.nomineeElectionGovernor.electionIndexToDescription.selector,
+                ElectionGovernor(address(initParams.nomineeElectionGovernor))
+                    .electionIndexToDescription
+                    .selector,
                 electionIndex
             ),
             abi.encode(_electionIndexToDescription(electionIndex))
@@ -709,7 +719,7 @@ contract SecurityCouncilMemberElectionGovernorTest is Test {
         // mock call to currentCohort
         vm.mockCall(
             address(initParams.nomineeElectionGovernor),
-            abi.encodeWithSelector(initParams.nomineeElectionGovernor.currentCohort.selector),
+            abi.encodeWithSelector(SecurityCouncilNomineeElectionGovernor.currentCohort.selector),
             abi.encode(electionIndex % 2)
         );
     }
