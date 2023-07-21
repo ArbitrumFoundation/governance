@@ -175,6 +175,11 @@ contract SecurityCouncilMemberRemovalGovernor is
         emit VoteSuccessNumeratorSet(_voteSuccessNumerator);
     }
 
+    /// @inheritdoc IGovernorUpgradeable
+    function COUNTING_MODE() public pure virtual override(GovernorCountingSimpleUpgradeable, IGovernorUpgradeable) returns (string memory) {
+        return "support=for,against&quorum=for";
+    }
+
     /// @notice Allows the owner to make calls from the governor
     /// @dev    See {L2ArbitrumGovernor-relay}
     function relay(address target, uint256 value, bytes calldata data)
