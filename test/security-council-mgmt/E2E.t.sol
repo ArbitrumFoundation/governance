@@ -358,34 +358,43 @@ contract E2E is Test, DeployGnosisWithModule {
             chainNovaId, UpExecLocation(address(vars.novaInbox), address(vars.novaExecutor))
         );
 
-        DeployParams memory secDeployParams = DeployParams({
-            upgradeExecutors: vars.cExecLocs,
-            govChainEmergencySecurityCouncil: address(vars.moduleL2Safe),
-            l1ArbitrumTimelock: address(vars.l1Timelock),
-            l2CoreGovTimelock: address(l2DeployedCoreContracts.coreTimelock),
-            govChainProxyAdmin: address(l2DeployedCoreContracts.proxyAdmin),
-            secondCohort: cohort2,
-            firstCohort: cohort1,
-            l2UpgradeExecutor: address(l2DeployedCoreContracts.executor),
-            arbToken: address(l2DeployedCoreContracts.token),
-            l1TimelockMinDelay: l1MinTimelockDelay,
-            removalGovVotingDelay: removalGovVotingDelay,
-            removalGovVotingPeriod: removalGovVotingPeriod,
-            removalGovQuorumNumerator: removalGovQuorumNumerator,
-            removalGovProposalThreshold: removalGovProposalThreshold,
-            removalGovVoteSuccessNumerator: removalGovVoteSuccessNumerator,
-            removalGovMinPeriodAfterQuorum: removalGovMinPeriodAfterQuorum,
-            securityCouncils: vars.councilData,
-            firstNominationStartDate: nominationStart,
-            nomineeVettingDuration: nomineeVettingDuration,
-            nomineeVetter: nomineeVetter,
-            nomineeQuorumNumerator: nomineeQuorumNumerator,
-            nomineeVotingPeriod: nomineeVotingPeriod,
-            memberVotingPeriod: memberVotingPeriod,
-            fullWeightDuration: fullWeightDuration
-        });
+        {
+            DeployParams memory secDeployParams = DeployParams({
+                upgradeExecutors: vars.cExecLocs,
+                govChainEmergencySecurityCouncil: address(vars.moduleL2Safe),
+                l1ArbitrumTimelock: address(vars.l1Timelock),
+                l2CoreGovTimelock: address(l2DeployedCoreContracts.coreTimelock),
+                govChainProxyAdmin: address(l2DeployedCoreContracts.proxyAdmin),
+                secondCohort: cohort2,
+                firstCohort: cohort1,
+                l2UpgradeExecutor: address(l2DeployedCoreContracts.executor),
+                arbToken: address(l2DeployedCoreContracts.token),
+                l1TimelockMinDelay: l1MinTimelockDelay,
+                removalGovVotingDelay: removalGovVotingDelay,
+                removalGovVotingPeriod: removalGovVotingPeriod,
+                removalGovQuorumNumerator: removalGovQuorumNumerator,
+                removalGovProposalThreshold: removalGovProposalThreshold,
+                removalGovVoteSuccessNumerator: removalGovVoteSuccessNumerator,
+                removalGovMinPeriodAfterQuorum: removalGovMinPeriodAfterQuorum,
+                securityCouncils: vars.councilData,
+                firstNominationStartDate: nominationStart,
+                nomineeVettingDuration: nomineeVettingDuration,
+                nomineeVetter: nomineeVetter,
+                nomineeQuorumNumerator: nomineeQuorumNumerator,
+                nomineeVotingPeriod: nomineeVotingPeriod,
+                memberVotingPeriod: memberVotingPeriod,
+                fullWeightDuration: fullWeightDuration
+            });
 
-        vars.secDeployedContracts = vars.secFac.deploy(secDeployParams);
+            ContractImplementations memory contractImpls = ContractImplementations({
+                securityCouncilManager: address(new SecurityCouncilManager()),
+                securityCouncilMemberRemoverGov: address(new SecurityCouncilMemberRemovalGovernor()),
+                nomineeElectionGovernor: address(new SecurityCouncilNomineeElectionGovernor()),
+                memberElectionGovernor: address(new SecurityCouncilMemberElectionGovernor())
+            });
+
+            vars.secDeployedContracts = vars.secFac.deploy(secDeployParams, contractImpls);
+        }
 
         L1SCMgmtActivationAction installL1 = new L1SCMgmtActivationAction(
             IGnosisSafe(address(vars.moduleL1Safe)),

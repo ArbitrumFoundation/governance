@@ -42,52 +42,14 @@ struct DeployParams {
     uint256 fullWeightDuration;
 }
 
-library ProxyDeploy {
-    function deploy(address proxyAdmin, address impl, bytes memory initData)
-        public
-        returns (address)
-    {
-        return address(
-            new TransparentUpgradeableProxy(
-                impl,
-                proxyAdmin,
-                initData
-            )
-        );
-    }
+
+struct ContractImplementations {
+    address nomineeElectionGovernor;
+    address memberElectionGovernor;
+    address securityCouncilManager;
+    address securityCouncilMemberRemoverGov;
 }
 
-library SecurityCouncilNomineeElectionGovernorDeploy {
-    function deploy(address proxyAdmin) public returns (SecurityCouncilNomineeElectionGovernor) {
-        address impl = address(new SecurityCouncilNomineeElectionGovernor());
-        return SecurityCouncilNomineeElectionGovernor(
-            payable(ProxyDeploy.deploy(proxyAdmin, impl, ""))
-        );
-    }
-}
-
-library SecurityCouncilMemberElectionGovernorDeploy {
-    function deploy(address proxyAdmin) public returns (SecurityCouncilMemberElectionGovernor) {
-        address impl = address(new SecurityCouncilMemberElectionGovernor());
-        return
-            SecurityCouncilMemberElectionGovernor(payable(ProxyDeploy.deploy(proxyAdmin, impl, "")));
-    }
-}
-
-library SecurityCouncilMemberRemovalGovernorDeploy {
-    function deploy(address proxyAdmin) public returns (SecurityCouncilMemberRemovalGovernor) {
-        address impl = address(new SecurityCouncilMemberRemovalGovernor());
-        return
-            SecurityCouncilMemberRemovalGovernor(payable(ProxyDeploy.deploy(proxyAdmin, impl, "")));
-    }
-}
-
-library SecurityCouncilManagerDeploy {
-    function deploy(address proxyAdmin) public returns (ISecurityCouncilManager) {
-        address impl = address(new SecurityCouncilManager());
-        return ISecurityCouncilManager(ProxyDeploy.deploy(proxyAdmin, impl, ""));
-    }
-}
 
 /// @notice Factory for deploying L2 Security Council management contracts.
 /// Prerequisites: core Arb DAO governance contracts, and a SecurityCouncilMemberSyncAction deployed for each governed security council (on each corresponding chain)
@@ -106,7 +68,18 @@ contract L2SecurityCouncilMgmtFactory is Ownable {
     error AddressNotInCouncil(address[] securityCouncil, address account);
     error InvalidCohortsSize(uint256 councilSize, uint256 firstCohortSize, uint256 secondCohortSize);
 
-    function deploy(DeployParams memory dp) external onlyOwner returns (DeployedContracts memory) {
+    function _deployProxy(address proxyAdmin, address impl, bytes memory initData)
+        internal
+        returns (address)
+    {
+        return address(new TransparentUpgradeableProxy(impl, proxyAdmin, initData));
+    }
+
+    function deploy(DeployParams memory dp, ContractImplementations memory impls)
+        external
+        onlyOwner
+        returns (DeployedContracts memory)
+    {
         if (!Address.isContract(dp.govChainEmergencySecurityCouncil)) {
             revert NotAContract(dp.govChainEmergencySecurityCouncil);
         }
@@ -147,20 +120,24 @@ contract L2SecurityCouncilMgmtFactory is Ownable {
         DeployedContracts memory deployedContracts;
 
         // deploy nominee election governor
-        deployedContracts.nomineeElectionGovernor =
-            SecurityCouncilNomineeElectionGovernorDeploy.deploy(dp.govChainProxyAdmin);
+        deployedContracts.nomineeElectionGovernor = SecurityCouncilNomineeElectionGovernor(
+            payable(_deployProxy(dp.govChainProxyAdmin, impls.nomineeElectionGovernor, ""))
+        );
 
         // deploy member election governor
-        deployedContracts.memberElectionGovernor =
-            SecurityCouncilMemberElectionGovernorDeploy.deploy(dp.govChainProxyAdmin);
+        deployedContracts.memberElectionGovernor = SecurityCouncilMemberElectionGovernor(
+            payable(_deployProxy(dp.govChainProxyAdmin, impls.memberElectionGovernor, ""))
+        );
 
         // deploy security council manager
-        deployedContracts.securityCouncilManager =
-            SecurityCouncilManagerDeploy.deploy(dp.govChainProxyAdmin);
+        deployedContracts.securityCouncilManager = SecurityCouncilManager(
+            _deployProxy(dp.govChainProxyAdmin, impls.securityCouncilManager, "")
+        );
 
         // deploy security council member remover gov
-        deployedContracts.securityCouncilMemberRemoverGov =
-            SecurityCouncilMemberRemovalGovernorDeploy.deploy(dp.govChainProxyAdmin);
+        deployedContracts.securityCouncilMemberRemoverGov = SecurityCouncilMemberRemovalGovernor(
+            payable(_deployProxy(dp.govChainProxyAdmin, impls.securityCouncilMemberRemoverGov, ""))
+        );
 
         // create council manager roles
         address[] memory memberRemovers = new address[](2);
