@@ -187,7 +187,7 @@ contract E2E is Test, DeployGnosisWithModule {
 
     uint256 nomineeVettingDuration = 100;
     address nomineeVetter = address(437);
-    uint256 nomineeQuorumNumerator = 101;
+    uint256 nomineeQuorumNumerator = 20;
     uint256 nomineeVotingPeriod = 51;
     uint256 memberVotingPeriod = 53;
     uint256 fullWeightDuration = 39;

@@ -42,14 +42,12 @@ struct DeployParams {
     uint256 fullWeightDuration;
 }
 
-
 struct ContractImplementations {
     address nomineeElectionGovernor;
     address memberElectionGovernor;
     address securityCouncilManager;
     address securityCouncilMemberRemoverGov;
 }
-
 
 /// @notice Factory for deploying L2 Security Council management contracts.
 /// Prerequisites: core Arb DAO governance contracts, and a SecurityCouncilMemberSyncAction deployed for each governed security council (on each corresponding chain)
