@@ -48,6 +48,8 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
         uint256 usableVotes,
         uint256 weightReceived
     );
+    /// @notice Emitted when the a new full weight duration is set
+    event FullWeightDurationSet(uint256 newFullWeightDuration);
 
     error FullWeightDurationGreaterThanVotingPeriod(
         uint256 fullWeightDuration, uint256 votingPeriod
@@ -66,6 +68,7 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
         onlyInitializing
     {
         fullWeightDuration = initialFullWeightDuration;
+        emit FullWeightDurationSet(initialFullWeightDuration);
     }
 
     /// @notice Set the full weight duration numerator and total duration denominator
@@ -75,6 +78,7 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
         }
 
         fullWeightDuration = newFullWeightDuration;
+        emit FullWeightDurationSet(newFullWeightDuration);
     }
 
     /// @notice Register a vote by some account for a proposal.
@@ -163,7 +167,6 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
     ///         The maximum number of nominees is set by the threshold of votes required to become a nominee.
     ///         Currently this is 0.2% of votable tokens, which corresponds to 500 max nominees.
     ///         Rough estimate at (4200 + 1786)n. With 500 that's 2,993,000
-    ///         CHRIS: TODO: do we have a test for this - would be good to get gas cost
     /// @param proposalId The proposal to find the top nominees for
     function topNominees(uint256 proposalId) public view returns (address[] memory) {
         address[] memory nominees = _compliantNominees(proposalId);

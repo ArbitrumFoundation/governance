@@ -176,7 +176,13 @@ contract SecurityCouncilMemberRemovalGovernor is
     }
 
     /// @inheritdoc IGovernorUpgradeable
-    function COUNTING_MODE() public pure virtual override(GovernorCountingSimpleUpgradeable, IGovernorUpgradeable) returns (string memory) {
+    function COUNTING_MODE()
+        public
+        pure
+        virtual
+        override(GovernorCountingSimpleUpgradeable, IGovernorUpgradeable)
+        returns (string memory)
+    {
         return "support=for,against&quorum=for";
     }
 
