@@ -1,9 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.16;
 
-import "../../L2ArbitrumGovernor.sol";
+import
+    "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorPreventLateQuorumUpgradeable.sol";
+import
+    "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorCountingSimpleUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorSettingsUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "./../interfaces/ISecurityCouncilManager.sol";
-import "../../Util.sol";
 import "../Common.sol";
 import "./modules/ArbitrumGovernorVotesQuorumFractionUpgradeable.sol";
 
