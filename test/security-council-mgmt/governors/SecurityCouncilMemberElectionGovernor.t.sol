@@ -39,6 +39,9 @@ contract SecurityCouncilMemberElectionGovernorTest is Test {
     function setUp() public {
         governor = _deployGovernor();
 
+        vm.etch(address(initParams.nomineeElectionGovernor), "0x23");
+        vm.etch(address(initParams.securityCouncilManager), "0x34");
+
         governor.initialize({
             _nomineeElectionGovernor: initParams.nomineeElectionGovernor,
             _securityCouncilManager: initParams.securityCouncilManager,

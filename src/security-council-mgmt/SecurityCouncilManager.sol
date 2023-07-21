@@ -62,7 +62,6 @@ contract SecurityCouncilManager is
     /// @notice Address of UpgradeExecRouteBuilder. Used to help create security council updates
     UpgradeExecRouteBuilder public router;
 
-    // TODO: benchmark for reasonable number
     /// @notice Maximum possible number of Security Councils to manage
     /// @dev    Since the councils array will be iterated this provides a safety check to make too many Sec Councils
     ///         aren't added to the array.
@@ -111,6 +110,9 @@ contract SecurityCouncilManager is
         _grantRole(MEMBER_ROTATOR_ROLE, _roles.memberRotator);
         _grantRole(MEMBER_REPLACER_ROLE, _roles.memberReplacer);
 
+        if (!Address.isContract(_l2CoreGovTimelock)) {
+            revert NotAContract({account: _l2CoreGovTimelock});
+        }
         l2CoreGovTimelock = _l2CoreGovTimelock;
 
         _setUpgradeExecRouteBuilder(_router);

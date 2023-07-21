@@ -55,7 +55,13 @@ contract SecurityCouncilMemberElectionGovernor is
         __GovernorSettings_init(0, _votingPeriod, 0);
         _transferOwnership(_owner);
 
+        if (!Address.isContract(address(_nomineeElectionGovernor))) {
+            revert NotAContract(address(_nomineeElectionGovernor));
+        }
         nomineeElectionGovernor = _nomineeElectionGovernor;
+        if (!Address.isContract(address(_securityCouncilManager))) {
+            revert NotAContract(address(_securityCouncilManager));
+        }
         securityCouncilManager = _securityCouncilManager;
     }
 

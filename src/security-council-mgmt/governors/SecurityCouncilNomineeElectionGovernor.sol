@@ -112,7 +112,13 @@ contract SecurityCouncilNomineeElectionGovernor is
         _transferOwnership(params.owner);
 
         nomineeVetter = params.nomineeVetter;
+        if (!Address.isContract(address(params.securityCouncilManager))) {
+            revert NotAContract(address(params.securityCouncilManager));
+        }
         securityCouncilManager = params.securityCouncilManager;
+        if (!Address.isContract(address(params.securityCouncilMemberElectionGovernor))) {
+            revert NotAContract(address(params.securityCouncilMemberElectionGovernor));
+        }
         securityCouncilMemberElectionGovernor = params.securityCouncilMemberElectionGovernor;
 
         // elsewhere we make assumptions that the number of nominees
@@ -245,6 +251,8 @@ contract SecurityCouncilNomineeElectionGovernor is
     /// @notice Allows the nomineeVetter to explicitly include a nominee if there are fewer nominees than the target.
     /// @dev    Can be called only after a proposal has succeeded (voting has ended) and before the nominee vetting period has ended.
     ///         Will revert if the provided account is already a nominee
+    ///         The Constitution must be followed adding nominees. For example this method can be used by the Foundation to add a
+    ///         random member of the outgoing security council, if less than 6 members meet the threshold to become a nominee
     function includeNominee(uint256 proposalId, address account)
         external
         onlyNomineeVetterInVettingPeriod(proposalId)
