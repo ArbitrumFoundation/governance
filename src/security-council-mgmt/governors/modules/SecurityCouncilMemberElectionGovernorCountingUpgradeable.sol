@@ -61,6 +61,7 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
     error LengthsDontMatch(uint256 nomineesLength, uint256 weightsLength);
     error NotEnoughNominees(uint256 numNominees, uint256 k);
     error UintTooLarge(uint256 x);
+    error InvalidSupport(uint8 support);
 
     /// @param initialFullWeightDuration Duration of full weight voting (expressed in blocks)
     function __SecurityCouncilMemberElectionGovernorCounting_init(uint256 initialFullWeightDuration)
@@ -88,15 +89,20 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
     ///         Finally, the weight of the vote is added to the weight of the possibleNominee and the top K nominees are updated if necessary.
     /// @param  proposalId The id of the proposal
     /// @param  account The account that is voting
+    /// @param  support The support of the vote (forced to 1)
     /// @param  availableVotes The amount of votes that account had at the time of the proposal snapshot
     /// @param  params Abi encoded (address possibleNominee, uint256 votes)
     function _countVote(
         uint256 proposalId,
         address account,
-        uint8,
+        uint8 support,
         uint256 availableVotes,
         bytes memory params
     ) internal virtual override {
+        if (support != 1) {
+            revert InvalidSupport(support);
+        }
+
         if (params.length != 64) {
             revert UnexpectedParamsLength(params.length);
         }
@@ -134,8 +140,7 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
     }
 
     function COUNTING_MODE() public pure virtual override returns (string memory) {
-        // TODO:
-        return "TODO: ???";
+        return "support=for&params=account&counting=n-winners";
     }
 
     /// @notice Returns the number of votes used by an account for a given proposal

@@ -46,6 +46,7 @@ abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is
     error NotEligibleContender(address contender);
     error NomineeAlreadyAdded(address nominee);
     error InsufficientTokens(uint256 votes, uint256 prevVotesUsed, uint256 weight);
+    error InvalidSupport(uint8 support);
 
     function __SecurityCouncilNomineeElectionGovernorCounting_init() internal onlyInitializing {}
 
@@ -54,15 +55,20 @@ abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is
     ///      and only the necessary amount of votes will be deducted from the voter.
     /// @param proposalId the id of the proposal
     /// @param account the account that is casting the vote
+    /// @param support the support of the vote (forced to 1)
     /// @param weight the amount of vote that account held at time of snapshot
     /// @param params abi encoded (contender, votes) where votes is the amount of votes the account is using for this contender
     function _countVote(
         uint256 proposalId,
         address account,
-        uint8,
+        uint8 support,
         uint256 weight,
         bytes memory params
     ) internal virtual override {
+        if (support != 1) {
+            revert InvalidSupport(support);
+        }
+
         if (params.length != 64) {
             revert UnexpectedParamsLength(params.length);
         }
@@ -117,9 +123,8 @@ abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is
         emit NewNominee(proposalId, account);
     }
 
-    // TODO:
     function COUNTING_MODE() public pure virtual override returns (string memory) {
-        return "TODO: ???";
+        return "support=for&params=account&counting=threshold";
     }
 
     /// @notice returns true if the account has voted any amount for any contender in the proposal
