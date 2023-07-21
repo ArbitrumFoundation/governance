@@ -1,8 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.16;
 
+import "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorVotesUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorSettingsUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "./modules/SecurityCouncilMemberElectionGovernorCountingUpgradeable.sol";
-import "./SecurityCouncilNomineeElectionGovernor.sol";
+import "../interfaces/ISecurityCouncilMemberElectionGovernor.sol";
+import "../interfaces/ISecurityCouncilNomineeElectionGovernor.sol";
+import "../interfaces/ISecurityCouncilManager.sol";
 import "./modules/ElectionGovernor.sol";
 
 /// @title  SecurityCouncilMemberElectionGovernor
@@ -16,10 +21,11 @@ contract SecurityCouncilMemberElectionGovernor is
     SecurityCouncilMemberElectionGovernorCountingUpgradeable,
     GovernorSettingsUpgradeable,
     OwnableUpgradeable,
-    ElectionGovernor
+    ElectionGovernor,
+    ISecurityCouncilMemberElectionGovernor
 {
     /// @notice The SecurityCouncilNomineeElectionGovernor that creates proposals for this governor and contains the list of compliant nominees
-    SecurityCouncilNomineeElectionGovernor public nomineeElectionGovernor;
+    ISecurityCouncilNomineeElectionGovernor public nomineeElectionGovernor;
 
     /// @notice The SecurityCouncilManager that will execute the election result
     ISecurityCouncilManager public securityCouncilManager;
@@ -36,7 +42,7 @@ contract SecurityCouncilMemberElectionGovernor is
     /// @param _votingPeriod The duration of voting on a proposal
     /// @param _fullWeightDuration Duration of full weight voting (blocks)
     function initialize(
-        SecurityCouncilNomineeElectionGovernor _nomineeElectionGovernor,
+        ISecurityCouncilNomineeElectionGovernor _nomineeElectionGovernor,
         ISecurityCouncilManager _securityCouncilManager,
         IVotesUpgradeable _token,
         address _owner,
@@ -72,7 +78,7 @@ contract SecurityCouncilMemberElectionGovernor is
         _;
     }
 
-    /// @notice Creates a new member election proposal from the most recent nominee election.
+    /// @inheritdoc ISecurityCouncilMemberElectionGovernor
     function proposeFromNomineeElectionGovernor(uint256 electionIndex)
         external
         onlyNomineeElectionGovernor

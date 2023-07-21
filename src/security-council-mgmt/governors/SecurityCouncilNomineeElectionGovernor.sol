@@ -3,14 +3,12 @@ pragma solidity 0.8.16;
 
 import "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorSettingsUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-
-import "./SecurityCouncilMemberElectionGovernor.sol";
-
+import "../interfaces/ISecurityCouncilMemberElectionGovernor.sol";
+import "../interfaces/ISecurityCouncilNomineeElectionGovernor.sol";
 import "./modules/SecurityCouncilNomineeElectionGovernorCountingUpgradeable.sol";
 import "./modules/ArbitrumGovernorVotesQuorumFractionUpgradeable.sol";
 import "./modules/SecurityCouncilNomineeElectionGovernorTiming.sol";
 import "./modules/ElectionGovernor.sol";
-
 import "../SecurityCouncilMgmtUtils.sol";
 
 /// @title SecurityCouncilNomineeElectionGovernor
@@ -24,7 +22,8 @@ contract SecurityCouncilNomineeElectionGovernor is
     GovernorSettingsUpgradeable,
     OwnableUpgradeable,
     SecurityCouncilNomineeElectionGovernorTiming,
-    ElectionGovernor
+    ElectionGovernor,
+    ISecurityCouncilNomineeElectionGovernor
 {
     /// @notice parameters for `initialize`
     /// @param firstNominationStartDate First election start date
@@ -41,7 +40,7 @@ contract SecurityCouncilNomineeElectionGovernor is
         uint256 nomineeVettingDuration;
         address nomineeVetter;
         ISecurityCouncilManager securityCouncilManager;
-        SecurityCouncilMemberElectionGovernor securityCouncilMemberElectionGovernor;
+        ISecurityCouncilMemberElectionGovernor securityCouncilMemberElectionGovernor;
         IVotesUpgradeable token;
         address owner;
         uint256 quorumNumeratorValue;
@@ -66,7 +65,7 @@ contract SecurityCouncilNomineeElectionGovernor is
     ISecurityCouncilManager public securityCouncilManager;
 
     /// @notice Security council member election governor contract
-    SecurityCouncilMemberElectionGovernor public securityCouncilMemberElectionGovernor;
+    ISecurityCouncilMemberElectionGovernor public securityCouncilMemberElectionGovernor;
 
     /// @notice Number of elections created
     uint256 public electionCount;
@@ -328,16 +327,12 @@ contract SecurityCouncilNomineeElectionGovernor is
         return 0;
     }
 
-    /// @notice Whether the account a compliant nominee for a given proposal
-    ///         A compliant nominee is one who is a nominee, and has not been excluded
-    /// @param  proposalId The id of the proposal
-    /// @param  account The account to check
+    /// @inheritdoc ISecurityCouncilNomineeElectionGovernor
     function isCompliantNominee(uint256 proposalId, address account) public view returns (bool) {
         return isNominee(proposalId, account) && !_elections[proposalId].isExcluded[account];
     }
 
-    /// @notice All compliant nominees of a given proposal
-    ///         A compliant nominee is one who is a nominee, and has not been excluded
+    /// @inheritdoc ISecurityCouncilNomineeElectionGovernor
     function compliantNominees(uint256 proposalId) public view returns (address[] memory) {
         ElectionInfo storage election = _elections[proposalId];
         address[] memory maybeCompliantNominees =
