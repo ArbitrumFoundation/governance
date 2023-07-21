@@ -26,7 +26,7 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
             ),
         token: IVotesUpgradeable(address(0x44)),
         owner: address(0x55),
-        quorumNumeratorValue: 200,
+        quorumNumeratorValue: 20,
         votingPeriod: 1 days
     });
 
@@ -66,12 +66,15 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
         assertEq(month, initParams.firstNominationStartDate.month);
         assertEq(day, initParams.firstNominationStartDate.day);
         assertEq(hour, initParams.firstNominationStartDate.hour);
+        assertEq(governor.proposalThreshold(), 0);
+        assertEq(uint256(governor.currentCohort()), uint256(Cohort.FIRST));
+        assertEq(uint256(governor.otherCohort()), uint256(Cohort.SECOND));
     }
 
-    function testInvalidStartDate() public {
+    function testInvalidInit() public {
         SecurityCouncilNomineeElectionGovernor.InitParams memory invalidParams = initParams;
         invalidParams.firstNominationStartDate = Date({year: 2022, month: 1, day: 1, hour: 0});
-        governor = _deployGovernor();
+        SecurityCouncilNomineeElectionGovernor governorInvalid = _deployGovernor();
 
         vm.expectRevert(
             abi.encodeWithSelector(
@@ -80,7 +83,7 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
                 block.timestamp
             )
         );
-        governor.initialize(invalidParams);
+        governorInvalid.initialize(invalidParams);
 
         invalidParams.firstNominationStartDate = Date({year: 2000, month: 13, day: 1, hour: 0});
         vm.expectRevert(
@@ -92,7 +95,16 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
                 invalidParams.firstNominationStartDate.hour
             )
         );
-        governor.initialize(invalidParams);
+        governorInvalid.initialize(invalidParams);
+
+        SecurityCouncilNomineeElectionGovernor.InitParams memory invalidQuorumParams = initParams;
+        invalidQuorumParams.quorumNumeratorValue = 19;
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                SecurityCouncilNomineeElectionGovernor.QuorumNumeratorTooLow.selector, 19
+            )
+        );
+        governorInvalid.initialize(invalidQuorumParams);
     }
 
     function testCreateElection() public {
@@ -113,10 +125,14 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
         governor.createElection();
 
         // we should be able to create an election at the timestamp
+        assertEq(governor.electionCount(), 0);
+        assertEq(uint256(governor.currentCohort()), uint256(Cohort.FIRST));
+        assertEq(uint256(governor.otherCohort()), uint256(Cohort.SECOND));
         vm.warp(expectedStartTimestamp);
         governor.createElection();
-
         assertEq(governor.electionCount(), 1);
+        assertEq(uint256(governor.currentCohort()), uint256(Cohort.FIRST));
+        assertEq(uint256(governor.otherCohort()), uint256(Cohort.SECOND));
 
         // we should not be able to create another election before 6 months have passed
         expectedStartTimestamp = _datePlusMonthsToTimestamp(initParams.firstNominationStartDate, 6);
@@ -133,6 +149,9 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
         // we should be able to create an election at the timestamp
         vm.warp(expectedStartTimestamp);
         governor.createElection();
+        assertEq(governor.electionCount(), 2);
+        assertEq(uint256(governor.currentCohort()), uint256(Cohort.SECOND));
+        assertEq(uint256(governor.otherCohort()), uint256(Cohort.FIRST));
     }
 
     function testAddContender() public {
@@ -176,6 +195,15 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
 
         // check that it correctly mutated the state
         assertTrue(governor.isContender(proposalId, _contender(0)));
+
+        // adding again should fail
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                SecurityCouncilNomineeElectionGovernor.AlreadyContender.selector, _contender(0)
+            )
+        );
+        vm.prank(_contender(0));
+        governor.addContender(proposalId);
     }
 
     function testSetNomineeVetter() public {
@@ -387,6 +415,16 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
         governor.includeNominee(proposalId, _contender(uint8(cohortSize - 1)));
 
         vm.roll(governor.proposalVettingDeadline(proposalId) + 1);
+
+        // mock the return value as a different proposal id
+        vm.mockCall(address(initParams.securityCouncilMemberElectionGovernor), "", abi.encode(100));
+        _execute(
+            electionIndex,
+            abi.encodeWithSelector(
+                SecurityCouncilNomineeElectionGovernor.ProposalIdMismatch.selector, proposalId, 100
+            )
+        );
+
         vm.mockCall(
             address(initParams.securityCouncilMemberElectionGovernor), "", abi.encode(proposalId)
         );
@@ -401,6 +439,9 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
             )
         );
         _execute(electionIndex, "");
+
+        assertEq(uint256(governor.currentCohort()), uint256(Cohort.FIRST));
+        assertEq(uint256(governor.otherCohort()), uint256(Cohort.SECOND));
     }
 
     function testCountVote() public {
@@ -482,6 +523,24 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
             )
         );
         _castVoteForContender(proposalId, _voter(0), _contender(2), 1);
+    }
+
+    function testProposeFails() public {
+        vm.expectRevert(
+            abi.encodeWithSelector(SecurityCouncilNomineeElectionGovernor.ProposeDisabled.selector)
+        );
+        governor.propose(new address[](1), new uint[](1), new bytes[](1), "");
+    }
+
+    function testCastVoteReverts() public {
+        vm.expectRevert(SecurityCouncilNomineeElectionGovernor.CastVoteDisabled.selector);
+        governor.castVote(10, 0);
+
+        vm.expectRevert(SecurityCouncilNomineeElectionGovernor.CastVoteDisabled.selector);
+        governor.castVoteWithReason(10, 0, "");
+
+        vm.expectRevert(SecurityCouncilNomineeElectionGovernor.CastVoteDisabled.selector);
+        governor.castVoteBySig(10, 0, 1, bytes32(uint256(0x20)), bytes32(uint256(0x21)));
     }
 
     // helpers

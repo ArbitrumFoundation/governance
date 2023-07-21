@@ -55,6 +55,26 @@ contract SecurityCouncilMemberElectionGovernorTest is Test {
         vm.roll(10);
     }
 
+    function testInitReverts() public {
+        SecurityCouncilMemberElectionGovernor governor2 = _deployGovernor();
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                SecurityCouncilMemberElectionGovernor.InvalidDurations.selector,
+                initParams.votingPeriod + 1,
+                initParams.votingPeriod
+            )
+        );
+        governor2.initialize({
+            _nomineeElectionGovernor: initParams.nomineeElectionGovernor,
+            _securityCouncilManager: initParams.securityCouncilManager,
+            _token: initParams.token,
+            _owner: initParams.owner,
+            _votingPeriod: initParams.votingPeriod,
+            _fullWeightDuration: initParams.votingPeriod + 1
+        });
+    }
+
     function testProperInitialization() public {
         assertEq(
             address(governor.nomineeElectionGovernor()), address(initParams.nomineeElectionGovernor)
@@ -66,9 +86,22 @@ contract SecurityCouncilMemberElectionGovernorTest is Test {
         assertEq(governor.owner(), initParams.owner);
         assertEq(governor.votingPeriod(), initParams.votingPeriod);
         assertEq(governor.fullWeightDuration(), initParams.fullWeightDuration);
+        assertEq(governor.proposalThreshold(), 0);
+        assertEq(governor.quorum(100), 0);
     }
 
     // test functions defined in SecurityCouncilMemberElectionGovernor
+
+    function testCastVoteReverts() public {
+        vm.expectRevert(SecurityCouncilMemberElectionGovernor.CastVoteDisabled.selector);
+        governor.castVote(10, 0);
+
+        vm.expectRevert(SecurityCouncilMemberElectionGovernor.CastVoteDisabled.selector);
+        governor.castVoteWithReason(10, 0, "");
+
+        vm.expectRevert(SecurityCouncilMemberElectionGovernor.CastVoteDisabled.selector);
+        governor.castVoteBySig(10, 0, 1, bytes32(uint256(0x20)), bytes32(uint256(0x21)));
+    }
 
     function testRelay() public {
         // make sure relay can only be called by owner
@@ -204,6 +237,37 @@ contract SecurityCouncilMemberElectionGovernorTest is Test {
         });
     }
 
+    function testInvalidParams() public {
+        uint256 proposalId = _propose(0);
+
+        // make sure the nomineeElectionGovernor says the nominee is not compliant
+        _setCompliantNominee(proposalId, _nominee(0), true);
+
+        // make sure the voter has enough votes
+        _mockGetPastVotes({
+            account: _voter(0),
+            blockNumber: governor.proposalSnapshot(proposalId),
+            votes: 100
+        });
+
+        vm.roll(governor.proposalSnapshot(proposalId) + 1);
+        vm.prank(_voter(0));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                SecurityCouncilMemberElectionGovernorCountingUpgradeable
+                    .UnexpectedParamsLength
+                    .selector,
+                32
+            )
+        );
+        governor.castVoteWithReasonAndParams({
+            proposalId: proposalId,
+            support: 0,
+            reason: "",
+            params: abi.encode(_nominee(0))
+        });
+    }
+
     function testNoZeroWeightVotes() public {
         uint256 proposalId = _propose(0);
 
@@ -292,6 +356,38 @@ contract SecurityCouncilMemberElectionGovernorTest is Test {
             reason: "",
             params: abi.encode(_nominee(0), 51)
         });
+    }
+
+    function testSelectTopNomineesFails() public {
+        uint16 n = 100;
+        uint16 k = 6;
+
+        uint240[] memory weights = TestUtil.randomUint240s(n, 6);
+        address[] memory addresses = TestUtil.randomAddresses(n - 1, 7);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                SecurityCouncilMemberElectionGovernorCountingUpgradeable.LengthsDontMatch.selector,
+                n - 1,
+                n
+            )
+        );
+        governor.selectTopNominees(addresses, weights, k);
+
+        weights = TestUtil.randomUint240s(k - 1, 6);
+        addresses = TestUtil.randomAddresses(k - 1, 7);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                SecurityCouncilMemberElectionGovernorCountingUpgradeable.NotEnoughNominees.selector,
+                k - 1,
+                k
+            )
+        );
+        governor.selectTopNominees(addresses, weights, k);
+
+        // also test the boundary
+        weights = TestUtil.randomUint240s(k, 6);
+        addresses = TestUtil.randomAddresses(k, 7);
+        governor.selectTopNominees(addresses, weights, k);
     }
 
     function testSelectTopNominees(uint256 seed) public {
