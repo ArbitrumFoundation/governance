@@ -556,13 +556,12 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
             blockNumber: governor.proposalSnapshot(proposalId),
             votes: 100
         });
-        
+
         vm.roll(governor.proposalSnapshot(proposalId) + 1);
         vm.prank(_voter(0));
         vm.expectRevert(
             abi.encodeWithSelector(
-                SecurityCouncilNomineeElectionGovernorCountingUpgradeable.InvalidSupport.selector,
-                2
+                SecurityCouncilNomineeElectionGovernorCountingUpgradeable.InvalidSupport.selector, 2
             )
         );
         governor.castVoteWithReasonAndParams({
