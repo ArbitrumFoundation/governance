@@ -36,6 +36,9 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
     function setUp() public {
         governor = _deployGovernor();
 
+        vm.etch(address(initParams.securityCouncilManager), "0x23");
+        vm.etch(address(initParams.securityCouncilMemberElectionGovernor), "0x34");
+
         governor.initialize(initParams);
 
         vm.warp(1_689_281_541); // july 13, 2023

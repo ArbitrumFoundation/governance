@@ -112,7 +112,13 @@ contract SecurityCouncilNomineeElectionGovernor is
         _transferOwnership(params.owner);
 
         nomineeVetter = params.nomineeVetter;
+        if (!Address.isContract(address(params.securityCouncilManager))) {
+            revert NotAContract(address(params.securityCouncilManager));
+        }
         securityCouncilManager = params.securityCouncilManager;
+        if (!Address.isContract(address(params.securityCouncilMemberElectionGovernor))) {
+            revert NotAContract(address(params.securityCouncilMemberElectionGovernor));
+        }
         securityCouncilMemberElectionGovernor = params.securityCouncilMemberElectionGovernor;
 
         // elsewhere we make assumptions that the number of nominees
