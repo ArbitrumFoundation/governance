@@ -86,9 +86,9 @@ contract SecurityCouncilNomineeElectionGovernor is
     error ProposalNotSucceededState(ProposalState state);
     error ProposalNotInVettingPeriod(uint256 blockNumber, uint256 vettingDeadline);
     error NomineeAlreadyExcluded(address nominee);
-    error CompliantNomineeTargetHit();
-    error ProposalInVettingPeriod();
-    error InsufficientCompliantNomineeCount(uint256 compliantNomineeCount);
+    error CompliantNomineeTargetHit(uint256 nomineeCount, uint256 expectedCount);
+    error ProposalInVettingPeriod(uint256 blockNumber, uint256 vettingDeadline);
+    error InsufficientCompliantNomineeCount(uint256 compliantNomineeCount, uint256 expectedCount);
     error ProposeDisabled();
     error NotNominee(address nominee);
     error ProposalIdMismatch(uint256 nomineeProposalId, uint256 memberProposalId);
@@ -250,12 +250,13 @@ contract SecurityCouncilNomineeElectionGovernor is
         onlyNomineeVetterInVettingPeriod(proposalId)
     {
         if (isNominee(proposalId, account)) {
-            revert NomineeAlreadyAdded();
+            revert NomineeAlreadyAdded(account);
         }
 
         uint256 cnCount = compliantNomineeCount(proposalId);
-        if (cnCount >= securityCouncilManager.cohortSize()) {
-            revert CompliantNomineeTargetHit();
+        uint256 cohortSize = securityCouncilManager.cohortSize();
+        if (cnCount >= cohortSize) {
+            revert CompliantNomineeTargetHit(cnCount, cohortSize);
         }
 
         // can't include nominees from the other cohort (the cohort not currently up for election)
@@ -284,13 +285,15 @@ contract SecurityCouncilNomineeElectionGovernor is
         bytes32 /*descriptionHash*/
     ) internal virtual override {
         // we can only execute when the vetting deadline has passed
-        if (block.number <= proposalVettingDeadline(proposalId)) {
-            revert ProposalInVettingPeriod();
+        uint256 vettingDeadline = proposalVettingDeadline(proposalId);
+        if (block.number <= vettingDeadline) {
+            revert ProposalInVettingPeriod(block.number, vettingDeadline);
         }
 
         uint256 cnCount = compliantNomineeCount(proposalId);
-        if (cnCount < securityCouncilManager.cohortSize()) {
-            revert InsufficientCompliantNomineeCount(cnCount);
+        uint256 cohortSize = securityCouncilManager.cohortSize();
+        if (cnCount < cohortSize) {
+            revert InsufficientCompliantNomineeCount(cnCount, cohortSize);
         }
 
         uint256 electionIndex = extractElectionIndex(callDatas);

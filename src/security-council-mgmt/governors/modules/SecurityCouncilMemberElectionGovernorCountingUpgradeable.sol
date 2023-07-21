@@ -56,7 +56,7 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
     error NotCompliantNominee(address nominee);
     error ZeroWeightVote(uint256 blockNumber, uint256 votes);
     error InsufficientVotes(uint256 prevVotesUsed, uint256 votes, uint256 availableVotes);
-    error LengthsDontMatch();
+    error LengthsDontMatch(uint256 nomineesLength, uint256 weightsLength);
     error NotEnoughNominees(uint256 numNominees, uint256 k);
     error UintTooLarge(uint256 x);
 
@@ -185,7 +185,7 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
         returns (address[] memory)
     {
         if (nominees.length != weights.length) {
-            revert LengthsDontMatch();
+            revert LengthsDontMatch(nominees.length, weights.length);
         }
         if (nominees.length < k) {
             revert NotEnoughNominees(nominees.length, k);

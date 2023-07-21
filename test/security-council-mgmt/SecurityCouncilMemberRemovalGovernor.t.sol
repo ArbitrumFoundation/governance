@@ -144,7 +144,8 @@ contract SecurityCouncilMemberRemovalGovernorTest is Test {
         vm.expectRevert(
             abi.encodeWithSelector(
                 SecurityCouncilMemberRemovalGovernor.CallNotRemoveMember.selector,
-                ISecurityCouncilManager.addMember.selector
+                ISecurityCouncilManager.addMember.selector,
+                ISecurityCouncilManager.removeMember.selector
             )
         );
         uint256 proposalId =
