@@ -20,5 +20,5 @@ interface IGnosisSafe {
         uint256 value,
         bytes memory data,
         OpEnum.Operation operation
-    ) external virtual returns (bool success);
+    ) external returns (bool success);
 }

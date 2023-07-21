@@ -18,8 +18,8 @@ abstract contract SecurityCouncilNomineeElectionGovernorTiming is
     /// @dev    This is the amount of time after voting ends that the nomineeVetter can exclude noncompliant nominees
     uint256 public nomineeVettingDuration;
 
-    error InvalidStartDate();
-    error StartDateTooEarly();
+    error InvalidStartDate(uint256 year, uint256 month, uint256 day, uint256 hour);
+    error StartDateTooEarly(uint256 startTime, uint256 currentTime);
 
     function __SecurityCouncilNomineeElectionGovernorIndexingTiming_init(
         Date memory _firstNominationStartDate,
@@ -35,7 +35,12 @@ abstract contract SecurityCouncilNomineeElectionGovernorTiming is
         });
 
         if (!isSupportedDateTime) {
-            revert InvalidStartDate();
+            revert InvalidStartDate(
+                _firstNominationStartDate.year,
+                _firstNominationStartDate.month,
+                _firstNominationStartDate.day,
+                _firstNominationStartDate.hour
+            );
         }
 
         // make sure the start date is in the future
@@ -49,16 +54,12 @@ abstract contract SecurityCouncilNomineeElectionGovernorTiming is
         });
 
         if (startTimestamp <= block.timestamp) {
-            revert StartDateTooEarly();
+            revert StartDateTooEarly(startTimestamp, block.timestamp);
         }
 
         firstNominationStartDate = _firstNominationStartDate;
         nomineeVettingDuration = _nomineeVettingDuration;
     }
-
-    /**
-     * view/pure functions *************
-     */
 
     /// @notice Returns the deadline for the nominee vetting period for a given `proposalId`
     function proposalVettingDeadline(uint256 proposalId) public view returns (uint256) {
@@ -87,4 +88,11 @@ abstract contract SecurityCouncilNomineeElectionGovernorTiming is
             second: 0
         });
     }
+
+    /**
+     * @dev This empty reserved space is put in place to allow future versions to add new
+     * variables without shifting down storage in the inheritance chain.
+     * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
+     */
+    uint256[45] private __gap;
 }

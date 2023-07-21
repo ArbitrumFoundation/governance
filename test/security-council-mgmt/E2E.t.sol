@@ -187,7 +187,7 @@ contract E2E is Test, DeployGnosisWithModule {
 
     uint256 nomineeVettingDuration = 100;
     address nomineeVetter = address(437);
-    uint256 nomineeQuorumNumerator = 101;
+    uint256 nomineeQuorumNumerator = 20;
     uint256 nomineeVotingPeriod = 51;
     uint256 memberVotingPeriod = 53;
     uint256 fullWeightDuration = 39;
@@ -358,34 +358,43 @@ contract E2E is Test, DeployGnosisWithModule {
             chainNovaId, UpExecLocation(address(vars.novaInbox), address(vars.novaExecutor))
         );
 
-        DeployParams memory secDeployParams = DeployParams({
-            upgradeExecutors: vars.cExecLocs,
-            govChainEmergencySecurityCouncil: address(vars.moduleL2Safe),
-            l1ArbitrumTimelock: address(vars.l1Timelock),
-            l2CoreGovTimelock: address(l2DeployedCoreContracts.coreTimelock),
-            govChainProxyAdmin: address(l2DeployedCoreContracts.proxyAdmin),
-            secondCohort: cohort2,
-            firstCohort: cohort1,
-            l2UpgradeExecutor: address(l2DeployedCoreContracts.executor),
-            arbToken: address(l2DeployedCoreContracts.token),
-            l1TimelockMinDelay: l1MinTimelockDelay,
-            removalGovVotingDelay: removalGovVotingDelay,
-            removalGovVotingPeriod: removalGovVotingPeriod,
-            removalGovQuorumNumerator: removalGovQuorumNumerator,
-            removalGovProposalThreshold: removalGovProposalThreshold,
-            removalGovVoteSuccessNumerator: removalGovVoteSuccessNumerator,
-            removalGovMinPeriodAfterQuorum: removalGovMinPeriodAfterQuorum,
-            securityCouncils: vars.councilData,
-            firstNominationStartDate: nominationStart,
-            nomineeVettingDuration: nomineeVettingDuration,
-            nomineeVetter: nomineeVetter,
-            nomineeQuorumNumerator: nomineeQuorumNumerator,
-            nomineeVotingPeriod: nomineeVotingPeriod,
-            memberVotingPeriod: memberVotingPeriod,
-            fullWeightDuration: fullWeightDuration
-        });
+        {
+            DeployParams memory secDeployParams = DeployParams({
+                upgradeExecutors: vars.cExecLocs,
+                govChainEmergencySecurityCouncil: address(vars.moduleL2Safe),
+                l1ArbitrumTimelock: address(vars.l1Timelock),
+                l2CoreGovTimelock: address(l2DeployedCoreContracts.coreTimelock),
+                govChainProxyAdmin: address(l2DeployedCoreContracts.proxyAdmin),
+                secondCohort: cohort2,
+                firstCohort: cohort1,
+                l2UpgradeExecutor: address(l2DeployedCoreContracts.executor),
+                arbToken: address(l2DeployedCoreContracts.token),
+                l1TimelockMinDelay: l1MinTimelockDelay,
+                removalGovVotingDelay: removalGovVotingDelay,
+                removalGovVotingPeriod: removalGovVotingPeriod,
+                removalGovQuorumNumerator: removalGovQuorumNumerator,
+                removalGovProposalThreshold: removalGovProposalThreshold,
+                removalGovVoteSuccessNumerator: removalGovVoteSuccessNumerator,
+                removalGovMinPeriodAfterQuorum: removalGovMinPeriodAfterQuorum,
+                securityCouncils: vars.councilData,
+                firstNominationStartDate: nominationStart,
+                nomineeVettingDuration: nomineeVettingDuration,
+                nomineeVetter: nomineeVetter,
+                nomineeQuorumNumerator: nomineeQuorumNumerator,
+                nomineeVotingPeriod: nomineeVotingPeriod,
+                memberVotingPeriod: memberVotingPeriod,
+                fullWeightDuration: fullWeightDuration
+            });
 
-        vars.secDeployedContracts = vars.secFac.deploy(secDeployParams);
+            ContractImplementations memory contractImpls = ContractImplementations({
+                securityCouncilManager: address(new SecurityCouncilManager()),
+                securityCouncilMemberRemoverGov: address(new SecurityCouncilMemberRemovalGovernor()),
+                nomineeElectionGovernor: address(new SecurityCouncilNomineeElectionGovernor()),
+                memberElectionGovernor: address(new SecurityCouncilMemberElectionGovernor())
+            });
+
+            vars.secDeployedContracts = vars.secFac.deploy(secDeployParams, contractImpls);
+        }
 
         L1SCMgmtActivationAction installL1 = new L1SCMgmtActivationAction(
             IGnosisSafe(address(vars.moduleL1Safe)),
@@ -449,20 +458,21 @@ contract E2E is Test, DeployGnosisWithModule {
             );
         }
 
-        // nomination complete - transition to member election
-        vm.roll(block.number + nomineeVotingPeriod + nomineeVettingDuration);
-        vars.secDeployedContracts.nomineeElectionGovernor.execute(
-            new address[](1),
-            new uint256[](1),
-            new bytes[](1),
-            keccak256(
-                bytes(
-                    vars.secDeployedContracts.nomineeElectionGovernor.electionIndexToDescription(
-                        vars.secDeployedContracts.nomineeElectionGovernor.electionCount() - 1
-                    )
-                )
-            )
-        );
+        {
+            // nomination complete - transition to member election
+            vm.roll(block.number + nomineeVotingPeriod + nomineeVettingDuration);
+            (
+                address[] memory targets,
+                uint256[] memory values,
+                bytes[] memory callDatas,
+                string memory description
+            ) = vars.secDeployedContracts.nomineeElectionGovernor.getProposeArgs(
+                vars.secDeployedContracts.nomineeElectionGovernor.electionCount() - 1
+            );
+            vars.secDeployedContracts.nomineeElectionGovernor.execute(
+                targets, values, callDatas, keccak256(bytes(description))
+            );
+        }
 
         // vote for the new members
         vm.roll(block.number + 1);
@@ -474,20 +484,21 @@ contract E2E is Test, DeployGnosisWithModule {
             );
         }
 
-        // member election complete - transition to timelock
-        vm.roll(block.number + memberVotingPeriod);
-        vars.secDeployedContracts.memberElectionGovernor.execute(
-            new address[](1),
-            new uint256[](1),
-            new bytes[](1),
-            keccak256(
-                bytes(
-                    vars.secDeployedContracts.nomineeElectionGovernor.electionIndexToDescription(
-                        vars.secDeployedContracts.nomineeElectionGovernor.electionCount() - 1
-                    )
-                )
-            )
-        );
+        {
+            // member election complete - transition to timelock
+            vm.roll(block.number + memberVotingPeriod);
+            (
+                address[] memory targets,
+                uint256[] memory values,
+                bytes[] memory callDatas,
+                string memory description
+            ) = vars.secDeployedContracts.nomineeElectionGovernor.getProposeArgs(
+                vars.secDeployedContracts.nomineeElectionGovernor.electionCount() - 1
+            );
+            vars.secDeployedContracts.memberElectionGovernor.execute(
+                targets, values, callDatas, keccak256(bytes(description))
+            );
+        }
 
         // exec in the l2 timelock
         {

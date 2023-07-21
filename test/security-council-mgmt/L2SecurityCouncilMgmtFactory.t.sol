@@ -38,7 +38,7 @@ contract L2SecurityCouncilMgmtFactoryTest is Test, DeployGnosisWithModule {
 
     uint256 nomineeVettingDuration = uint256(7);
     address nomineeVetter = address(111_456);
-    uint256 nomineeQuorumNumerator = uint256(8);
+    uint256 nomineeQuorumNumerator = uint256(200);
     uint256 nomineeVotingPeriod = uint256(9);
     uint256 memberVotingPeriod = uint256(112);
     uint256 fullWeightDuration = uint256(111);
@@ -97,17 +97,30 @@ contract L2SecurityCouncilMgmtFactoryTest is Test, DeployGnosisWithModule {
         });
     }
 
+    function getContractImplementations() public returns (ContractImplementations memory) {
+        return ContractImplementations({
+            securityCouncilManager: address(new SecurityCouncilManager()),
+            securityCouncilMemberRemoverGov: address(new SecurityCouncilMemberRemovalGovernor()),
+            nomineeElectionGovernor: address(new SecurityCouncilNomineeElectionGovernor()),
+            memberElectionGovernor: address(new SecurityCouncilMemberElectionGovernor())
+        });
+    }
+
     function testOnlyOwnerCanDeploy() public {
         DeployParams memory dp = getDeployParams();
+        ContractImplementations memory ci = getContractImplementations();
+
         vm.prank(rando);
         vm.expectRevert("Ownable: caller is not the owner");
-        fac.deploy(dp);
+        fac.deploy(dp, ci);
     }
 
     function testSecurityCouncilManagerDeployment() public {
         DeployParams memory dp = getDeployParams();
+        ContractImplementations memory ci = getContractImplementations();
+
         vm.prank(owner);
-        L2SecurityCouncilMgmtFactory.DeployedContracts memory deployed = fac.deploy(dp);
+        L2SecurityCouncilMgmtFactory.DeployedContracts memory deployed = fac.deploy(dp, ci);
 
         SecurityCouncilManager securityCouncilManager =
             SecurityCouncilManager(address(deployed.securityCouncilManager));
@@ -138,14 +151,6 @@ contract L2SecurityCouncilMgmtFactoryTest is Test, DeployGnosisWithModule {
         );
         assertTrue(
             securityCouncilManager.hasRole(
-                securityCouncilManager.MEMBER_REMOVER_ROLE(),
-                address(deployed.memberRemovalGovTimelock)
-            ),
-            "removal gov timelock has removal role"
-        );
-
-        assertTrue(
-            securityCouncilManager.hasRole(
                 securityCouncilManager.COHORT_REPLACER_ROLE(),
                 address(deployed.memberElectionGovernor)
             ),
@@ -167,7 +172,7 @@ contract L2SecurityCouncilMgmtFactoryTest is Test, DeployGnosisWithModule {
             "l2 core gov timelock set"
         );
         assertEq(
-            address(deployed.UpgradeExecRouteBuilder),
+            address(deployed.upgradeExecRouteBuilder),
             address(securityCouncilManager.router()),
             "l2 core gov timelock set"
         );
@@ -175,8 +180,10 @@ contract L2SecurityCouncilMgmtFactoryTest is Test, DeployGnosisWithModule {
 
     function testRemovalGovDeployment() public {
         DeployParams memory dp = getDeployParams();
+        ContractImplementations memory ci = getContractImplementations();
+
         vm.prank(owner);
-        L2SecurityCouncilMgmtFactory.DeployedContracts memory deployed = fac.deploy(dp);
+        L2SecurityCouncilMgmtFactory.DeployedContracts memory deployed = fac.deploy(dp, ci);
 
         SecurityCouncilMemberRemovalGovernor rg = SecurityCouncilMemberRemovalGovernor(
             payable(address(deployed.securityCouncilMemberRemoverGov))
@@ -202,8 +209,10 @@ contract L2SecurityCouncilMgmtFactoryTest is Test, DeployGnosisWithModule {
 
     function testNomineeElectionGovDeployment() public {
         DeployParams memory dp = getDeployParams();
+        ContractImplementations memory ci = getContractImplementations();
+
         vm.prank(owner);
-        L2SecurityCouncilMgmtFactory.DeployedContracts memory deployed = fac.deploy(dp);
+        L2SecurityCouncilMgmtFactory.DeployedContracts memory deployed = fac.deploy(dp, ci);
 
         SecurityCouncilNomineeElectionGovernor nomineeElectionGovernor =
             deployed.nomineeElectionGovernor;
@@ -236,8 +245,10 @@ contract L2SecurityCouncilMgmtFactoryTest is Test, DeployGnosisWithModule {
 
     function testMemberElectionGovDeployment() public {
         DeployParams memory dp = getDeployParams();
+        ContractImplementations memory ci = getContractImplementations();
+
         vm.prank(owner);
-        L2SecurityCouncilMgmtFactory.DeployedContracts memory deployed = fac.deploy(dp);
+        L2SecurityCouncilMgmtFactory.DeployedContracts memory deployed = fac.deploy(dp, ci);
 
         SecurityCouncilMemberElectionGovernor memberElectionGovernor =
             deployed.memberElectionGovernor;

@@ -6,6 +6,7 @@ import "forge-std/Test.sol";
 import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 
 import "../../util/TestUtil.sol";
+import "../../../src/security-council-mgmt/governors/modules/ElectionGovernor.sol";
 
 import "../../../src/security-council-mgmt/governors/SecurityCouncilMemberElectionGovernor.sol";
 
@@ -38,6 +39,9 @@ contract SecurityCouncilMemberElectionGovernorTest is Test {
     function setUp() public {
         governor = _deployGovernor();
 
+        vm.etch(address(initParams.nomineeElectionGovernor), "0x23");
+        vm.etch(address(initParams.securityCouncilManager), "0x34");
+
         governor.initialize({
             _nomineeElectionGovernor: initParams.nomineeElectionGovernor,
             _securityCouncilManager: initParams.securityCouncilManager,
@@ -54,6 +58,26 @@ contract SecurityCouncilMemberElectionGovernorTest is Test {
         vm.roll(10);
     }
 
+    function testInitReverts() public {
+        SecurityCouncilMemberElectionGovernor governor2 = _deployGovernor();
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                SecurityCouncilMemberElectionGovernor.InvalidDurations.selector,
+                initParams.votingPeriod + 1,
+                initParams.votingPeriod
+            )
+        );
+        governor2.initialize({
+            _nomineeElectionGovernor: initParams.nomineeElectionGovernor,
+            _securityCouncilManager: initParams.securityCouncilManager,
+            _token: initParams.token,
+            _owner: initParams.owner,
+            _votingPeriod: initParams.votingPeriod,
+            _fullWeightDuration: initParams.votingPeriod + 1
+        });
+    }
+
     function testProperInitialization() public {
         assertEq(
             address(governor.nomineeElectionGovernor()), address(initParams.nomineeElectionGovernor)
@@ -65,9 +89,22 @@ contract SecurityCouncilMemberElectionGovernorTest is Test {
         assertEq(governor.owner(), initParams.owner);
         assertEq(governor.votingPeriod(), initParams.votingPeriod);
         assertEq(governor.fullWeightDuration(), initParams.fullWeightDuration);
+        assertEq(governor.proposalThreshold(), 0);
+        assertEq(governor.quorum(100), 0);
     }
 
     // test functions defined in SecurityCouncilMemberElectionGovernor
+
+    function testCastVoteReverts() public {
+        vm.expectRevert(SecurityCouncilMemberElectionGovernor.CastVoteDisabled.selector);
+        governor.castVote(10, 0);
+
+        vm.expectRevert(SecurityCouncilMemberElectionGovernor.CastVoteDisabled.selector);
+        governor.castVoteWithReason(10, 0, "");
+
+        vm.expectRevert(SecurityCouncilMemberElectionGovernor.CastVoteDisabled.selector);
+        governor.castVoteBySig(10, 0, 1, bytes32(uint256(0x20)), bytes32(uint256(0x21)));
+    }
 
     function testRelay() public {
         // make sure relay can only be called by owner
@@ -102,7 +139,7 @@ contract SecurityCouncilMemberElectionGovernorTest is Test {
                 SecurityCouncilMemberElectionGovernor.OnlyNomineeElectionGovernor.selector
             )
         );
-        governor.proposeFromNomineeElectionGovernor();
+        governor.proposeFromNomineeElectionGovernor(0);
 
         _propose(0);
     }
@@ -114,9 +151,20 @@ contract SecurityCouncilMemberElectionGovernorTest is Test {
         // roll to the end of voting
         vm.roll(governor.proposalDeadline(proposalId) + 1);
 
-        bytes32 descriptionHash =
-            keccak256(bytes(initParams.nomineeElectionGovernor.electionIndexToDescription(0)));
+        (
+            address[] memory targets,
+            uint256[] memory values,
+            bytes[] memory calldatas,
+            string memory description
+        ) = governor.getProposeArgs(0);
 
+        vm.mockCall(
+            address(initParams.nomineeElectionGovernor),
+            abi.encodeWithSelector(
+                initParams.nomineeElectionGovernor.electionIndexToCohort.selector, 0
+            ),
+            abi.encode(0)
+        );
         vm.mockCall(address(initParams.securityCouncilManager), "", "");
         vm.expectCall(
             address(initParams.securityCouncilManager),
@@ -127,12 +175,11 @@ contract SecurityCouncilMemberElectionGovernorTest is Test {
                 Cohort.FIRST
             )
         );
-
         governor.execute({
-            targets: new address[](1),
-            values: new uint256[](1),
-            calldatas: new bytes[](1),
-            descriptionHash: descriptionHash
+            targets: targets,
+            values: values,
+            calldatas: calldatas,
+            descriptionHash: keccak256(bytes(description))
         });
     }
 
@@ -167,6 +214,39 @@ contract SecurityCouncilMemberElectionGovernorTest is Test {
         _setCompliantNominee(proposalId, _nominee(0), false);
 
         // make sure the voter has enough votes
+        address voter = _voter(0);
+        _mockGetPastVotes({
+            account: voter,
+            blockNumber: governor.proposalSnapshot(proposalId),
+            votes: 100
+        });
+
+        address nominee = _nominee(0);
+        vm.roll(governor.proposalSnapshot(proposalId) + 1);
+        vm.prank(voter);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                SecurityCouncilMemberElectionGovernorCountingUpgradeable
+                    .NotCompliantNominee
+                    .selector,
+                nominee
+            )
+        );
+        governor.castVoteWithReasonAndParams({
+            proposalId: proposalId,
+            support: 0,
+            reason: "",
+            params: abi.encode(nominee, 100)
+        });
+    }
+
+    function testInvalidParams() public {
+        uint256 proposalId = _propose(0);
+
+        // make sure the nomineeElectionGovernor says the nominee is not compliant
+        _setCompliantNominee(proposalId, _nominee(0), true);
+
+        // make sure the voter has enough votes
         _mockGetPastVotes({
             account: _voter(0),
             blockNumber: governor.proposalSnapshot(proposalId),
@@ -178,15 +258,16 @@ contract SecurityCouncilMemberElectionGovernorTest is Test {
         vm.expectRevert(
             abi.encodeWithSelector(
                 SecurityCouncilMemberElectionGovernorCountingUpgradeable
-                    .NotCompliantNominee
-                    .selector
+                    .UnexpectedParamsLength
+                    .selector,
+                32
             )
         );
         governor.castVoteWithReasonAndParams({
             proposalId: proposalId,
             support: 0,
             reason: "",
-            params: abi.encode(_nominee(0), 100)
+            params: abi.encode(_nominee(0))
         });
     }
 
@@ -207,7 +288,9 @@ contract SecurityCouncilMemberElectionGovernorTest is Test {
         vm.prank(_voter(0));
         vm.expectRevert(
             abi.encodeWithSelector(
-                SecurityCouncilMemberElectionGovernorCountingUpgradeable.ZeroWeightVote.selector
+                SecurityCouncilMemberElectionGovernorCountingUpgradeable.ZeroWeightVote.selector,
+                block.number,
+                0
             )
         );
         governor.castVoteWithReasonAndParams({
@@ -238,7 +321,10 @@ contract SecurityCouncilMemberElectionGovernorTest is Test {
         vm.prank(_voter(0));
         vm.expectRevert(
             abi.encodeWithSelector(
-                SecurityCouncilMemberElectionGovernorCountingUpgradeable.InsufficientVotes.selector
+                SecurityCouncilMemberElectionGovernorCountingUpgradeable.InsufficientVotes.selector,
+                0,
+                101,
+                100
             )
         );
         governor.castVoteWithReasonAndParams({
@@ -261,7 +347,10 @@ contract SecurityCouncilMemberElectionGovernorTest is Test {
         vm.prank(_voter(0));
         vm.expectRevert(
             abi.encodeWithSelector(
-                SecurityCouncilMemberElectionGovernorCountingUpgradeable.InsufficientVotes.selector
+                SecurityCouncilMemberElectionGovernorCountingUpgradeable.InsufficientVotes.selector,
+                50,
+                51,
+                100
             )
         );
         governor.castVoteWithReasonAndParams({
@@ -270,6 +359,38 @@ contract SecurityCouncilMemberElectionGovernorTest is Test {
             reason: "",
             params: abi.encode(_nominee(0), 51)
         });
+    }
+
+    function testSelectTopNomineesFails() public {
+        uint16 n = 100;
+        uint16 k = 6;
+
+        uint240[] memory weights = TestUtil.randomUint240s(n, 6);
+        address[] memory addresses = TestUtil.randomAddresses(n - 1, 7);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                SecurityCouncilMemberElectionGovernorCountingUpgradeable.LengthsDontMatch.selector,
+                n - 1,
+                n
+            )
+        );
+        governor.selectTopNominees(addresses, weights, k);
+
+        weights = TestUtil.randomUint240s(k - 1, 6);
+        addresses = TestUtil.randomAddresses(k - 1, 7);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                SecurityCouncilMemberElectionGovernorCountingUpgradeable.NotEnoughNominees.selector,
+                k - 1,
+                k
+            )
+        );
+        governor.selectTopNominees(addresses, weights, k);
+
+        // also test the boundary
+        weights = TestUtil.randomUint240s(k, 6);
+        addresses = TestUtil.randomAddresses(k, 7);
+        governor.selectTopNominees(addresses, weights, k);
     }
 
     function testSelectTopNominees(uint256 seed) public {
@@ -525,19 +646,18 @@ contract SecurityCouncilMemberElectionGovernorTest is Test {
         _mockGetPastVotes({account: address(initParams.nomineeElectionGovernor), votes: 0});
 
         vm.prank(address(initParams.nomineeElectionGovernor));
-        governor.proposeFromNomineeElectionGovernor();
+        governor.proposeFromNomineeElectionGovernor(nomineeElectionIndex);
 
         // vm.clearMockedCalls();
+        (
+            address[] memory targets,
+            uint256[] memory values,
+            bytes[] memory calldatas,
+            string memory description
+        ) = governor.getProposeArgs(nomineeElectionIndex);
 
         return uint256(
-            keccak256(
-                abi.encode(
-                    new address[](1),
-                    new uint256[](1),
-                    new bytes[](1),
-                    keccak256(bytes(_electionIndexToDescription(nomineeElectionIndex)))
-                )
-            )
+            keccak256(abi.encode(targets, values, calldatas, keccak256(bytes(description))))
         );
     }
 

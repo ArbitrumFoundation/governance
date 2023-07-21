@@ -5,8 +5,6 @@ pragma solidity 0.8.16;
 import "forge-std/Test.sol";
 import "../../src/security-council-mgmt/governors/SecurityCouncilMemberRemovalGovernor.sol";
 import "../../src/security-council-mgmt/interfaces/ISecurityCouncilManager.sol";
-
-import "../../src/ArbitrumTimelock.sol";
 import "../../src/L2ArbitrumToken.sol";
 import "./../util/TestUtil.sol";
 
@@ -73,10 +71,6 @@ contract SecurityCouncilMemberRemovalGovernorTest is Test {
         vm.prank(thirdTokenHolder);
         token.delegate(thirdTokenHolder);
 
-        ArbitrumTimelock timelock =
-            ArbitrumTimelock(payable(TestUtil.deployProxy(address(new ArbitrumTimelock()))));
-        timelock.initialize(1, stubAddressArray, stubAddressArray);
-
         scRemovalGov = SecurityCouncilMemberRemovalGovernor(
             payable(TestUtil.deployProxy(address(new SecurityCouncilMemberRemovalGovernor())))
         );
@@ -86,7 +80,6 @@ contract SecurityCouncilMemberRemovalGovernorTest is Test {
             voteSuccessNumerator,
             securityCouncilManager,
             token,
-            timelock,
             owner,
             votingDelay,
             votingPeriod,
@@ -99,6 +92,27 @@ contract SecurityCouncilMemberRemovalGovernorTest is Test {
             abi.encodeWithSelector(ISecurityCouncilManager.removeMember.selector, memberToRemove);
 
         return scRemovalGov;
+    }
+
+    function testInitFails() public {
+        L2ArbitrumToken token =
+            L2ArbitrumToken(TestUtil.deployProxy(address(new L2ArbitrumToken())));
+        token.initialize(l1TokenAddress, initialTokenSupply, tokenOwner);
+        SecurityCouncilMemberRemovalGovernor scRemovalGov2 = SecurityCouncilMemberRemovalGovernor(
+            payable(TestUtil.deployProxy(address(new SecurityCouncilMemberRemovalGovernor())))
+        );
+        vm.expectRevert(abi.encodeWithSelector(NotAContract.selector, address(123_256_123)));
+        scRemovalGov2.initialize(
+            voteSuccessNumerator,
+            ISecurityCouncilManager(address(123_256_123)),
+            token,
+            owner,
+            votingDelay,
+            votingPeriod,
+            quorumNumerator,
+            proposalThreshold,
+            initialVoteExtension
+        );
     }
 
     function testSuccessfulProposalAndCantAbstain() public {
@@ -116,6 +130,21 @@ contract SecurityCouncilMemberRemovalGovernorTest is Test {
         scRemovalGov.castVote(proposalId, 2);
     }
 
+    function testRelay() public {
+        // make sure relay can only be called by owner
+        vm.expectRevert("Ownable: caller is not the owner");
+        scRemovalGov.relay(address(0), 0, new bytes(0));
+
+        // make sure relay can be called by owner, and that we can call an onlyGovernance function
+        vm.prank(owner);
+        scRemovalGov.relay(
+            address(scRemovalGov),
+            0,
+            abi.encodeWithSelector(scRemovalGov.setVotingPeriod.selector, 121_212)
+        );
+        assertEq(scRemovalGov.votingPeriod(), 121_212);
+    }
+
     function testProposalCreationTargetRestriction() public {
         validTargets[0] = rando;
         vm.expectRevert(
@@ -123,8 +152,7 @@ contract SecurityCouncilMemberRemovalGovernorTest is Test {
                 SecurityCouncilMemberRemovalGovernor.TargetNotManager.selector, rando
             )
         );
-        uint256 proposalId =
-            scRemovalGov.propose(validTargets, validValues, validCallDatas, description);
+        scRemovalGov.propose(validTargets, validValues, validCallDatas, description);
     }
 
     function testProposalCreationValuesRestriction() public {
@@ -134,8 +162,7 @@ contract SecurityCouncilMemberRemovalGovernorTest is Test {
             abi.encodeWithSelector(SecurityCouncilMemberRemovalGovernor.ValueNotZero.selector, 1)
         );
 
-        uint256 proposalId =
-            scRemovalGov.propose(validTargets, validValues, validCallDatas, description);
+        scRemovalGov.propose(validTargets, validValues, validCallDatas, description);
     }
 
     function testProposalCreationCallRestriction() public {
@@ -145,11 +172,11 @@ contract SecurityCouncilMemberRemovalGovernorTest is Test {
         vm.expectRevert(
             abi.encodeWithSelector(
                 SecurityCouncilMemberRemovalGovernor.CallNotRemoveMember.selector,
-                ISecurityCouncilManager.addMember.selector
+                ISecurityCouncilManager.addMember.selector,
+                ISecurityCouncilManager.removeMember.selector
             )
         );
-        uint256 proposalId =
-            scRemovalGov.propose(validTargets, validValues, validCallDatas, description);
+        scRemovalGov.propose(validTargets, validValues, validCallDatas, description);
     }
 
     function testProposalCreationCallParamRestriction() public {
@@ -161,8 +188,26 @@ contract SecurityCouncilMemberRemovalGovernorTest is Test {
                 SecurityCouncilMemberRemovalGovernor.MemberNotFound.selector, rando
             )
         );
-        uint256 proposalId =
-            scRemovalGov.propose(validTargets, validValues, validCallDatas, description);
+        scRemovalGov.propose(validTargets, validValues, validCallDatas, description);
+    }
+
+    function testProposalCreationTargetLen() public {
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                SecurityCouncilMemberRemovalGovernor.InvalidOperationsLength.selector, 2
+            )
+        );
+        scRemovalGov.propose(new address[](2), validValues, validCallDatas, description);
+    }
+
+    function testProposalCreationUnexpectedCallDataLen() public {
+        validCallDatas[0] = abi.encodeWithSelector(ISecurityCouncilManager.removeMember.selector);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                SecurityCouncilMemberRemovalGovernor.UnexpectedCalldataLength.selector, 4
+            )
+        );
+        scRemovalGov.propose(validTargets, validValues, validCallDatas, description);
     }
 
     function testSetVoteSuccessNumeratorAffordance() public {

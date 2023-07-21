@@ -24,7 +24,6 @@ abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is
     // proposalId => NomineeElectionCountingInfo
     mapping(uint256 => NomineeElectionCountingInfo) private _elections;
 
-    // would this be more useful if reason was included?
     /// @notice Emitted when a vote is cast for a contender
     /// @param proposalId The id of the proposal
     /// @param voter The account that is casting the vote
@@ -43,16 +42,12 @@ abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is
 
     event NewNominee(uint256 indexed proposalId, address indexed nominee);
 
-    error MustVoteWithParams();
-    error NotEligibleContender();
-    error NomineeAlreadyAdded();
-    error InsufficientTokens();
+    error UnexpectedParamsLength(uint256 paramLength);
+    error NotEligibleContender(address contender);
+    error NomineeAlreadyAdded(address nominee);
+    error InsufficientTokens(uint256 votes, uint256 prevVotesUsed, uint256 weight);
 
     function __SecurityCouncilNomineeElectionGovernorCounting_init() internal onlyInitializing {}
-
-    /**
-     * internal/private state mutating functions *************
-     */
 
     /// @dev This function is responsible for counting votes when they are cast.
     ///      If this vote pushes the contender over the line, then the contender is added to the nominees
@@ -69,31 +64,30 @@ abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is
         bytes memory params
     ) internal virtual override {
         if (params.length != 64) {
-            revert MustVoteWithParams();
+            revert UnexpectedParamsLength(params.length);
         }
 
         // params is encoded as (address contender, uint256 votes)
         (address contender, uint256 votes) = abi.decode(params, (address, uint256));
 
         if (!isContender(proposalId, contender)) {
-            revert NotEligibleContender();
+            revert NotEligibleContender(contender);
         }
         if (isNominee(proposalId, contender)) {
-            revert NomineeAlreadyAdded();
+            revert NomineeAlreadyAdded(contender);
         }
 
         NomineeElectionCountingInfo storage election = _elections[proposalId];
         uint256 prevVotesUsed = election.votesUsed[account];
 
         if (votes + prevVotesUsed > weight) {
-            revert InsufficientTokens();
+            revert InsufficientTokens(votes, prevVotesUsed, weight);
         }
 
         uint256 prevVotesReceived = election.votesReceived[contender];
         uint256 votesThreshold = quorum(proposalSnapshot(proposalId));
 
         uint256 actualVotes = votes;
-
         if (prevVotesReceived + votes >= votesThreshold) {
             // we pushed the contender over the line
             // we should only give the contender enough votes to get to the line so that we don't waste votes
@@ -116,16 +110,14 @@ abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is
         });
     }
 
+    /// @dev Transitions an account to being a nominee
     function _addNominee(uint256 proposalId, address account) internal {
         _elections[proposalId].nominees.push(account);
         _elections[proposalId].isNominee[account] = true;
         emit NewNominee(proposalId, account);
     }
 
-    /**
-     * view/pure functions *************
-     */
-
+    // TODO:
     function COUNTING_MODE() public pure virtual override returns (string memory) {
         return "TODO: ???";
     }
@@ -166,10 +158,6 @@ abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is
         view
         virtual
         returns (bool);
-
-    /**
-     * internal view/pure functions *************
-     */
 
     /// @dev there is no minimum quorum for nominations, so we just return true
     function _quorumReached(uint256) internal pure override returns (bool) {

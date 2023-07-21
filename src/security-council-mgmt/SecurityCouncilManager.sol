@@ -18,7 +18,14 @@ import "./Common.sol";
 /// @notice The source of truth for an array of Security Council that are under management
 ///         Can be used to change members, and replace whole cohorts, ensuring that all managed
 ///         Security Councils stay in sync
-
+/// @dev    The cohorts in the Security Council Manager can be updated from a number of different sources
+///         Care must be taken in the timing of these updates to avoid race conditions, as well as to avoid
+///         invalidating other operations.
+///         An example of this could be replacing a member whilst there is an ongoing election. This contract
+///         ensures that a member cannot be in both cohorts, so if a cohort is elected but just prior the security
+///         council decides to replace a member in the previous cohort, then a member could end up in both cohorts.
+///         Since the functions in this contract ensure that this cannot be case, one of the transactions will fail.
+///         To avoid this care must be taken whilst elections are ongoing.
 contract SecurityCouncilManager is
     Initializable,
     AccessControlUpgradeable,
@@ -55,7 +62,6 @@ contract SecurityCouncilManager is
     /// @notice Address of UpgradeExecRouteBuilder. Used to help create security council updates
     UpgradeExecRouteBuilder public router;
 
-    // TODO: benchmark for reasonable number
     /// @notice Maximum possible number of Security Councils to manage
     /// @dev    Since the councils array will be iterated this provides a safety check to make too many Sec Councils
     ///         aren't added to the array.
@@ -104,6 +110,9 @@ contract SecurityCouncilManager is
         _grantRole(MEMBER_ROTATOR_ROLE, _roles.memberRotator);
         _grantRole(MEMBER_REPLACER_ROLE, _roles.memberReplacer);
 
+        if (!Address.isContract(_l2CoreGovTimelock)) {
+            revert NotAContract({account: _l2CoreGovTimelock});
+        }
         l2CoreGovTimelock = _l2CoreGovTimelock;
 
         _setUpgradeExecRouteBuilder(_router);
@@ -121,11 +130,8 @@ contract SecurityCouncilManager is
             revert InvalidNewCohortLength({cohort: _newCohort, cohortSize: cohortSize});
         }
 
-        if (_cohort == Cohort.FIRST) {
-            delete firstCohort;
-        } else if (_cohort == Cohort.SECOND) {
-            delete secondCohort;
-        }
+        // delete the old cohort
+        _cohort == Cohort.FIRST ? delete firstCohort : delete secondCohort;
 
         for (uint256 i = 0; i < _newCohort.length; i++) {
             _addMemberToCohortArray(_newCohort[i], _cohort);
