@@ -71,12 +71,13 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
     function testInvalidStartDate() public {
         SecurityCouncilNomineeElectionGovernor.InitParams memory invalidParams = initParams;
         invalidParams.firstNominationStartDate = Date({year: 2022, month: 1, day: 1, hour: 0});
-
         governor = _deployGovernor();
 
         vm.expectRevert(
             abi.encodeWithSelector(
-                SecurityCouncilNomineeElectionGovernorTiming.StartDateTooEarly.selector
+                SecurityCouncilNomineeElectionGovernorTiming.StartDateTooEarly.selector,
+                1_640_995_200,
+                block.timestamp
             )
         );
         governor.initialize(invalidParams);
@@ -84,7 +85,11 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
         invalidParams.firstNominationStartDate = Date({year: 2000, month: 13, day: 1, hour: 0});
         vm.expectRevert(
             abi.encodeWithSelector(
-                SecurityCouncilNomineeElectionGovernorTiming.InvalidStartDate.selector
+                SecurityCouncilNomineeElectionGovernorTiming.InvalidStartDate.selector,
+                invalidParams.firstNominationStartDate.year,
+                invalidParams.firstNominationStartDate.month,
+                invalidParams.firstNominationStartDate.day,
+                invalidParams.firstNominationStartDate.hour
             )
         );
         governor.initialize(invalidParams);
@@ -296,7 +301,8 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
             abi.encodeWithSelector(
                 SecurityCouncilNomineeElectionGovernorCountingUpgradeable
                     .NomineeAlreadyAdded
-                    .selector
+                    .selector,
+                _contender(0)
             )
         );
         governor.includeNominee(proposalId, _contender(0));
@@ -332,7 +338,9 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
         vm.prank(initParams.nomineeVetter);
         vm.expectRevert(
             abi.encodeWithSelector(
-                SecurityCouncilNomineeElectionGovernor.CompliantNomineeTargetHit.selector
+                SecurityCouncilNomineeElectionGovernor.CompliantNomineeTargetHit.selector,
+                cohortSize,
+                cohortSize
             )
         );
         governor.includeNominee(proposalId, _contender(uint8(cohortSize)));
@@ -348,7 +356,9 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
         _execute(
             electionIndex,
             abi.encodeWithSelector(
-                SecurityCouncilNomineeElectionGovernor.ProposalInVettingPeriod.selector
+                SecurityCouncilNomineeElectionGovernor.ProposalInVettingPeriod.selector,
+                block.number,
+                governor.proposalVettingDeadline(proposalId)
             )
         );
 
@@ -365,7 +375,8 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
             electionIndex,
             abi.encodeWithSelector(
                 SecurityCouncilNomineeElectionGovernor.InsufficientCompliantNomineeCount.selector,
-                cohortSize - 1
+                cohortSize - 1,
+                cohortSize
             )
         );
 
@@ -402,8 +413,9 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
         vm.expectRevert(
             abi.encodeWithSelector(
                 SecurityCouncilNomineeElectionGovernorCountingUpgradeable
-                    .MustVoteWithParams
-                    .selector
+                    .UnexpectedParamsLength
+                    .selector,
+                32
             )
         );
         vm.prank(_voter(0));
@@ -419,7 +431,8 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
             abi.encodeWithSelector(
                 SecurityCouncilNomineeElectionGovernorCountingUpgradeable
                     .NotEligibleContender
-                    .selector
+                    .selector,
+                _contender(0)
             )
         );
         _castVoteForContender(proposalId, _voter(0), _contender(0), 1);
@@ -448,7 +461,8 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
             abi.encodeWithSelector(
                 SecurityCouncilNomineeElectionGovernorCountingUpgradeable
                     .NomineeAlreadyAdded
-                    .selector
+                    .selector,
+                _contender(0)
             )
         );
         _castVoteForContender(proposalId, _voter(0), _contender(0), 1);
@@ -461,7 +475,10 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
             abi.encodeWithSelector(
                 SecurityCouncilNomineeElectionGovernorCountingUpgradeable
                     .InsufficientTokens
-                    .selector
+                    .selector,
+                1,
+                governor.quorum(proposalId) * 2,
+                governor.quorum(proposalId) * 2
             )
         );
         _castVoteForContender(proposalId, _voter(0), _contender(2), 1);

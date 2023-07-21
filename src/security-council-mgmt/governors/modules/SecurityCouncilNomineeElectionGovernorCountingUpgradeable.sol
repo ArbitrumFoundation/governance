@@ -42,10 +42,10 @@ abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is
 
     event NewNominee(uint256 indexed proposalId, address indexed nominee);
 
-    error MustVoteWithParams();
-    error NotEligibleContender();
-    error NomineeAlreadyAdded();
-    error InsufficientTokens();
+    error UnexpectedParamsLength(uint256 paramLength);
+    error NotEligibleContender(address contender);
+    error NomineeAlreadyAdded(address nominee);
+    error InsufficientTokens(uint256 votes, uint256 prevVotesUsed, uint256 weight);
 
     function __SecurityCouncilNomineeElectionGovernorCounting_init() internal onlyInitializing {}
 
@@ -64,24 +64,24 @@ abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is
         bytes memory params
     ) internal virtual override {
         if (params.length != 64) {
-            revert MustVoteWithParams();
+            revert UnexpectedParamsLength(params.length);
         }
 
         // params is encoded as (address contender, uint256 votes)
         (address contender, uint256 votes) = abi.decode(params, (address, uint256));
 
         if (!isContender(proposalId, contender)) {
-            revert NotEligibleContender();
+            revert NotEligibleContender(contender);
         }
         if (isNominee(proposalId, contender)) {
-            revert NomineeAlreadyAdded();
+            revert NomineeAlreadyAdded(contender);
         }
 
         NomineeElectionCountingInfo storage election = _elections[proposalId];
         uint256 prevVotesUsed = election.votesUsed[account];
 
         if (votes + prevVotesUsed > weight) {
-            revert InsufficientTokens();
+            revert InsufficientTokens(votes, prevVotesUsed, weight);
         }
 
         uint256 prevVotesReceived = election.votesReceived[contender];

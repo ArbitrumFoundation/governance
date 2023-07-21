@@ -18,8 +18,8 @@ abstract contract SecurityCouncilNomineeElectionGovernorTiming is
     /// @dev    This is the amount of time after voting ends that the nomineeVetter can exclude noncompliant nominees
     uint256 public nomineeVettingDuration;
 
-    error InvalidStartDate();
-    error StartDateTooEarly();
+    error InvalidStartDate(uint256 year, uint256 month, uint256 day, uint256 hour);
+    error StartDateTooEarly(uint256 startTime, uint256 currentTime);
 
     function __SecurityCouncilNomineeElectionGovernorIndexingTiming_init(
         Date memory _firstNominationStartDate,
@@ -35,7 +35,12 @@ abstract contract SecurityCouncilNomineeElectionGovernorTiming is
         });
 
         if (!isSupportedDateTime) {
-            revert InvalidStartDate();
+            revert InvalidStartDate(
+                _firstNominationStartDate.year,
+                _firstNominationStartDate.month,
+                _firstNominationStartDate.day,
+                _firstNominationStartDate.hour
+            );
         }
 
         // make sure the start date is in the future
@@ -49,7 +54,7 @@ abstract contract SecurityCouncilNomineeElectionGovernorTiming is
         });
 
         if (startTimestamp <= block.timestamp) {
-            revert StartDateTooEarly();
+            revert StartDateTooEarly(startTimestamp, block.timestamp);
         }
 
         firstNominationStartDate = _firstNominationStartDate;
