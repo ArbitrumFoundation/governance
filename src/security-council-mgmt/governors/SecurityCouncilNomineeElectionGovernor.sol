@@ -138,9 +138,9 @@ contract SecurityCouncilNomineeElectionGovernor is
         }
 
         // voting is over and the proposal must have succeeded, not active or executed
-        ProposalState state = state(proposalId);
-        if (state != ProposalState.Succeeded) {
-            revert ProposalNotSucceededState(state);
+        ProposalState state_ = state(proposalId);
+        if (state_ != ProposalState.Succeeded) {
+            revert ProposalNotSucceededState(state_);
         }
 
         // the proposal must not have passed the vetting deadline
@@ -188,9 +188,9 @@ contract SecurityCouncilNomineeElectionGovernor is
             revert AlreadyContender(msg.sender);
         }
 
-        ProposalState state = state(proposalId);
-        if (state != ProposalState.Active) {
-            revert ProposalNotActive(state);
+        ProposalState state_ = state(proposalId);
+        if (state_ != ProposalState.Active) {
+            revert ProposalNotActive(state_);
         }
 
         // check to make sure the contender is not part of the other cohort (the cohort not currently up for election)

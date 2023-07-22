@@ -465,7 +465,7 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
         vm.prank(_voter(0));
         governor.castVoteWithReasonAndParams({
             proposalId: proposalId,
-            support: 0,
+            support: 1,
             reason: "",
             params: abi.encode(_contender(0))
         });
@@ -544,6 +544,32 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
 
         vm.expectRevert(SecurityCouncilNomineeElectionGovernor.CastVoteDisabled.selector);
         governor.castVoteBySig(10, 0, 1, bytes32(uint256(0x20)), bytes32(uint256(0x21)));
+    }
+
+    function testForceSupport() public {
+        uint256 proposalId = _propose();
+
+        _addContender(proposalId, _contender(0));
+
+        _mockGetPastVotes({
+            account: _voter(0),
+            blockNumber: governor.proposalSnapshot(proposalId),
+            votes: 100
+        });
+
+        vm.roll(governor.proposalSnapshot(proposalId) + 1);
+        vm.prank(_voter(0));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                SecurityCouncilNomineeElectionGovernorCountingUpgradeable.InvalidSupport.selector, 2
+            )
+        );
+        governor.castVoteWithReasonAndParams({
+            proposalId: proposalId,
+            support: 2,
+            reason: "",
+            params: abi.encode(_contender(0), 100)
+        });
     }
 
     // helpers
@@ -644,7 +670,7 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
         vm.prank(voter);
         governor.castVoteWithReasonAndParams({
             proposalId: proposalId,
-            support: 0,
+            support: 1,
             reason: "",
             params: abi.encode(contender, votes)
         });
