@@ -19,7 +19,8 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
         mapping(address => uint256) votesUsed;
         /// @dev The weight of votes received by a nominee. At the start of the election
         ///      each vote has weight 1, however after a cutoff point the weight of each
-        ///      vote decreases linearly until it is 0 by the end of the election
+        ///      vote decreases linearly until it is 0 by the end of the election.
+        ///      Using uint240 because of the sorting implementation, see `selectTopNominees`
         mapping(address => uint240) weightReceived;
     }
 
@@ -82,16 +83,15 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
         emit FullWeightDurationSet(newFullWeightDuration);
     }
 
-    /// @notice Register a vote by some account for a proposal.
+    /// @notice Register a vote by some account for a nominee.
     /// @dev    Reverts if the account does not have enough votes.
-    ///         Reverts if the possibleNominee is not a compliant nominee of the most recent election.
+    ///         Reverts if the provided nominee is not a compliant nominee of the election.
     ///         Weight of the vote is determined using the votesToWeight function.
-    ///         Finally, the weight of the vote is added to the weight of the possibleNominee and the top K nominees are updated if necessary.
     /// @param  proposalId The id of the proposal
     /// @param  account The account that is voting
     /// @param  support The support of the vote (forced to 1)
     /// @param  availableVotes The amount of votes that account had at the time of the proposal snapshot
-    /// @param  params Abi encoded (address possibleNominee, uint256 votes)
+    /// @param  params Abi encoded (address nominee, uint256 votes)
     function _countVote(
         uint256 proposalId,
         address account,
@@ -143,17 +143,17 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
         return "support=for&params=account&counting=n-winners";
     }
 
-    /// @notice Returns the number of votes used by an account for a given proposal
+    /// @notice Number of votes used by an account for a given proposal
     function votesUsed(uint256 proposalId, address account) public view returns (uint256) {
         return _elections[proposalId].votesUsed[account];
     }
 
-    /// @notice Returns weight received by a nominee for a given proposal
+    /// @notice Weight received by a nominee for a given proposal
     function weightReceived(uint256 proposalId, address nominee) public view returns (uint256) {
         return _elections[proposalId].weightReceived[nominee];
     }
 
-    /// @notice Returns true if the account has voted any amount for any nominee in the proposal
+    /// @notice Whether the account has voted any amount for any nominee in the proposal
     function hasVoted(uint256 proposalId, address account) public view override returns (bool) {
         return votesUsed(proposalId, account) > 0;
     }
@@ -171,7 +171,8 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
     ///         This is an O(n) operation on all compliant nominees in the nominees governor
     ///         The maximum number of nominees is set by the threshold of votes required to become a nominee.
     ///         Currently this is 0.2% of votable tokens, which corresponds to 500 max nominees.
-    ///         Rough estimate at (4200 + 1786)n. With 500 that's 2,993,000
+    ///         Rough estimate is (3 * 2100 + 1786)n, though the real gas usage may be more. 
+    ///         With 500 that's about 4 million gas.
     /// @param proposalId The proposal to find the top nominees for
     function topNominees(uint256 proposalId) public view returns (address[] memory) {
         address[] memory nominees = _compliantNominees(proposalId);
@@ -262,17 +263,17 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
         return uint240(x);
     }
 
-    /// @notice Returns true, since there is no minimum quorum
+    /// @notice True, since there is no minimum quorum
     function _quorumReached(uint256) internal pure override returns (bool) {
         return true;
     }
 
-    /// @notice Always returns true, since an election can only be only started if there are enough nominees and candidates cannot be excluded after the election has started
+    /// @notice True, since an election can only be only started if there are enough nominees and candidates cannot be excluded after the election has started
     function _voteSucceeded(uint256) internal pure override returns (bool) {
         return true;
     }
 
-    /// @dev Returns true if the possibleNominee is a compliant nominee for the most recent election
+    /// @dev Returns true if the possibleNominee is a compliant nominee for the given proposal
     function _isCompliantNominee(uint256 proposalId, address possibleNominee)
         internal
         view
