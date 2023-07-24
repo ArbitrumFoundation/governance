@@ -127,7 +127,8 @@ contract SecurityCouncilMemberElectionGovernor is
         // and could be executed at a later unintended date.
         securityCouncilManager.replaceCohort({
             _newCohort: topNominees(proposalId),
-            _cohort: electionIndexToCohort(electionIndex)
+            _cohort: electionIndexToCohort(electionIndex),
+            _replacementIndex: electionIndex
         });
     }
 

@@ -32,6 +32,7 @@ interface ISecurityCouncilManager {
     error InvalidNewCohortLength(address[] cohort, uint256 cohortSize);
     error CohortLengthMismatch(address[] cohort1, address[] cohort2);
     error InvalidCohort(Cohort cohort);
+    error ReplacementIndexMismatch(uint256 electionIndex, uint256 replacementCount);
 
     // security council data errors
     error MaxSecurityCouncils(uint256 securityCouncilCount);
@@ -57,9 +58,10 @@ interface ISecurityCouncilManager {
     ) external;
     /// @notice Replaces a whole cohort.
     /// @dev    Initiaties cross chain messages to update the individual Security Councils
-    /// @param _newCohort   New cohort members to replace existing cohort. Must have 6 members.
-    /// @param _cohort      Cohort to replace.
-    function replaceCohort(address[] memory _newCohort, Cohort _cohort) external;
+    /// @param _newCohort           New cohort members to replace existing cohort. Must have 6 members.
+    /// @param _cohort              Cohort to replace.
+    /// @param _replacementIndex    Index of the replacement action
+    function replaceCohort(address[] memory _newCohort, Cohort _cohort, uint256 _replacementIndex) external;
     /// @notice Add a member to the specified cohort
     ///         Cohorts cannot have more than 6 members, so the cohort must have less than 6 in order to call this.
     ///         New member cannot already be a member of either cohort

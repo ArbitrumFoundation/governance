@@ -51,6 +51,9 @@ contract SecurityCouncilManager is
     address[] internal firstCohort;
     address[] internal secondCohort;
 
+    /// @notice Number of times replaceCohort has been called
+    uint256 public replacementCount;
+
     /// @notice Address of the l2 timelock used by core governance
     address payable public l2CoreGovTimelock;
 
@@ -121,10 +124,14 @@ contract SecurityCouncilManager is
     }
 
     /// @inheritdoc ISecurityCouncilManager
-    function replaceCohort(address[] memory _newCohort, Cohort _cohort)
+    function replaceCohort(address[] memory _newCohort, Cohort _cohort, uint256 _replacementIndex)
         external
         onlyRole(COHORT_REPLACER_ROLE)
     {
+        if (_replacementIndex != replacementCount) {
+            revert ReplacementIndexMismatch({electionIndex: _replacementIndex, replacementCount: replacementCount});
+        }
+
         if (_newCohort.length != cohortSize) {
             revert InvalidNewCohortLength({cohort: _newCohort, cohortSize: cohortSize});
         }
@@ -137,6 +144,9 @@ contract SecurityCouncilManager is
         }
 
         _scheduleUpdate();
+
+        replacementCount++;
+
         emit CohortReplaced(_newCohort, _cohort);
     }
 
