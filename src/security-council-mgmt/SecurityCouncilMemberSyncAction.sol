@@ -4,21 +4,56 @@ pragma solidity 0.8.16;
 import "./interfaces/IGnosisSafe.sol";
 import "./SecurityCouncilMgmtUtils.sol";
 
+/// @notice This contract is delegatecalled by the gnosis safe after a successful member rotation
+///         Purpose is to enforce ordering of member rotations initiated by the SecurityCouncilManager
+contract SecurityCouncilMemberSyncNonceUpdater {
+    uint256 public constant nonceSlot = uint256(keccak256("SecurityCouncilMemberSyncActionNonce"));
+
+    /// @notice Updates the nonce of the SecurityCouncilMemberSyncAction contract
+    ///         Reverts if the provided nonce is not equal to the current nonce + 1
+    function updateNonce(uint256 _nonce) external {
+        require(_nonce == getNonce() + 1, "Nonce different than expected");
+        setNonce(_nonce);
+    }
+
+    function getNonce() public view returns (uint256 nonce) {
+        uint256 _nonceSlot = nonceSlot;
+        assembly {
+            nonce := sload(_nonceSlot)
+        }
+    }
+
+    function setNonce(uint256 _nonce) public {
+        uint256 _nonceSlot = nonceSlot;
+        assembly {
+            sstore(_nonceSlot, _nonce)
+        }
+    }
+}
+
 /// @notice Action contract for updating security council members. Used by the security council management system.
 ///         Expected to be delegate called into by an Upgrade Executor
 contract SecurityCouncilMemberSyncAction {
     error PreviousOwnerNotFound(address targetOwner, address securityCouncil);
-    error ExecFromModuleError(bytes data, address securityCouncil);
+    error ExecFromModuleError(bytes data, address securityCouncil, address to, OpEnum.Operation op);
 
     /// @dev Used in the gnosis safe as the first entry in their ownership linked list
     address public constant SENTINEL_OWNERS = address(0x1);
+
+    SecurityCouncilMemberSyncNonceUpdater public immutable nonceUpdater;
+
+    constructor(SecurityCouncilMemberSyncNonceUpdater _nonceUpdater) {
+        nonceUpdater = _nonceUpdater;
+    }
 
     /// @notice Updates members of security council multisig to match provided array
     /// @dev    This function contains O(n^2) operations, so doesnt scale for large numbers of members. Expected count is 12, which is acceptable.
     /// Gnosis OwnerManager handles reverting if address(0) is passed to remove/add owner
     /// @param _securityCouncil The security council to update
     /// @param _updatedMembers  The new list of members. The Security Council will be updated to have this exact list of members
-    function perform(address _securityCouncil, address[] memory _updatedMembers) external {
+    function perform(address _securityCouncil, address[] memory _updatedMembers, uint256 _nonce)
+        external
+    {
         IGnosisSafe securityCouncil = IGnosisSafe(_securityCouncil);
         // preserve current threshold, the safe ensures that the threshold is never lower than the member count
         uint256 threshold = securityCouncil.getThreshold();
@@ -38,6 +73,8 @@ contract SecurityCouncilMemberSyncAction {
                 _removeMember(securityCouncil, owner, threshold);
             }
         }
+
+        _updateNonce(securityCouncil, _nonce);
     }
 
     function _addMember(IGnosisSafe securityCouncil, address _member, uint256 _threshold)
@@ -58,6 +95,14 @@ contract SecurityCouncilMemberSyncAction {
             abi.encodeWithSelector(
                 IGnosisSafe.removeOwner.selector, previousOwner, _member, _threshold
             )
+        );
+    }
+
+    function _updateNonce(IGnosisSafe securityCouncil, uint256 _nonce) internal {
+        _execFromModuleDelegateCall(
+            securityCouncil,
+            address(nonceUpdater),
+            abi.encodeWithSelector(nonceUpdater.updateNonce.selector, _nonce)
         );
     }
 
@@ -89,7 +134,27 @@ contract SecurityCouncilMemberSyncAction {
                 address(securityCouncil), 0, data, OpEnum.Operation.Call
             )
         ) {
-            revert ExecFromModuleError({data: data, securityCouncil: address(securityCouncil)});
+            revert ExecFromModuleError({
+                data: data,
+                securityCouncil: address(securityCouncil),
+                to: address(securityCouncil),
+                op: OpEnum.Operation.Call
+            });
+        }
+    }
+
+    /// @notice Execute provided operation via gnosis safe's trusted execTransactionFromModule entry point
+    function _execFromModuleDelegateCall(IGnosisSafe securityCouncil, address to, bytes memory data)
+        internal
+    {
+        if (!securityCouncil.execTransactionFromModule(to, 0, data, OpEnum.Operation.DelegateCall))
+        {
+            revert ExecFromModuleError({
+                data: data,
+                securityCouncil: address(securityCouncil),
+                to: to,
+                op: OpEnum.Operation.Call
+            });
         }
     }
 }

@@ -396,7 +396,8 @@ contract SecurityCouncilManager is
             actionDatas[i] = abi.encodeWithSelector(
                 SecurityCouncilMemberSyncAction.perform.selector,
                 securityCouncilData.securityCouncil,
-                newMembers
+                newMembers,
+                nonce
             );
         }
 
