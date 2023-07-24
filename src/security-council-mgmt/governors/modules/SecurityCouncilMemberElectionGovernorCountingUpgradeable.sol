@@ -171,8 +171,7 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
     ///         This is an O(n) operation on all compliant nominees in the nominees governor
     ///         The maximum number of nominees is set by the threshold of votes required to become a nominee.
     ///         Currently this is 0.2% of votable tokens, which corresponds to 500 max nominees.
-    ///         Rough estimate is (3 * 2100 + 1786)n, though the real gas usage may be more. 
-    ///         With 500 that's about 4 million gas.
+    ///         Absolute worst case, this function uses 4502345 with 500 nominees, or about 9k gas per nominee (when called externally).
     /// @param proposalId The proposal to find the top nominees for
     function topNominees(uint256 proposalId) public view returns (address[] memory) {
         address[] memory nominees = _compliantNominees(proposalId);
