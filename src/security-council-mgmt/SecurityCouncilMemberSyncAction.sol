@@ -4,30 +4,25 @@ pragma solidity 0.8.16;
 import "./interfaces/IGnosisSafe.sol";
 import "./SecurityCouncilMgmtUtils.sol";
 
-/// @notice This contract is delegatecalled by the gnosis safe after a successful member rotation
-///         Purpose is to enforce ordering of member rotations initiated by the SecurityCouncilManager
-contract SecurityCouncilMemberSyncNonceUpdater {
-    uint256 public constant nonceSlot = uint256(keccak256("SecurityCouncilMemberSyncActionNonce"));
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
-    /// @notice Updates the nonce of the SecurityCouncilMemberSyncAction contract
-    ///         Reverts if the provided nonce is not equal to the current nonce + 1
-    function updateNonce(uint256 _nonce) external {
-        require(_nonce == getNonce() + 1, "Nonce different than expected");
-        setNonce(_nonce);
+contract MemberSyncNonceTracker is Initializable {
+    address upgradeExecutor;
+    mapping(address => uint256) public nonces;
+
+    function initialize(address _upgradeExecutor) public initializer {
+        upgradeExecutor = _upgradeExecutor;
     }
 
-    function getNonce() public view returns (uint256 nonce) {
-        uint256 _nonceSlot = nonceSlot;
-        assembly {
-            nonce := sload(_nonceSlot)
+    function setNonce(address _securityCouncil, uint256 _nonce) external {
+        if (msg.sender != upgradeExecutor) {
+            revert("Only upgrade executor can set nonce");
         }
-    }
+        if (nonces[_securityCouncil] + 1 != _nonce) {
+            revert("Nonce differs from expected value");
+        }
 
-    function setNonce(uint256 _nonce) public {
-        uint256 _nonceSlot = nonceSlot;
-        assembly {
-            sstore(_nonceSlot, _nonce)
-        }
+        nonces[_securityCouncil] = _nonce;
     }
 }
 
@@ -40,10 +35,10 @@ contract SecurityCouncilMemberSyncAction {
     /// @dev Used in the gnosis safe as the first entry in their ownership linked list
     address public constant SENTINEL_OWNERS = address(0x1);
 
-    SecurityCouncilMemberSyncNonceUpdater public immutable nonceUpdater;
+    MemberSyncNonceTracker public immutable nonceTracker;
 
-    constructor(SecurityCouncilMemberSyncNonceUpdater _nonceUpdater) {
-        nonceUpdater = _nonceUpdater;
+    constructor(MemberSyncNonceTracker _nonceTracker) {
+        nonceTracker = _nonceTracker;
     }
 
     /// @notice Updates members of security council multisig to match provided array
@@ -99,11 +94,7 @@ contract SecurityCouncilMemberSyncAction {
     }
 
     function _updateNonce(IGnosisSafe securityCouncil, uint256 _nonce) internal {
-        _execFromModuleDelegateCall(
-            securityCouncil,
-            address(nonceUpdater),
-            abi.encodeWithSelector(nonceUpdater.updateNonce.selector, _nonce)
-        );
+        nonceTracker.setNonce(address(securityCouncil), _nonce);
     }
 
     function getPrevOwner(IGnosisSafe securityCouncil, address _owner)
