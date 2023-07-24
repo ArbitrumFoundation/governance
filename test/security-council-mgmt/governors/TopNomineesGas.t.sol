@@ -140,7 +140,6 @@ contract TopNomineesGasTest is Test {
         g -= gasleft();
 
         assertLt(g, uint256(N) * 10000);
-        console.log(g);
     }
 
     function _nominee(uint16 i) internal pure returns (address) {
