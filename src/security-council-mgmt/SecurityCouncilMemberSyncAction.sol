@@ -30,7 +30,7 @@ contract MemberSyncNonceTracker is Initializable {
 ///         Expected to be delegate called into by an Upgrade Executor
 contract SecurityCouncilMemberSyncAction {
     error PreviousOwnerNotFound(address targetOwner, address securityCouncil);
-    error ExecFromModuleError(bytes data, address securityCouncil, address to, OpEnum.Operation op);
+    error ExecFromModuleError(bytes data, address securityCouncil);
 
     /// @dev Used in the gnosis safe as the first entry in their ownership linked list
     address public constant SENTINEL_OWNERS = address(0x1);
@@ -127,24 +127,7 @@ contract SecurityCouncilMemberSyncAction {
         ) {
             revert ExecFromModuleError({
                 data: data,
-                securityCouncil: address(securityCouncil),
-                to: address(securityCouncil),
-                op: OpEnum.Operation.Call
-            });
-        }
-    }
-
-    /// @notice Execute provided operation via gnosis safe's trusted execTransactionFromModule entry point
-    function _execFromModuleDelegateCall(IGnosisSafe securityCouncil, address to, bytes memory data)
-        internal
-    {
-        if (!securityCouncil.execTransactionFromModule(to, 0, data, OpEnum.Operation.DelegateCall))
-        {
-            revert ExecFromModuleError({
-                data: data,
-                securityCouncil: address(securityCouncil),
-                to: to,
-                op: OpEnum.Operation.Call
+                securityCouncil: address(securityCouncil)
             });
         }
     }
