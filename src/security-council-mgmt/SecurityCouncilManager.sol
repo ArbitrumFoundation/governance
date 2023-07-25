@@ -418,10 +418,14 @@ contract SecurityCouncilManager is
     /// @dev Create a union of the second and first cohort, then update all Security Councils under management with that unioned array.
     ///      Councils on other chains will need to be scheduled through timelocks and target upgrade executors
     function _scheduleUpdate() internal {
-        // always update the nonce - this is used to ensure that proposals in the timelocks are unique
-        updateNonce++;
+        // always update the nonce
+        // this is used to ensure that proposals in the timelocks are unique
+        // and calls to the upgradeExecutors are in the correct order
+        // nonce starts at 0
         (address[] memory newMembers, address to, bytes memory data) =
             getScheduleUpdateInnerData(updateNonce);
+
+        updateNonce++;
 
         ArbitrumTimelock(l2CoreGovTimelock).schedule({
             target: to, // ArbSys address - this will trigger a call from L2->L1

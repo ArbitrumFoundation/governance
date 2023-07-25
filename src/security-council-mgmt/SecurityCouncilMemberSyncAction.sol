@@ -6,40 +6,78 @@ import "./SecurityCouncilMgmtUtils.sol";
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
-contract MemberSyncNonceTracker is Initializable {
-    address upgradeExecutor;
-    mapping(address => uint256) public nonces;
+contract KeyValueStore {
+    mapping(uint256 => uint256) public store;
 
-    function initialize(address _upgradeExecutor) public initializer {
-        upgradeExecutor = _upgradeExecutor;
+    function set(uint256 key, uint256 value) external {
+        store[_computeKey(msg.sender, key)] = value;
     }
 
-    function setNonce(address _securityCouncil, uint256 _nonce) external {
-        if (msg.sender != upgradeExecutor) {
-            revert("Only upgrade executor can set nonce");
-        }
-        if (nonces[_securityCouncil] + 1 != _nonce) {
-            revert("Nonce differs from expected value");
-        }
+    function get(uint256 key) external view returns (uint256) {
+        return _get(msg.sender, key);
+    }
 
-        nonces[_securityCouncil] = _nonce;
+    function get(address owner, uint256 key) external view returns (uint256) {
+        return _get(owner, key);
+    }
+
+    function _get(address owner, uint256 key) internal view returns (uint256) {
+        return store[_computeKey(owner, key)];
+    }
+
+    function _computeKey(address owner, uint256 key) internal pure returns (uint256) {
+        return uint256(keccak256(abi.encode(owner, key)));
+    }
+}
+
+contract UpgradeActionStorage {
+    KeyValueStore public immutable store;
+    bytes32 public immutable actionContractId;
+
+    error ActionAlreadyExecuted(uint256 actionId);
+
+    constructor(KeyValueStore _store, string memory _uniqueActionName) {
+        store = _store;
+        actionContractId = keccak256(bytes(_uniqueActionName));
+    }
+
+    function _setExecuted(uint256 actionId) internal {
+        if (_getExecuted(actionId)) {
+            revert ActionAlreadyExecuted(actionId);
+        }
+        _set(actionId, 1);
+    }
+
+    function _getExecuted(uint256 actionId) internal view returns (bool) {
+        return _get(actionId) != 0;
+    }
+
+    function _set(uint256 key, uint256 value) internal {
+        store.set(_computeKey(key), value);
+    }
+
+    function _get(uint256 key) internal view returns (uint256) {
+        return store.get(_computeKey(key));
+    }
+
+    function _computeKey(uint256 key) private view returns (uint256) {
+        return uint256(keccak256(abi.encode(actionContractId, key)));
     }
 }
 
 /// @notice Action contract for updating security council members. Used by the security council management system.
 ///         Expected to be delegate called into by an Upgrade Executor
-contract SecurityCouncilMemberSyncAction {
+contract SecurityCouncilMemberSyncAction is UpgradeActionStorage {
     error PreviousOwnerNotFound(address targetOwner, address securityCouncil);
     error ExecFromModuleError(bytes data, address securityCouncil);
+    error PrevActionNotExecuted(address securityCouncil, uint256 nonce);
 
     /// @dev Used in the gnosis safe as the first entry in their ownership linked list
     address public constant SENTINEL_OWNERS = address(0x1);
 
-    MemberSyncNonceTracker public immutable nonceTracker;
-
-    constructor(MemberSyncNonceTracker _nonceTracker) {
-        nonceTracker = _nonceTracker;
-    }
+    constructor(KeyValueStore _store)
+        UpgradeActionStorage(_store, "SecurityCouncilMemberSyncAction")
+    {}
 
     /// @notice Updates members of security council multisig to match provided array
     /// @dev    This function contains O(n^2) operations, so doesnt scale for large numbers of members. Expected count is 12, which is acceptable.
@@ -49,6 +87,14 @@ contract SecurityCouncilMemberSyncAction {
     function perform(address _securityCouncil, address[] memory _updatedMembers, uint256 _nonce)
         external
     {
+        // make sure the previous action was executed
+        if (_nonce > 0 && !_getExecuted(actionId(_securityCouncil, _nonce - 1))) {
+           revert PrevActionNotExecuted({securityCouncil: _securityCouncil, nonce: _nonce});
+        }
+
+        // set this action as executed
+        _setExecuted(actionId(_securityCouncil, _nonce));
+
         IGnosisSafe securityCouncil = IGnosisSafe(_securityCouncil);
         // preserve current threshold, the safe ensures that the threshold is never lower than the member count
         uint256 threshold = securityCouncil.getThreshold();
@@ -68,8 +114,6 @@ contract SecurityCouncilMemberSyncAction {
                 _removeMember(securityCouncil, owner, threshold);
             }
         }
-
-        _updateNonce(securityCouncil, _nonce);
     }
 
     function _addMember(IGnosisSafe securityCouncil, address _member, uint256 _threshold)
@@ -93,10 +137,6 @@ contract SecurityCouncilMemberSyncAction {
         );
     }
 
-    function _updateNonce(IGnosisSafe securityCouncil, uint256 _nonce) internal {
-        nonceTracker.setNonce(address(securityCouncil), _nonce);
-    }
-
     function getPrevOwner(IGnosisSafe securityCouncil, address _owner)
         public
         view
@@ -118,6 +158,10 @@ contract SecurityCouncilMemberSyncAction {
         });
     }
 
+    function actionId(address _securityCouncil, uint256 _nonce) public pure returns (uint256) {
+        return uint256(keccak256(abi.encode(_securityCouncil, _nonce)));
+    }
+
     /// @notice Execute provided operation via gnosis safe's trusted execTransactionFromModule entry point
     function _execFromModule(IGnosisSafe securityCouncil, bytes memory data) internal {
         if (
@@ -125,10 +169,7 @@ contract SecurityCouncilMemberSyncAction {
                 address(securityCouncil), 0, data, OpEnum.Operation.Call
             )
         ) {
-            revert ExecFromModuleError({
-                data: data,
-                securityCouncil: address(securityCouncil)
-            });
+            revert ExecFromModuleError({data: data, securityCouncil: address(securityCouncil)});
         }
     }
 }
