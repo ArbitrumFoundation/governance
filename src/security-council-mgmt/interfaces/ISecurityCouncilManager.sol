@@ -73,9 +73,9 @@ interface ISecurityCouncilManager {
     ///         Initiaties cross chain messages to update the individual Security Councils
     /// @param _member  Member to remove
     function removeMember(address _member) external;
-    /// @notice Replace a member in a council - equivalent to removing a member, then adding another in its place. 
-    ///         Idendities of members should be different. 
-    ///         Functionality is equivalent to replaceMember, 
+    /// @notice Replace a member in a council - equivalent to removing a member, then adding another in its place.
+    ///         Idendities of members should be different.
+    ///         Functionality is equivalent to replaceMember,
     ///         though emits a different event to distinguish the security council's intent (different identities).
     /// @dev    Initiaties cross chain messages to update the individual Security Councils.
     ///         When replacing a member, make sure that the key does not conflict with any contenders/nominees of ongoing electoins.

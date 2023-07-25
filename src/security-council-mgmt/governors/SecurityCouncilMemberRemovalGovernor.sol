@@ -94,7 +94,7 @@ contract SecurityCouncilMemberRemovalGovernor is
         return (selector, rest);
     }
 
-    /// @notice Propose a security council member removal. Method conforms to the governor propose interface 
+    /// @notice Propose a security council member removal. Method conforms to the governor propose interface
     ///         but enforces that only calls to securityCouncilManager's removeMember can be propsoed.
     /// @param targets Target contract operation; must be [securityCouncilManager]
     /// @param values Value for removeMmeber; must be [0]
@@ -154,8 +154,8 @@ contract SecurityCouncilMemberRemovalGovernor is
         return voteSuccessDenominator * forVotes > (forVotes + againstVotes) * voteSuccessNumerator;
     }
 
-    /// @notice A removal proposal if a theshold of all cast votes vote in favor of removal. 
-    ///         Thus, abstaining would be exactly equivalent to voting against. 
+    /// @notice A removal proposal if a theshold of all cast votes vote in favor of removal.
+    ///         Thus, abstaining would be exactly equivalent to voting against.
     ///         To prevent any confusion, abstaining is disallowed.
     function _countVote(
         uint256 proposalId,
