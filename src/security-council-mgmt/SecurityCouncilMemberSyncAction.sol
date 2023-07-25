@@ -15,7 +15,7 @@ contract SecurityCouncilMemberSyncAction {
 
     /// @notice Updates members of security council multisig to match provided array
     /// @dev    This function contains O(n^2) operations, so doesnt scale for large numbers of members. Expected count is 12, which is acceptable.
-    /// Gnosis OwnerManager handles reverting if address(0) is passed to remove/add owner
+    ///         Gnosis OwnerManager handles reverting if address(0) is passed to remove/add owner
     /// @param _securityCouncil The security council to update
     /// @param _updatedMembers  The new list of members. The Security Council will be updated to have this exact list of members
     function perform(address _securityCouncil, address[] memory _updatedMembers) external {
