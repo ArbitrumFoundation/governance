@@ -7,7 +7,6 @@ import "../../../src/security-council-mgmt/governors/SecurityCouncilNomineeElect
 
 import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 
-
 /// @notice This contract tests gas usage of SecurityCouncilMemberElectionGovernor.topNominees()
 contract TopNomineesGasTest is Test {
     SecurityCouncilMemberElectionGovernor memberGov;
@@ -24,7 +23,7 @@ contract TopNomineesGasTest is Test {
             ),
         token: IVotesUpgradeable(address(0x44)),
         owner: address(0x55),
-        quorumNumeratorValue: 10000/N,
+        quorumNumeratorValue: 10_000 / N,
         votingPeriod: 1 days
     });
 
@@ -50,14 +49,16 @@ contract TopNomineesGasTest is Test {
     uint16 constant N = 500;
 
     function setUp() public {
-        memberGov = SecurityCouncilMemberElectionGovernor(payable(_deployProxy(address(new SecurityCouncilMemberElectionGovernor()))));
-        nomineeGov = SecurityCouncilNomineeElectionGovernor(payable(_deployProxy(address(new SecurityCouncilNomineeElectionGovernor()))));
+        memberGov = SecurityCouncilMemberElectionGovernor(
+            payable(_deployProxy(address(new SecurityCouncilMemberElectionGovernor())))
+        );
+        nomineeGov = SecurityCouncilNomineeElectionGovernor(
+            payable(_deployProxy(address(new SecurityCouncilNomineeElectionGovernor())))
+        );
 
         // we need to etch code onto each contract parameter
         _dummyEtch(address(nomineeInitParams.securityCouncilManager));
         _dummyEtch(address(nomineeInitParams.token));
-        
-        
 
         memberGov.initialize({
             _nomineeElectionGovernor: nomineeGov,
@@ -70,10 +71,6 @@ contract TopNomineesGasTest is Test {
 
         nomineeInitParams.securityCouncilMemberElectionGovernor = memberGov;
         nomineeGov.initialize(nomineeInitParams);
-
-
-
-
 
         // mock stuff
         _mockGetPastVotes(voter, 1_000_000_000e18);
@@ -99,10 +96,7 @@ contract TopNomineesGasTest is Test {
 
             vm.prank(voter);
             nomineeGov.castVoteWithReasonAndParams(
-                proposalId,
-                1,
-                "test",
-                abi.encode(_nominee(i), quorum)
+                proposalId, 1, "test", abi.encode(_nominee(i), quorum)
             );
         }
 
@@ -124,10 +118,7 @@ contract TopNomineesGasTest is Test {
         for (uint16 i = 0; i < N; i++) {
             vm.prank(voter);
             memberGov.castVoteWithReasonAndParams(
-                proposalId,
-                1,
-                "test",
-                abi.encode(_nominee(i), i + 1)
+                proposalId, 1, "test", abi.encode(_nominee(i), i + 1)
             );
         }
 
@@ -139,7 +130,7 @@ contract TopNomineesGasTest is Test {
         memberGov.topNominees(proposalId);
         g -= gasleft();
 
-        assertLt(g, uint256(N) * 10000);
+        assertLt(g, uint256(N) * 10_000);
     }
 
     function _nominee(uint16 i) internal pure returns (address) {
