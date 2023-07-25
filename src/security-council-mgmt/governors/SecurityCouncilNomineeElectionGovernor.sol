@@ -93,6 +93,7 @@ contract SecurityCouncilNomineeElectionGovernor is
     error ProposalIdMismatch(uint256 nomineeProposalId, uint256 memberProposalId);
     error QuorumNumeratorTooLow(uint256 quorumNumeratorValue);
     error CastVoteDisabled();
+    error LastMemberElectionNotExecuted(uint256 prevProposalId);
 
     constructor() {
         _disableInitializers();
@@ -156,6 +157,9 @@ contract SecurityCouncilNomineeElectionGovernor is
     ///         Can be called by anyone every 6 months.
     /// @return proposalId The id of the proposal
     function createElection() external returns (uint256 proposalId) {
+        // require that the last member election has executed
+        _requireLastMemberElectionHasExecuted();
+
         // each election has a deterministic start time
         uint256 thisElectionStartTs = electionToTimestamp(electionCount);
         if (block.timestamp < thisElectionStartTs) {
@@ -172,6 +176,30 @@ contract SecurityCouncilNomineeElectionGovernor is
         proposalId = GovernorUpgradeable.propose(targets, values, callDatas, description);
 
         electionCount++;
+    }
+
+    function _requireLastMemberElectionHasExecuted() internal view {
+        if (electionCount == 0) {
+            return;
+        }
+
+        (
+            address[] memory prevTargets,
+            uint256[] memory prevValues,
+            bytes[] memory prevCallDatas,
+            string memory prevDescription
+        ) = getProposeArgs(electionCount - 1);
+
+        uint256 prevProposalId =
+            hashProposal(prevTargets, prevValues, prevCallDatas, keccak256(bytes(prevDescription)));
+
+        if (
+            IGovernorUpgradeable(address(securityCouncilMemberElectionGovernor)).state(
+                prevProposalId
+            ) != ProposalState.Executed
+        ) {
+            revert LastMemberElectionNotExecuted(prevProposalId);
+        }
     }
 
     /// @notice Put `msg.sender` up for nomination. Must be called before a contender can receive votes.

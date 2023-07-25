@@ -31,7 +31,7 @@ contract SecurityCouncilMemberSyncAction is UpgradeActionStorage {
     {
         // make sure the previous action was executed
         if (_nonce > 0 && !_getExecuted(actionId(_securityCouncil, _nonce - 1))) {
-           revert PrevActionNotExecuted({securityCouncil: _securityCouncil, nonce: _nonce});
+            revert PrevActionNotExecuted({securityCouncil: _securityCouncil, nonce: _nonce});
         }
 
         // set this action as executed
