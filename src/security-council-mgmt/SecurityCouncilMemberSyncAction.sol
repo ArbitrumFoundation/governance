@@ -53,14 +53,14 @@ contract UpgradeActionStorage {
     }
 
     function _set(uint256 key, uint256 value) internal {
-        store.set(_computeKey(key), value);
+        store.set(computeKey(key), value);
     }
 
     function _get(uint256 key) internal view returns (uint256) {
-        return store.get(_computeKey(key));
+        return store.get(computeKey(key));
     }
 
-    function _computeKey(uint256 key) private view returns (uint256) {
+    function computeKey(uint256 key) public view returns (uint256) {
         return uint256(keccak256(abi.encode(actionContractId, key)));
     }
 }
