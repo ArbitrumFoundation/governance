@@ -11,6 +11,8 @@ import "./../interfaces/ISecurityCouncilManager.sol";
 import "../Common.sol";
 import "./modules/ArbitrumGovernorVotesQuorumFractionUpgradeable.sol";
 
+/// @title SecurityCouncilMemberRemovalGovernor
+/// @notice Allows the DAO to remove a security council member
 contract SecurityCouncilMemberRemovalGovernor is
     Initializable,
     GovernorUpgradeable,
@@ -92,10 +94,11 @@ contract SecurityCouncilMemberRemovalGovernor is
         return (selector, rest);
     }
 
-    /// @notice Propose a security council member removal. Method conforms to the governor propose interface but enforces that only calls to removeMember can be propsoed.
+    /// @notice Propose a security council member removal. Method conforms to the governor propose interface 
+    ///         but enforces that only calls to securityCouncilManager's removeMember can be propsoed.
     /// @param targets Target contract operation; must be [securityCouncilManager]
     /// @param values Value for removeMmeber; must be [0]
-    /// @param calldatas Operation calldata; must be removeMember with address argument
+    /// @param calldatas Operation calldata; must be [removeMember with address argument]
     /// @param description rationale for member removal
     function propose(
         address[] memory targets,
@@ -151,7 +154,9 @@ contract SecurityCouncilMemberRemovalGovernor is
         return voteSuccessDenominator * forVotes > (forVotes + againstVotes) * voteSuccessNumerator;
     }
 
-    ///@notice A removal proposal if a theshold of all cast votes vote in favor of removal. Thus, abstaining would be exactly equivalent to voting against. Thus, to prevent any confusing, abstaining is disallowed.
+    /// @notice A removal proposal if a theshold of all cast votes vote in favor of removal. 
+    ///         Thus, abstaining would be exactly equivalent to voting against. 
+    ///         To prevent any confusion, abstaining is disallowed.
     function _countVote(
         uint256 proposalId,
         address account,
@@ -165,7 +170,7 @@ contract SecurityCouncilMemberRemovalGovernor is
         GovernorCountingSimpleUpgradeable._countVote(proposalId, account, support, weight, params);
     }
 
-    /// @notice set numerator for removal vote to succeed; only DAO can call
+    /// @notice Set numerator for removal vote to succeed; only DAO can call
     /// @param _voteSuccessNumerator new numberator value
     function setVoteSuccessNumerator(uint256 _voteSuccessNumerator) public onlyOwner {
         _setVoteSuccessNumerator(_voteSuccessNumerator);
@@ -201,6 +206,7 @@ contract SecurityCouncilMemberRemovalGovernor is
         AddressUpgradeable.functionCallWithValue(target, data, value);
     }
 
+    /// @inheritdoc GovernorUpgradeable
     function proposalThreshold()
         public
         view
@@ -210,6 +216,7 @@ contract SecurityCouncilMemberRemovalGovernor is
         return GovernorSettingsUpgradeable.proposalThreshold();
     }
 
+    /// @inheritdoc GovernorPreventLateQuorumUpgradeable
     function _castVote(
         uint256 proposalId,
         address account,
@@ -226,6 +233,7 @@ contract SecurityCouncilMemberRemovalGovernor is
         );
     }
 
+    /// @inheritdoc GovernorPreventLateQuorumUpgradeable
     function proposalDeadline(uint256 proposalId)
         public
         view

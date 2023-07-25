@@ -7,6 +7,8 @@ import "@openzeppelin/contracts-upgradeable/governance/GovernorUpgradeable.sol";
 import "lib/solady/src/utils/DateTimeLib.sol";
 import "../../Common.sol";
 
+/// @title SecurityCouncilNomineeElectionGovernorTiming
+/// @notice Timing module for the SecurityCouncilNomineeElectionGovernor
 abstract contract SecurityCouncilNomineeElectionGovernorTiming is
     Initializable,
     GovernorUpgradeable
@@ -21,7 +23,9 @@ abstract contract SecurityCouncilNomineeElectionGovernorTiming is
     error InvalidStartDate(uint256 year, uint256 month, uint256 day, uint256 hour);
     error StartDateTooEarly(uint256 startTime, uint256 currentTime);
 
-    function __SecurityCouncilNomineeElectionGovernorIndexingTiming_init(
+    /// @notice Initialize the timing module
+    /// @dev    Checks to make sure the start date is in the future and is valid
+    function __SecurityCouncilNomineeElectionGovernorTiming_init(
         Date memory _firstNominationStartDate,
         uint256 _nomineeVettingDuration
     ) internal onlyInitializing {
@@ -61,12 +65,12 @@ abstract contract SecurityCouncilNomineeElectionGovernorTiming is
         nomineeVettingDuration = _nomineeVettingDuration;
     }
 
-    /// @notice Returns the deadline for the nominee vetting period for a given `proposalId`
+    /// @notice Deadline for the nominee vetting period for a given `proposalId`
     function proposalVettingDeadline(uint256 proposalId) public view returns (uint256) {
         return proposalDeadline(proposalId) + nomineeVettingDuration;
     }
 
-    /// @notice Returns the start timestamp of an election
+    /// @notice Start timestamp of an election
     /// @param electionIndex The index of the election
     function electionToTimestamp(uint256 electionIndex) public view returns (uint256) {
         // subtract one to make month 0 indexed
