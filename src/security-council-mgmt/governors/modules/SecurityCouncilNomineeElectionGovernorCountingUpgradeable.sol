@@ -11,8 +11,8 @@ abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is
     Initializable,
     GovernorUpgradeable
 {
-    /// @param votesUsed The amount of votes the voter has used
-    /// @param votesReceived The amount of votes the contender has received
+    /// @param votesUsed The amount of votes a voter has used
+    /// @param votesReceived The amount of votes a contender has received
     /// @param nominees The list of contenders who've received enough votes to become a nominee
     /// @param isNominee A mapping of contenders to whether or not they are a nominee
     struct NomineeElectionCountingInfo {
@@ -124,6 +124,7 @@ abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is
         emit NewNominee(proposalId, account);
     }
 
+    /// @inheritdoc IGovernorUpgradeable
     function COUNTING_MODE() public pure virtual override returns (string memory) {
         return "support=for&params=account&counting=threshold";
     }

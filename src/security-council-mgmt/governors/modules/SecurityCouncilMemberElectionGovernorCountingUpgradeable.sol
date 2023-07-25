@@ -9,7 +9,7 @@ import "lib/solady/src/utils/LibSort.sol";
 /// @notice Counting module for the SecurityCouncilMemberElectionGovernor.
 ///         Voters can spread their votes across multiple nominees.
 ///         Implements linearly decreasing voting weights over time.
-///         The top k nominees with the most votes are selected as the winners
+///         The `_targetMemberCount()` nominees with the most votes are selected as the winners.
 abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
     Initializable,
     GovernorUpgradeable
@@ -73,7 +73,7 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
         emit FullWeightDurationSet(initialFullWeightDuration);
     }
 
-    /// @notice Set the full weight duration numerator and total duration denominator
+    /// @notice Set the full weight duration
     function setFullWeightDuration(uint256 newFullWeightDuration) public onlyGovernance {
         if (newFullWeightDuration > votingPeriod()) {
             revert FullWeightDurationGreaterThanVotingPeriod(newFullWeightDuration, votingPeriod());
@@ -139,6 +139,7 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
         });
     }
 
+    /// @inheritdoc IGovernorUpgradeable
     function COUNTING_MODE() public pure virtual override returns (string memory) {
         return "support=for&params=account&counting=n-winners";
     }
@@ -165,10 +166,10 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
         return startBlock + fullWeightDuration;
     }
 
-    /// @notice Gets the top K nominees with greatest weight for a given proposal
-    ///         Where K is the manager.cohortSize()
+    /// @notice Gets the top K nominees with greatest weight for a given proposal,
+    ///         where K is the manager.cohortSize()
     /// @dev    Care must be taken of gas usage in this function.
-    ///         This is an O(n) operation on all compliant nominees in the nominees governor
+    ///         This is an O(n) operation on all compliant nominees in the nominees governor.
     ///         The maximum number of nominees is set by the threshold of votes required to become a nominee.
     ///         Currently this is 0.2% of votable tokens, which corresponds to 500 max nominees.
     ///         Absolute worst case, this function uses 4502345 with 500 nominees, or about 9k gas per nominee (when called externally).
@@ -267,26 +268,27 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
         return true;
     }
 
-    /// @notice True, since an election can only be only started if there are enough nominees and candidates cannot be excluded after the election has started
+    /// @notice True, since an election can only be only started if there are enough nominees
+    ///         and candidates cannot be excluded after the election has started
     function _voteSucceeded(uint256) internal pure override returns (bool) {
         return true;
     }
 
-    /// @dev Returns true if the possibleNominee is a compliant nominee for the given proposal
+    /// @dev Whether the possibleNominee is a compliant nominee for the given proposal
     function _isCompliantNominee(uint256 proposalId, address possibleNominee)
         internal
         view
         virtual
         returns (bool);
 
-    /// @dev Returns all the compliant (non excluded) nominees for the requested proposal
+    /// @dev The list of all compliant (non excluded) nominees for the requested proposal
     function _compliantNominees(uint256 proposalId)
         internal
         view
         virtual
         returns (address[] memory);
 
-    /// @dev Returns the target number of members to elect
+    /// @dev The target number of members to elect
     function _targetMemberCount() internal view virtual returns (uint256);
 
     /**
