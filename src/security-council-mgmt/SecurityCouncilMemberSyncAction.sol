@@ -3,67 +3,9 @@ pragma solidity 0.8.16;
 
 import "./interfaces/IGnosisSafe.sol";
 import "./SecurityCouncilMgmtUtils.sol";
+import "../UpgradeActionStorage.sol";
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-
-contract KeyValueStore {
-    mapping(uint256 => uint256) public store;
-
-    function set(uint256 key, uint256 value) external {
-        store[_computeKey(msg.sender, key)] = value;
-    }
-
-    function get(uint256 key) external view returns (uint256) {
-        return _get(msg.sender, key);
-    }
-
-    function get(address owner, uint256 key) external view returns (uint256) {
-        return _get(owner, key);
-    }
-
-    function _get(address owner, uint256 key) internal view returns (uint256) {
-        return store[_computeKey(owner, key)];
-    }
-
-    function _computeKey(address owner, uint256 key) internal pure returns (uint256) {
-        return uint256(keccak256(abi.encode(owner, key)));
-    }
-}
-
-contract UpgradeActionStorage {
-    KeyValueStore public immutable store;
-    bytes32 public immutable actionContractId;
-
-    error ActionAlreadyExecuted(uint256 actionId);
-
-    constructor(KeyValueStore _store, string memory _uniqueActionName) {
-        store = _store;
-        actionContractId = keccak256(bytes(_uniqueActionName));
-    }
-
-    function _setExecuted(uint256 actionId) internal {
-        if (_getExecuted(actionId)) {
-            revert ActionAlreadyExecuted(actionId);
-        }
-        _set(actionId, 1);
-    }
-
-    function _getExecuted(uint256 actionId) internal view returns (bool) {
-        return _get(actionId) != 0;
-    }
-
-    function _set(uint256 key, uint256 value) internal {
-        store.set(computeKey(key), value);
-    }
-
-    function _get(uint256 key) internal view returns (uint256) {
-        return store.get(computeKey(key));
-    }
-
-    function computeKey(uint256 key) public view returns (uint256) {
-        return uint256(keccak256(abi.encode(actionContractId, key)));
-    }
-}
 
 /// @notice Action contract for updating security council members. Used by the security council management system.
 ///         Expected to be delegate called into by an Upgrade Executor
