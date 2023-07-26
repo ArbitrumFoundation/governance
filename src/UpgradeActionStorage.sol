@@ -14,17 +14,6 @@ contract UpgradeActionStorage {
         actionContractId = keccak256(bytes(_uniqueActionName));
     }
 
-    function _setExecuted(uint256 actionId) internal {
-        if (_getExecuted(actionId)) {
-            revert ActionAlreadyExecuted(actionId);
-        }
-        _set(actionId, 1);
-    }
-
-    function _getExecuted(uint256 actionId) internal view returns (bool) {
-        return _get(actionId) != 0;
-    }
-
     function _set(uint256 key, uint256 value) internal {
         store.set(computeKey(key), value);
     }

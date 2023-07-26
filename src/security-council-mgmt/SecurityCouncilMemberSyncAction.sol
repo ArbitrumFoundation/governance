@@ -5,14 +5,12 @@ import "./interfaces/IGnosisSafe.sol";
 import "./SecurityCouncilMgmtUtils.sol";
 import "../UpgradeActionStorage.sol";
 
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-
 /// @notice Action contract for updating security council members. Used by the security council management system.
 ///         Expected to be delegate called into by an Upgrade Executor
 contract SecurityCouncilMemberSyncAction is UpgradeActionStorage {
     error PreviousOwnerNotFound(address targetOwner, address securityCouncil);
     error ExecFromModuleError(bytes data, address securityCouncil);
-    error PrevActionNotExecuted(address securityCouncil, uint256 nonce);
+    error UpdateNonceTooLow(address securityCouncil, uint256 nonce);
 
     /// @dev Used in the gnosis safe as the first entry in their ownership linked list
     address public constant SENTINEL_OWNERS = address(0x1);
@@ -29,13 +27,16 @@ contract SecurityCouncilMemberSyncAction is UpgradeActionStorage {
     function perform(address _securityCouncil, address[] memory _updatedMembers, uint256 _nonce)
         external
     {
-        // make sure the previous action was executed
-        if (_nonce > 0 && !_getExecuted(actionId(_securityCouncil, _nonce - 1))) {
-            revert PrevActionNotExecuted({securityCouncil: _securityCouncil, nonce: _nonce});
+        // make sure that _nonce is greater than the last nonce
+        if (_nonce <= getUpdateNonce(_securityCouncil)) {
+            revert UpdateNonceTooLow({
+                securityCouncil: _securityCouncil,
+                nonce: _nonce
+            });
         }
 
-        // set this action as executed
-        _setExecuted(actionId(_securityCouncil, _nonce));
+        // set the nonce to the current nonce
+        setUpdateNonce(_securityCouncil, _nonce);
 
         IGnosisSafe securityCouncil = IGnosisSafe(_securityCouncil);
         // preserve current threshold, the safe ensures that the threshold is never lower than the member count
@@ -100,8 +101,12 @@ contract SecurityCouncilMemberSyncAction is UpgradeActionStorage {
         });
     }
 
-    function actionId(address _securityCouncil, uint256 _nonce) public pure returns (uint256) {
-        return uint256(keccak256(abi.encode(_securityCouncil, _nonce)));
+    function getUpdateNonce(address securityCouncil) public view returns (uint256) {
+        return _get(uint160(securityCouncil));
+    }
+
+    function setUpdateNonce(address securityCouncil, uint256 nonce) internal {
+        _set(uint160(securityCouncil), nonce);
     }
 
     /// @notice Execute provided operation via gnosis safe's trusted execTransactionFromModule entry point
