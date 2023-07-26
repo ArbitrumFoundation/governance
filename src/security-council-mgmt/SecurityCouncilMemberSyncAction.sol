@@ -15,9 +15,7 @@ contract SecurityCouncilMemberSyncAction is ExecutionRecord {
     /// @dev Used in the gnosis safe as the first entry in their ownership linked list
     address public constant SENTINEL_OWNERS = address(0x1);
 
-    constructor(KeyValueStore _store)
-        ExecutionRecord(_store, "SecurityCouncilMemberSyncAction")
-    {}
+    constructor(KeyValueStore _store) ExecutionRecord(_store, "SecurityCouncilMemberSyncAction") {}
 
     /// @notice Updates members of security council multisig to match provided array
     /// @dev    This function contains O(n^2) operations, so doesnt scale for large numbers of members. Expected count is 12, which is acceptable.
@@ -29,10 +27,7 @@ contract SecurityCouncilMemberSyncAction is ExecutionRecord {
     {
         // make sure that _nonce is greater than the last nonce
         if (_nonce <= getUpdateNonce(_securityCouncil)) {
-            revert UpdateNonceTooLow({
-                securityCouncil: _securityCouncil,
-                nonce: _nonce
-            });
+            revert UpdateNonceTooLow({securityCouncil: _securityCouncil, nonce: _nonce});
         }
 
         // set the nonce to the current nonce

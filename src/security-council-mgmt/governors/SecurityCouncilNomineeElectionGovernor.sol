@@ -180,7 +180,7 @@ contract SecurityCouncilNomineeElectionGovernor is
 
     /// @dev Revert if the previous member election has not executed.
     ///      Ensures that there are no unexpected behaviors from multiple elections running at the same time.
-    ///      If, for some reason, the previous member election is blocked, 
+    ///      If, for some reason, the previous member election is blocked,
     ///      it is up to the security council or DAO to unblock the previous election before creating a new one.
     function _requireLastMemberElectionHasExecuted() internal view {
         if (electionCount == 0) {
