@@ -178,6 +178,8 @@ contract SecurityCouncilNomineeElectionGovernor is
         electionCount++;
     }
 
+    /// @dev Revert if the previous member election has not executed.
+    ///      Ensures that there are no unexpected behaviors from multiple elections running at the same time.
     function _requireLastMemberElectionHasExecuted() internal view {
         if (electionCount == 0) {
             return;
