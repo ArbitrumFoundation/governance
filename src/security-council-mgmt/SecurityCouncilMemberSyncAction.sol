@@ -36,7 +36,7 @@ contract SecurityCouncilMemberSyncAction is UpgradeActionStorage {
         }
 
         // set the nonce to the current nonce
-        setUpdateNonce(_securityCouncil, _nonce);
+        _setUpdateNonce(_securityCouncil, _nonce);
 
         IGnosisSafe securityCouncil = IGnosisSafe(_securityCouncil);
         // preserve current threshold, the safe ensures that the threshold is never lower than the member count
@@ -105,7 +105,7 @@ contract SecurityCouncilMemberSyncAction is UpgradeActionStorage {
         return _get(uint160(securityCouncil));
     }
 
-    function setUpdateNonce(address securityCouncil, uint256 nonce) internal {
+    function _setUpdateNonce(address securityCouncil, uint256 nonce) internal {
         _set(uint160(securityCouncil), nonce);
     }
 
