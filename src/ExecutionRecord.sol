@@ -3,7 +3,7 @@ pragma solidity 0.8.16;
 
 import "./KeyValueStore.sol";
 
-contract UpgradeActionStorage {
+contract ExecutionRecord {
     KeyValueStore public immutable store;
     bytes32 public immutable actionContractId;
 

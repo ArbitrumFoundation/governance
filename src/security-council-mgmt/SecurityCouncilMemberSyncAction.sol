@@ -3,11 +3,11 @@ pragma solidity 0.8.16;
 
 import "./interfaces/IGnosisSafe.sol";
 import "./SecurityCouncilMgmtUtils.sol";
-import "../UpgradeActionStorage.sol";
+import "../ExecutionRecord.sol";
 
 /// @notice Action contract for updating security council members. Used by the security council management system.
 ///         Expected to be delegate called into by an Upgrade Executor
-contract SecurityCouncilMemberSyncAction is UpgradeActionStorage {
+contract SecurityCouncilMemberSyncAction is ExecutionRecord {
     error PreviousOwnerNotFound(address targetOwner, address securityCouncil);
     error ExecFromModuleError(bytes data, address securityCouncil);
     error UpdateNonceTooLow(address securityCouncil, uint256 nonce);
@@ -16,7 +16,7 @@ contract SecurityCouncilMemberSyncAction is UpgradeActionStorage {
     address public constant SENTINEL_OWNERS = address(0x1);
 
     constructor(KeyValueStore _store)
-        UpgradeActionStorage(_store, "SecurityCouncilMemberSyncAction")
+        ExecutionRecord(_store, "SecurityCouncilMemberSyncAction")
     {}
 
     /// @notice Updates members of security council multisig to match provided array
