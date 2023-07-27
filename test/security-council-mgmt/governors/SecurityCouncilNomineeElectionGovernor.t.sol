@@ -659,9 +659,7 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
     function _mockMemberGovState(IGovernorUpgradeable.ProposalState state) internal {
         vm.mockCall(
             address(initParams.securityCouncilMemberElectionGovernor),
-            abi.encodeWithSelector(
-                IGovernorUpgradeable.state.selector
-            ),
+            abi.encodeWithSelector(IGovernorUpgradeable.state.selector),
             abi.encode(state)
         );
     }

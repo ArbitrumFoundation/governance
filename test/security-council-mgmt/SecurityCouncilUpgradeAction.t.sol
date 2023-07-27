@@ -149,7 +149,8 @@ contract SecurityCouncilMemberSyncActionTest is Test, DeployGnosisWithModule {
 
         IGnosisSafe safe = IGnosisSafe(deploySafe(owners, 9, address(upgradeExecutor)));
 
-        SecurityCouncilMemberSyncAction action = new SecurityCouncilMemberSyncAction(new KeyValueStore());
+        SecurityCouncilMemberSyncAction action =
+            new SecurityCouncilMemberSyncAction(new KeyValueStore());
 
         assertEq(
             action.SENTINEL_OWNERS(),

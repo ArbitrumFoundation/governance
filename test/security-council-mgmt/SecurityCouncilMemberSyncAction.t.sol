@@ -34,11 +34,13 @@ contract SecurityCouncilMemberSyncActionTest is Test, DeployGnosisWithModule {
         SecurityCouncilMemberSyncAction action;
         KeyValueStore kvStore;
         address safe;
-
         uint256 threshold;
     }
 
-    function _deploy(address[] memory initialMembers, uint256 threshold) internal returns (Contracts memory) {
+    function _deploy(address[] memory initialMembers, uint256 threshold)
+        internal
+        returns (Contracts memory)
+    {
         UpgradeExecutor upgradeExecutor =
             UpgradeExecutor(TestUtil.deployProxy(address(new UpgradeExecutor())));
         address[] memory executors = new address[](1);
@@ -66,7 +68,9 @@ contract SecurityCouncilMemberSyncActionTest is Test, DeployGnosisWithModule {
             TestUtil.areAddressArraysEqual(newMembers, IGnosisSafe(contracts.safe).getOwners()),
             "updated sucessfully"
         );
-        assertEq(IGnosisSafe(contracts.safe).getThreshold(), contracts.threshold, "threshold preserved");
+        assertEq(
+            IGnosisSafe(contracts.safe).getThreshold(), contracts.threshold, "threshold preserved"
+        );
     }
 
     function testNoopUpdate() public {
@@ -162,7 +166,8 @@ contract SecurityCouncilMemberSyncActionTest is Test, DeployGnosisWithModule {
 
         IGnosisSafe safe = IGnosisSafe(deploySafe(owners, 9, address(upgradeExecutor)));
 
-        SecurityCouncilMemberSyncAction action = new SecurityCouncilMemberSyncAction(new KeyValueStore());
+        SecurityCouncilMemberSyncAction action =
+            new SecurityCouncilMemberSyncAction(new KeyValueStore());
 
         assertEq(
             action.SENTINEL_OWNERS(),
@@ -180,20 +185,24 @@ contract SecurityCouncilMemberSyncActionTest is Test, DeployGnosisWithModule {
 
         uint256 nonceKey = contracts.action.computeKey(uint160(contracts.safe));
 
-        assertEq(contracts.kvStore.get(address(contracts.upgradeExecutor), nonceKey), 0, "initial nonce is 0");
+        assertEq(
+            contracts.kvStore.get(address(contracts.upgradeExecutor), nonceKey),
+            0,
+            "initial nonce is 0"
+        );
 
         // push through an update
         updateMembersTest(contracts, owners, 2);
 
         // make sure nonce is updated
-        assertEq(contracts.kvStore.get(address(contracts.upgradeExecutor), nonceKey), 2, "nonce is 2");
+        assertEq(
+            contracts.kvStore.get(address(contracts.upgradeExecutor), nonceKey), 2, "nonce is 2"
+        );
 
         // updates with nonce == to prev nonce should fail
         vm.expectRevert(
             abi.encodeWithSelector(
-                SecurityCouncilMemberSyncAction.UpdateNonceTooLow.selector,
-                contracts.safe,
-                2
+                SecurityCouncilMemberSyncAction.UpdateNonceTooLow.selector, contracts.safe, 2
             )
         );
         updateMembersTest(contracts, owners, 2);
@@ -201,9 +210,7 @@ contract SecurityCouncilMemberSyncActionTest is Test, DeployGnosisWithModule {
         // updates with nonce < prev nonce should fail
         vm.expectRevert(
             abi.encodeWithSelector(
-                SecurityCouncilMemberSyncAction.UpdateNonceTooLow.selector,
-                contracts.safe,
-                1
+                SecurityCouncilMemberSyncAction.UpdateNonceTooLow.selector, contracts.safe, 1
             )
         );
         updateMembersTest(contracts, owners, 1);
