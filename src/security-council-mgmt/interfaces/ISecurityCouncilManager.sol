@@ -40,7 +40,7 @@ interface ISecurityCouncilManager {
     error SecurityCouncilNotInManager(SecurityCouncilData securiyCouncilData);
     error SecurityCouncilAlreadyInRouter(SecurityCouncilData securiyCouncilData);
 
-    /// @notice initialize SecurityCouncilManager
+    /// @notice initialize SecurityCouncilManager.
     /// @param _firstCohort addresses of first cohort
     /// @param _secondCohort addresses of second cohort
     /// @param _securityCouncils data of all security councils to manage
@@ -56,33 +56,36 @@ interface ISecurityCouncilManager {
         UpgradeExecRouteBuilder _router
     ) external;
     /// @notice Replaces a whole cohort.
-    /// @dev    Initiaties cross chain messages to update the individual Security Councils
+    /// @dev    Initiaties cross chain messages to update the individual Security Councils.
     /// @param _newCohort   New cohort members to replace existing cohort. Must have 6 members.
     /// @param _cohort      Cohort to replace.
     function replaceCohort(address[] memory _newCohort, Cohort _cohort) external;
-    /// @notice Add a member to the specified cohort
+    /// @notice Add a member to the specified cohort.
     ///         Cohorts cannot have more than 6 members, so the cohort must have less than 6 in order to call this.
-    ///         New member cannot already be a member of either cohort
-    /// @dev    Initiaties cross chain messages to update the individual Security Councils
-    ///         When adding a member, make sure that the key does not conflict with any candidates of ongoing electoins
+    ///         New member cannot already be a member of either cohort.
+    /// @dev    Initiaties cross chain messages to update the individual Security Councils.
+    ///         When adding a member, make sure that the key does not conflict with any contenders/nominees of ongoing elections.
     /// @param _newMember   New member to add
     /// @param _cohort      Cohort to add member to
     function addMember(address _newMember, Cohort _cohort) external;
-    /// @notice Remove a member
+    /// @notice Remove a member.
     /// @dev    Searches both cohorts for the member.
     ///         Initiaties cross chain messages to update the individual Security Councils
     /// @param _member  Member to remove
     function removeMember(address _member) external;
-    /// @notice Replace a member in a council - equivalent to removing a member, then adding another in its place. Idendities of members should  be the different. Functionality is equivalent to replaceMember, tho emits a different event to distinguish the security council's intent (different identities).
-    /// @dev    Initiaties cross chain messages to update the individual Security Councils
-    ///         When replacing a member, make sure that the key does not conflict with any candidates of ongoing electoins
+    /// @notice Replace a member in a council - equivalent to removing a member, then adding another in its place.
+    ///         Idendities of members should be different.
+    ///         Functionality is equivalent to replaceMember,
+    ///         though emits a different event to distinguish the security council's intent (different identities).
+    /// @dev    Initiaties cross chain messages to update the individual Security Councils.
+    ///         When replacing a member, make sure that the key does not conflict with any contenders/nominees of ongoing electoins.
     /// @param _memberToReplace Security Council member to remove
     /// @param _newMember       Security Council member to add in their place
     function replaceMember(address _memberToReplace, address _newMember) external;
     /// @notice Security council member can rotate out their address for a new one; _currentAddress and _newAddress should be of the same identity. Functionality is equivalent to replaceMember, tho emits a different event to distinguish the security council's intent (same identity).
     ///         Rotation must be initiated by the security council.
-    /// @dev    Initiaties cross chain messages to update the individual Security Councils
-    ///         When rotating a member, make sure that the key does not conflict with any candidates of ongoing electoins
+    /// @dev    Initiaties cross chain messages to update the individual Security Councils.
+    ///         When rotating a member, make sure that the key does not conflict with any contenders/nominees of ongoing elections.
     /// @param _currentAddress  Address to rotate out
     /// @param _newAddress      Address to rotate in
     function rotateMember(address _currentAddress, address _newAddress) external;

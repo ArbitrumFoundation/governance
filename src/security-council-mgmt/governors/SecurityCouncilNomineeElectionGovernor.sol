@@ -105,7 +105,7 @@ contract SecurityCouncilNomineeElectionGovernor is
         __SecurityCouncilNomineeElectionGovernorCounting_init();
         __ArbitrumGovernorVotesQuorumFraction_init(params.quorumNumeratorValue);
         __GovernorSettings_init(0, params.votingPeriod, 0); // votingDelay and proposalThreshold are set to 0
-        __SecurityCouncilNomineeElectionGovernorIndexingTiming_init(
+        __SecurityCouncilNomineeElectionGovernorTiming_init(
             params.firstNominationStartDate, params.nomineeVettingDuration
         );
         _transferOwnership(params.owner);
