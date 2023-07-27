@@ -163,7 +163,7 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
         );
         governor.createElection();
 
-        // // we should be able to create an election at the timestamp
+        // we should be able to create an election at the timestamp
         vm.warp(expectedStartTimestamp);
         governor.createElection();
         assertEq(governor.electionCount(), 2);
