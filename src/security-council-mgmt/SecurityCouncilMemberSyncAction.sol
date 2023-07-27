@@ -3,11 +3,11 @@ pragma solidity 0.8.16;
 
 import "./interfaces/IGnosisSafe.sol";
 import "./SecurityCouncilMgmtUtils.sol";
-import "../ExecutionRecord.sol";
+import "../gov-action-contracts/execution-record/ActionExecutionRecord.sol";
 
 /// @notice Action contract for updating security council members. Used by the security council management system.
 ///         Expected to be delegate called into by an Upgrade Executor
-contract SecurityCouncilMemberSyncAction is ExecutionRecord {
+contract SecurityCouncilMemberSyncAction is ActionExecutionRecord {
     error PreviousOwnerNotFound(address targetOwner, address securityCouncil);
     error ExecFromModuleError(bytes data, address securityCouncil);
     error UpdateNonceTooLow(address securityCouncil, uint256 nonce);
@@ -15,7 +15,9 @@ contract SecurityCouncilMemberSyncAction is ExecutionRecord {
     /// @dev Used in the gnosis safe as the first entry in their ownership linked list
     address public constant SENTINEL_OWNERS = address(0x1);
 
-    constructor(KeyValueStore _store) ExecutionRecord(_store, "SecurityCouncilMemberSyncAction") {}
+    constructor(KeyValueStore _store)
+        ActionExecutionRecord(_store, "SecurityCouncilMemberSyncAction")
+    {}
 
     /// @notice Updates members of security council multisig to match provided array
     /// @dev    This function contains O(n^2) operations, so doesnt scale for large numbers of members. Expected count is 12, which is acceptable.
@@ -26,11 +28,18 @@ contract SecurityCouncilMemberSyncAction is ExecutionRecord {
         external
     {
         // make sure that _nonce is greater than the last nonce
+        // we do this to ensure that a previous update does not occur after a later one
+        // the mechanism just checks greater, not n+1, because the Security Council Manager always
+        // sends the latest full list of members so it doesn't matter if some updates are missed
+        // Additionally a retryable ticket could be used to execute the update, and since tickets
+        // expire if not executed after some time, then allowing updates to be skipped means that the
+        // system will not be blocked if a retryable ticket is expires
         if (_nonce <= getUpdateNonce(_securityCouncil)) {
             revert UpdateNonceTooLow({securityCouncil: _securityCouncil, nonce: _nonce});
         }
 
-        // set the nonce to the current nonce
+        // store the nonce as a record of execution
+        // use security council as the key to ensure that updates to different security councils are kept separate
         _setUpdateNonce(_securityCouncil, _nonce);
 
         IGnosisSafe securityCouncil = IGnosisSafe(_securityCouncil);
