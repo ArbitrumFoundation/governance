@@ -29,11 +29,16 @@ contract SecurityCouncilMemberSyncActionTest is Test, DeployGnosisWithModule {
         address(141_111)
     ];
 
-    function updateMembersTest(
-        address[] memory initialMembers,
-        address[] memory newMembers,
-        uint256 threshold
-    ) internal {
+    struct Contracts {
+        UpgradeExecutor upgradeExecutor;
+        SecurityCouncilMemberSyncAction action;
+        KeyValueStore kvStore;
+        address safe;
+
+        uint256 threshold;
+    }
+
+    function _deploy(address[] memory initialMembers, uint256 threshold) internal returns (Contracts memory) {
         UpgradeExecutor upgradeExecutor =
             UpgradeExecutor(TestUtil.deployProxy(address(new UpgradeExecutor())));
         address[] memory executors = new address[](1);
@@ -41,26 +46,34 @@ contract SecurityCouncilMemberSyncActionTest is Test, DeployGnosisWithModule {
         upgradeExecutor.initialize(admin, executors);
 
         address safe = deploySafe(initialMembers, threshold, address(upgradeExecutor));
+        KeyValueStore kvStore = new KeyValueStore();
+        SecurityCouncilMemberSyncAction action = new SecurityCouncilMemberSyncAction(kvStore);
 
-        address action = address(new SecurityCouncilMemberSyncAction(new KeyValueStore()));
+        return Contracts(upgradeExecutor, action, kvStore, safe, threshold);
+    }
 
+    function updateMembersTest(
+        Contracts memory contracts,
+        address[] memory newMembers,
+        uint256 nonce
+    ) internal {
         bytes memory upgradeCallData = abi.encodeWithSelector(
-            SecurityCouncilMemberSyncAction.perform.selector, safe, newMembers
+            SecurityCouncilMemberSyncAction.perform.selector, contracts.safe, newMembers, nonce
         );
         vm.prank(executor);
-        upgradeExecutor.execute(action, upgradeCallData);
+        contracts.upgradeExecutor.execute(address(contracts.action), upgradeCallData);
         assertTrue(
-            TestUtil.areAddressArraysEqual(newMembers, IGnosisSafe(safe).getOwners()),
+            TestUtil.areAddressArraysEqual(newMembers, IGnosisSafe(contracts.safe).getOwners()),
             "updated sucessfully"
         );
-        assertEq(IGnosisSafe(safe).getThreshold(), threshold, "threshold preserved");
+        assertEq(IGnosisSafe(contracts.safe).getThreshold(), contracts.threshold, "threshold preserved");
     }
 
     function testNoopUpdate() public {
         address[] memory newMembers = owners;
         address[] memory prevMembers = owners;
 
-        updateMembersTest(prevMembers, newMembers, 9);
+        updateMembersTest(_deploy(prevMembers, 9), newMembers, 1);
     }
 
     function testRemoveOne() public {
@@ -70,7 +83,7 @@ contract SecurityCouncilMemberSyncActionTest is Test, DeployGnosisWithModule {
             newMembers[i] = owners[i];
         }
         address[] memory prevMembers = owners;
-        updateMembersTest(prevMembers, newMembers, 9);
+        updateMembersTest(_deploy(prevMembers, 9), newMembers, 1);
     }
 
     function testAddOne() public {
@@ -80,7 +93,7 @@ contract SecurityCouncilMemberSyncActionTest is Test, DeployGnosisWithModule {
             prevMembers[i] = owners[i];
         }
         address[] memory newMembers = owners;
-        updateMembersTest(prevMembers, newMembers, 9);
+        updateMembersTest(_deploy(prevMembers, 9), newMembers, 1);
     }
 
     function testUpdateCohort() public {
@@ -102,7 +115,7 @@ contract SecurityCouncilMemberSyncActionTest is Test, DeployGnosisWithModule {
         for (uint256 i = 6; i < owners.length; i++) {
             newMembers[i] = owners[i];
         }
-        updateMembersTest(prevMembers, newMembers, 9);
+        updateMembersTest(_deploy(prevMembers, 9), newMembers, 1);
     }
 
     function testCantDropBelowThreshhold() public {
@@ -160,5 +173,42 @@ contract SecurityCouncilMemberSyncActionTest is Test, DeployGnosisWithModule {
         for (uint256 i = 1; i < owners.length; i++) {
             assertEq(owners[i - 1], action.getPrevOwner(safe, owners[i]), "prev owner as exected");
         }
+    }
+
+    function testNonces() public {
+        Contracts memory contracts = _deploy(owners, 9);
+
+        uint256 nonceKey = contracts.action.computeKey(uint160(contracts.safe));
+
+        assertEq(contracts.kvStore.get(address(contracts.upgradeExecutor), nonceKey), 0, "initial nonce is 0");
+
+        // push through an update
+        updateMembersTest(contracts, owners, 2);
+
+        // make sure nonce is updated
+        assertEq(contracts.kvStore.get(address(contracts.upgradeExecutor), nonceKey), 2, "nonce is 2");
+
+        // updates with nonce == to prev nonce should fail
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                SecurityCouncilMemberSyncAction.UpdateNonceTooLow.selector,
+                contracts.safe,
+                2
+            )
+        );
+        updateMembersTest(contracts, owners, 2);
+
+        // updates with nonce < prev nonce should fail
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                SecurityCouncilMemberSyncAction.UpdateNonceTooLow.selector,
+                contracts.safe,
+                1
+            )
+        );
+        updateMembersTest(contracts, owners, 1);
+
+        // updates with nonce > prev nonce should succeed
+        updateMembersTest(contracts, owners, 3);
     }
 }
