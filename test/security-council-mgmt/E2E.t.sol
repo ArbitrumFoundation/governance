@@ -332,9 +332,9 @@ contract E2E is Test, DeployGnosisWithModule {
             payable(deploySafe(members, secCouncilThreshold, address(vars.novaExecutor)))
         );
 
-        vars.l2UpdateAction = new SecurityCouncilMemberSyncAction();
-        vars.novaUpdateAction = new SecurityCouncilMemberSyncAction();
-        vars.l1UpdateAction = new SecurityCouncilMemberSyncAction();
+        vars.l2UpdateAction = new SecurityCouncilMemberSyncAction(new KeyValueStore());
+        vars.novaUpdateAction = new SecurityCouncilMemberSyncAction(new KeyValueStore());
+        vars.l1UpdateAction = new SecurityCouncilMemberSyncAction(new KeyValueStore());
 
         vars.councilData = new SecurityCouncilData[](4);
         vars.councilData[0] =

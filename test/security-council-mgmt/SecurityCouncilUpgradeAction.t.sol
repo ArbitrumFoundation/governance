@@ -42,7 +42,7 @@ contract SecurityCouncilMemberSyncActionTest is Test, DeployGnosisWithModule {
 
         address safe = deploySafe(initialMembers, threshold, address(upgradeExecutor));
 
-        address action = address(new SecurityCouncilMemberSyncAction());
+        address action = address(new SecurityCouncilMemberSyncAction(new KeyValueStore()));
 
         bytes memory upgradeCallData = abi.encodeWithSelector(
             SecurityCouncilMemberSyncAction.perform.selector, safe, newMembers
@@ -119,7 +119,7 @@ contract SecurityCouncilMemberSyncActionTest is Test, DeployGnosisWithModule {
 
         address safe = deploySafe(prevMembers, 9, address(upgradeExecutor));
 
-        address action = address(new SecurityCouncilMemberSyncAction());
+        address action = address(new SecurityCouncilMemberSyncAction(new KeyValueStore()));
 
         bytes memory upgradeCallData = abi.encodeWithSelector(
             SecurityCouncilMemberSyncAction.perform.selector, safe, newMembers
@@ -149,7 +149,7 @@ contract SecurityCouncilMemberSyncActionTest is Test, DeployGnosisWithModule {
 
         IGnosisSafe safe = IGnosisSafe(deploySafe(owners, 9, address(upgradeExecutor)));
 
-        SecurityCouncilMemberSyncAction action = new SecurityCouncilMemberSyncAction();
+        SecurityCouncilMemberSyncAction action = new SecurityCouncilMemberSyncAction(new KeyValueStore());
 
         assertEq(
             action.SENTINEL_OWNERS(),
