@@ -105,8 +105,8 @@ contract SecurityCouncilMemberElectionGovernor is
         AddressUpgradeable.functionCallWithValue(target, data, value);
     }
 
-    /// @dev    `GovernorUpgradeable` function to execute a proposal overridden to handle nominee elections.
-    ///         We know that _getTopNominees will return a full list of nominees because we checked it in _voteSucceeded.
+    /// @dev    `GovernorUpgradeable` function to execute a proposal overridden to handle member elections.
+    ///         We know that topNominees() will return a full list.
     ///         Calls `SecurityCouncilManager.replaceCohort` with the list of nominees.
     function _execute(
         uint256 proposalId,
@@ -148,7 +148,7 @@ contract SecurityCouncilMemberElectionGovernor is
         return 0;
     }
 
-    /// @dev returns true if the account is a compliant nominee.
+    /// @dev Whether the account is a compliant nominee.
     ///      checks the SecurityCouncilNomineeElectionGovernor to see if the account is a compliant nominee
     function _isCompliantNominee(uint256 proposalId, address possibleNominee)
         internal
