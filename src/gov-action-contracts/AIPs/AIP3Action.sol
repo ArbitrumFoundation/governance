@@ -4,13 +4,10 @@ pragma solidity 0.8.16;
 import "../address-registries/L2AddressRegistry.sol";
 
 /// @notice Governance action for constitution update relevant to security council elections, prior to their actual activation. See https://forum.arbitrum.foundation/t/proposal-update-security-council-election-start-date-to-ensure-time-for-security-audit/15426
-
-// TODO: ensure proper AIP number at time of posting
 contract AIP3Action {
     IL2AddressRegistry public immutable l2GovAddressRegistry;
 
-    // TODO: PR new contitution in docs and update hash here:
-    bytes32 public constant newConstitutionHash = bytes32(0x0);
+    bytes32 public constant newConstitutionHash = bytes32(0x70ae8e80709ba3edf810e4518056ce875a34254fe1138d7baa59d984f9372d71);
 
     constructor(IL2AddressRegistry _l2GovAddressRegistry) {
         l2GovAddressRegistry = _l2GovAddressRegistry;
