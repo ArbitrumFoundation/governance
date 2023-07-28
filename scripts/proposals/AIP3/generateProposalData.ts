@@ -9,8 +9,8 @@ if (!ARB_URL) throw new Error("ARB_URL required");
 if (!ETH_URL) throw new Error("ETH_URL required");
 
 const chainIDToActionAddress = {
-  42161: "0x6274106eedD4848371D2C09e0352d67B795ED516",
-  421613: "0x524A12f7F26e478b772EBdf2fD1A9AD78df27506",
+  42161: "0xF9A9e70061D907ec707ca05cE4C9B695DAd2690b",
+  421613: "0xF9A9e70061D907ec707ca05cE4C9B695DAd2690b",
 };
 
 const description = `
@@ -98,7 +98,7 @@ const main = async () => {
     },
   };
   const path = `${__dirname}/data/${chainId}-AIP3-data.json`;
-  fs.writeFileSync(path, JSON.stringify(proposal));
+  fs.writeFileSync(path, JSON.stringify(proposal, null, 2));
   console.log("Wrote proposal data to", path);
   console.log(proposal);
 };

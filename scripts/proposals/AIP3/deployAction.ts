@@ -39,6 +39,7 @@ const main = async () => {
   const action = await new AIP3Action__factory(deployer).deploy(
     deployedContracts.l2AddressRegistry
   );
+
   await action.deployed();
   console.log("AIP3 deployed at", action.address);
 
