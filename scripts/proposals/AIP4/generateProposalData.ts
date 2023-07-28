@@ -9,8 +9,8 @@ if (!ARB_URL) throw new Error("ARB_URL required");
 if (!ETH_URL) throw new Error("ETH_URL required");
 
 const chainIDToActionAddress = {
-  42161: "0xF9A9e70061D907ec707ca05cE4C9B695DAd2690b",
-  421613: "0xF9A9e70061D907ec707ca05cE4C9B695DAd2690b",
+  42161: "0x984194FfA74486e74A273372321b759fEF2C87ac",
+  421613: "0x984194FfA74486e74A273372321b759fEF2C87ac",
 };
 
 const description = `
