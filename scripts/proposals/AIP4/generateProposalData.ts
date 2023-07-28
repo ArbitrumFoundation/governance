@@ -97,7 +97,7 @@ const main = async () => {
       calldata: l1TimelockScheduleCallData,
     },
   };
-  const path = `${__dirname}/data/${chainId}-AIP3-data.json`;
+  const path = `${__dirname}/data/${chainId}-AIP4-data.json`;
   fs.writeFileSync(path, JSON.stringify(proposal, null, 2));
   console.log("Wrote proposal data to", path);
   console.log(proposal);

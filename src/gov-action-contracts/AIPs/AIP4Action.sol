@@ -4,7 +4,7 @@ pragma solidity 0.8.16;
 import "../address-registries/L2AddressRegistry.sol";
 
 /// @notice Governance action for constitution update relevant to security council elections, prior to their actual activation. See https://forum.arbitrum.foundation/t/proposal-update-security-council-election-start-date-to-ensure-time-for-security-audit/15426
-contract AIP3Action {
+contract AIP4Action {
     IL2AddressRegistry public immutable l2GovAddressRegistry;
 
     bytes32 public constant newConstitutionHash =
@@ -16,7 +16,7 @@ contract AIP3Action {
 
     /// @notice set new constitution hash
     function perform() external {
-        require(newConstitutionHash != bytes32(0x0), "AIP3Action: 0 constitution hash");
+        require(newConstitutionHash != bytes32(0x0), "AIP4Action: 0 constitution hash");
 
         IArbitrumDAOConstitution arbitrumDaoConstitution =
             l2GovAddressRegistry.arbitrumDAOConstitution();
@@ -24,7 +24,7 @@ contract AIP3Action {
 
         require(
             arbitrumDaoConstitution.constitutionHash() == newConstitutionHash,
-            "AIP3Action: new constitution hash not set"
+            "AIP4Action: new constitution hash not set"
         );
     }
 }

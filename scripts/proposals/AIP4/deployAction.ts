@@ -1,7 +1,7 @@
 import { importDeployedContracts } from "../../../src-ts/utils";
 import { Wallet } from "@ethersproject/wallet";
 import { JsonRpcProvider } from "@ethersproject/providers";
-import { AIP3Action__factory } from "../../../typechain-types";
+import { AIP4Action__factory } from "../../../typechain-types";
 import { ContractVerifier } from "../../contractVerifier";
 import { utils } from "ethers";
 import dotenv from "dotenv";
@@ -36,15 +36,15 @@ const main = async () => {
   })();
   const verifier = new ContractVerifier(chainId, ARBISCAN_API_KEY, {});
 
-  const action = await new AIP3Action__factory(deployer).deploy(
+  const action = await new AIP4Action__factory(deployer).deploy(
     deployedContracts.l2AddressRegistry
   );
 
   await action.deployed();
-  console.log("AIP3 deployed at", action.address);
+  console.log("AIP4 deployed at", action.address);
 
   await verifier.verifyWithAddress(
-    "AIP3Action",
+    "AIP4Action",
     action.address,
     abi.encode(["address"], [deployedContracts.l2AddressRegistry])
   );

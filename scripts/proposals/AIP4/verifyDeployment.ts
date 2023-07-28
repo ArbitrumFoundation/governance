@@ -1,12 +1,12 @@
 import fs from "fs";
 import { JsonRpcProvider } from "@ethersproject/providers";
-import { AIP3Action__factory } from "../../../typechain-types";
+import { AIP4Action__factory } from "../../../typechain-types";
 import { assertEquals } from "../../testUtils";
 import dotenv from "dotenv";
 dotenv.config();
 
 const { actionAddress } = JSON.parse(
-  fs.readFileSync("./scripts/proposals/AIP3/data/42161-AIP3-data.json").toString()
+  fs.readFileSync("./scripts/proposals/AIP4/data/42161-AIP4-data.json").toString()
 );
 
 const ARB_URL = process.env.ARB_URL;
@@ -17,16 +17,16 @@ const expectedConstitutionHash =
 
 const main = async () => {
   const l2Provider = new JsonRpcProvider(ARB_URL);
-  const aip3action = AIP3Action__factory.connect(actionAddress, l2Provider);
+  const aip4action = AIP4Action__factory.connect(actionAddress, l2Provider);
 
   assertEquals(
     expectedConstitutionHash,
-    await aip3action.newConstitutionHash(),
+    await aip4action.newConstitutionHash(),
     "action has expected constitution hash"
   );
   assertEquals(
     expectedAddressRegistry,
-    await aip3action.l2GovAddressRegistry(),
+    await aip4action.l2GovAddressRegistry(),
     "action uses expected l2 address registry "
   );
   console.log("successfully verified");
