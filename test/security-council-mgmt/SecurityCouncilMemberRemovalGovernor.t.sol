@@ -319,4 +319,34 @@ contract SecurityCouncilMemberRemovalGovernorTest is Test {
             abi.decode(data, (address)), memberToRemove, "separateSelector decodes to correct data"
         );
     }
+
+    function testProposalExpirationDeadline() public {
+        uint256 proposalId =
+            scRemovalGov.propose(validTargets, validValues, validCallDatas, description);
+
+        assertEq(
+            scRemovalGov.proposalExpirationDeadline(proposalId),
+            scRemovalGov.proposalDeadline(proposalId) + scRemovalGov.PROPOSAL_EXPIRATION_DURATION()
+        );
+    }
+
+    function testProposalDoesExpire() public {
+        uint256 proposalId =
+            scRemovalGov.propose(validTargets, validValues, validCallDatas, description);
+
+        // make the proposal succeed
+        vm.roll(scRemovalGov.proposalDeadline(proposalId));
+        vm.prank(tokenOwner);
+        scRemovalGov.castVote(proposalId, 1);
+
+        // roll to right before expiration
+        vm.roll(scRemovalGov.proposalExpirationDeadline(proposalId));
+
+        assertTrue(scRemovalGov.state(proposalId) == IGovernorUpgradeable.ProposalState.Succeeded);
+
+        // roll to the end of the expiration period
+        vm.roll(scRemovalGov.proposalExpirationDeadline(proposalId) + 1);
+
+        assertTrue(scRemovalGov.state(proposalId) == IGovernorUpgradeable.ProposalState.Expired);
+    }
 }
