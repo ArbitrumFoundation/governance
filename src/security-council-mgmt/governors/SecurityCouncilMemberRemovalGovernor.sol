@@ -10,6 +10,7 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "./../interfaces/ISecurityCouncilManager.sol";
 import "../Common.sol";
 import "./modules/ArbitrumGovernorVotesQuorumFractionUpgradeable.sol";
+import "./modules/ArbitrumGovernorProposalExpirationUpgradeable.sol";
 
 /// @title SecurityCouncilMemberRemovalGovernor
 /// @notice Allows the DAO to remove a security council member
@@ -21,6 +22,7 @@ contract SecurityCouncilMemberRemovalGovernor is
     GovernorCountingSimpleUpgradeable,
     ArbitrumGovernorVotesQuorumFractionUpgradeable,
     GovernorSettingsUpgradeable,
+    ArbitrumGovernorProposalExpirationUpgradeable,
     OwnableUpgradeable
 {
     uint256 public constant voteSuccessDenominator = 10_000;
@@ -241,5 +243,14 @@ contract SecurityCouncilMemberRemovalGovernor is
         returns (uint256)
     {
         return GovernorPreventLateQuorumUpgradeable.proposalDeadline(proposalId);
+    }
+
+    function state(uint256 proposalId)
+        public
+        view
+        override(ArbitrumGovernorProposalExpirationUpgradeable, GovernorUpgradeable)
+        returns (ProposalState)
+    {
+        return ArbitrumGovernorProposalExpirationUpgradeable.state(proposalId);
     }
 }

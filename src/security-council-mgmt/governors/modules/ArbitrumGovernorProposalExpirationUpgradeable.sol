@@ -30,11 +30,7 @@ abstract contract ArbitrumGovernorProposalExpirationUpgradeable is
     }
 
     /// @notice The block at which the proposal expires
-    function proposalExpirationDeadline(uint256 proposalId)
-        public
-        view
-        returns (uint256)
-    {
+    function proposalExpirationDeadline(uint256 proposalId) public view returns (uint256) {
         return _proposalExpirationCountdownStart(proposalId) + PROPOSAL_EXPIRATION_DURATION;
     }
 
