@@ -21,7 +21,7 @@ contract SetSweepReceiverAction {
         // verify:
         require(
             tokenDistributor.sweepReceiver() == treasuryWallet,
-            "SetSweepReceiverAction: new sweep reciever set"
+            "SetSweepReceiverAction: new sweep receiver set"
         );
     }
 }
