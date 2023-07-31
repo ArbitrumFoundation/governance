@@ -35,6 +35,10 @@ contract SecurityCouncilMemberElectionGovernor is
     error ProposeDisabled();
     error CastVoteDisabled();
 
+    constructor() {
+        _disableInitializers();
+    }
+
     /// @param _nomineeElectionGovernor The SecurityCouncilNomineeElectionGovernor
     /// @param _securityCouncilManager The SecurityCouncilManager
     /// @param _token The token used for voting
