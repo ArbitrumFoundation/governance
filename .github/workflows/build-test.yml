@@ -53,8 +53,7 @@ jobs:
         run: yarn
 
       - name: Run build --sizes
-        # run: FOUNDRY_PROFILE=sec_council_mgmt forge build --sizes
-        run: forge build --sizes
+        run: FOUNDRY_PROFILE=sec_council_mgmt forge build --sizes
 
   test-gas:
     name: Test gas
