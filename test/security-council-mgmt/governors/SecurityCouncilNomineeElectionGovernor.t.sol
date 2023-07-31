@@ -339,6 +339,25 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
         _mockGetPastVotes(_voter(0), governor.quorum(proposalId));
         _castVoteForContender(proposalId, _voter(0), _contender(0), governor.quorum(proposalId));
 
+        // should fail if called by non nominee vetter
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                SecurityCouncilNomineeElectionGovernor.OnlyNomineeVetter.selector
+            )
+        );
+        governor.includeNominee(proposalId, _contender(0));
+
+        // should fail if state is not Succeeded
+        vm.roll(governor.proposalDeadline(proposalId));
+        vm.prank(initParams.nomineeVetter);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                SecurityCouncilNomineeElectionGovernor.ProposalNotSucceededState.selector,
+                1 // active
+            )
+        );
+        governor.includeNominee(proposalId, _contender(0));
+
         // should fail if the account is already a nominee
         vm.roll(governor.proposalDeadline(proposalId) + 1);
         vm.prank(initParams.nomineeVetter);
@@ -365,7 +384,9 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
         governor.includeNominee(proposalId, _contender(1));
 
         // should succeed if the account is not a nominee, we havent reached the target nominee count, and the account is not a member of the opposite cohort
+        // should succeed even if past the vetting deadline
         _mockCohortIncludes(Cohort.SECOND, _contender(1), false);
+        vm.roll(governor.proposalVettingDeadline(proposalId) + 1);
         vm.prank(initParams.nomineeVetter);
         governor.includeNominee(proposalId, _contender(1));
 
