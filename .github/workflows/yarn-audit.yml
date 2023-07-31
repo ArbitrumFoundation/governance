@@ -19,8 +19,8 @@ jobs:
       - name: Install packages
         run: yarn
 
-      - name: Install npm-audit-resolve
-        run: npm i -g npm-audit-resolve
+      - name: Install npm-audit-resolver
+        run: npm i -g npm-audit-resolver
 
       - name: Run yarn audit
         run: check-audit --yarn
