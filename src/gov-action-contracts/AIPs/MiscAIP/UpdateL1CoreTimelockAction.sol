@@ -31,7 +31,8 @@ contract UpdateL1CoreTimelockAction {
 
         // // verify
         require(
-            govProxyAdmin.getProxyImplementation(timelockProxy) == newTimelockImplementation, ""
+            govProxyAdmin.getProxyImplementation(timelockProxy) == newTimelockImplementation,
+            "UpdateL1CoreTimelockAction: new implementation set"
         );
     }
 }
