@@ -11,7 +11,9 @@ contract SecurityCouncilMemberSyncAction is ActionExecutionRecord {
     error PreviousOwnerNotFound(address targetOwner, address securityCouncil);
     error ExecFromModuleError(bytes data, address securityCouncil);
 
-    event UpdateNonceTooLow(uint256 currrentNonce, uint256 providedNonce);
+    event UpdateNonceTooLow(
+        address indexed securityCouncil, uint256 currrentNonce, uint256 providedNonce
+    );
 
     /// @dev Used in the gnosis safe as the first entry in their ownership linked list
     address public constant SENTINEL_OWNERS = address(0x1);
@@ -40,8 +42,8 @@ contract SecurityCouncilMemberSyncAction is ActionExecutionRecord {
         uint256 updateNonce = getUpdateNonce(_securityCouncil);
         if (_nonce <= updateNonce) {
             // when nonce is too now, we simply return, we don't revert.
-            // this way, rexecution for outbox execution messages or retryable tickets can't be attempted
-            emit UpdateNonceTooLow(updateNonce, _nonce);
+            // this way an out of date update will actual execute, rather than remaining in an unexecuted state forever
+            emit UpdateNonceTooLow(_securityCouncil, updateNonce, _nonce);
             return false;
         }
 
