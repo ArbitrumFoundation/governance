@@ -184,6 +184,7 @@ contract E2E is Test, DeployGnosisWithModule {
     uint256 removalGovProposalThreshold = 10e5;
     uint256 removalGovVoteSuccessNumerator = 201;
     uint64 removalGovMinPeriodAfterQuorum = 49;
+    uint256 removalProposalExpirationBlocks = 139;
 
     uint256 nomineeVettingDuration = 100;
     address nomineeVetter = address(437);
@@ -376,6 +377,7 @@ contract E2E is Test, DeployGnosisWithModule {
                 removalGovProposalThreshold: removalGovProposalThreshold,
                 removalGovVoteSuccessNumerator: removalGovVoteSuccessNumerator,
                 removalGovMinPeriodAfterQuorum: removalGovMinPeriodAfterQuorum,
+                removalProposalExpirationBlocks: removalProposalExpirationBlocks,
                 securityCouncils: vars.councilData,
                 firstNominationStartDate: nominationStart,
                 nomineeVettingDuration: nomineeVettingDuration,

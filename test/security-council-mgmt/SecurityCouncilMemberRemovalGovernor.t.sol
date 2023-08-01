@@ -32,6 +32,7 @@ contract SecurityCouncilMemberRemovalGovernorTest is Test {
     uint256 quorumNumerator = 500;
     uint256 proposalThreshold = 0;
     uint64 initialVoteExtension = 5;
+    uint256 proposalExpirationBlocks = 15;
 
     address[] stubAddressArray = [address(640)];
     address someRando = address(741);
@@ -85,7 +86,8 @@ contract SecurityCouncilMemberRemovalGovernorTest is Test {
             votingPeriod,
             quorumNumerator,
             proposalThreshold,
-            initialVoteExtension
+            initialVoteExtension,
+            proposalExpirationBlocks
         );
         validTargets[0] = address(securityCouncilManager);
         validCallDatas[0] =
@@ -111,7 +113,8 @@ contract SecurityCouncilMemberRemovalGovernorTest is Test {
             votingPeriod,
             quorumNumerator,
             proposalThreshold,
-            initialVoteExtension
+            initialVoteExtension,
+            proposalExpirationBlocks
         );
     }
 
@@ -326,7 +329,7 @@ contract SecurityCouncilMemberRemovalGovernorTest is Test {
 
         assertEq(
             scRemovalGov.proposalExpirationDeadline(proposalId),
-            scRemovalGov.proposalDeadline(proposalId) + scRemovalGov.PROPOSAL_EXPIRATION_DURATION()
+            scRemovalGov.proposalDeadline(proposalId) + scRemovalGov.proposalExpirationBlocks()
         );
     }
 

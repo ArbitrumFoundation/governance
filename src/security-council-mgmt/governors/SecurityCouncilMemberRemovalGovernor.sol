@@ -65,13 +65,15 @@ contract SecurityCouncilMemberRemovalGovernor is
         uint256 _votingPeriod,
         uint256 _quorumNumerator,
         uint256 _proposalThreshold,
-        uint64 _minPeriodAfterQuorum
+        uint64 _minPeriodAfterQuorum,
+        uint256 _proposalExpirationBlocks
     ) public initializer {
         __GovernorSettings_init(_votingDelay, _votingPeriod, _proposalThreshold);
         __GovernorCountingSimple_init();
         __GovernorVotes_init(_token);
         __ArbitrumGovernorVotesQuorumFraction_init(_quorumNumerator);
         __GovernorPreventLateQuorum_init(_minPeriodAfterQuorum);
+        __ArbitrumGovernorProposalExpirationUpgradeable_init(_proposalExpirationBlocks);
         _transferOwnership(_owner);
 
         if (!Address.isContract(address(_securityCouncilManager))) {
@@ -251,6 +253,13 @@ contract SecurityCouncilMemberRemovalGovernor is
         override(ArbitrumGovernorProposalExpirationUpgradeable, GovernorUpgradeable)
         returns (ProposalState)
     {
+        // We override the state to transition to expire unexecuted proposals
+        // This is because of potential race conditions between the removal governor and other
+        // parties (normal elections + security council) calling the other functions on the security council manager
+        // The manager does some checks to ensure that the removal can occur (eg the account is a member) - if these checks fail
+        // then the proposal in here will fail. If this is the case we want the proposal to expire
+        // after some time so that it doesnt become executable (in an unexpected way) far in the future due
+        // to normal changes in the security council membership.
         return ArbitrumGovernorProposalExpirationUpgradeable.state(proposalId);
     }
 }

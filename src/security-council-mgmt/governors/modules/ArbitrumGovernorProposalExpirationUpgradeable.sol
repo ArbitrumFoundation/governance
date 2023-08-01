@@ -3,16 +3,28 @@ pragma solidity 0.8.16;
 
 import "@openzeppelin/contracts-upgradeable/governance/GovernorUpgradeable.sol";
 
-/// @title ArbitrumGovernorProposalExpirationUpgradeable
+/// @title  ArbitrumGovernorProposalExpirationUpgradeable
 /// @notice GovernorUpgradeable whose proposals expire after a certain amount of time
+///         Proposals that have succeeded transition to the Expired state after the expiration time
 abstract contract ArbitrumGovernorProposalExpirationUpgradeable is
     Initializable,
     GovernorUpgradeable
 {
-    uint256 constant BLOCK_TIME = 12;
+    /// @notice The number of blocks after which a Succeeeded proposal transitions to Expired
+    uint256 public proposalExpirationBlocks;
 
-    /// @notice Time (in blocks) after which a successful proposal expires
-    uint256 public constant PROPOSAL_EXPIRATION_DURATION = 2 weeks / BLOCK_TIME;
+    function __ArbitrumGovernorProposalExpirationUpgradeable_init(uint256 _proposalExpirationBlocks)
+        internal
+        onlyInitializing
+    {
+        __ArbitrumGovernorProposalExpirationUpgradeable_init_unchained(_proposalExpirationBlocks);
+    }
+
+    function __ArbitrumGovernorProposalExpirationUpgradeable_init_unchained(
+        uint256 _proposalExpirationBlocks
+    ) internal onlyInitializing {
+        proposalExpirationBlocks = _proposalExpirationBlocks;
+    }
 
     /// @notice Returns the state of a proposal, given its id
     /// @dev    Overridden to return Expired if the proposal has succeeded but has expired
@@ -31,7 +43,7 @@ abstract contract ArbitrumGovernorProposalExpirationUpgradeable is
 
     /// @notice The block at which the proposal expires
     function proposalExpirationDeadline(uint256 proposalId) public view returns (uint256) {
-        return _proposalExpirationCountdownStart(proposalId) + PROPOSAL_EXPIRATION_DURATION;
+        return _proposalExpirationCountdownStart(proposalId) + proposalExpirationBlocks;
     }
 
     /// @notice Returns the block number at which the proposal expiration countdown starts
@@ -49,5 +61,5 @@ abstract contract ArbitrumGovernorProposalExpirationUpgradeable is
      * variables without shifting down storage in the inheritance chain.
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
      */
-    uint256[50] private __gap;
+    uint256[49] private __gap;
 }
