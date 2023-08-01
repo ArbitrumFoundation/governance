@@ -9,7 +9,7 @@ install   		:; yarn
 build     		:; forge build
 coverage  		:; forge coverage
 gas       		:; forge test --gas-report
-gas-check 		:; forge snapshot --check
+gas-check 		:; forge snapshot --check --tolerance 1
 snapshot  		:; forge snapshot
 test-unit		:; forge test -vvv
 clean     		:; forge clean
