@@ -132,10 +132,24 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
         assertEq(uint256(governor.currentCohort()), uint256(Cohort.FIRST));
         assertEq(uint256(governor.otherCohort()), uint256(Cohort.SECOND));
         vm.warp(expectedStartTimestamp);
-        governor.createElection();
+        uint256 firstProposalId = governor.createElection();
         assertEq(governor.electionCount(), 1);
         assertEq(uint256(governor.currentCohort()), uint256(Cohort.FIRST));
         assertEq(uint256(governor.otherCohort()), uint256(Cohort.SECOND));
+
+        // if there has been one election created, the nominee gov will (should) call memberGov.state() to check if the previous election has been executed
+        // here we mock it to be not Executed and expect that createElection will revert
+        _mockMemberGovState(IGovernorUpgradeable.ProposalState.Succeeded);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                SecurityCouncilNomineeElectionGovernor.LastMemberElectionNotExecuted.selector,
+                firstProposalId
+            )
+        );
+        governor.createElection();
+
+        // now mock state to be executed so we can run other tests
+        _mockMemberGovState(IGovernorUpgradeable.ProposalState.Executed);
 
         // we should not be able to create another election before 6 months have passed
         expectedStartTimestamp = _datePlusMonthsToTimestamp(initParams.firstNominationStartDate, 6);
@@ -325,6 +339,25 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
         _mockGetPastVotes(_voter(0), governor.quorum(proposalId));
         _castVoteForContender(proposalId, _voter(0), _contender(0), governor.quorum(proposalId));
 
+        // should fail if called by non nominee vetter
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                SecurityCouncilNomineeElectionGovernor.OnlyNomineeVetter.selector
+            )
+        );
+        governor.includeNominee(proposalId, _contender(0));
+
+        // should fail if state is not Succeeded
+        vm.roll(governor.proposalDeadline(proposalId));
+        vm.prank(initParams.nomineeVetter);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                SecurityCouncilNomineeElectionGovernor.ProposalNotSucceededState.selector,
+                1 // active
+            )
+        );
+        governor.includeNominee(proposalId, _contender(0));
+
         // should fail if the account is already a nominee
         vm.roll(governor.proposalDeadline(proposalId) + 1);
         vm.prank(initParams.nomineeVetter);
@@ -351,7 +384,9 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
         governor.includeNominee(proposalId, _contender(1));
 
         // should succeed if the account is not a nominee, we havent reached the target nominee count, and the account is not a member of the opposite cohort
+        // should succeed even if past the vetting deadline
         _mockCohortIncludes(Cohort.SECOND, _contender(1), false);
+        vm.roll(governor.proposalVettingDeadline(proposalId) + 1);
         vm.prank(initParams.nomineeVetter);
         governor.includeNominee(proposalId, _contender(1));
 
@@ -641,6 +676,15 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
         assertEq(initParams.securityCouncilManager.cohortSize(), count);
     }
 
+    /// @dev Mocks the state of the governor contract (for all proposal ids)
+    function _mockMemberGovState(IGovernorUpgradeable.ProposalState state) internal {
+        vm.mockCall(
+            address(initParams.securityCouncilMemberElectionGovernor),
+            abi.encodeWithSelector(IGovernorUpgradeable.state.selector),
+            abi.encode(state)
+        );
+    }
+
     function _execute(uint256 electionIndex, bytes memory revertMsg) internal {
         (
             address[] memory targets,
@@ -677,6 +721,9 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
     }
 
     function _propose() internal returns (uint256) {
+        // mock the member gov state to be executed
+        _mockMemberGovState(IGovernorUpgradeable.ProposalState.Executed);
+
         // we need to mock getPastVotes for the proposer
         _mockGetPastVotes({account: address(proposer), votes: 0});
 

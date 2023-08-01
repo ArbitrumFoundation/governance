@@ -32,6 +32,7 @@ struct DeployParams {
     uint256 removalGovProposalThreshold;
     uint256 removalGovVoteSuccessNumerator;
     uint64 removalGovMinPeriodAfterQuorum;
+    uint256 removalProposalExpirationBlocks;
     SecurityCouncilData[] securityCouncils;
     Date firstNominationStartDate;
     uint256 nomineeVettingDuration;
@@ -66,6 +67,7 @@ contract L2SecurityCouncilMgmtFactory is Ownable {
     error AddressNotInCouncil(address[] securityCouncil, address account);
     error InvalidCohortsSize(uint256 councilSize, uint256 firstCohortSize, uint256 secondCohortSize);
 
+    /// @dev deploys a transparent proxy for the given implementation contract
     function _deployProxy(address proxyAdmin, address impl, bytes memory initData)
         internal
         returns (address)
@@ -73,6 +75,9 @@ contract L2SecurityCouncilMgmtFactory is Ownable {
         return address(new TransparentUpgradeableProxy(impl, proxyAdmin, initData));
     }
 
+    /// @notice deploys the L2 Security Council management contracts
+    /// @param  dp the deployment parameters
+    /// @param  impls contract implementations to deploy proxies for
     function deploy(DeployParams memory dp, ContractImplementations memory impls)
         external
         onlyOwner
@@ -183,6 +188,7 @@ contract L2SecurityCouncilMgmtFactory is Ownable {
         return deployedContracts;
     }
 
+    /// @dev initializes the removal governor
     function _initRemovalGov(
         DeployParams memory dp,
         ISecurityCouncilManager _securityCouncilManager,
@@ -197,10 +203,12 @@ contract L2SecurityCouncilMgmtFactory is Ownable {
             _votingPeriod: dp.removalGovVotingPeriod,
             _quorumNumerator: dp.removalGovQuorumNumerator,
             _proposalThreshold: dp.removalGovProposalThreshold,
-            _minPeriodAfterQuorum: dp.removalGovMinPeriodAfterQuorum
+            _minPeriodAfterQuorum: dp.removalGovMinPeriodAfterQuorum,
+            _proposalExpirationBlocks: dp.removalProposalExpirationBlocks
         });
     }
 
+    /// @dev initializes the election governors
     function _initElectionGovernors(
         DeployParams memory dp,
         ISecurityCouncilManager securityCouncilManager,

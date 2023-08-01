@@ -93,6 +93,7 @@ contract SecurityCouncilNomineeElectionGovernor is
     error ProposalIdMismatch(uint256 nomineeProposalId, uint256 memberProposalId);
     error QuorumNumeratorTooLow(uint256 quorumNumeratorValue);
     error CastVoteDisabled();
+    error LastMemberElectionNotExecuted(uint256 prevProposalId);
 
     constructor() {
         _disableInitializers();
@@ -105,7 +106,7 @@ contract SecurityCouncilNomineeElectionGovernor is
         __SecurityCouncilNomineeElectionGovernorCounting_init();
         __ArbitrumGovernorVotesQuorumFraction_init(params.quorumNumeratorValue);
         __GovernorSettings_init(0, params.votingPeriod, 0); // votingDelay and proposalThreshold are set to 0
-        __SecurityCouncilNomineeElectionGovernorIndexingTiming_init(
+        __SecurityCouncilNomineeElectionGovernorTiming_init(
             params.firstNominationStartDate, params.nomineeVettingDuration
         );
         _transferOwnership(params.owner);
@@ -130,13 +131,15 @@ contract SecurityCouncilNomineeElectionGovernor is
     }
 
     /// @notice Allows the nominee vetter to call certain functions
-    ///         Vetting takes places in a specific time period between voting and execution
-    ///         Vetting cannot occur outside of this time slot
-    modifier onlyNomineeVetterInVettingPeriod(uint256 proposalId) {
+    modifier onlyNomineeVetter() {
         if (msg.sender != nomineeVetter) {
             revert OnlyNomineeVetter();
         }
+        _;
+    }
 
+    /// @notice Some operations can only be performed during the vetting period.
+    modifier onlyVettingPeriod(uint256 proposalId) {
         // voting is over and the proposal must have succeeded, not active or executed
         ProposalState state_ = state(proposalId);
         if (state_ != ProposalState.Succeeded) {
@@ -156,6 +159,9 @@ contract SecurityCouncilNomineeElectionGovernor is
     ///         Can be called by anyone every 6 months.
     /// @return proposalId The id of the proposal
     function createElection() external returns (uint256 proposalId) {
+        // require that the last member election has executed
+        _requireLastMemberElectionHasExecuted();
+
         // each election has a deterministic start time
         uint256 thisElectionStartTs = electionToTimestamp(electionCount);
         if (block.timestamp < thisElectionStartTs) {
@@ -172,6 +178,34 @@ contract SecurityCouncilNomineeElectionGovernor is
         proposalId = GovernorUpgradeable.propose(targets, values, callDatas, description);
 
         electionCount++;
+    }
+
+    /// @dev Revert if the previous member election has not executed.
+    ///      Ensures that there are no unexpected behaviors from multiple elections running at the same time.
+    ///      If, for some reason, the previous member election is blocked,
+    ///      it is up to the security council or DAO to unblock the previous election before creating a new one.
+    function _requireLastMemberElectionHasExecuted() internal view {
+        if (electionCount == 0) {
+            return;
+        }
+
+        (
+            address[] memory prevTargets,
+            uint256[] memory prevValues,
+            bytes[] memory prevCallDatas,
+            string memory prevDescription
+        ) = getProposeArgs(electionCount - 1);
+
+        uint256 prevProposalId =
+            hashProposal(prevTargets, prevValues, prevCallDatas, keccak256(bytes(prevDescription)));
+
+        if (
+            IGovernorUpgradeable(address(securityCouncilMemberElectionGovernor)).state(
+                prevProposalId
+            ) != ProposalState.Executed
+        ) {
+            revert LastMemberElectionNotExecuted(prevProposalId);
+        }
     }
 
     /// @notice Put `msg.sender` up for nomination. Must be called before a contender can receive votes.
@@ -231,7 +265,8 @@ contract SecurityCouncilNomineeElectionGovernor is
     ///         Will revert if the provided account is not a nominee (had less than the required votes).
     function excludeNominee(uint256 proposalId, address nominee)
         external
-        onlyNomineeVetterInVettingPeriod(proposalId)
+        onlyNomineeVetter
+        onlyVettingPeriod(proposalId)
     {
         ElectionInfo storage election = _elections[proposalId];
         if (election.isExcluded[nominee]) {
@@ -248,14 +283,16 @@ contract SecurityCouncilNomineeElectionGovernor is
     }
 
     /// @notice Allows the nomineeVetter to explicitly include a nominee if there are fewer nominees than the target.
-    /// @dev    Can be called only after a proposal has succeeded (voting has ended) and before the nominee vetting period has ended.
+    /// @dev    Can be called only when a proposal is succeeded (voting has ended) and there are fewer compliant nominees than the target.
     ///         Will revert if the provided account is already a nominee
     ///         The Constitution must be followed adding nominees. For example this method can be used by the Foundation to add a
     ///         random member of the outgoing security council, if less than 6 members meet the threshold to become a nominee
-    function includeNominee(uint256 proposalId, address account)
-        external
-        onlyNomineeVetterInVettingPeriod(proposalId)
-    {
+    function includeNominee(uint256 proposalId, address account) external onlyNomineeVetter {
+        ProposalState state_ = state(proposalId);
+        if (state_ != ProposalState.Succeeded) {
+            revert ProposalNotSucceededState(state_);
+        }
+
         if (isNominee(proposalId, account)) {
             revert NomineeAlreadyAdded(account);
         }

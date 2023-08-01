@@ -32,6 +32,7 @@ contract SecurityCouncilMemberRemovalGovernorTest is Test {
     uint256 quorumNumerator = 500;
     uint256 proposalThreshold = 0;
     uint64 initialVoteExtension = 5;
+    uint256 proposalExpirationBlocks = 15;
 
     address[] stubAddressArray = [address(640)];
     address someRando = address(741);
@@ -85,7 +86,8 @@ contract SecurityCouncilMemberRemovalGovernorTest is Test {
             votingPeriod,
             quorumNumerator,
             proposalThreshold,
-            initialVoteExtension
+            initialVoteExtension,
+            proposalExpirationBlocks
         );
         validTargets[0] = address(securityCouncilManager);
         validCallDatas[0] =
@@ -111,7 +113,8 @@ contract SecurityCouncilMemberRemovalGovernorTest is Test {
             votingPeriod,
             quorumNumerator,
             proposalThreshold,
-            initialVoteExtension
+            initialVoteExtension,
+            proposalExpirationBlocks
         );
     }
 
@@ -318,5 +321,35 @@ contract SecurityCouncilMemberRemovalGovernorTest is Test {
         assertEq(
             abi.decode(data, (address)), memberToRemove, "separateSelector decodes to correct data"
         );
+    }
+
+    function testProposalExpirationDeadline() public {
+        uint256 proposalId =
+            scRemovalGov.propose(validTargets, validValues, validCallDatas, description);
+
+        assertEq(
+            scRemovalGov.proposalExpirationDeadline(proposalId),
+            scRemovalGov.proposalDeadline(proposalId) + scRemovalGov.proposalExpirationBlocks()
+        );
+    }
+
+    function testProposalDoesExpire() public {
+        uint256 proposalId =
+            scRemovalGov.propose(validTargets, validValues, validCallDatas, description);
+
+        // make the proposal succeed
+        vm.roll(scRemovalGov.proposalDeadline(proposalId));
+        vm.prank(tokenOwner);
+        scRemovalGov.castVote(proposalId, 1);
+
+        // roll to right before expiration
+        vm.roll(scRemovalGov.proposalExpirationDeadline(proposalId));
+
+        assertTrue(scRemovalGov.state(proposalId) == IGovernorUpgradeable.ProposalState.Succeeded);
+
+        // roll to the end of the expiration period
+        vm.roll(scRemovalGov.proposalExpirationDeadline(proposalId) + 1);
+
+        assertTrue(scRemovalGov.state(proposalId) == IGovernorUpgradeable.ProposalState.Expired);
     }
 }
