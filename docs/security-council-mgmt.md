@@ -1,10 +1,8 @@
 # Security Council Management Contracts
 
-todo: removal gov stuff
-
 These contracts facilitate Security Council management and elections. 
 
-For background information see sections 3 and 4 of the [Constitution of the Arbitrum DAO](https://docs.arbitrum.foundation/dao-constitution) as well as [this general overview of Arbitrum Governance](https://github.com/ArbitrumFoundation/governance/blob/main/docs/overview.md)
+For background information see sections 3 and 4 of the [Constitution of the Arbitrum DAO](https://docs.arbitrum.foundation/dao-constitution). The election flow also makes use of existing Arbitrum Governance [Arbitrum Governance](https://github.com/ArbitrumFoundation/governance/blob/main/docs/overview.md) contracts - the Timelocks and the Action system - so these are required reading for understanding the system.
 
 # High-level Election Overview
 
@@ -44,13 +42,13 @@ This stage consists of handling election timing, candidate registration, candida
 - **Election creation.** Elections can be created by anyone, but only every 6 months. The election alternates between targeting the positions on the two cohorts. Once created, this first stage of the election process lasts for 7 days.
 - **Candidate registration.** During these 7 days, any candidate can register, unless they are already a member of the other cohort. Members of the current cohort (the cohort up for election) are allowed to register for re-election.
 - **Endorsing candidates.** Delegates can endorse a candidate during this 7 day window. A single delegate can split their vote across multiple candidates. No candidate can accrue more than 0.2% of all votable tokens.
-- **Fallback in case of too few candidates.** In the event that fewer than 6 candidates receive a 0.2% endorsement, outgoing members of the cohort up for election will be selected to make up to 6 candidates.
+- **Fallback in case of too few candidates.** In the event that fewer than 6 candidates receive a 0.2% endorsement, the Arbitrum Foundation will randomly select members from the outgoing cohort to make up to 6 candidates.
 
 ### Implementation details
 
 The nominee selection process is implemented by the `SecurityCouncilNomineeElectionGovernor` contract. 
 
-It inherits most of its functionality from the OpenZeppelin Governor contracts and we have extended it with an extra feature: 
+It inherits most of its functionality from the OpenZeppelin Governor contracts, extended for some addition features: 
 
 - Custom counting module to allow delegates to endorse multiple candidates.
 - Overridden proposal and execution to make the governor single purpose.
@@ -63,7 +61,7 @@ This governor contract has the following general interface relevant to the first
 
 ## 2. Compliance check by the Foundation (14 days)
 
-The Foundation will be given 14 days to vet the prospective nominees. If they find that a candidate does not meet the compliance check, they can exclude the candidate from progressing to the next stage. Note that grounds for exclusion could include greater than 3 members of a given organisation being represented in the nominee set (as described in section 4 of the Constitution).
+The Foundation will be given 14 days to vet the prospective nominees. If they find that a candidate does not meet the compliance check, they can exclude the candidate from progressing to the next stage. The compliance rules are not detailed here, and will instead be published by the Foundation, but note that grounds for exclusion will include greater than 3 members of a given organisation being represented in the nominee set (as described in section 4 of the Constitution).
 
 ### Implementation details
 
@@ -71,7 +69,7 @@ The foundation can exclude a nominee by calling `excludeNominee` function on the
 
 If there are less than 6 eligible nominees, then the Foundation will consult with outgoing members of the cohort on whether they will continue in this role for another 12 months. Members of the existing cohort may be selected at random to fill the remaining seats. To fill an empty seat, the Foundation calls `includeNominee`
 
-The Governor smart contract enforces the 2 week time period and the Foundation must exclude/include nominees by this deadline.
+The Governor smart contract enforces that at least a 2 week time period be provided to the Foundation to exclude/include nominees by this deadline. If 6 nominees are not selected by this deadline this phase will extend until 6 are included.
 
 Once the compliance check has completed, anyone can call the `execute` function on the `SecurityCouncilNomineeElectionGovernor` to proceed to the member election stage.
 
@@ -159,6 +157,10 @@ To do this the existing [Upgrade Executor contracts](https://github.com/Arbitrum
 
 The Constitution also declares some other additional affordances to certain parties
 
-1. The DAO can vote to remove a member prior to the end of their term, as long as 10% of possible votes are cast in favour and 5/6 of cast votes are in favour. This will be implemented as a governor with correct quorum and proposal passed thresholds. This governor will be given the rights to call `removeMember` on the `SecurityCouncilManager`.
+1. The DAO can vote to remove a member prior to the end of their term, as long as 10% of possible votes are cast in favour and 5/6 of cast votes are in favour. This is implemented as a governor with correct quorum and proposal passed thresholds. This governor will be given the rights to call `removeMember` on the `SecurityCouncilManager`.
 2. The Security Council can remove a member prior to the end of their term, if 9 of 12 members agree. The 9 of 12 council will be given the rights to call `removeMember` on the `SecurityCouncilManager`.
 3. The Security Council can add a member once one has been removed, if 9 of 12 members agree and if there are less than 12 members currently on the council. The 9 of 12 council will be given the rights to call `addMember` on the `SecurityCouncilManager`.
+
+
+
+CHRIS: TODO: update this section above
