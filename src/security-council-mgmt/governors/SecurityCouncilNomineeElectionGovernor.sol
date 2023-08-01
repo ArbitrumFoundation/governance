@@ -131,13 +131,15 @@ contract SecurityCouncilNomineeElectionGovernor is
     }
 
     /// @notice Allows the nominee vetter to call certain functions
-    ///         Vetting takes places in a specific time period between voting and execution
-    ///         Vetting cannot occur outside of this time slot
-    modifier onlyNomineeVetterInVettingPeriod(uint256 proposalId) {
+    modifier onlyNomineeVetter {
         if (msg.sender != nomineeVetter) {
             revert OnlyNomineeVetter();
         }
+        _;
+    }
 
+    /// @notice Some operations can only be performed during the vetting period.
+    modifier onlyVettingPeriod(uint256 proposalId) {
         // voting is over and the proposal must have succeeded, not active or executed
         ProposalState state_ = state(proposalId);
         if (state_ != ProposalState.Succeeded) {
@@ -263,7 +265,8 @@ contract SecurityCouncilNomineeElectionGovernor is
     ///         Will revert if the provided account is not a nominee (had less than the required votes).
     function excludeNominee(uint256 proposalId, address nominee)
         external
-        onlyNomineeVetterInVettingPeriod(proposalId)
+        onlyNomineeVetter
+        onlyVettingPeriod(proposalId)
     {
         ElectionInfo storage election = _elections[proposalId];
         if (election.isExcluded[nominee]) {
@@ -280,14 +283,19 @@ contract SecurityCouncilNomineeElectionGovernor is
     }
 
     /// @notice Allows the nomineeVetter to explicitly include a nominee if there are fewer nominees than the target.
-    /// @dev    Can be called only after a proposal has succeeded (voting has ended) and before the nominee vetting period has ended.
+    /// @dev    Can be called only when a proposal is succeeded (voting has ended) and there are fewer compliant nominees than the target.
     ///         Will revert if the provided account is already a nominee
     ///         The Constitution must be followed adding nominees. For example this method can be used by the Foundation to add a
     ///         random member of the outgoing security council, if less than 6 members meet the threshold to become a nominee
     function includeNominee(uint256 proposalId, address account)
         external
-        onlyNomineeVetterInVettingPeriod(proposalId)
+        onlyNomineeVetter
     {
+        ProposalState state_ = state(proposalId);
+        if (state_ != ProposalState.Succeeded) {
+            revert ProposalNotSucceededState(state_);
+        }
+
         if (isNominee(proposalId, account)) {
             revert NomineeAlreadyAdded(account);
         }
