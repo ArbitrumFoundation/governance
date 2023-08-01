@@ -1,6 +1,6 @@
 # Nominee vetting guidelines
 
-7 days after an election has begun there is a 14 day vetting period to allow the Foundation to conduct compliance checks on each of the nominees that have received 0.2% of votable tokens. They can then exclude nominees who fail these checks, and include nominees if not enough nominees are available. The Member Election Governor authorises a specific address that is controlled by the Foundation to do these actions.
+7 days after an election has begun there is a 14 day vetting period to allow the Foundation to conduct compliance checks on each of the nominees that have received 0.2% of votable tokens. They can then exclude nominees who fail these checks, and include nominees if fewer than 6 nominees have been selected in the Nominee Election phase. The Member Election Governor authorises a specific address that is controlled by the Foundation to do these actions.
 
 ### Foundation vetting security best practice
 
