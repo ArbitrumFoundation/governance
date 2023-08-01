@@ -4,7 +4,7 @@ pragma solidity 0.8.16;
 import "../../interfaces/ISecurityCouncilManager.sol";
 
 import "@openzeppelin/contracts-upgradeable/governance/GovernorUpgradeable.sol";
-import "lib/solady/src/utils/DateTimeLib.sol";
+import "solady/utils/DateTimeLib.sol";
 import "../../Common.sol";
 
 /// @title SecurityCouncilNomineeElectionGovernorTiming
