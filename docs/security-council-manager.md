@@ -20,7 +20,7 @@ Can only be called by the Member Election Governor. It is used to replace a whol
 
 ### Remove member
 
-Can be called by the Emergency Security Council and the Removal Governor. Is used to remove a member. The Constitution allows members to be removed if 9 of 12 members wish them to be, or if the DAO votes to remove a member and 5/6 of voted tokens are in favour of removal.
+Can be called by the Emergency Security Council and the Removal Governor. Is used to remove a member. The Constitution allows members to be removed if 9 of 12 members wish them to be, or if the DAO votes to remove a member and 10% of votable tokens cast a vote, with 5/6 of voted tokens are in favour of removal.
 
 ### Add member
 
