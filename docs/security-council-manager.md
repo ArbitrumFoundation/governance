@@ -24,7 +24,7 @@ Can be called by the Emergency Security Council and the Removal Governor. Is use
 
 ### Add member
 
-Can only be called by the Emergency Security Council. Can only be called if the there are less than 12 members in the Security Council because one has been removed.
+Can only be called by the Emergency Security Council. Can only be called if the there are less than 12 members in the Security Council because at least one has been removed.
 
 ### Replace member
 
