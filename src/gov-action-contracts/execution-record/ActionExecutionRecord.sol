@@ -4,9 +4,9 @@ pragma solidity 0.8.16;
 import "./KeyValueStore.sol";
 
 /// @notice Stores a record that the action executed.
-///         Can be useful if for enforcing dependency between actions
+///         Can be useful for enforcing dependency between actions
 /// @dev    This contract is designed to be inherited by action contracts, so it
-///         it doesn't use any local storage
+///         it must not use any local storage
 contract ActionExecutionRecord {
     /// @notice The key value store used to record the execution
     /// @dev    Local storage cannot be used in action contracts as they're delegate called into
