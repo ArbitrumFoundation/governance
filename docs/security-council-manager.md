@@ -40,7 +40,7 @@ Since the Security Council Manager can be updated from a number of sources race 
 Below we'll explain the possible sources of races, and how they're mitigated.
 
 ### Standard elections
-Standard elections take place every 6 months, and last 42 days before replacing the cohort in the Manager. The election governors do checks to ensure that a contender will not become a member of both cohort, and this is then later enforced in Manager. However, whilst the elections are ongoing the membership in the Manager may be manipulated causing the result of the election to conflict (eg by adding a potential nominee to the previous cohort in the manager). This would cause the election execution to revert.
+Standard elections take place every 6 months, and last 42 days before replacing the cohort in the Manager. The election governors do checks to ensure that a contender will not become a member of both cohorts, and this is then later enforced in Manager. However, whilst the elections are ongoing the membership in the Manager may be manipulated causing the result of the election to conflict (eg by adding a potential nominee to the previous cohort in the manager). This would cause the election execution to revert.
 
 The election contracts deal with this situation by essentially pausing the election pipeline until it is "unblocked". The election result will wait a an unexecuted proposal in the Member Election Governor, the Nominee Selection Governor will not allow the next election to be created until the previous proposal has executed, therefore meaning that no election results can be propagated to the Manager until the conflict is resolved.
 
