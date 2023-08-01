@@ -174,7 +174,7 @@ Voting and proposing can occur using the standard governance UIs.
 
 The Security Council can remove a member prior to the end of their term, if 9 of 12 members agree. The 9 of 12 council has the rights to call `removeMember` on the `SecurityCouncilManager`.
 
-The Security Council can also add a member once one has been removed. If 9 of 12 members agree and if there are less than 12 members currently on the council. The 9 of 12 council is be given the rights to call `addMember` on the `SecurityCouncilManager`.
+The Security Council can also add a member once one has been removed if 9 of 12 members agree and if there are less than 12 members currently on the council. The 9 of 12 council is be given the rights to call `addMember` on the `SecurityCouncilManager`.
 
 ### Overall diagram
 Below is a diagram showing the interaction between the different components described above:
