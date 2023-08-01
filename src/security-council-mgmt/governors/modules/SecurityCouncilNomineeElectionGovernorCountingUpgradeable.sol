@@ -139,7 +139,7 @@ abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is
         return _elections[proposalId].isNominee[contender];
     }
 
-    /// @notice The umber of nominees for a given proposal
+    /// @notice The number of nominees for a given proposal
     function nomineeCount(uint256 proposalId) public view returns (uint256) {
         return _elections[proposalId].nominees.length;
     }
