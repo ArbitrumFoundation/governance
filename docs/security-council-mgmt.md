@@ -176,6 +176,10 @@ The Security Council can remove a member prior to the end of their term, if 9 of
 
 The Security Council can also add a member once one has been removed. If 9 of 12 members agree and if there are less than 12 members currently on the council. The 9 of 12 council is be given the rights to call `addMember` on the `SecurityCouncilManager`.
 
+### Overall diagram
+Below is a diagram showing the interaction between the different components described above:
+![](./security-council-colors.png)
+
 ## Settings of interest
 Some of the following settings are updateable, others are presently not, see the in-code function documentation for how/if to update these settings and who can update them. The Constitution dictates the values of many of the settings and so in many cases will also need to be updated.
 
