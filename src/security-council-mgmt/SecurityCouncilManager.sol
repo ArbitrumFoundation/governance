@@ -396,7 +396,8 @@ contract SecurityCouncilManager is
             actionDatas[i] = abi.encodeWithSelector(
                 SecurityCouncilMemberSyncAction.perform.selector,
                 securityCouncilData.securityCouncil,
-                newMembers
+                newMembers,
+                nonce
             );
         }
 
@@ -417,7 +418,9 @@ contract SecurityCouncilManager is
     /// @dev Create a union of the second and first cohort, then update all Security Councils under management with that unioned array.
     ///      Updates will need to be scheduled through timelocks and target upgrade executors
     function _scheduleUpdate() internal {
-        // always update the nonce - this is used to ensure that proposals in the timelocks are unique
+        // always update the nonce
+        // this is used to ensure that proposals in the timelocks are unique
+        // and calls to the upgradeExecutors are in the correct order
         updateNonce++;
         (address[] memory newMembers, address to, bytes memory data) =
             getScheduleUpdateInnerData(updateNonce);

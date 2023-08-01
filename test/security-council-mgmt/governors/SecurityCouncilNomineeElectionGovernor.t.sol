@@ -132,10 +132,24 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
         assertEq(uint256(governor.currentCohort()), uint256(Cohort.FIRST));
         assertEq(uint256(governor.otherCohort()), uint256(Cohort.SECOND));
         vm.warp(expectedStartTimestamp);
-        governor.createElection();
+        uint256 firstProposalId = governor.createElection();
         assertEq(governor.electionCount(), 1);
         assertEq(uint256(governor.currentCohort()), uint256(Cohort.FIRST));
         assertEq(uint256(governor.otherCohort()), uint256(Cohort.SECOND));
+
+        // if there has been one election created, the nominee gov will (should) call memberGov.state() to check if the previous election has been executed
+        // here we mock it to be not Executed and expect that createElection will revert
+        _mockMemberGovState(IGovernorUpgradeable.ProposalState.Succeeded);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                SecurityCouncilNomineeElectionGovernor.LastMemberElectionNotExecuted.selector,
+                firstProposalId
+            )
+        );
+        governor.createElection();
+
+        // now mock state to be executed so we can run other tests
+        _mockMemberGovState(IGovernorUpgradeable.ProposalState.Executed);
 
         // we should not be able to create another election before 6 months have passed
         expectedStartTimestamp = _datePlusMonthsToTimestamp(initParams.firstNominationStartDate, 6);
@@ -641,6 +655,15 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
         assertEq(initParams.securityCouncilManager.cohortSize(), count);
     }
 
+    /// @dev Mocks the state of the governor contract (for all proposal ids)
+    function _mockMemberGovState(IGovernorUpgradeable.ProposalState state) internal {
+        vm.mockCall(
+            address(initParams.securityCouncilMemberElectionGovernor),
+            abi.encodeWithSelector(IGovernorUpgradeable.state.selector),
+            abi.encode(state)
+        );
+    }
+
     function _execute(uint256 electionIndex, bytes memory revertMsg) internal {
         (
             address[] memory targets,
@@ -677,6 +700,9 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
     }
 
     function _propose() internal returns (uint256) {
+        // mock the member gov state to be executed
+        _mockMemberGovState(IGovernorUpgradeable.ProposalState.Executed);
+
         // we need to mock getPastVotes for the proposer
         _mockGetPastVotes({account: address(proposer), votes: 0});
 
