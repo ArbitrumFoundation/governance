@@ -5,6 +5,7 @@ import "@arbitrum/nitro-contracts/src/bridge/IBridge.sol";
 import "@arbitrum/nitro-contracts/src/bridge/IInbox.sol";
 import "@arbitrum/nitro-contracts/src/bridge/IOutbox.sol";
 import "@arbitrum/nitro-contracts/src/bridge/ISequencerInbox.sol";
+import "@arbitrum/nitro-contracts/src/rollup/IRollupAdmin.sol";
 import "@arbitrum/nitro-contracts/src/rollup/IRollupLogic.sol";
 
 interface IL1Timelock {
