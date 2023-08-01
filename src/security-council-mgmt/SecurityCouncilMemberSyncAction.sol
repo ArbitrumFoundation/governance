@@ -10,7 +10,10 @@ import "../gov-action-contracts/execution-record/ActionExecutionRecord.sol";
 contract SecurityCouncilMemberSyncAction is ActionExecutionRecord {
     error PreviousOwnerNotFound(address targetOwner, address securityCouncil);
     error ExecFromModuleError(bytes data, address securityCouncil);
-    error UpdateNonceTooLow(address securityCouncil, uint256 nonce);
+
+    event UpdateNonceTooLow(
+        address indexed securityCouncil, uint256 currrentNonce, uint256 providedNonce
+    );
 
     /// @dev Used in the gnosis safe as the first entry in their ownership linked list
     address public constant SENTINEL_OWNERS = address(0x1);
@@ -24,8 +27,10 @@ contract SecurityCouncilMemberSyncAction is ActionExecutionRecord {
     ///         Gnosis OwnerManager handles reverting if address(0) is passed to remove/add owner
     /// @param _securityCouncil The security council to update
     /// @param _updatedMembers  The new list of members. The Security Council will be updated to have this exact list of members
+    /// @return res indicates whether an update took place
     function perform(address _securityCouncil, address[] memory _updatedMembers, uint256 _nonce)
         external
+        returns (bool res)
     {
         // make sure that _nonce is greater than the last nonce
         // we do this to ensure that a previous update does not occur after a later one
@@ -34,8 +39,12 @@ contract SecurityCouncilMemberSyncAction is ActionExecutionRecord {
         // Additionally a retryable ticket could be used to execute the update, and since tickets
         // expire if not executed after some time, then allowing updates to be skipped means that the
         // system will not be blocked if a retryable ticket is expires
-        if (_nonce <= getUpdateNonce(_securityCouncil)) {
-            revert UpdateNonceTooLow({securityCouncil: _securityCouncil, nonce: _nonce});
+        uint256 updateNonce = getUpdateNonce(_securityCouncil);
+        if (_nonce <= updateNonce) {
+            // when nonce is too now, we simply return, we don't revert.
+            // this way an out of date update will actual execute, rather than remaining in an unexecuted state forever
+            emit UpdateNonceTooLow(_securityCouncil, updateNonce, _nonce);
+            return false;
         }
 
         // store the nonce as a record of execution
@@ -61,6 +70,7 @@ contract SecurityCouncilMemberSyncAction is ActionExecutionRecord {
                 _removeMember(securityCouncil, owner, threshold);
             }
         }
+        return true;
     }
 
     function _addMember(IGnosisSafe securityCouncil, address _member, uint256 _threshold)

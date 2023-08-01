@@ -199,23 +199,51 @@ contract SecurityCouncilMemberSyncActionTest is Test, DeployGnosisWithModule {
             contracts.kvStore.get(address(contracts.upgradeExecutor), nonceKey), 2, "nonce is 2"
         );
 
+        address[] memory newMembers = new address[](11);
+        for (uint256 i = 0; i < 11; i++) {
+            newMembers[i] = owners[i];
+        }
+
         // updates with nonce == to prev nonce should fail
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                SecurityCouncilMemberSyncAction.UpdateNonceTooLow.selector, contracts.safe, 2
-            )
+        bytes memory upgradeCallData = abi.encodeWithSelector(
+            SecurityCouncilMemberSyncAction.perform.selector, contracts.safe, newMembers, 2
         );
-        updateMembersTest(contracts, owners, 2);
+        vm.prank(executor);
+        contracts.upgradeExecutor.execute(address(contracts.action), upgradeCallData);
+        assertTrue(
+            TestUtil.areAddressArraysEqual(owners, IGnosisSafe(contracts.safe).getOwners()),
+            "old members preserved"
+        );
+
+        assertEq(
+            contracts.kvStore.get(address(contracts.upgradeExecutor), nonceKey),
+            2,
+            "nonce is still 2"
+        );
 
         // updates with nonce < prev nonce should fail
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                SecurityCouncilMemberSyncAction.UpdateNonceTooLow.selector, contracts.safe, 1
-            )
+        upgradeCallData = abi.encodeWithSelector(
+            SecurityCouncilMemberSyncAction.perform.selector, contracts.safe, newMembers, 1
         );
+        vm.prank(executor);
+        contracts.upgradeExecutor.execute(address(contracts.action), upgradeCallData);
+        assertTrue(
+            TestUtil.areAddressArraysEqual(owners, IGnosisSafe(contracts.safe).getOwners()),
+            "old members preserved"
+        );
+        assertEq(
+            contracts.kvStore.get(address(contracts.upgradeExecutor), nonceKey),
+            2,
+            "nonce is still 2"
+        );
+
         updateMembersTest(contracts, owners, 1);
 
         // updates with nonce > prev nonce should succeed
         updateMembersTest(contracts, owners, 3);
+
+        assertEq(
+            contracts.kvStore.get(address(contracts.upgradeExecutor), nonceKey), 3, "nonce is now 3"
+        );
     }
 }
