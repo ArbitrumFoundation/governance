@@ -46,7 +46,6 @@ contract SecurityCouncilMemberRemovalGovernor is
     }
 
     /// @notice Initialize the contract
-    /// @dev this method does not include an initializer modifier; it calls its parent's initiaze method which itself prevents repeated initialize calls
     /// @param _voteSuccessNumerator value that with denominator 10_000 determines the ration of for/against votes required for success
     /// @param _securityCouncilManager security council manager contract
     /// @param _token The address of the governance token
