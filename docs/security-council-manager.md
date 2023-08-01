@@ -2,7 +2,7 @@
 
 The Security Council Manager is the source of truth for the membership of all Security Councils on all chains where they are deployed. It contains a registered list of Security Councils, which it will update with any changes to membership.
 
-All changes to membership should be made through the manager, will then propogate these changes to the councils. Any changes made directly to the councils will be overwritten the next time the Manager pushes an update. As a reminder the normal flow for an election is:
+All changes to membership should be made through the manager, which will then propagate these changes to the councils. Any changes made directly to the councils will be overwritten the next time the Manager pushes an update. As a reminder the normal flow for an election is:
 - **SecurityCouncilNomineeElectionGovernor.createElection** - called at T+0 where T is a multiple of 6 months after the first election date
 - **SecurityCouncilNomineeElectionGovernor.execute** - called at T+21 days
 - **SecurityCouncilMemberElectionGovernor.execute** - called at T + 42 days
