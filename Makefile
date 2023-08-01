@@ -16,4 +16,5 @@ clean     		:; forge clean
 fmt       		:; forge fmt
 gen-network		:; yarn gen:network
 test      		:  test-unit
+sc-election-test:; FOUNDRY_MATCH_PATH='test/security-council-mgmt/**/*.t.sol' make test
 test-integration:; yarn test:integration

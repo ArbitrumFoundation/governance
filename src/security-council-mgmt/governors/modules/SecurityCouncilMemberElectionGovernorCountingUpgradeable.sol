@@ -3,7 +3,7 @@ pragma solidity 0.8.16;
 
 import "@openzeppelin/contracts-upgradeable/governance/GovernorUpgradeable.sol";
 
-import "lib/solady/src/utils/LibSort.sol";
+import "solady/utils/LibSort.sol";
 
 /// @title  SecurityCouncilMemberElectionGovernorCountingUpgradeable
 /// @notice Counting module for the SecurityCouncilMemberElectionGovernor.
