@@ -8,7 +8,7 @@ contract AIP4Action {
     IL2AddressRegistry public immutable l2GovAddressRegistry;
 
     bytes32 public constant newConstitutionHash =
-        0x9eaf992155313be93e92fd4d98aac416685297dea42413c83e639b7ddb89941b;
+        0x2498ca4a737c2d06c43799b5ddf5183b6e169359f68bea4b34775751528a2ee1;
 
     constructor(IL2AddressRegistry _l2GovAddressRegistry) {
         l2GovAddressRegistry = _l2GovAddressRegistry;

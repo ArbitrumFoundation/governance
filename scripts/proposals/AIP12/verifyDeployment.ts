@@ -15,7 +15,7 @@ const ARB_URL = process.env.ARB_URL;
 if (!ARB_URL) throw new Error("ARB_URL required");
 const expectedAddressRegistry = "0x56C4E9Eb6c63aCDD19AeC2b1a00e4f0d7aBda9d3";
 const expectedConstitutionHash =
-  "0x44618e85660b81480dc2e7296746216942fa5e5c6ad494bd3f8240e1bbdcdae4";
+  "0xaed12f8f0c5c303e864e3ec9cbea935ae0b7948d0d35790071de19c30e37a9fb";
 const expectedThreshold = utils.parseEther("1000000");
 
 const main = async () => {
