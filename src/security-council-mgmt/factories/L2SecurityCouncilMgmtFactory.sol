@@ -32,6 +32,7 @@ struct DeployParams {
     uint256 removalGovProposalThreshold;
     uint256 removalGovVoteSuccessNumerator;
     uint64 removalGovMinPeriodAfterQuorum;
+    uint256 removalProposalExpirationBlocks;
     SecurityCouncilData[] securityCouncils;
     Date firstNominationStartDate;
     uint256 nomineeVettingDuration;
@@ -202,7 +203,8 @@ contract L2SecurityCouncilMgmtFactory is Ownable {
             _votingPeriod: dp.removalGovVotingPeriod,
             _quorumNumerator: dp.removalGovQuorumNumerator,
             _proposalThreshold: dp.removalGovProposalThreshold,
-            _minPeriodAfterQuorum: dp.removalGovMinPeriodAfterQuorum
+            _minPeriodAfterQuorum: dp.removalGovMinPeriodAfterQuorum,
+            _proposalExpirationBlocks: dp.removalProposalExpirationBlocks
         });
     }
 
