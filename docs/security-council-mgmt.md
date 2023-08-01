@@ -1,6 +1,8 @@
-# Security Council Management Contracts
+# Security Council Election and Membership Management
 
-These contracts facilitate Security Council management and elections. 
+The pages documents an overview of the Security Council Election procedure, more detail on some specific components can be found in:
+* [Security Council Manager](./security-council-manager.md)
+* [Nominee vetting guidelines](./security-council-nominee-vetting.md)
 
 For background information see sections 3 and 4 of the [Constitution of the Arbitrum DAO](https://docs.arbitrum.foundation/dao-constitution). The election flow also makes use of existing Arbitrum Governance [Arbitrum Governance](https://github.com/ArbitrumFoundation/governance/blob/main/docs/overview.md) contracts - the Timelocks and the Action system - so these are required reading for understanding the system.
 
@@ -63,6 +65,8 @@ This governor contract has the following general interface relevant to the first
 
 The Foundation will be given 14 days to vet the prospective nominees. If they find that a candidate does not meet the compliance check, they can exclude the candidate from progressing to the next stage. The compliance rules are not detailed here, and will instead be published by the Foundation, but note that grounds for exclusion will include greater than 3 members of a given organisation being represented in the nominee set (as described in section 4 of the Constitution).
 
+For some further details and guidelines see [here](./security-council-nominee-vetting.md).
+
 ### Implementation details
 
 The foundation can exclude a nominee by calling `excludeNominee` function on the `SecurityCouncilNomineeElectionGovernor` contract.
@@ -116,6 +120,8 @@ The manager also provides some additional functionality to allow the security co
 - **Add a member.** After removing a member, the council can add a member
 - **Address rotation.** As a practical matter, a council member can rotate one of their own keys. This can only be done with the approval of at least 9/12 council members.
 
+See [Security Council Manager](./security-council-manager.md) as a source of truth for more details on how the Manager operates.
+
 ### Implementation details
 
 The manager functionality is contained within a custom `SecurityCouncilManager` smart contract. Since the `SecurityCouncilManager` is indirectly able to make calls to the standard `UpgradeExecutor` contracts which have far reaching powers, special care must be take to ensure the manager only makes council member updates.
@@ -157,10 +163,34 @@ To do this the existing [Upgrade Executor contracts](https://github.com/Arbitrum
 
 The Constitution also declares some other additional affordances to certain parties
 
-1. The DAO can vote to remove a member prior to the end of their term, as long as 10% of possible votes are cast in favour and 5/6 of cast votes are in favour. This is implemented as a governor with correct quorum and proposal passed thresholds. This governor will be given the rights to call `removeMember` on the `SecurityCouncilManager`.
-2. The Security Council can remove a member prior to the end of their term, if 9 of 12 members agree. The 9 of 12 council will be given the rights to call `removeMember` on the `SecurityCouncilManager`.
-3. The Security Council can add a member once one has been removed, if 9 of 12 members agree and if there are less than 12 members currently on the council. The 9 of 12 council will be given the rights to call `addMember` on the `SecurityCouncilManager`.
+### Removal Governor
+The DAO can vote to remove a member prior to the end of their term, as long as 10% of possible votes are cast in favour and 5/6 of cast votes are in favour. This is implemented as a governor with correct quorum and proposal passed thresholds. 
+
+It accepts proposals in the same format that normal governors do, however it overrides the propose function to check that these proposals are only executing a remove member function on the manager. This governor has the rights to call `removeMember` on the `SecurityCouncilManager`.
+
+Voting and proposing can occur using the standard governance UIs.
+
+### 9/12 Security Council
+
+The Security Council can remove a member prior to the end of their term, if 9 of 12 members agree. The 9 of 12 council has the rights to call `removeMember` on the `SecurityCouncilManager`.
+
+The Security Council can also add a member once one has been removed if 9 of 12 members agree and if there are less than 12 members currently on the council. The 9 of 12 council is be given the rights to call `addMember` on the `SecurityCouncilManager`.
+
+### Overall diagram
+Below is a diagram showing the interaction between the different components described above:
+![](./security-council-colors.png)
+
+## Settings of interest
+Some of the following settings are updateable, others are presently not, see the in-code function documentation for how/if to update these settings and who can update them. The Constitution dictates the values of many of the settings and so in many cases will also need to be updated.
+
+| Contract | Property | Notes |
+| --- | --- | --- |
+| SecurityCouncilManager | securityCouncils | If new security councils are created, either on existing chains or on new ones, their information should be added here so that they can receive membership updates |
+| SecurityCouncilManager | router | The router is used to locate Upgrade Executors on other chains, and form calldata for accessing them. The router itself is immutable, so if Upgrade Executors change locations, or new ones are added on other chains then a new UpgradeExecRouteBuilder will need to be created with the correct settings and its address updated on the Manager |
+| SecurityCouncilManager | cohortSize | There is no method for changing cohort size, but if this value needs to change it will be updated on Manager, or a new Manager deployed. One consideration here is that some operations are O(n^2) in the cohort size, so before setting a new cohort size these operations should be checked to see if they can still be executed. All usages of cohort size should also be checked. The threshold in the multisigs should also be considered when changing the cohort size. |
+| SecurityCouncilMemberElection GovernorCountingUpgradeable | fullWeightDuration | Sets the duration for which votes have full weight in during the member election phase. |
+| SecurityCouncilMember RemovalGovernor | voteSuccessNumerator | Determines the for/against ratio that can cause a removal proposal to pass. |
+| SecurityCouncilNominee ElectionGovernor | nomineeVetter | The address that can call includeNominee and excludeNominee. As mentioned above a multisig should be set to this address as changing it requires a Constiutional proposal. |
+| SecurityCouncilNominee ElectionGovernor | quorumNumeratorValue | There is no method for updating the quorum numerator value, doing so would require upgrading the contract. This value dictates the maximum possible number of nominees (currently 500 due to numerator being 20 and denominator being 10000), so when changing this number the length of time it takes to vet these nominees needs to be considered. Also the contracts do some O(n) operations, so these need to be checked to see if they’ll still execute with the new value |
 
 
-
-CHRIS: TODO: update this section above

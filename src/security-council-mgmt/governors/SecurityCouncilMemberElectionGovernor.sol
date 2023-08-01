@@ -123,12 +123,9 @@ contract SecurityCouncilMemberElectionGovernor is
         uint256 electionIndex = extractElectionIndex(callDatas);
 
         // it's possible for this call to fail because of checks in the security council manager
-        // getting into a state inconsistent with the elections
-        // if it does then the DAO or the security council will need to take action to either
-        // remove this election (upgrade this contract and cancel the proposal), or update the
-        // manager state to be consistent with this election and allow the cohort to be replaced
-        // One of these actions should be taken otherwise the election will stay in this contract
-        // and could be executed at a later unintended date.
+        // getting into a state inconsistent with the elections, if it does the Security Council
+        // will need to update the Manager so that this replaceCohort can go through
+        // Otherwise this and future elections will remain blocked.
         securityCouncilManager.replaceCohort({
             _newCohort: topNominees(proposalId),
             _cohort: electionIndexToCohort(electionIndex)
