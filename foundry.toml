@@ -1,3 +1,4 @@
+# when changing optimizer settings, make sure to also change settings in hardhat.config.ts
 [profile.default]
 src = 'src'
 out = 'out'
