@@ -9,8 +9,8 @@ if (!ARB_URL) throw new Error("ARB_URL required");
 if (!ETH_URL) throw new Error("ETH_URL required");
 
 const chainIDToActionAddress = {
-  42161: "0x984194FfA74486e74A273372321b759fEF2C87ac",
-  421613: "0x984194FfA74486e74A273372321b759fEF2C87ac",
+  42161: "0x85792f6BF346e3Bfd3A275318aDd2c44A1058447",
+  421613: "0x85792f6BF346e3Bfd3A275318aDd2c44A1058447",
 };
 
 const description = `
@@ -51,7 +51,7 @@ After all, it is not just about having a complete implementation, but ensuring a
 Revision to ArbitrumDAO Constitution
 The revised text focuses on the election beginning at the earliest possible date from the 15th September. Additionally, the election can only begin once an on-chain election system is installed via a separate Constitutional Vote.
 
-All future elections can begin exactly six months after the previous election. As such, the chosen date for the first election will decide the earliest start date for the next election.
+All future elections can begin six months after the previous election. As such, the chosen date for the first election will decide the earliest start date for the next election.
 
 For extra clarity in the text, we have renamed “September Cohort” to “First Cohort” and “March Cohort” to “Second Cohort”
 
@@ -69,9 +69,9 @@ The Security Council has 12 members, who are divided into two Cohorts of 6 membe
 
 The initial Security Council Cohorts were determined by randomly splitting the 12 members into two 6-member cohorts - 6 members in the ‘First Cohort’ and 6 members in the ‘Second Cohort’. The members of the initial Security Council Cohorts are detailed in a transparency report here.
 
-The first security election is scheduled to begin on the 15th September 2023 or the earliest possible date. The election can only begin upon the availability of an on-chain election process that was approved and installed by the Arbitrum DAO. This first election replaces the ‘First Cohort’.
+The first security election is scheduled to begin on the 15th September 2023 or the earliest possible date. The election can only begin upon the availability of an on-chain election process that was approved and installed by the Arbitrum DAO. This first election replaces the ‘First Cohort’. The next election replaces the ‘Second Cohort,’ and so forth.
 
-The date chosen for the first election will form the basis for all future elections. Every election will begin exactly 6 months after the previous election has finished and it will replace its respective cohort of 6 members.
+The date chosen for the first election will form the basis for all future elections. Every election should begin 6 months after the previous election has started and it will replace its respective cohort of 6 members.
 
 All Security Council members are expected to serve their term until the election is complete and the new Security Council members are installed.
 `;

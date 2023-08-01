@@ -13,7 +13,7 @@ const ARB_URL = process.env.ARB_URL;
 if (!ARB_URL) throw new Error("ARB_URL required");
 const expectedAddressRegistry = "0x56C4E9Eb6c63aCDD19AeC2b1a00e4f0d7aBda9d3";
 const expectedConstitutionHash =
-  "0x70ae8e80709ba3edf810e4518056ce875a34254fe1138d7baa59d984f9372d71";
+  "0x2498ca4a737c2d06c43799b5ddf5183b6e169359f68bea4b34775751528a2ee1";
 
 const main = async () => {
   const l2Provider = new JsonRpcProvider(ARB_URL);
