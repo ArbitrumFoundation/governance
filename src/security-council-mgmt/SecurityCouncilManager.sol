@@ -434,6 +434,9 @@ contract SecurityCouncilManager is
             // must be unique as the proposal hash is used for replay protection in the L2 timelock
             // we cant be sure another proposal wont use this salt, and the same target + data
             // but in that case the proposal will do what we want it to do anyway
+            // this can however block the execution of the election - so in this case the
+            // Security Council would need to unblock it by setting the election to executed state
+            // in the Member Election governor
             salt: this.generateSalt(newMembers, updateNonce),
             delay: ArbitrumTimelock(l2CoreGovTimelock).getMinDelay()
         });
