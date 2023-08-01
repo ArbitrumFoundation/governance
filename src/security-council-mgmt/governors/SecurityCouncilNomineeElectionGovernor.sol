@@ -131,7 +131,7 @@ contract SecurityCouncilNomineeElectionGovernor is
     }
 
     /// @notice Allows the nominee vetter to call certain functions
-    modifier onlyNomineeVetter {
+    modifier onlyNomineeVetter() {
         if (msg.sender != nomineeVetter) {
             revert OnlyNomineeVetter();
         }
@@ -287,10 +287,7 @@ contract SecurityCouncilNomineeElectionGovernor is
     ///         Will revert if the provided account is already a nominee
     ///         The Constitution must be followed adding nominees. For example this method can be used by the Foundation to add a
     ///         random member of the outgoing security council, if less than 6 members meet the threshold to become a nominee
-    function includeNominee(uint256 proposalId, address account)
-        external
-        onlyNomineeVetter
-    {
+    function includeNominee(uint256 proposalId, address account) external onlyNomineeVetter {
         ProposalState state_ = state(proposalId);
         if (state_ != ProposalState.Succeeded) {
             revert ProposalNotSucceededState(state_);
