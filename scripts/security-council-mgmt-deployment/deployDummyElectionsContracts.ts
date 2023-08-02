@@ -48,6 +48,7 @@ const partialDeployParams: DeployParamsPartial = {
     removalGovProposalThreshold: ethers.utils.parseEther("1000000"), // 1 million tokens
     removalGovVoteSuccessNumerator: 8333, // todo: check this
     removalGovMinPeriodAfterQuorum: minutes(3),
+    removalProposalExpirationBlocks: 100, // number of blocks after which a successful removal proposal expires
     nomineeVettingDuration: minutes(10),
     nomineeVetter: zxDead,
     nomineeQuorumNumerator: 20, // 0.2%
