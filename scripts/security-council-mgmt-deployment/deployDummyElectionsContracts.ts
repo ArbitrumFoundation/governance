@@ -22,7 +22,6 @@ type DeployParamsPartial = Omit<
     "upgradeExecutors"
 >;
 
-const proxyAdmin = "0x1000000000000000000000000000000000000000";
 const zxDead = "0x000000000000000000000000000000000000dead";
 
 const partialDeployParams: DeployParamsPartial = {
@@ -74,7 +73,7 @@ async function deployDummyGnosisSafe(signer: Wallet) {
 
 async function deployToken(signer: Wallet) {
     const impl = await new L2ArbitrumToken__factory(signer).deploy();
-    const proxy = await new TransparentUpgradeableProxy__factory(signer).deploy(impl.address, proxyAdmin, "0x");
+    const proxy = await new TransparentUpgradeableProxy__factory(signer).deploy(impl.address, zxDead, "0x");
     
     const token = L2ArbitrumToken__factory.connect(proxy.address, signer);
     await token.initialize(zxDead, ethers.utils.parseEther("10000000000"), signer.address);
