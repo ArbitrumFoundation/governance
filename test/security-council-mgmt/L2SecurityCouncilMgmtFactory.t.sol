@@ -32,6 +32,7 @@ contract L2SecurityCouncilMgmtFactoryTest is Test, DeployGnosisWithModule {
     uint256 removalGovProposalThreshold = uint256(5);
     uint64 removalGovMinPeriodAfterQuorum = uint64(6);
     uint256 removalGovVoteSuccessNumerator = uint256(7);
+    uint256 removalProposalExpirationBlocks = uint256(137);
     SecurityCouncilData[] securityCouncils;
     Date firstNominationStartDate =
         Date({year: uint256(2000), month: uint256(1), day: uint256(1), hour: uint256(1)});
@@ -86,6 +87,7 @@ contract L2SecurityCouncilMgmtFactoryTest is Test, DeployGnosisWithModule {
             removalGovVoteSuccessNumerator: removalGovVoteSuccessNumerator,
             removalGovQuorumNumerator: removalGovQuorumNumerator,
             removalGovMinPeriodAfterQuorum: removalGovMinPeriodAfterQuorum,
+            removalProposalExpirationBlocks: removalProposalExpirationBlocks,
             securityCouncils: securityCouncils,
             firstNominationStartDate: firstNominationStartDate,
             nomineeVettingDuration: nomineeVettingDuration,

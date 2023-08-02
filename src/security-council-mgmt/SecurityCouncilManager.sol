@@ -8,17 +8,16 @@ import "./SecurityCouncilMgmtUtils.sol";
 import "./interfaces/ISecurityCouncilManager.sol";
 import "./SecurityCouncilMemberSyncAction.sol";
 import "../UpgradeExecRouteBuilder.sol";
-import "@arbitrum/nitro-contracts/src/precompiles/ArbSys.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "./Common.sol";
 
 /// @title  The Security Council Manager
-/// @notice The source of truth for an array of Security Council that are under management
+/// @notice The source of truth for an array of Security Councils that are under management.
 ///         Can be used to change members, and replace whole cohorts, ensuring that all managed
-///         Security Councils stay in sync
-/// @dev    The cohorts in the Security Council Manager can be updated from a number of different sources
+///         Security Councils stay in sync.
+/// @dev    The cohorts in the Security Council Manager can be updated from a number of different sources.
 ///         Care must be taken in the timing of these updates to avoid race conditions, as well as to avoid
 ///         invalidating other operations.
 ///         An example of this could be replacing a member whilst there is an ongoing election. This contract
@@ -397,7 +396,8 @@ contract SecurityCouncilManager is
             actionDatas[i] = abi.encodeWithSelector(
                 SecurityCouncilMemberSyncAction.perform.selector,
                 securityCouncilData.securityCouncil,
-                newMembers
+                newMembers,
+                nonce
             );
         }
 
@@ -416,9 +416,11 @@ contract SecurityCouncilManager is
     }
 
     /// @dev Create a union of the second and first cohort, then update all Security Councils under management with that unioned array.
-    ///      Councils on other chains will need to be scheduled through timelocks and target upgrade executors
+    ///      Updates will need to be scheduled through timelocks and target upgrade executors
     function _scheduleUpdate() internal {
-        // always update the nonce - this is used to ensure that proposals in the timelocks are unique
+        // always update the nonce
+        // this is used to ensure that proposals in the timelocks are unique
+        // and calls to the upgradeExecutors are in the correct order
         updateNonce++;
         (address[] memory newMembers, address to, bytes memory data) =
             getScheduleUpdateInnerData(updateNonce);
@@ -432,6 +434,9 @@ contract SecurityCouncilManager is
             // must be unique as the proposal hash is used for replay protection in the L2 timelock
             // we cant be sure another proposal wont use this salt, and the same target + data
             // but in that case the proposal will do what we want it to do anyway
+            // this can however block the execution of the election - so in this case the
+            // Security Council would need to unblock it by setting the election to executed state
+            // in the Member Election governor
             salt: this.generateSalt(newMembers, updateNonce),
             delay: ArbitrumTimelock(l2CoreGovTimelock).getMinDelay()
         });

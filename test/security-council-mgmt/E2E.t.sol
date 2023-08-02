@@ -184,6 +184,7 @@ contract E2E is Test, DeployGnosisWithModule {
     uint256 removalGovProposalThreshold = 10e5;
     uint256 removalGovVoteSuccessNumerator = 201;
     uint64 removalGovMinPeriodAfterQuorum = 49;
+    uint256 removalProposalExpirationBlocks = 139;
 
     uint256 nomineeVettingDuration = 100;
     address nomineeVetter = address(437);
@@ -332,9 +333,9 @@ contract E2E is Test, DeployGnosisWithModule {
             payable(deploySafe(members, secCouncilThreshold, address(vars.novaExecutor)))
         );
 
-        vars.l2UpdateAction = new SecurityCouncilMemberSyncAction();
-        vars.novaUpdateAction = new SecurityCouncilMemberSyncAction();
-        vars.l1UpdateAction = new SecurityCouncilMemberSyncAction();
+        vars.l2UpdateAction = new SecurityCouncilMemberSyncAction(new KeyValueStore());
+        vars.novaUpdateAction = new SecurityCouncilMemberSyncAction(new KeyValueStore());
+        vars.l1UpdateAction = new SecurityCouncilMemberSyncAction(new KeyValueStore());
 
         vars.councilData = new SecurityCouncilData[](4);
         vars.councilData[0] =
@@ -376,6 +377,7 @@ contract E2E is Test, DeployGnosisWithModule {
                 removalGovProposalThreshold: removalGovProposalThreshold,
                 removalGovVoteSuccessNumerator: removalGovVoteSuccessNumerator,
                 removalGovMinPeriodAfterQuorum: removalGovMinPeriodAfterQuorum,
+                removalProposalExpirationBlocks: removalProposalExpirationBlocks,
                 securityCouncils: vars.councilData,
                 firstNominationStartDate: nominationStart,
                 nomineeVettingDuration: nomineeVettingDuration,
@@ -454,7 +456,7 @@ contract E2E is Test, DeployGnosisWithModule {
             vars.secDeployedContracts.nomineeElectionGovernor.addContender(propId);
             vm.prank(l2InitialSupplyRecipient);
             vars.secDeployedContracts.nomineeElectionGovernor.castVoteWithReasonAndParams(
-                propId, 0, "vote for a nominee", abi.encode(newMember, 1 ether)
+                propId, 1, "vote for a nominee", abi.encode(newMember, 1 ether)
             );
         }
 
@@ -480,7 +482,7 @@ contract E2E is Test, DeployGnosisWithModule {
             address newMember = newCohort1[i];
             vm.prank(l2InitialSupplyRecipient);
             vars.secDeployedContracts.memberElectionGovernor.castVoteWithReasonAndParams(
-                propId, 0, "vote for a member", abi.encode(newMember, 1 ether)
+                propId, 1, "vote for a member", abi.encode(newMember, 1 ether)
             );
         }
 

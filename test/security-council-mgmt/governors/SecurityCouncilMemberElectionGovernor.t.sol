@@ -9,10 +9,11 @@ import "../../util/TestUtil.sol";
 import "../../../src/security-council-mgmt/governors/modules/ElectionGovernor.sol";
 
 import "../../../src/security-council-mgmt/governors/SecurityCouncilMemberElectionGovernor.sol";
+import "../../../src/security-council-mgmt/governors/SecurityCouncilNomineeElectionGovernor.sol";
 
 contract SecurityCouncilMemberElectionGovernorTest is Test {
     struct InitParams {
-        SecurityCouncilNomineeElectionGovernor nomineeElectionGovernor;
+        ISecurityCouncilNomineeElectionGovernor nomineeElectionGovernor;
         ISecurityCouncilManager securityCouncilManager;
         IVotesUpgradeable token;
         address owner;
@@ -25,7 +26,7 @@ contract SecurityCouncilMemberElectionGovernorTest is Test {
     address proxyAdmin = address(0x11);
 
     InitParams initParams = InitParams({
-        nomineeElectionGovernor: SecurityCouncilNomineeElectionGovernor(payable(address(0x22))),
+        nomineeElectionGovernor: ISecurityCouncilNomineeElectionGovernor(payable(address(0x22))),
         securityCouncilManager: ISecurityCouncilManager(address(0x33)),
         token: IVotesUpgradeable(address(0x44)),
         owner: address(0x55),
@@ -161,7 +162,10 @@ contract SecurityCouncilMemberElectionGovernorTest is Test {
         vm.mockCall(
             address(initParams.nomineeElectionGovernor),
             abi.encodeWithSelector(
-                initParams.nomineeElectionGovernor.electionIndexToCohort.selector, 0
+                ElectionGovernor(address(initParams.nomineeElectionGovernor))
+                    .electionIndexToCohort
+                    .selector,
+                0
             ),
             abi.encode(0)
         );
@@ -234,7 +238,7 @@ contract SecurityCouncilMemberElectionGovernorTest is Test {
         );
         governor.castVoteWithReasonAndParams({
             proposalId: proposalId,
-            support: 0,
+            support: 1,
             reason: "",
             params: abi.encode(nominee, 100)
         });
@@ -265,7 +269,7 @@ contract SecurityCouncilMemberElectionGovernorTest is Test {
         );
         governor.castVoteWithReasonAndParams({
             proposalId: proposalId,
-            support: 0,
+            support: 1,
             reason: "",
             params: abi.encode(_nominee(0))
         });
@@ -295,9 +299,35 @@ contract SecurityCouncilMemberElectionGovernorTest is Test {
         );
         governor.castVoteWithReasonAndParams({
             proposalId: proposalId,
-            support: 0,
+            support: 1,
             reason: "",
             params: abi.encode(_nominee(0), 0)
+        });
+    }
+
+    function testForceSupport() public {
+        uint256 proposalId = _propose(0);
+
+        _setCompliantNominee(proposalId, _nominee(0), true);
+
+        _mockGetPastVotes({
+            account: _voter(0),
+            blockNumber: governor.proposalSnapshot(proposalId),
+            votes: 100
+        });
+
+        vm.roll(governor.proposalSnapshot(proposalId) + 1);
+        vm.prank(_voter(0));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                SecurityCouncilMemberElectionGovernorCountingUpgradeable.InvalidSupport.selector, 2
+            )
+        );
+        governor.castVoteWithReasonAndParams({
+            proposalId: proposalId,
+            support: 2,
+            reason: "",
+            params: abi.encode(_nominee(0), 100)
         });
     }
 
@@ -329,7 +359,7 @@ contract SecurityCouncilMemberElectionGovernorTest is Test {
         );
         governor.castVoteWithReasonAndParams({
             proposalId: proposalId,
-            support: 0,
+            support: 1,
             reason: "",
             params: abi.encode(_nominee(0), 101)
         });
@@ -338,7 +368,7 @@ contract SecurityCouncilMemberElectionGovernorTest is Test {
         vm.prank(_voter(0));
         governor.castVoteWithReasonAndParams({
             proposalId: proposalId,
-            support: 0,
+            support: 1,
             reason: "",
             params: abi.encode(_nominee(0), 50)
         });
@@ -355,7 +385,7 @@ contract SecurityCouncilMemberElectionGovernorTest is Test {
         );
         governor.castVoteWithReasonAndParams({
             proposalId: proposalId,
-            support: 0,
+            support: 1,
             reason: "",
             params: abi.encode(_nominee(0), 51)
         });
@@ -630,7 +660,7 @@ contract SecurityCouncilMemberElectionGovernorTest is Test {
         vm.prank(voter);
         governor.castVoteWithReasonAndParams({
             proposalId: proposalId,
-            support: 0,
+            support: 1,
             reason: "",
             params: abi.encode(nominee, votes)
         });
@@ -665,7 +695,11 @@ contract SecurityCouncilMemberElectionGovernorTest is Test {
         // electionCount() returns 1
         vm.mockCall(
             address(initParams.nomineeElectionGovernor),
-            abi.encodeWithSelector(initParams.nomineeElectionGovernor.electionCount.selector),
+            abi.encodeWithSelector(
+                SecurityCouncilNomineeElectionGovernor(
+                    payable(address(initParams.nomineeElectionGovernor))
+                ).electionCount.selector
+            ),
             abi.encode(electionIndex + 1)
         );
 
@@ -673,7 +707,9 @@ contract SecurityCouncilMemberElectionGovernorTest is Test {
         vm.mockCall(
             address(initParams.nomineeElectionGovernor),
             abi.encodeWithSelector(
-                initParams.nomineeElectionGovernor.electionIndexToDescription.selector,
+                ElectionGovernor(address(initParams.nomineeElectionGovernor))
+                    .electionIndexToDescription
+                    .selector,
                 electionIndex
             ),
             abi.encode(_electionIndexToDescription(electionIndex))
@@ -682,7 +718,7 @@ contract SecurityCouncilMemberElectionGovernorTest is Test {
         // mock call to currentCohort
         vm.mockCall(
             address(initParams.nomineeElectionGovernor),
-            abi.encodeWithSelector(initParams.nomineeElectionGovernor.currentCohort.selector),
+            abi.encodeWithSelector(SecurityCouncilNomineeElectionGovernor.currentCohort.selector),
             abi.encode(electionIndex % 2)
         );
     }

@@ -1,6 +1,8 @@
 import { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
+import "@nomicfoundation/hardhat-foundry";
 
+// when changing optimizer settings, make sure to also change settings in foundry.toml
 const solidityProfiles = {
   default: {
     version: "0.8.16",
@@ -16,7 +18,7 @@ const solidityProfiles = {
     settings: {
       optimizer: {
         enabled: true,
-        runs: 200
+        runs: 1900
       },
     }
   }
