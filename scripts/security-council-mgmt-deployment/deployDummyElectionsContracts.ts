@@ -6,7 +6,7 @@ import { DeployParamsStruct } from "../../typechain-types/src/security-council-m
 import { TransparentUpgradeableProxy__factory } from "@arbitrum/sdk/dist/lib/abi/factories/TransparentUpgradeableProxy__factory";
 
 // env vars:
-// RPC_URL (optional)
+// RPC_URL (optional, defaults to http://localhost:8545)
 // PRIVATE_KEY
 
 type DeployParamsPartial = Omit<
@@ -17,14 +17,15 @@ type DeployParamsPartial = Omit<
     "arbToken" | 
     "l1ArbitrumTimelock" | 
     "l2UpgradeExecutor" |
-    "firstNominationStartDate"
+    "firstNominationStartDate" |
+    "securityCouncils" |
+    "upgradeExecutors"
 >;
 
 const proxyAdmin = "0x1000000000000000000000000000000000000000";
 const zxDead = "0x000000000000000000000000000000000000dead";
 
 const partialDeployParams: DeployParamsPartial = {
-    upgradeExecutors: [],
     secondCohort: [
         "0x0000000000000000000000000000000000000001",
         "0x0000000000000000000000000000000000000002",
@@ -48,7 +49,6 @@ const partialDeployParams: DeployParamsPartial = {
     removalGovProposalThreshold: ethers.utils.parseEther("1000000"), // 1 million tokens
     removalGovVoteSuccessNumerator: 8333, // todo: check this
     removalGovMinPeriodAfterQuorum: minutes(3),
-    securityCouncils: [],
     nomineeVettingDuration: minutes(10),
     nomineeVetter: zxDead,
     nomineeQuorumNumerator: 20, // 0.2%
@@ -106,6 +106,8 @@ async function makeFullDeployParams(partialDeployParams: DeployParamsPartial, si
         l1ArbitrumTimelock: noop.address,
         l2UpgradeExecutor: noop.address,
         firstNominationStartDate: makeStartDateStruct(date),
+        securityCouncils: [],
+        upgradeExecutors: [],
     }
 }
 
