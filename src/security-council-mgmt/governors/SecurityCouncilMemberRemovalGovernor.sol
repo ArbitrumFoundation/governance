@@ -1,12 +1,19 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.16;
 
-import "../../L2ArbitrumGovernor.sol";
+import
+    "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorPreventLateQuorumUpgradeable.sol";
+import
+    "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorCountingSimpleUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorSettingsUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "./../interfaces/ISecurityCouncilManager.sol";
-import "../../Util.sol";
 import "../Common.sol";
 import "./modules/ArbitrumGovernorVotesQuorumFractionUpgradeable.sol";
+import "./modules/ArbitrumGovernorProposalExpirationUpgradeable.sol";
 
+/// @title SecurityCouncilMemberRemovalGovernor
+/// @notice Allows the DAO to remove a security council member
 contract SecurityCouncilMemberRemovalGovernor is
     Initializable,
     GovernorUpgradeable,
@@ -15,6 +22,7 @@ contract SecurityCouncilMemberRemovalGovernor is
     GovernorCountingSimpleUpgradeable,
     ArbitrumGovernorVotesQuorumFractionUpgradeable,
     GovernorSettingsUpgradeable,
+    ArbitrumGovernorProposalExpirationUpgradeable,
     OwnableUpgradeable
 {
     uint256 public constant voteSuccessDenominator = 10_000;
@@ -38,7 +46,6 @@ contract SecurityCouncilMemberRemovalGovernor is
     }
 
     /// @notice Initialize the contract
-    /// @dev this method does not include an initializer modifier; it calls its parent's initiaze method which itself prevents repeated initialize calls
     /// @param _voteSuccessNumerator value that with denominator 10_000 determines the ration of for/against votes required for success
     /// @param _securityCouncilManager security council manager contract
     /// @param _token The address of the governance token
@@ -57,13 +64,15 @@ contract SecurityCouncilMemberRemovalGovernor is
         uint256 _votingPeriod,
         uint256 _quorumNumerator,
         uint256 _proposalThreshold,
-        uint64 _minPeriodAfterQuorum
+        uint64 _minPeriodAfterQuorum,
+        uint256 _proposalExpirationBlocks
     ) public initializer {
         __GovernorSettings_init(_votingDelay, _votingPeriod, _proposalThreshold);
         __GovernorCountingSimple_init();
         __GovernorVotes_init(_token);
         __ArbitrumGovernorVotesQuorumFraction_init(_quorumNumerator);
         __GovernorPreventLateQuorum_init(_minPeriodAfterQuorum);
+        __ArbitrumGovernorProposalExpirationUpgradeable_init(_proposalExpirationBlocks);
         _transferOwnership(_owner);
 
         if (!Address.isContract(address(_securityCouncilManager))) {
@@ -88,10 +97,11 @@ contract SecurityCouncilMemberRemovalGovernor is
         return (selector, rest);
     }
 
-    /// @notice Propose a security council member removal. Method conforms to the governor propose interface but enforces that only calls to removeMember can be propsoed.
+    /// @notice Propose a security council member removal. Method conforms to the governor propose interface
+    ///         but enforces that only calls to securityCouncilManager's removeMember can be propsoed.
     /// @param targets Target contract operation; must be [securityCouncilManager]
     /// @param values Value for removeMmeber; must be [0]
-    /// @param calldatas Operation calldata; must be removeMember with address argument
+    /// @param calldatas Operation calldata; must be [removeMember with address argument]
     /// @param description rationale for member removal
     function propose(
         address[] memory targets,
@@ -147,7 +157,9 @@ contract SecurityCouncilMemberRemovalGovernor is
         return voteSuccessDenominator * forVotes > (forVotes + againstVotes) * voteSuccessNumerator;
     }
 
-    ///@notice A removal proposal if a theshold of all cast votes vote in favor of removal. Thus, abstaining would be exactly equivalent to voting against. Thus, to prevent any confusing, abstaining is disallowed.
+    /// @notice A removal proposal if a theshold of all cast votes vote in favor of removal.
+    ///         Thus, abstaining would be exactly equivalent to voting against.
+    ///         To prevent any confusion, abstaining is disallowed.
     function _countVote(
         uint256 proposalId,
         address account,
@@ -161,7 +173,7 @@ contract SecurityCouncilMemberRemovalGovernor is
         GovernorCountingSimpleUpgradeable._countVote(proposalId, account, support, weight, params);
     }
 
-    /// @notice set numerator for removal vote to succeed; only DAO can call
+    /// @notice Set numerator for removal vote to succeed; only DAO can call
     /// @param _voteSuccessNumerator new numberator value
     function setVoteSuccessNumerator(uint256 _voteSuccessNumerator) public onlyOwner {
         _setVoteSuccessNumerator(_voteSuccessNumerator);
@@ -197,6 +209,7 @@ contract SecurityCouncilMemberRemovalGovernor is
         AddressUpgradeable.functionCallWithValue(target, data, value);
     }
 
+    /// @inheritdoc GovernorUpgradeable
     function proposalThreshold()
         public
         view
@@ -206,6 +219,7 @@ contract SecurityCouncilMemberRemovalGovernor is
         return GovernorSettingsUpgradeable.proposalThreshold();
     }
 
+    /// @inheritdoc GovernorPreventLateQuorumUpgradeable
     function _castVote(
         uint256 proposalId,
         address account,
@@ -222,6 +236,7 @@ contract SecurityCouncilMemberRemovalGovernor is
         );
     }
 
+    /// @inheritdoc GovernorPreventLateQuorumUpgradeable
     function proposalDeadline(uint256 proposalId)
         public
         view
@@ -229,5 +244,21 @@ contract SecurityCouncilMemberRemovalGovernor is
         returns (uint256)
     {
         return GovernorPreventLateQuorumUpgradeable.proposalDeadline(proposalId);
+    }
+
+    function state(uint256 proposalId)
+        public
+        view
+        override(ArbitrumGovernorProposalExpirationUpgradeable, GovernorUpgradeable)
+        returns (ProposalState)
+    {
+        // We override the state to transition to expire unexecuted proposals
+        // This is because of potential race conditions between the removal governor and other
+        // parties (normal elections + security council) calling the other functions on the security council manager
+        // The manager does some checks to ensure that the removal can occur (eg the account is a member) - if these checks fail
+        // then the proposal in here will fail. If this is the case we want the proposal to expire
+        // after some time so that it doesnt become executable (in an unexpected way) far in the future due
+        // to normal changes in the security council membership.
+        return ArbitrumGovernorProposalExpirationUpgradeable.state(proposalId);
     }
 }

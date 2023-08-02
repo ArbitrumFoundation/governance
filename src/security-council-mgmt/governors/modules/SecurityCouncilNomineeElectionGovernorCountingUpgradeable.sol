@@ -11,9 +11,10 @@ abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is
     Initializable,
     GovernorUpgradeable
 {
-    /// @param votesUsed The amount of votes the voter has used
-    /// @param votesReceived The amount of votes the contender has received
+    /// @param votesUsed The amount of votes a voter has used
+    /// @param votesReceived The amount of votes a contender has received
     /// @param nominees The list of contenders who've received enough votes to become a nominee
+    /// @param isNominee A mapping of contenders to whether or not they are a nominee
     struct NomineeElectionCountingInfo {
         mapping(address => uint256) votesUsed;
         mapping(address => uint256) votesReceived;
@@ -46,6 +47,7 @@ abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is
     error NotEligibleContender(address contender);
     error NomineeAlreadyAdded(address nominee);
     error InsufficientTokens(uint256 votes, uint256 prevVotesUsed, uint256 weight);
+    error InvalidSupport(uint8 support);
 
     function __SecurityCouncilNomineeElectionGovernorCounting_init() internal onlyInitializing {}
 
@@ -54,15 +56,20 @@ abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is
     ///      and only the necessary amount of votes will be deducted from the voter.
     /// @param proposalId the id of the proposal
     /// @param account the account that is casting the vote
+    /// @param support the support of the vote (forced to 1)
     /// @param weight the amount of vote that account held at time of snapshot
     /// @param params abi encoded (contender, votes) where votes is the amount of votes the account is using for this contender
     function _countVote(
         uint256 proposalId,
         address account,
-        uint8,
+        uint8 support,
         uint256 weight,
         bytes memory params
     ) internal virtual override {
+        if (support != 1) {
+            revert InvalidSupport(support);
+        }
+
         if (params.length != 64) {
             revert UnexpectedParamsLength(params.length);
         }
@@ -117,49 +124,49 @@ abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is
         emit NewNominee(proposalId, account);
     }
 
-    // TODO:
+    /// @inheritdoc IGovernorUpgradeable
     function COUNTING_MODE() public pure virtual override returns (string memory) {
-        return "TODO: ???";
+        return "support=for&params=account&counting=threshold";
     }
 
-    /// @notice returns true if the account has voted any amount for any contender in the proposal
+    /// @notice Whether the account has voted any amount for any contender in the proposal
     function hasVoted(uint256 proposalId, address account) public view override returns (bool) {
         return _elections[proposalId].votesUsed[account] > 0;
     }
 
-    /// @notice Returns true if the contender has enough votes to be a nominee
+    /// @notice Whether the contender has enough votes to be a nominee
     function isNominee(uint256 proposalId, address contender) public view returns (bool) {
         return _elections[proposalId].isNominee[contender];
     }
 
-    /// @notice Returns the number of nominees for a given proposal
+    /// @notice The number of nominees for a given proposal
     function nomineeCount(uint256 proposalId) public view returns (uint256) {
         return _elections[proposalId].nominees.length;
     }
 
-    /// @notice Returns the list of nominees for a given proposal
+    /// @notice The list of nominees for a given proposal
     function nominees(uint256 proposalId) public view returns (address[] memory) {
         return _elections[proposalId].nominees;
     }
 
-    /// @notice Returns the amount of votes an account has used for a given proposal
+    /// @notice The amount of votes an account has used for a given proposal
     function votesUsed(uint256 proposalId, address account) public view returns (uint256) {
         return _elections[proposalId].votesUsed[account];
     }
 
-    /// @notice Returns the amount of votes a contender has received for a given proposal
+    /// @notice The amount of votes a contender has received for a given proposal
     function votesReceived(uint256 proposalId, address contender) public view returns (uint256) {
         return _elections[proposalId].votesReceived[contender];
     }
 
-    /// @dev Returns true if the account is a contender for the proposal
+    /// @dev Whether the account is a contender for the proposal
     function isContender(uint256 proposalId, address possibleContender)
         public
         view
         virtual
         returns (bool);
 
-    /// @dev there is no minimum quorum for nominations, so we just return true
+    /// @dev there is no minimum quorum for nominations proposals to pass, so we just return true
     function _quorumReached(uint256) internal pure override returns (bool) {
         return true;
     }

@@ -151,7 +151,6 @@ You can read more about how the path is encoded in the [proposal lifecycle docum
 Both governor contracts have the affordance to cancel proposals scheduled in the L2 Timelock. The Security Council can likewise cancel proposals [via calling L2ArbitrumGovernor.relay](src/gov-action-contracts/governance/CancelTimelockOperation.sol). Note that although the core-governor Security Council has the affordance to cancel proposals in the L2 timelock via calling `cancel` directly, for clarity and consistency, it should use the aforementioned `relay` method. 
 
 ## Future DAO-Governed Chains
-// TODO: add steps for security council elections
 When a [new L2 chain is authorized by the DAO](https://docs.arbitrum.foundation/new-arb-chains), the following steps should be carried out for the new chain to become DAO-governed:
 1. Deploy a new UpgradeExecutor contract and a new Security Council on the new L2 chain.
 1. Initialize the new L2 UpgradeExectutor with the L1 Timelock's aliased addressed and the new Security Council as its executors.

@@ -10,10 +10,10 @@ interface DefaultGovAction {
     function perform() external;
 }
 
-/// @notice The location of an upgrade executor, relative to the host chain
-///         Inbox is set to address(0) if the upgrade executor is on the host chain
+/// @notice The location of an upgrade executor, relative to the host chain.
+///         Inbox is set to address(0) if the upgrade executor is on the host chain.
 ///         Inbox is set to the address of the inbox of another Arbitrum chain if the upgrade executor is
-///         is not on the host chain
+///         is not on the host chain.
 struct UpExecLocation {
     address inbox; // Inbox should be set to address(0) to signify that the upgrade executor is on the L1/host chain
     address upgradeExecutor;
@@ -24,8 +24,8 @@ struct ChainAndUpExecLocation {
     UpExecLocation location;
 }
 
-/// @notice Router for target the execution of action contracts in upgrade executors that exist on other chains
-///         Routes target an upgrade executor which is either on the host chain, or can be accessed via the inbox
+/// @notice Builds calldata to target the execution of action contracts in upgrade executors that exist on other chains.
+///         Routes target an upgrade executor which is either on the host chain, or can be accessed via the inbox.
 ///         So routes are of two possible forms:
 ///         1. Withdrawal => L1Timelock => UpgradeExecutor
 ///         2. Withdrawal => L1Timelock => Inbox => UpgradeExecutor
@@ -54,10 +54,10 @@ contract UpgradeExecRouteBuilder {
     bytes32 public constant DEFAULT_PREDECESSOR = bytes32(0);
 
     /// @notice Address of the L1 timelock targetted by this route builder
-    address public l1TimelockAddr;
+    address public immutable l1TimelockAddr;
     /// @notice The minimum delay of the L1 timelock targetted by this route builder
     /// @dev    If the min delay for this timelock changes then a new route builder will need to be deployed
-    uint256 public l1TimelockMinDelay;
+    uint256 public immutable l1TimelockMinDelay;
     /// @notice Upgrade Executor locations for each chain (chainId => location)
     mapping(uint256 => UpExecLocation) public upExecLocations;
 
@@ -94,8 +94,8 @@ contract UpgradeExecRouteBuilder {
         return upExecLocations[_chainId].upgradeExecutor != address(0);
     }
 
-    /// @notice Creates the to address and calldata to be called to execute a route to a batch of action contracts
-    ///         See Governance Action Contracts for more details
+    /// @notice Creates the to address and calldata to be called to execute a route to a batch of action contracts.
+    ///         See Governance Action Contracts for more details.
     /// @param chainIds         Chain ids containing the actions to be called
     /// @param actionAddresses  Addresses of the action contracts to be called
     /// @param actionValues     Values to call the action contracts with
@@ -177,9 +177,9 @@ contract UpgradeExecRouteBuilder {
         );
     }
 
-    /// @notice Creates the to address and calldata to be called to execute a route to a batch of action contracts
-    ///         Uses common defaults using for value, calldata and predecessor
-    ///         See Governance Action Contracts for more details
+    /// @notice Creates the to address and calldata to be called to execute a route to a batch of action contracts.
+    ///         Uses common defaults for value, calldata and predecessor.
+    ///         See Governance Action Contracts for more details.
     /// @param chainIds         Chain ids containing the actions to be called
     /// @param actionAddresses  Addresses of the action contracts to be called
     /// @param timelockSalt     A salt for the l1 timelock operation

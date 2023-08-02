@@ -1,8 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.16;
 
+import "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorVotesUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorSettingsUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "./modules/SecurityCouncilMemberElectionGovernorCountingUpgradeable.sol";
-import "./SecurityCouncilNomineeElectionGovernor.sol";
+import "../interfaces/ISecurityCouncilMemberElectionGovernor.sol";
+import "../interfaces/ISecurityCouncilNomineeElectionGovernor.sol";
+import "../interfaces/ISecurityCouncilManager.sol";
 import "./modules/ElectionGovernor.sol";
 
 /// @title  SecurityCouncilMemberElectionGovernor
@@ -16,10 +21,11 @@ contract SecurityCouncilMemberElectionGovernor is
     SecurityCouncilMemberElectionGovernorCountingUpgradeable,
     GovernorSettingsUpgradeable,
     OwnableUpgradeable,
-    ElectionGovernor
+    ElectionGovernor,
+    ISecurityCouncilMemberElectionGovernor
 {
     /// @notice The SecurityCouncilNomineeElectionGovernor that creates proposals for this governor and contains the list of compliant nominees
-    SecurityCouncilNomineeElectionGovernor public nomineeElectionGovernor;
+    ISecurityCouncilNomineeElectionGovernor public nomineeElectionGovernor;
 
     /// @notice The SecurityCouncilManager that will execute the election result
     ISecurityCouncilManager public securityCouncilManager;
@@ -29,6 +35,10 @@ contract SecurityCouncilMemberElectionGovernor is
     error ProposeDisabled();
     error CastVoteDisabled();
 
+    constructor() {
+        _disableInitializers();
+    }
+
     /// @param _nomineeElectionGovernor The SecurityCouncilNomineeElectionGovernor
     /// @param _securityCouncilManager The SecurityCouncilManager
     /// @param _token The token used for voting
@@ -36,7 +46,7 @@ contract SecurityCouncilMemberElectionGovernor is
     /// @param _votingPeriod The duration of voting on a proposal
     /// @param _fullWeightDuration Duration of full weight voting (blocks)
     function initialize(
-        SecurityCouncilNomineeElectionGovernor _nomineeElectionGovernor,
+        ISecurityCouncilNomineeElectionGovernor _nomineeElectionGovernor,
         ISecurityCouncilManager _securityCouncilManager,
         IVotesUpgradeable _token,
         address _owner,
@@ -72,7 +82,7 @@ contract SecurityCouncilMemberElectionGovernor is
         _;
     }
 
-    /// @notice Creates a new member election proposal from the most recent nominee election.
+    /// @inheritdoc ISecurityCouncilMemberElectionGovernor
     function proposeFromNomineeElectionGovernor(uint256 electionIndex)
         external
         onlyNomineeElectionGovernor
@@ -99,8 +109,8 @@ contract SecurityCouncilMemberElectionGovernor is
         AddressUpgradeable.functionCallWithValue(target, data, value);
     }
 
-    /// @dev    `GovernorUpgradeable` function to execute a proposal overridden to handle nominee elections.
-    ///         We know that _getTopNominees will return a full list of nominees because we checked it in _voteSucceeded.
+    /// @dev    `GovernorUpgradeable` function to execute a proposal overridden to handle member elections.
+    ///         We know that topNominees() will return a full list.
     ///         Calls `SecurityCouncilManager.replaceCohort` with the list of nominees.
     function _execute(
         uint256 proposalId,
@@ -113,12 +123,9 @@ contract SecurityCouncilMemberElectionGovernor is
         uint256 electionIndex = extractElectionIndex(callDatas);
 
         // it's possible for this call to fail because of checks in the security council manager
-        // getting into a state inconsistent with the elections
-        // if it does then the DAO or the security council will need to take action to either
-        // remove this election (upgrade this contract and cancel the proposal), or update the
-        // manager state to be consistent with this election and allow the cohort to be replaced
-        // One of these actions should be taken otherwise the election will stay in this contract
-        // and could be executed at a later unintended date.
+        // getting into a state inconsistent with the elections, if it does the Security Council
+        // will need to update the Manager so that this replaceCohort can go through
+        // Otherwise this and future elections will remain blocked.
         securityCouncilManager.replaceCohort({
             _newCohort: topNominees(proposalId),
             _cohort: electionIndexToCohort(electionIndex)
@@ -142,7 +149,7 @@ contract SecurityCouncilMemberElectionGovernor is
         return 0;
     }
 
-    /// @dev returns true if the account is a compliant nominee.
+    /// @dev Whether the account is a compliant nominee.
     ///      checks the SecurityCouncilNomineeElectionGovernor to see if the account is a compliant nominee
     function _isCompliantNominee(uint256 proposalId, address possibleNominee)
         internal
