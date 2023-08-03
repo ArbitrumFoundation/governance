@@ -4,6 +4,7 @@ import { Wallet, ethers } from "ethers";
 import { L2ArbitrumToken__factory, L2SecurityCouncilMgmtFactory__factory, SecurityCouncilManager__factory, SecurityCouncilMemberElectionGovernor__factory, SecurityCouncilMemberRemovalGovernor__factory, SecurityCouncilNomineeElectionGovernor__factory } from "../../typechain-types";
 import { DeployParamsStruct } from "../../typechain-types/src/security-council-mgmt/factories/L2SecurityCouncilMgmtFactory";
 import { TransparentUpgradeableProxy__factory } from "@arbitrum/sdk/dist/lib/abi/factories/TransparentUpgradeableProxy__factory";
+import { getNamedObjectItems } from "../testUtils";
 
 // env vars:
 // RPC_URL (optional, defaults to http://localhost:8545)
@@ -120,8 +121,10 @@ async function deployImplementationsForFactory(signer: Wallet) {
     }
 }
 
-async function deployDummyElectionsContracts() {
+async function main() {
     if (!process.env.PRIVATE_KEY) throw new Error("need PRIVATE_KEY");
+
+    console.log("RPC_URL:", process.env.RPC_URL || "http://localhost:8545");
     
     const signer = new ethers.Wallet(process.env.PRIVATE_KEY, new ethers.providers.JsonRpcProvider(process.env.RPC_URL));
 
@@ -143,12 +146,16 @@ async function deployDummyElectionsContracts() {
     
     // get ContractsDeployed event
     const event = deployReceipt.events?.find((e) => e.event === "ContractsDeployed");
-    
-    console.log("token:", fullDeployParams.arbToken);
-    console.log(event?.args?.deployedContracts);
+
+    const namedItems = getNamedObjectItems(event?.args?.deployedContracts);
+
+    console.log({
+        ...namedItems,
+        arbToken: fullDeployParams.arbToken,
+    });
 }
 
-deployDummyElectionsContracts().catch((err) => {
+main().catch((err) => {
     console.error(err);
     process.exit(1);
 });
