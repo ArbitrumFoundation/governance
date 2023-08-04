@@ -144,23 +144,25 @@ export async function deployContracts(userConfig: DeploymentConfig): Promise<Sec
   // 3. deploy contract implementations
   console.log("Deploying contract implementations...");
 
-  // temporary object to fill in contract implementations
-  const contractImplementationsPartial: Partial<ContractImplementationsStruct> = {};
-
   console.log(`\tDeploying SecurityCouncilNomineeElectionGovernor to chain ${userConfig.govChain.chainID}...`);
-  contractImplementationsPartial.nomineeElectionGovernor = (await new SecurityCouncilNomineeElectionGovernor__factory(govChainSigner).deploy()).address;
+  const nomineeElectionGovernor = (await new SecurityCouncilNomineeElectionGovernor__factory(govChainSigner).deploy()).address;
 
   console.log(`\tDeploying SecurityCouncilMemberElectionGovernor to chain ${userConfig.govChain.chainID}...`);
-  contractImplementationsPartial.memberElectionGovernor = (await new SecurityCouncilMemberElectionGovernor__factory(govChainSigner).deploy()).address;
+  const memberElectionGovernor = (await new SecurityCouncilMemberElectionGovernor__factory(govChainSigner).deploy()).address;
 
   console.log(`\tDeploying SecurityCouncilManager to chain ${userConfig.govChain.chainID}...`);
-  contractImplementationsPartial.securityCouncilManager = (await new SecurityCouncilManager__factory(govChainSigner).deploy()).address;
+  const securityCouncilManager = (await new SecurityCouncilManager__factory(govChainSigner).deploy()).address;
 
   console.log(`\tDeploying SecurityCouncilMemberRemovalGovernor to chain ${userConfig.govChain.chainID}...`);
-  contractImplementationsPartial.securityCouncilMemberRemoverGov = (await new SecurityCouncilMemberRemovalGovernor__factory(govChainSigner).deploy()).address;
+  const securityCouncilMemberRemoverGov = (await new SecurityCouncilMemberRemovalGovernor__factory(govChainSigner).deploy()).address;
 
   // finished object
-  const contractImplementations: ContractImplementationsStruct = contractImplementationsPartial as ContractImplementationsStruct;
+  const contractImplementations: ContractImplementationsStruct = {
+    nomineeElectionGovernor,
+    memberElectionGovernor,
+    securityCouncilManager,
+    securityCouncilMemberRemoverGov,
+  };
 
   // 4. build deploy params for factory.deploy()
   console.log("Building deploy params for factory.deploy()...");
