@@ -67,7 +67,7 @@ async function checkChainConfigs(chains: ChainConfig[]) {
   }
 }
 
-export async function deployContracts(userConfig: DeploymentConfig): Promise<SecurityCouncilManagementDeploymentResult> {
+export async function deployContracts(config: DeploymentConfig): Promise<SecurityCouncilManagementDeploymentResult> {
   // steps:
   // 1. deploy action contracts and key value stores
   // 2. deploy gnosis safes
@@ -77,16 +77,16 @@ export async function deployContracts(userConfig: DeploymentConfig): Promise<Sec
   // 6. call factory.deploy()
 
   const allChains = [
-    userConfig.hostChain,
-    userConfig.govChain,
-    ...userConfig.governedChains
+    config.hostChain,
+    config.govChain,
+    ...config.governedChains
   ];
 
   console.log("Checking chain configs...");
   await checkChainConfigs(allChains);
 
-  const govChainSigner = getSigner(userConfig.govChain);
-  const hostChainSigner = getSigner(userConfig.hostChain);
+  const govChainSigner = getSigner(config.govChain);
+  const hostChainSigner = getSigner(config.hostChain);
 
   // 1. deploy action contracts and key value stores
   console.log("Deploying action contracts and key value stores...");
@@ -109,17 +109,17 @@ export async function deployContracts(userConfig: DeploymentConfig): Promise<Sec
   // 2. deploy gnosis safes
   console.log("Deploying gnosis safes...");
 
-  const owners = await Promise.all([...userConfig.firstCohort, ...userConfig.secondCohort]);
+  const owners = await Promise.all([...config.firstCohort, ...config.secondCohort]);
   const emergencyGnosisSafes: SecurityCouncilManagementDeploymentResult["emergencyGnosisSafes"] = {};
 
-  console.log(`\tDeploying non-emergency Gnosis Safe to chain ${userConfig.govChain.chainID}...`);
+  console.log(`\tDeploying non-emergency Gnosis Safe to chain ${config.govChain.chainID}...`);
 
   const nonEmergencyGnosisSafe = await deployGnosisSafe(
-    userConfig.gnosisSafeL2Singleton,
-    userConfig.gnosisSafeFactory,
-    userConfig.gnosisSafeFallbackHandler,
+    config.gnosisSafeL2Singleton,
+    config.gnosisSafeFactory,
+    config.gnosisSafeFallbackHandler,
     owners,
-    userConfig.nonEmergencySignerThreshold,
+    config.nonEmergencySignerThreshold,
     randomNonce(),
     govChainSigner
   );
@@ -129,11 +129,11 @@ export async function deployContracts(userConfig: DeploymentConfig): Promise<Sec
 
     console.log(`\tDeploying emergency Gnosis Safe to chain ${chain.chainID}...`);
     const safe = await deployGnosisSafe(
-      chain.chainID === userConfig.hostChain.chainID ? userConfig.gnosisSafeL1Singleton : userConfig.gnosisSafeL2Singleton,
-      userConfig.gnosisSafeFactory,
-      userConfig.gnosisSafeFallbackHandler,
+      chain.chainID === config.hostChain.chainID ? config.gnosisSafeL1Singleton : config.gnosisSafeL2Singleton,
+      config.gnosisSafeFactory,
+      config.gnosisSafeFallbackHandler,
       owners,
-      userConfig.emergencySignerThreshold,
+      config.emergencySignerThreshold,
       randomNonce(),
       signer
     );
@@ -144,16 +144,16 @@ export async function deployContracts(userConfig: DeploymentConfig): Promise<Sec
   // 3. deploy contract implementations
   console.log("Deploying contract implementations...");
 
-  console.log(`\tDeploying SecurityCouncilNomineeElectionGovernor to chain ${userConfig.govChain.chainID}...`);
+  console.log(`\tDeploying SecurityCouncilNomineeElectionGovernor to chain ${config.govChain.chainID}...`);
   const nomineeElectionGovernor = (await new SecurityCouncilNomineeElectionGovernor__factory(govChainSigner).deploy()).address;
 
-  console.log(`\tDeploying SecurityCouncilMemberElectionGovernor to chain ${userConfig.govChain.chainID}...`);
+  console.log(`\tDeploying SecurityCouncilMemberElectionGovernor to chain ${config.govChain.chainID}...`);
   const memberElectionGovernor = (await new SecurityCouncilMemberElectionGovernor__factory(govChainSigner).deploy()).address;
 
-  console.log(`\tDeploying SecurityCouncilManager to chain ${userConfig.govChain.chainID}...`);
+  console.log(`\tDeploying SecurityCouncilManager to chain ${config.govChain.chainID}...`);
   const securityCouncilManager = (await new SecurityCouncilManager__factory(govChainSigner).deploy()).address;
 
-  console.log(`\tDeploying SecurityCouncilMemberRemovalGovernor to chain ${userConfig.govChain.chainID}...`);
+  console.log(`\tDeploying SecurityCouncilMemberRemovalGovernor to chain ${config.govChain.chainID}...`);
   const securityCouncilMemberRemoverGov = (await new SecurityCouncilMemberRemovalGovernor__factory(govChainSigner).deploy()).address;
 
   // finished object
@@ -167,26 +167,26 @@ export async function deployContracts(userConfig: DeploymentConfig): Promise<Sec
   // 4. build deploy params for factory.deploy()
   console.log("Building deploy params for factory.deploy()...");
   const deployParams: DeployParamsStruct = {
-    ...userConfig,
+    ...config,
     upgradeExecutors: [
       {
         // (L1) host chain executor
-        chainId: userConfig.hostChain.chainID,
+        chainId: config.hostChain.chainID,
         location: {
           inbox: constants.AddressZero,
-          upgradeExecutor: userConfig.l1Executor,
+          upgradeExecutor: config.l1Executor,
         },
       },
       {
         // (L2) gov chain executor
-        chainId: userConfig.govChain.chainID,
+        chainId: config.govChain.chainID,
         location: {
-          inbox: (await getL2Network(userConfig.govChain.chainID)).ethBridge.inbox,
-          upgradeExecutor: userConfig.l1Executor,
+          inbox: (await getL2Network(config.govChain.chainID)).ethBridge.inbox,
+          upgradeExecutor: config.l1Executor,
         },
       },
       // (L2) governed chain executors
-      ...await Promise.all(userConfig.governedChains.map(async (chain) => {
+      ...await Promise.all(config.governedChains.map(async (chain) => {
         return {
           chainId: chain.chainID,
           location: {
@@ -196,13 +196,13 @@ export async function deployContracts(userConfig: DeploymentConfig): Promise<Sec
         }
       }))
     ],
-    govChainEmergencySecurityCouncil: emergencyGnosisSafes[userConfig.govChain.chainID],
-    l1ArbitrumTimelock: userConfig.l1Timelock,
-    l2CoreGovTimelock: userConfig.l2CoreTimelock,
-    govChainProxyAdmin: userConfig.l2ProxyAdmin,
-    l2UpgradeExecutor: userConfig.l2Executor,
-    arbToken: userConfig.l2Token,
-    l1TimelockMinDelay: L1ArbitrumTimelock__factory.connect(userConfig.l1Timelock, hostChainSigner).getMinDelay(),
+    govChainEmergencySecurityCouncil: emergencyGnosisSafes[config.govChain.chainID],
+    l1ArbitrumTimelock: config.l1Timelock,
+    l2CoreGovTimelock: config.l2CoreTimelock,
+    govChainProxyAdmin: config.l2ProxyAdmin,
+    l2UpgradeExecutor: config.l2Executor,
+    arbToken: config.l2Token,
+    l1TimelockMinDelay: L1ArbitrumTimelock__factory.connect(config.l1Timelock, hostChainSigner).getMinDelay(),
     securityCouncils: [
       // emergency councils
       ...allChains.map((chain) => {
@@ -215,8 +215,8 @@ export async function deployContracts(userConfig: DeploymentConfig): Promise<Sec
       // non-emergency council
       {
         securityCouncil: nonEmergencyGnosisSafe,
-        chainId: userConfig.govChain.chainID,
-        updateAction: securityCouncilMemberSyncActions[userConfig.govChain.chainID]
+        chainId: config.govChain.chainID,
+        updateAction: securityCouncilMemberSyncActions[config.govChain.chainID]
       }
     ]
   };
