@@ -10,6 +10,8 @@
     "build": "yarn build:governance && yarn build:token-bridge-types",
     "build:governance": "hardhat compile",
     "build:token-bridge-types": "cd token-bridge-contracts && yarn && yarn build",
+    "build:elections": "FOUNDRY_PROFILE=sec_council_mgmt hardhat compile",
+    "build:gnosis-safe-types": "typechain --target ethers-v5 scripts/security-council-mgmt-deployment/safe-abis/*.json",
     "gen:network": "ts-node ./scripts/genNetwork.ts",
     "gen:nova:network": "ts-node ./scripts/genNetworkNova.ts",
     "gen:recipients": "ts-node ./scripts/genRecipients.ts",
