@@ -255,7 +255,7 @@ async function deploy2(userConfig: DeploymentConfig): Promise<SecurityCouncilMan
 
 
 
-import config from "./configs/mainnet2";
+import config from "./configs/mainnet";
 
 deploy2(config).then((res) => {
   console.log(res);
