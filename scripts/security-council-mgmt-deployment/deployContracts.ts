@@ -2,9 +2,7 @@ import {
   L2SecurityCouncilMgmtFactory__factory,
   SecurityCouncilMemberSyncAction__factory,
   L1ArbitrumTimelock__factory,
-  IGnosisSafe__factory,
   KeyValueStore__factory,
-  ArbitrumEnabledToken__factory,
   SecurityCouncilNomineeElectionGovernor__factory,
   SecurityCouncilMemberElectionGovernor__factory,
   SecurityCouncilManager__factory,
@@ -12,57 +10,31 @@ import {
 } from "../../typechain-types";
 import {
   DeployParamsStruct,
-  SecurityCouncilDataStruct,
   ContractsDeployedEventObject,
-  ContractImplementationsStructOutput,
   ContractImplementationsStruct,
 } from "../../typechain-types/src/security-council-mgmt/factories/L2SecurityCouncilMgmtFactory";
-import { DeploymentConfig, ChainIDToConnectedSigner, UserSpecifiedConfig, ChainConfig } from "./types";
-import { JsonRpcProvider, Provider } from "@ethersproject/providers";
-import { Wallet, constants } from "ethers";
-
 import { GnosisSafeProxyFactory__factory } from "../../types/ethers-contracts/factories/GnosisSafeProxyFactory__factory";
 import { GnosisSafeL2__factory } from "../../types/ethers-contracts/factories/GnosisSafeL2__factory";
+import { JsonRpcProvider } from "@ethersproject/providers";
 import { getL2Network } from "@arbitrum/sdk";
-
-const GNOSIS_SAFE_L2_SINGLETON = "0x3E5c63644E683549055b9Be8653de26E0B4CD36E";
-const GNOSIS_SAFE_L1_SINGLETON = "0xd9Db270c1B5E3Bd161E8c8503c55cEABeE709552";
-const GNOSIS_SAFE_FALLBACK_HANDLER = "0xf48f2B2d2a534e402487b3ee7C18c33Aec0Fe5e4";
-const GNOSIS_SAFE_FACTORY = "0xa6b71e26c5e0845f74c812102ca7114b6a896ab2";
-
-const EMERGENCY_THRESHOLD = 9;
-const NON_EMERGENCY_THRESHOLD = 7;
-
-
-type SecurityCouncilManagementDeploymentResult = {
-  keyValueStores: {[key: number]: string};
-  securityCouncilMemberSyncActions: {[key: number]: string};
-
-  emergencyGnosisSafes: {[key: number]: string};
-  nonEmergencyGnosisSafe: string;
-
-  nomineeElectionGovernor: string;
-  nomineeElectionGovernorLogic: string;
-  memberElectionGovernor: string;
-  memberElectionGovernorLogic: string;
-  securityCouncilManager: string;
-  securityCouncilManagerLogic: string;
-  securityCouncilMemberRemoverGov: string;
-  securityCouncilMemberRemoverGovLogic: string;
-
-  upgradeExecRouteBuilder: string;
-}
-
-function randomNonce() {
-  return Math.floor(Math.random() * Number.MAX_SAFE_INTEGER);
-}
+import { Wallet, constants } from "ethers";
+import { DeploymentConfig, ChainConfig, SecurityCouncilManagementDeploymentResult } from "./types";
+import { randomNonce } from "./utils";
 
 function getSigner(chain: ChainConfig): Wallet {
   return new Wallet(chain.privateKey, new JsonRpcProvider(chain.rpcUrl));
 }
 
-async function deployGnosisSafe(singletonAddress: string, owners: string[], threshold: number, nonce: number, signer: Wallet) {
-  const factory = GnosisSafeProxyFactory__factory.connect(GNOSIS_SAFE_FACTORY, signer);
+async function deployGnosisSafe(
+  singletonAddress: string,
+  factoryAddress: string,
+  fallbackHandlerAddress: string,
+  owners: string[],
+  threshold: number,
+  nonce: number,
+  signer: Wallet
+) {
+  const factory = GnosisSafeProxyFactory__factory.connect(factoryAddress, signer);
   const safeInterface = GnosisSafeL2__factory.createInterface();
 
   const setupCalldata = safeInterface.encodeFunctionData("setup", [
@@ -70,7 +42,7 @@ async function deployGnosisSafe(singletonAddress: string, owners: string[], thre
     threshold,
     constants.AddressZero, // to
     "0x", // data
-    GNOSIS_SAFE_FALLBACK_HANDLER,
+    fallbackHandlerAddress,
     constants.AddressZero, // payment token
     0, // payment
     constants.AddressZero, // payment receiver
@@ -85,7 +57,17 @@ async function deployGnosisSafe(singletonAddress: string, owners: string[], thre
   return proxyAddress;
 }
 
-async function deploy2(userConfig: UserSpecifiedConfig): Promise<SecurityCouncilManagementDeploymentResult> {
+async function checkChainConfigs(chains: ChainConfig[]) {
+  for (const chain of chains) {
+    const signer = getSigner(chain);
+    const address = await signer.getAddress();
+    const balance = await signer.getBalance();
+    if (balance.eq(constants.Zero)) throw new Error(`Signer ${address} on ${chain.chainID} not funded`);
+    if (chain.chainID !== (await signer.getChainId())) throw new Error(`RPC for ${address} on chain ${chain.chainID} returned wrong chain id`);
+  }
+}
+
+async function deploy2(userConfig: DeploymentConfig): Promise<SecurityCouncilManagementDeploymentResult> {
   // steps:
   // 1. deploy action contracts and key value stores
   // 2. deploy gnosis safes
@@ -100,52 +82,88 @@ async function deploy2(userConfig: UserSpecifiedConfig): Promise<SecurityCouncil
     ...userConfig.governedChains
   ];
 
+  console.log("Checking chain configs...");
+  await checkChainConfigs(allChains);
+
   const govChainSigner = getSigner(userConfig.govChain);
   const hostChainSigner = getSigner(userConfig.hostChain);
 
   // 1. deploy action contracts and key value stores
+  console.log("Deploying action contracts and key value stores...");
+
   const keyValueStores: SecurityCouncilManagementDeploymentResult["keyValueStores"] = {};
   const securityCouncilMemberSyncActions: SecurityCouncilManagementDeploymentResult["securityCouncilMemberSyncActions"] = {};
+
   for (const chain of allChains) {
     const signer = getSigner(chain);
+
+    console.log(`\tDeploying KeyValueStore to chain ${chain.chainID}...`);
     const kvStore = await new KeyValueStore__factory(signer).deploy();
+
+    console.log(`\tDeploying SecurityCouncilMemberSyncAction to chain ${chain.chainID}...`);
     const action = await new SecurityCouncilMemberSyncAction__factory(signer).deploy(kvStore.address);
     keyValueStores[chain.chainID] = kvStore.address;
     securityCouncilMemberSyncActions[chain.chainID] = action.address;
   }
 
   // 2. deploy gnosis safes
+  console.log("Deploying gnosis safes...");
+
   const owners = await Promise.all([...userConfig.firstCohort, ...userConfig.secondCohort]);
   const emergencyGnosisSafes: SecurityCouncilManagementDeploymentResult["emergencyGnosisSafes"] = {};
+
+  console.log(`\tDeploying non-emergency Gnosis Safe to chain ${userConfig.govChain.chainID}...`);
+
   const nonEmergencyGnosisSafe = await deployGnosisSafe(
-    GNOSIS_SAFE_L2_SINGLETON,
+    userConfig.gnosisSafeL2Singleton,
+    userConfig.gnosisSafeFactory,
+    userConfig.gnosisSafeFallbackHandler,
     owners,
-    NON_EMERGENCY_THRESHOLD,
+    userConfig.nonEmergencySignerThreshold,
     randomNonce(),
     govChainSigner
   );
 
   for (const chain of allChains) {
     const signer = getSigner(chain);
+
+    console.log(`\tDeploying emergency Gnosis Safe to chain ${chain.chainID}...`);
     const safe = await deployGnosisSafe(
-      chain.chainID === userConfig.hostChain.chainID ? GNOSIS_SAFE_L1_SINGLETON : GNOSIS_SAFE_L2_SINGLETON,
+      chain.chainID === userConfig.hostChain.chainID ? userConfig.gnosisSafeL1Singleton : userConfig.gnosisSafeL2Singleton,
+      userConfig.gnosisSafeFactory,
+      userConfig.gnosisSafeFallbackHandler,
       owners,
-      EMERGENCY_THRESHOLD,
+      userConfig.emergencySignerThreshold,
       randomNonce(),
       signer
     );
+
     emergencyGnosisSafes[chain.chainID] = safe;
   }
 
-  // 3. deploy contract implementations (TODO)
-  const contractImplementations: ContractImplementationsStruct = {
-    nomineeElectionGovernor: (await new SecurityCouncilNomineeElectionGovernor__factory(govChainSigner).deploy()).address,
-    memberElectionGovernor: (await new SecurityCouncilMemberElectionGovernor__factory(govChainSigner).deploy()).address,
-    securityCouncilManager: (await new SecurityCouncilManager__factory(govChainSigner).deploy()).address,
-    securityCouncilMemberRemoverGov: (await new SecurityCouncilMemberRemovalGovernor__factory(govChainSigner).deploy()).address,
-  };
+  // 3. deploy contract implementations
+  console.log("Deploying contract implementations...");
+
+  // temporary object to fill in contract implementations
+  const contractImplementationsPartial: Partial<ContractImplementationsStruct> = {};
+
+  console.log(`\tDeploying SecurityCouncilNomineeElectionGovernor to chain ${userConfig.govChain.chainID}...`);
+  contractImplementationsPartial.nomineeElectionGovernor = (await new SecurityCouncilNomineeElectionGovernor__factory(govChainSigner).deploy()).address;
+
+  console.log(`\tDeploying SecurityCouncilMemberElectionGovernor to chain ${userConfig.govChain.chainID}...`);
+  contractImplementationsPartial.memberElectionGovernor = (await new SecurityCouncilMemberElectionGovernor__factory(govChainSigner).deploy()).address;
+
+  console.log(`\tDeploying SecurityCouncilManager to chain ${userConfig.govChain.chainID}...`);
+  contractImplementationsPartial.securityCouncilManager = (await new SecurityCouncilManager__factory(govChainSigner).deploy()).address;
+
+  console.log(`\tDeploying SecurityCouncilMemberRemovalGovernor to chain ${userConfig.govChain.chainID}...`);
+  contractImplementationsPartial.securityCouncilMemberRemoverGov = (await new SecurityCouncilMemberRemovalGovernor__factory(govChainSigner).deploy()).address;
+
+  // finished object
+  const contractImplementations: ContractImplementationsStruct = contractImplementationsPartial as ContractImplementationsStruct;
 
   // 4. build deploy params for factory.deploy()
+  console.log("Building deploy params for factory.deploy()...");
   const deployParams: DeployParamsStruct = {
     ...userConfig,
     upgradeExecutors: [
@@ -202,9 +220,11 @@ async function deploy2(userConfig: UserSpecifiedConfig): Promise<SecurityCouncil
   };
 
   // 5. deploy sc mgmt factory
+  console.log("Deploying sc mgmt factory...");
   const l2SecurityCouncilMgmtFactory = await new L2SecurityCouncilMgmtFactory__factory(govChainSigner).deploy();
 
   // 6. call factory.deploy()
+  console.log("Calling factory.deploy()...");
   const deployTx = await l2SecurityCouncilMgmtFactory.connect(govChainSigner).deploy(deployParams, contractImplementations);
   const deployReceipt = await deployTx.wait();
 
@@ -213,6 +233,8 @@ async function deploy2(userConfig: UserSpecifiedConfig): Promise<SecurityCouncil
   )[0].args as unknown as ContractsDeployedEventObject;
 
   if (!deployEvent) throw new Error("No contracts deployed event");
+
+  console.log("Done!");
 
   return {
     keyValueStores,
@@ -306,7 +328,7 @@ deploy2(config).then((res) => {
 //     const { chainID, securityCouncilAddress } = securityCouncilAndSigner;
 
 //     const connectedSigner = chainIDToConnectedSigner[chainID];
-//     if (!connectedSigner) throw new Error(`Signer not connected for chain ${chainID}`);
+//     if (!connectedSigner) throw new Error(`Signer not connected to chain ${chainID}`);
 //     const securityCouncilUpgradeAction = await new SecurityCouncilMemberSyncAction__factory(
 //       connectedSigner
 //     ).deploy();

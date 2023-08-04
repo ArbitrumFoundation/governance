@@ -1,48 +1,42 @@
 import { ethers } from "ethers";
 import { DeployedContracts } from "../../../src-ts/types";
-import { UserSpecifiedConfig } from "../types";
+import { DeploymentConfig } from "../types";
 import * as fs from "fs";
+import { assertDefined, blocks, readDeployedContracts } from "../utils";
 
-const deployedContracts = JSON.parse(
-    fs.readFileSync("./files/mainnet/deployedContracts.json").toString()
-) as DeployedContracts;
+import commonConfig from "./common";
 
-function daysToBlocks(days: number) {
-    return secondsToBlocks(days * 24 * 60 * 60);
-}
+const deployedContracts = readDeployedContracts("./files/mainnet/deployedContracts.json");
 
-function secondsToBlocks(seconds: number) {
-    return Math.floor(seconds / 12);
-}
+// TODO: general cleanup
+// constants like gnosis addresses
+// unused imports
 
-function assertDefined<T>(val: T | undefined): T {
-    if (val === undefined) {
-        throw new Error("value is undefined");
-    }
-    return val;
-}
 
-const config: UserSpecifiedConfig = {
+const config: DeploymentConfig = {
     ...deployedContracts,
-    removalGovVotingDelay: 21600,
-    removalGovVotingPeriod: 100800,
-    removalGovQuorumNumerator: 1000,
+    ...commonConfig,
+    emergencySignerThreshold: 9,
+    nonEmergencySignerThreshold: 7,
+    removalGovVotingDelay: blocks(3, 'days'),
+    removalGovVotingPeriod: blocks(14, 'days'),
+    removalGovQuorumNumerator: 1000, // 10%
     removalGovProposalThreshold: ethers.utils.parseEther("1000000"),
-    removalGovVoteSuccessNumerator: 8333,
-    removalGovMinPeriodAfterQuorum: 14400,
-    removalProposalExpirationBlocks: 0, // todo 
+    removalGovVoteSuccessNumerator: 8333, // 83.33%
+    removalGovMinPeriodAfterQuorum: blocks(2, 'days'),
+    removalProposalExpirationBlocks: blocks(14, 'days'), 
     firstNominationStartDate: {
         year: 2023,
         month: 9,
         day: 15,
         hour: 12, // todo
     },
-    nomineeVettingDuration: daysToBlocks(14),
+    nomineeVettingDuration: blocks(14, 'days'),
     nomineeVetter: "0x000000000000000000000000000000000000dead", // todo
     nomineeQuorumNumerator: 20, // 0.2%
-    nomineeVotingPeriod: daysToBlocks(7),
-    memberVotingPeriod: daysToBlocks(21),
-    fullWeightDuration: daysToBlocks(7),
+    nomineeVotingPeriod: blocks(7, 'days'),
+    memberVotingPeriod: blocks(21, 'days'),
+    fullWeightDuration: blocks(7, 'days'),
     firstCohort: [
         "0x526C0DA9970E7331d171f86AeD28FAFB5D8A49EF",
         "0xf8e1492255d9428c2Fc20A98A1DeB1215C8ffEfd",
@@ -61,19 +55,19 @@ const config: UserSpecifiedConfig = {
     ],
     govChain: {
         chainID: 42161,
-        rpcUrl: assertDefined(process.env.ARBITRUM_RPC_URL),
-        privateKey: assertDefined(process.env.PRIVATE_KEY),
+        rpcUrl: assertDefined(process.env.ARB_URL, "ARB_URL is undefined"),
+        privateKey: assertDefined(process.env.ARB_KEY, "ARB_KEY is undefined"),
     },
     hostChain: {
         chainID: 1,
-        rpcUrl: assertDefined(process.env.MAINNET_RPC_URL),
-        privateKey: assertDefined(process.env.PRIVATE_KEY),
+        rpcUrl: assertDefined(process.env.ETH_URL, "ETH_URL is undefined"),
+        privateKey: assertDefined(process.env.ETH_KEY, "ETH_KEY is undefined")
     },
     governedChains: [
         {
             chainID: 42170,
-            rpcUrl: assertDefined(process.env.NOVA_RPC_URL),
-            privateKey: assertDefined(process.env.PRIVATE_KEY),
+            rpcUrl: assertDefined(process.env.NOVA_URL, "NOVA_URL is undefined"),
+            privateKey: assertDefined(process.env.NOVA_KEY, "NOVA_KEY is undefined"),
             // @ts-ignore
             upExecLocation: deployedContracts.novaUpgradeExecutorProxy,
         }
