@@ -1,5 +1,5 @@
 import { DeployedContracts } from "../../src-ts/types";
-import { ChainAndUpExecLocationStruct, DeployParamsStruct } from "../../typechain-types/src/security-council-mgmt/factories/L2SecurityCouncilMgmtFactory";
+import { DeployParamsStruct } from "../../typechain-types/src/security-council-mgmt/factories/L2SecurityCouncilMgmtFactory";
 import { Signer } from "ethers";
 
 export interface SecurityCouncilAndChainID {
