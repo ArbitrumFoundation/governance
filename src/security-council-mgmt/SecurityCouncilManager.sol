@@ -36,12 +36,16 @@ contract SecurityCouncilManager is
     event MemberReplaced(address indexed replacedMember, address indexed newMember, Cohort cohort);
     event MemberRotated(address indexed replacedAddress, address indexed newAddress, Cohort cohort);
     event SecurityCouncilAdded(
-        address securityCouncil, address updateAction, uint256 securityCouncilsLength
+        address indexed securityCouncil,
+        address indexed updateAction,
+        uint256 securityCouncilsLength
     );
     event SecurityCouncilRemoved(
-        address securityCouncil, address updateAction, uint256 securityCouncilsLength
+        address indexed securityCouncil,
+        address indexed updateAction,
+        uint256 securityCouncilsLength
     );
-    event UpgradeExecRouteBuilderSet(address UpgradeExecRouteBuilder);
+    event UpgradeExecRouteBuilderSet(address indexed UpgradeExecRouteBuilder);
 
     // The Security Council members are separated into two cohorts, allowing a whole cohort to be replaced, as
     // specified by the Arbitrum Constitution.
