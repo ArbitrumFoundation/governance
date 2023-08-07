@@ -125,7 +125,7 @@ contract SecurityCouncilMemberSyncActionTest is Test, DeployGnosisWithModule {
             SecurityCouncilMemberSyncAction.perform.selector, safe, newMembers
         );
 
-        // [8], [9], [10] sucessfully get removed, leaving [11]'s previous owner to be [7]; removing [11] reverts as it's below the theshold,
+        // [8], [9], [10] sucessfully get removed, leaving [11]'s previous owner to be [7]; removing [11] reverts as it's below the threshold,
         bytes memory revertingRemoveMemberCall = abi.encodeWithSelector(
             IGnosisSafe.removeOwner.selector, prevMembers[7], prevMembers[11], 9
         );

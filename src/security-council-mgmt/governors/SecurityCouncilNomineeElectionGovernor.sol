@@ -261,7 +261,7 @@ contract SecurityCouncilNomineeElectionGovernor is
     }
 
     /// @notice Allows the nomineeVetter to exclude a noncompliant nominee.
-    /// @dev    Can be called only after a nomninee election proposal has "succeeded" (voting has ended) and before the nominee vetting period has ended.
+    /// @dev    Can be called only after a nominee election proposal has "succeeded" (voting has ended) and before the nominee vetting period has ended.
     ///         Will revert if the provided account is not a nominee (had less than the required votes).
     function excludeNominee(uint256 proposalId, address nominee)
         external

@@ -98,9 +98,9 @@ contract SecurityCouncilMemberRemovalGovernor is
     }
 
     /// @notice Propose a security council member removal. Method conforms to the governor propose interface
-    ///         but enforces that only calls to securityCouncilManager's removeMember can be propsoed.
+    ///         but enforces that only calls to securityCouncilManager's removeMember can be proposed.
     /// @param targets Target contract operation; must be [securityCouncilManager]
-    /// @param values Value for removeMmeber; must be [0]
+    /// @param values Value for removeMember; must be [0]
     /// @param calldatas Operation calldata; must be [removeMember with address argument]
     /// @param description rationale for member removal
     function propose(
@@ -157,7 +157,7 @@ contract SecurityCouncilMemberRemovalGovernor is
         return voteSuccessDenominator * forVotes > (forVotes + againstVotes) * voteSuccessNumerator;
     }
 
-    /// @notice A removal proposal if a theshold of all cast votes vote in favor of removal.
+    /// @notice A removal proposal if a threshold of all cast votes vote in favor of removal.
     ///         Thus, abstaining would be exactly equivalent to voting against.
     ///         To prevent any confusion, abstaining is disallowed.
     function _countVote(
@@ -174,7 +174,7 @@ contract SecurityCouncilMemberRemovalGovernor is
     }
 
     /// @notice Set numerator for removal vote to succeed; only DAO can call
-    /// @param _voteSuccessNumerator new numberator value
+    /// @param _voteSuccessNumerator new numerator value
     function setVoteSuccessNumerator(uint256 _voteSuccessNumerator) public onlyOwner {
         _setVoteSuccessNumerator(_voteSuccessNumerator);
     }

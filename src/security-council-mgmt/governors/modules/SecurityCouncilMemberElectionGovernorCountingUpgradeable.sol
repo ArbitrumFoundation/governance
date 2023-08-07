@@ -221,7 +221,7 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
 
     /// @notice Returns the weight of a vote for a given proposal, block number, and number of votes.
     ///         Each vote has weight 1 until the fullWeightVotingDeadline is reached, after which each vote has linearly
-    ///         deacreasing weight, reaching 0 at the proposalDeadline.
+    ///         decreasing weight, reaching 0 at the proposalDeadline.
     function votesToWeight(uint256 proposalId, uint256 blockNumber, uint256 votes)
         public
         view

@@ -73,7 +73,7 @@ contract SecurityCouncilManager is
     /// @notice Nonce to ensure that scheduled updates create unique entries in the timelocks
     uint256 public updateNonce;
 
-    /// @notice Size of cohort under ordinary circumstancces
+    /// @notice Size of cohort under ordinary circumstances
     uint256 public cohortSize;
 
     /// @notice Magic value used by the L1 timelock to indicate that a retryable ticket should be created
@@ -432,7 +432,7 @@ contract SecurityCouncilManager is
         ArbitrumTimelock(l2CoreGovTimelock).schedule({
             target: to, // ArbSys address - this will trigger a call from L2->L1
             value: 0,
-            // call to ArbSys.sendTxToL1; target the L1 timelock with the calldata previously constucted
+            // call to ArbSys.sendTxToL1; target the L1 timelock with the calldata previously constructed
             data: data,
             predecessor: bytes32(0),
             // must be unique as the proposal hash is used for replay protection in the L2 timelock
