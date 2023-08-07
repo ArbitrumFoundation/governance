@@ -116,7 +116,6 @@ export class Proposal {
  * there, and are then finally executed on another L2 or L1.
  */
 export class RoundTripProposalCreator {
-  public targetNetworkConfigs: UpgradeConfig[];
   /**
    * A proposal creator for a specific round trip config
    * @param l1Config Config for the L1 network on which this l2 networks are based
@@ -124,12 +123,8 @@ export class RoundTripProposalCreator {
    */
   constructor(
     public readonly l1Config: L1GovConfig,
-    _targetNetworkConfigs: UpgradeConfig[] | UpgradeConfig
-  ) {
-    this.targetNetworkConfigs = Array.isArray(_targetNetworkConfigs)
-      ? _targetNetworkConfigs
-      : [_targetNetworkConfigs];
-  }
+    public readonly targetNetworkConfigs: UpgradeConfig[]
+  ) {}
 
   /**
    * Creates calldata for roundtrio path; data to be used either in a proposal or directly in timelock.schedule
@@ -155,15 +150,11 @@ export class RoundTripProposalCreator {
    * Generates arguments for ArbSys.sendTxToL1 for a constitutional proposal. Can be used to submit a proposal in e.g. the Tally UI.
    */
   public async createRoundTripCallDataForArbSysCall(
-    upgradeAddrs: string[] | string,
-    upgradeValues: BigNumber[] | BigNumber,
-    upgradeDatas: string[] | string,
+    upgradeAddrs: string[],
+    upgradeValues: BigNumber[],
+    upgradeDatas: string[],
     proposalDescription: string
   ) {
-    upgradeAddrs = Array.isArray(upgradeAddrs) ? upgradeAddrs : [upgradeAddrs];
-    upgradeValues = Array.isArray(upgradeValues) ? upgradeValues : [upgradeValues];
-    upgradeDatas = Array.isArray(upgradeDatas) ? upgradeDatas : [upgradeDatas];
-
     if (
       new Set([
         upgradeAddrs.length,
@@ -194,7 +185,7 @@ export class RoundTripProposalCreator {
       // indices of the target network configs should correspond to the indices of the upgradeAddrs (and upgradeValues and upgradeDatas)
       // we include this sanity check to help catch a misconfiguration:
       if ((await targetNetworkConfig.provider.getCode(upgradeAddr)).length == 2)
-        throw new Error("Action contract not found on configged network");
+        throw new Error("Action contract not found on configured network");
 
       // the upgrade executor
 
@@ -259,15 +250,11 @@ export class RoundTripProposalCreator {
    * @returns
    */
   public async create(
-    upgradeAddrs: string[] | string,
-    upgradeValues: BigNumber[] | BigNumber,
-    upgradeDatas: string[] | string,
+    upgradeAddrs: string[],
+    upgradeValues: BigNumber[],
+    upgradeDatas: string[],
     proposalDescription: string
   ): Promise<Proposal> {
-    upgradeAddrs = Array.isArray(upgradeAddrs) ? upgradeAddrs : [upgradeAddrs];
-    upgradeValues = Array.isArray(upgradeValues) ? upgradeValues : [upgradeValues];
-    upgradeDatas = Array.isArray(upgradeDatas) ? upgradeDatas : [upgradeDatas];
-
     const proposalCallData = await this.createRoundTripCallData(
       upgradeAddrs,
       upgradeValues,
@@ -287,7 +274,7 @@ export class RoundTripProposalCreator {
    */
   public async createTimelockScheduleArgs(
     l2GovConfig: L2GovConfig,
-    upgradeAddrs: string[] | string,
+    upgradeAddrs: string[],
     description: string,
     options: {
       upgradeValue?: BigNumber;
@@ -299,7 +286,6 @@ export class RoundTripProposalCreator {
       predecessor?: string;
     } = {}
   ) {
-    upgradeAddrs = Array.isArray(upgradeAddrs) ? upgradeAddrs : [upgradeAddrs];
 
     // default upgrade value and predecessor values
     const { upgradeValue = constants.Zero, predecessor = "0x" } = options;
