@@ -25,7 +25,7 @@ contract SecurityCouncilMemberRemovalGovernor is
     ArbitrumGovernorProposalExpirationUpgradeable,
     OwnableUpgradeable
 {
-    uint256 public constant voteSuccessDenominator = 10_000;
+    uint256 public constant VOTE_SUCCESS_DENOMINATOR = 10_000;
     uint256 public voteSuccessNumerator;
     ISecurityCouncilManager public securityCouncilManager;
 
@@ -154,7 +154,8 @@ contract SecurityCouncilMemberRemovalGovernor is
         (uint256 againstVotes, uint256 forVotes,) = proposalVotes(proposalId);
 
         // for-votes / total-votes  >  success-numerator/ success-denominator
-        return voteSuccessDenominator * forVotes > (forVotes + againstVotes) * voteSuccessNumerator;
+        return
+            VOTE_SUCCESS_DENOMINATOR * forVotes > (forVotes + againstVotes) * voteSuccessNumerator;
     }
 
     /// @notice A removal proposal if a threshold of all cast votes vote in favor of removal.
@@ -180,7 +181,7 @@ contract SecurityCouncilMemberRemovalGovernor is
     }
 
     function _setVoteSuccessNumerator(uint256 _voteSuccessNumerator) internal {
-        if (!(0 < _voteSuccessNumerator && _voteSuccessNumerator <= voteSuccessDenominator)) {
+        if (!(0 < _voteSuccessNumerator && _voteSuccessNumerator <= VOTE_SUCCESS_DENOMINATOR)) {
             revert InvalidVoteSuccessNumerator(_voteSuccessNumerator);
         }
         voteSuccessNumerator = _voteSuccessNumerator;
