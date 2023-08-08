@@ -32,3 +32,7 @@ export function readDeployedContracts(path: string) {
 export function randomNonce() {
   return Math.floor(Math.random() * Number.MAX_SAFE_INTEGER);
 }
+
+export function getNamedObjectItems(obj: {[s: string]: unknown} | ArrayLike<unknown>) {
+  return Object.entries(obj).reduce((acc, [key, value]) => isNaN(Number(key)) ? {...acc, [key]: value} : acc, {});
+}
