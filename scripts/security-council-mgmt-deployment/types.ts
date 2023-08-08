@@ -16,10 +16,15 @@ export type ChainConfig = {
   chainID: number;
   rpcUrl: string;
   privateKey: string;
+  prevEmergencySecurityCouncil: string;
 }
 
 export type GovernedChainConfig = ChainConfig & {
   upExecLocation: string;
+}
+
+export type GovernanceChainConfig = ChainConfig & {
+  prevNonEmergencySecurityCouncil: string;
 }
 
 export type DeploymentConfig =
@@ -45,7 +50,7 @@ export type DeploymentConfig =
   > & {
     emergencySignerThreshold: number;
     nonEmergencySignerThreshold: number;
-    govChain: ChainConfig;
+    govChain: GovernanceChainConfig;
     hostChain: ChainConfig;
     governedChains: GovernedChainConfig[];
     gnosisSafeL2Singleton: string;
@@ -75,4 +80,6 @@ export type SecurityCouncilManagementDeploymentResult = {
   securityCouncilMemberRemoverGovLogic: string;
 
   upgradeExecRouteBuilder: string;
+
+  activationActionContracts: {[key: number]: string};
 };

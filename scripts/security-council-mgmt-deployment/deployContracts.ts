@@ -7,6 +7,9 @@ import {
   SecurityCouncilMemberElectionGovernor__factory,
   SecurityCouncilManager__factory,
   SecurityCouncilMemberRemovalGovernor__factory,
+  GovernanceChainSCMgmtActivationAction__factory,
+  L1SCMgmtActivationAction__factory,
+  NonGovernanceChainSCMgmtActivationAction__factory,
 } from "../../typechain-types";
 import {
   DeployParamsStruct,
@@ -236,7 +239,50 @@ export async function deployContracts(config: DeploymentConfig): Promise<Securit
 
   if (!deployEvent) throw new Error("No contracts deployed event");
 
+  // 7. deploy activation action contracts
+  console.log("Deploying activation action contracts...");
+  const activationActionContracts: SecurityCouncilManagementDeploymentResult["activationActionContracts"] = {};
+
+  // 7a. deploy activation action contract to gov chain
+  console.log(`\tDeploying activation action contract to governance chain ${config.govChain.chainID}...`);
+  const govChainActivationAction = await new GovernanceChainSCMgmtActivationAction__factory(govChainSigner).deploy(
+    emergencyGnosisSafes[config.govChain.chainID],
+    nonEmergencyGnosisSafe,
+    config.govChain.prevEmergencySecurityCouncil,
+    config.govChain.prevNonEmergencySecurityCouncil,
+    config.emergencySignerThreshold,
+    config.nonEmergencySignerThreshold,
+    deployEvent.deployedContracts.securityCouncilManager,
+    config.l2AddressRegistry
+  );
+  activationActionContracts[config.govChain.chainID] = govChainActivationAction.address;
+
+  // 7b. deploy activation action contract to host chain
+  console.log(`\tDeploying activation action contract to host chain ${config.hostChain.chainID}...`);
+  const hostChainActivationAction = await new L1SCMgmtActivationAction__factory(hostChainSigner).deploy(
+    emergencyGnosisSafes[config.hostChain.chainID],
+    config.hostChain.prevEmergencySecurityCouncil,
+    config.emergencySignerThreshold,
+    config.l1Executor,
+    config.l1Timelock
+  );
+  activationActionContracts[config.hostChain.chainID] = hostChainActivationAction.address;
+
+  // 7c. deploy activation action contract to governed chains
+  for (const chain of config.governedChains) {
+    console.log(`\tDeploying activation action contract to governed chain ${chain.chainID}...`);
+    const signer = getSigner(chain);
+    const activationAction = await new NonGovernanceChainSCMgmtActivationAction__factory(signer).deploy(
+      emergencyGnosisSafes[chain.chainID],
+      chain.prevEmergencySecurityCouncil,
+      config.emergencySignerThreshold,
+      chain.upExecLocation
+    );
+    activationActionContracts[chain.chainID] = activationAction.address;
+  }
+
   return {
+    activationActionContracts,
     keyValueStores,
     securityCouncilMemberSyncActions,
     emergencyGnosisSafes,

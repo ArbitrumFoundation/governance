@@ -50,11 +50,14 @@ const config: DeploymentConfig = {
     chainID: 42161,
     rpcUrl: assertDefined(process.env.ARB_URL, "ARB_URL is undefined"),
     privateKey: assertDefined(process.env.ARB_KEY, "ARB_KEY is undefined"),
+    prevEmergencySecurityCouncil: "0x3568A44b3E72F5B17a0E14E53fdB7366B3B7Ad13",
+    prevNonEmergencySecurityCouncil: "0x895c9fc6bcf06e553b54A9fE11D948D67a9B76FA",
   },
   hostChain: {
     chainID: 1,
     rpcUrl: assertDefined(process.env.ETH_URL, "ETH_URL is undefined"),
-    privateKey: assertDefined(process.env.ETH_KEY, "ETH_KEY is undefined")
+    privateKey: assertDefined(process.env.ETH_KEY, "ETH_KEY is undefined"),
+    prevEmergencySecurityCouncil: "0x3666a60ff589873ced457a9a8a0aA6F83D708767",
   },
   governedChains: [
     {
@@ -63,6 +66,7 @@ const config: DeploymentConfig = {
       privateKey: assertDefined(process.env.NOVA_KEY, "NOVA_KEY is undefined"),
       // @ts-ignore
       upExecLocation: deployedContracts.novaUpgradeExecutorProxy,
+      prevEmergencySecurityCouncil: "0x3cA27a792C64a3a81417499AA53786A41812B2cd",
     }
   ]
 };
