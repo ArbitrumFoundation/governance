@@ -4,7 +4,7 @@ import { Wallet, ethers } from "ethers";
 import { L2ArbitrumToken__factory, L2SecurityCouncilMgmtFactory__factory, SecurityCouncilManager__factory, SecurityCouncilMemberElectionGovernor__factory, SecurityCouncilMemberRemovalGovernor__factory, SecurityCouncilNomineeElectionGovernor__factory } from "../../typechain-types";
 import { DeployParamsStruct } from "../../typechain-types/src/security-council-mgmt/factories/L2SecurityCouncilMgmtFactory";
 import { TransparentUpgradeableProxy__factory } from "@arbitrum/sdk/dist/lib/abi/factories/TransparentUpgradeableProxy__factory";
-import { getNamedObjectItems } from "../testUtils";
+import { getNamedObjectItems } from "./utils";
 
 // env vars:
 // RPC_URL (optional, defaults to http://localhost:8545)

@@ -179,10 +179,6 @@ export function pointToTokenAmount(point: number): number {
   }
 }
 
-export function getNamedObjectItems(obj: {[s: string]: unknown} | ArrayLike<unknown>) {
-  return Object.entries(obj).reduce((acc, [key, value]) => isNaN(Number(key)) ? {...acc, [key]: value} : acc, {});
-}
-
 export type TypeChainContractFactory<TContract extends Contract> = {
   deploy(...args: Array<any>): Promise<TContract>;
 };
