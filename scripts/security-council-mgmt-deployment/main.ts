@@ -1,7 +1,9 @@
 import yargs from "yargs";
-import { deploySecurityCouncilMgmtContracts } from "./deployContracts";
-import { getMainnetConfig } from "./configs/mainnet";
-import { getGoerliConfig } from "./configs/arbgoerli";
+import mainnetConfig from "./configs/mainnet";
+import goerliConfig from "./configs/arbgoerli";
+import { deployContracts } from "./deployContracts";
+
+import {promises as fs} from "fs";
 
 /**
  * To run:
@@ -19,7 +21,7 @@ import { getGoerliConfig } from "./configs/arbgoerli";
  * NOVA_URL
  *
  * run:
- * yarn deploy:sc-mgmt --network mainnet | arb-goerli
+ * yarn deploy:sc-mgmt --network mainnet | goerli
  *
  */
 const options = yargs(process.argv.slice(2))
@@ -31,19 +33,22 @@ const options = yargs(process.argv.slice(2))
 };
 
 const main = async () => {
-  const config = await (async () => {
-    switch (options.network) {
-      case "mainnet":
-        return getMainnetConfig();
-        // TODO
-        return getGoerliConfig();
-      default:
-        throw new Error(`Unsupported network: ${options.network}`);
-    }
-  })();
-  const deployment = await deploySecurityCouncilMgmtContracts(config);
-  console.log(deployment);
-  //   TODO: save to JSON file?
+  let config;
+  switch (options.network) {
+    case "mainnet":
+      config = mainnetConfig;
+      break;
+    case "goerli":
+      config = goerliConfig;
+      break;
+    default:
+      throw new Error(`Unsupported network: ${options.network}`);
+  }
+
+  const deployment = await deployContracts(config);
+
+  await fs.writeFile(`./files/${options.network}/scmDeployment.json`, JSON.stringify(deployment, null, 2));
+
   return deployment;
 };
 
