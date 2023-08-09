@@ -102,9 +102,13 @@ export async function deployContracts(config: DeploymentConfig): Promise<Securit
 
     console.log(`\tDeploying KeyValueStore to chain ${chain.chainID}...`);
     const kvStore = await new KeyValueStore__factory(signer).deploy();
+    await kvStore.deployTransaction.wait();
 
     console.log(`\tDeploying SecurityCouncilMemberSyncAction to chain ${chain.chainID}...`);
+    
     const action = await new SecurityCouncilMemberSyncAction__factory(signer).deploy(kvStore.address);
+    await action.deployTransaction.wait();
+
     keyValueStores[chain.chainID] = kvStore.address;
     securityCouncilMemberSyncActions[chain.chainID] = action.address;
   }
@@ -148,23 +152,27 @@ export async function deployContracts(config: DeploymentConfig): Promise<Securit
   console.log("Deploying contract implementations...");
 
   console.log(`\tDeploying SecurityCouncilNomineeElectionGovernor to chain ${config.govChain.chainID}...`);
-  const nomineeElectionGovernor = (await new SecurityCouncilNomineeElectionGovernor__factory(govChainSigner).deploy()).address;
+  const nomineeElectionGovernor = await new SecurityCouncilNomineeElectionGovernor__factory(govChainSigner).deploy();
+  nomineeElectionGovernor.deployTransaction.wait();
 
   console.log(`\tDeploying SecurityCouncilMemberElectionGovernor to chain ${config.govChain.chainID}...`);
-  const memberElectionGovernor = (await new SecurityCouncilMemberElectionGovernor__factory(govChainSigner).deploy()).address;
+  const memberElectionGovernor = await new SecurityCouncilMemberElectionGovernor__factory(govChainSigner).deploy();
+  memberElectionGovernor.deployTransaction.wait();
 
   console.log(`\tDeploying SecurityCouncilManager to chain ${config.govChain.chainID}...`);
-  const securityCouncilManager = (await new SecurityCouncilManager__factory(govChainSigner).deploy()).address;
+  const securityCouncilManager = await new SecurityCouncilManager__factory(govChainSigner).deploy();
+  securityCouncilManager.deployTransaction.wait();
 
   console.log(`\tDeploying SecurityCouncilMemberRemovalGovernor to chain ${config.govChain.chainID}...`);
-  const securityCouncilMemberRemoverGov = (await new SecurityCouncilMemberRemovalGovernor__factory(govChainSigner).deploy()).address;
+  const securityCouncilMemberRemoverGov = await new SecurityCouncilMemberRemovalGovernor__factory(govChainSigner).deploy();
+  securityCouncilMemberRemoverGov.deployTransaction.wait();
 
   // finished object
   const contractImplementations: ContractImplementationsStruct = {
-    nomineeElectionGovernor,
-    memberElectionGovernor,
-    securityCouncilManager,
-    securityCouncilMemberRemoverGov,
+    nomineeElectionGovernor: nomineeElectionGovernor.address,
+    memberElectionGovernor: memberElectionGovernor.address,
+    securityCouncilManager: securityCouncilManager.address,
+    securityCouncilMemberRemoverGov: securityCouncilMemberRemoverGov.address,
   };
 
   // 4. build deploy params for factory.deploy()
@@ -227,6 +235,7 @@ export async function deployContracts(config: DeploymentConfig): Promise<Securit
   // 5. deploy sc mgmt factory
   console.log("Deploying sc mgmt factory...");
   const l2SecurityCouncilMgmtFactory = await new L2SecurityCouncilMgmtFactory__factory(govChainSigner).deploy();
+  await l2SecurityCouncilMgmtFactory.deployTransaction.wait();
 
   // 6. call factory.deploy()
   console.log("Calling factory.deploy()...");
@@ -255,6 +264,7 @@ export async function deployContracts(config: DeploymentConfig): Promise<Securit
     deployEvent.deployedContracts.securityCouncilManager,
     config.l2AddressRegistry
   );
+  govChainActivationAction.deployTransaction.wait();
   activationActionContracts[config.govChain.chainID] = govChainActivationAction.address;
 
   // 7b. deploy activation action contract to host chain
@@ -266,6 +276,7 @@ export async function deployContracts(config: DeploymentConfig): Promise<Securit
     config.l1Executor,
     config.l1Timelock
   );
+  hostChainActivationAction.deployTransaction.wait();
   activationActionContracts[config.hostChain.chainID] = hostChainActivationAction.address;
 
   // 7c. deploy activation action contract to governed chains
@@ -278,6 +289,7 @@ export async function deployContracts(config: DeploymentConfig): Promise<Securit
       config.emergencySignerThreshold,
       chain.upExecLocation
     );
+    activationAction.deployTransaction.wait();
     activationActionContracts[chain.chainID] = activationAction.address;
   }
 
