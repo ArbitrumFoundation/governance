@@ -50,9 +50,9 @@ export type DeploymentConfig =
   > & {
     emergencySignerThreshold: number;
     nonEmergencySignerThreshold: number;
-    govChain: GovernanceChainConfig;
-    hostChain: ChainConfig;
-    governedChains: GovernedChainConfig[];
+    govChain: GovernanceChainConfig; // e.g. ArbOne
+    hostChain: ChainConfig; // e.g. Ethereum L1
+    governedChains: GovernedChainConfig[]; // e.g. [Nova], governedChains DOES NOT include the governance chain (i.e. ArbOne)
     gnosisSafeL2Singleton: string;
     gnosisSafeL1Singleton: string;
     gnosisSafeFallbackHandler: string;
