@@ -1,19 +1,18 @@
 import { GovernanceChainSCMgmtActivationAction__factory, ISecurityCouncilMemberElectionGovernor__factory, KeyValueStore__factory, L1SCMgmtActivationAction__factory, L2SecurityCouncilMgmtFactory__factory, NonGovernanceChainSCMgmtActivationAction__factory, SecurityCouncilManager__factory, SecurityCouncilMemberElectionGovernor__factory, SecurityCouncilMemberRemovalGovernor__factory, SecurityCouncilMemberSyncAction__factory, SecurityCouncilNomineeElectionGovernor__factory, TransparentUpgradeableProxy__factory, UpgradeExecRouteBuilder__factory } from "../../typechain-types";
-import { ContractVerificationConfig, verifyContract, verifyContracts } from "../minimalContractVerifier";
+import { ContractVerificationConfig, verifyContracts } from "../minimalContractVerifier";
 import { promises as fs} from "fs";
 import { SecurityCouncilManagementDeploymentResult } from "./types";
 import mainnetConfig from "./configs/mainnet";
 import goerliConfig from "./configs/arbgoerli";
 import { assertDefined } from "./utils";
-import { ethers } from "ethers";
 
 // todo: replace with cli option
 const TESTNET = true;
 
 const apiKeys = {
-  eth: assertDefined(process.env.ETHERSCAN_API_KEY),
-  arb: assertDefined(process.env.ARBISCAN_API_KEY),
-  nova: assertDefined(process.env.NOVA_ARBISCAN_API_KEY)
+  eth: assertDefined(process.env.ETHERSCAN_API_KEY, "ETHERSCAN_API_KEY undefined"),
+  arb: assertDefined(process.env.ARBISCAN_API_KEY, "ARBISCAN_API_KEY undefined"),
+  nova: assertDefined(process.env.NOVA_ARBISCAN_API_KEY, "NOVA_ARBISCAN_API_KEY undefined")
 };
 
 const chainIdToApiKey: {[key: number]: string} = {
@@ -128,7 +127,7 @@ async function main() {
     etherscanApiKey: chainIdToApiKey[config.govChain.chainID]
   };
 
-  // nominee election gov proxy (only need to verify one since they all have same deployed bytecode)
+  // nominee election gov proxy (only need to verify one proxy since they all have same deployed bytecode)
   const nomineeElectionGovProxyConfig: ContractVerificationConfig = {
     factory: new TransparentUpgradeableProxy__factory(),
     contractName: "TransparentUpgradeableProxy",
