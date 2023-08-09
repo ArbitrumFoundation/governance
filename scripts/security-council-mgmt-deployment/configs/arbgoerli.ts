@@ -50,11 +50,14 @@ const config: DeploymentConfig = {
     chainID: 421613,
     rpcUrl: assertDefined(process.env.ARB_URL, "ARB_URL is undefined"),
     privateKey: assertDefined(process.env.ARB_KEY, "ARB_KEY is undefined"),
+    prevEmergencySecurityCouncil: "0x1c08879f8d07b1ff6d88ae0d1b4df6f1fecaff6c",
+    prevNonEmergencySecurityCouncil: "0x62Df147e5A7811F3b9329dA618A020358F5eEb5d",
   },
   hostChain: {
     chainID: 5,
     rpcUrl: assertDefined(process.env.ETH_URL, "ETH_URL is undefined"),
-    privateKey: assertDefined(process.env.ETH_KEY, "ETH_KEY is undefined")
+    privateKey: assertDefined(process.env.ETH_KEY, "ETH_KEY is undefined"),
+    prevEmergencySecurityCouncil: "0x073b9C5C1bb56cc17ca23f33D4dAd36C4AE80AeE",
   },
   governedChains: []
 };

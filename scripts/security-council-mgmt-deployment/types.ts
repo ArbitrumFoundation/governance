@@ -16,10 +16,15 @@ export type ChainConfig = {
   chainID: number;
   rpcUrl: string;
   privateKey: string;
+  prevEmergencySecurityCouncil: string;
 }
 
 export type GovernedChainConfig = ChainConfig & {
   upExecLocation: string;
+}
+
+export type GovernanceChainConfig = ChainConfig & {
+  prevNonEmergencySecurityCouncil: string;
 }
 
 export type DeploymentConfig =
@@ -45,8 +50,11 @@ export type DeploymentConfig =
   > & {
     emergencySignerThreshold: number;
     nonEmergencySignerThreshold: number;
-    govChain: ChainConfig;
+    /** i.e. ArbOne */
+    govChain: GovernanceChainConfig;
+    /** i.e. Ethereum L1 */
     hostChain: ChainConfig;
+    /** i.e. [Nova], governedChains DOES NOT include the governance chain (i.e. ArbOne) */
     governedChains: GovernedChainConfig[];
     gnosisSafeL2Singleton: string;
     gnosisSafeL1Singleton: string;
@@ -75,4 +83,6 @@ export type SecurityCouncilManagementDeploymentResult = {
   securityCouncilMemberRemoverGovLogic: string;
 
   upgradeExecRouteBuilder: string;
+
+  activationActionContracts: {[key: number]: string};
 };
