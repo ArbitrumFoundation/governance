@@ -77,11 +77,11 @@ export function buildProposalCustom(
 }
 
 export function buildProposal(
+  description: string,
   provider: Provider,
   routeBuilderAddress: string,
   actionChainIds: number[],
   actionAddresses: string[],
-  description: string,
   timelockSalt: BytesLike | undefined = undefined
 ): Promise<CoreGovProposal> {
   return _buildProposal(

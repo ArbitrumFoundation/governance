@@ -25,11 +25,11 @@ async function main() {
   const actionAddresses = chainIds.map((chainId) => actions[chainId]);
 
   const proposal = await buildProposal(
+    "TODO: add description",
     provider,
     scmDeployment.upgradeExecRouteBuilder,
     chainIds,
     actionAddresses,
-    "TODO: add description",
   );
 
   const path = `${__dirname}/data/${chainId}-AIPX-data.json`;
