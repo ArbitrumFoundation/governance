@@ -14,7 +14,7 @@ export type ContractVerificationConfig = {
 
 export async function verifyContracts(configs: ContractVerificationConfig[], delay: number = 1000) {
   for (const config of configs) {
-    console.log(`Verifying ${config.contractName} on chain ${config.chainId}...`);
+    console.log(`Verifying ${config.address} (${config.contractName}) on chain ${config.chainId}...`);
     if (configs.length > 1) {
       await new Promise((resolve) => setTimeout(resolve, delay));
     }

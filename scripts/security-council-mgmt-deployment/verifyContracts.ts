@@ -173,8 +173,6 @@ async function main() {
     etherscanApiKey: chainIdToApiKey[config.govChain.chainID]
   };
 
-
-
   const allConfigs = [
     ...activationContractConfigs, 
     ...keyValueStoreConfigs,
