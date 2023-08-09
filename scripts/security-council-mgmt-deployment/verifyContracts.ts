@@ -1,10 +1,11 @@
-import { GovernanceChainSCMgmtActivationAction__factory, ISecurityCouncilMemberElectionGovernor__factory, KeyValueStore__factory, L1SCMgmtActivationAction__factory, L2SecurityCouncilMgmtFactory__factory, NonGovernanceChainSCMgmtActivationAction__factory, SecurityCouncilManager__factory, SecurityCouncilMemberElectionGovernor__factory, SecurityCouncilMemberRemovalGovernor__factory, SecurityCouncilMemberSyncAction__factory, SecurityCouncilNomineeElectionGovernor__factory, UpgradeExecRouteBuilder__factory } from "../../typechain-types";
+import { GovernanceChainSCMgmtActivationAction__factory, ISecurityCouncilMemberElectionGovernor__factory, KeyValueStore__factory, L1SCMgmtActivationAction__factory, L2SecurityCouncilMgmtFactory__factory, NonGovernanceChainSCMgmtActivationAction__factory, SecurityCouncilManager__factory, SecurityCouncilMemberElectionGovernor__factory, SecurityCouncilMemberRemovalGovernor__factory, SecurityCouncilMemberSyncAction__factory, SecurityCouncilNomineeElectionGovernor__factory, TransparentUpgradeableProxy__factory, UpgradeExecRouteBuilder__factory } from "../../typechain-types";
 import { ContractVerificationConfig, verifyContract, verifyContracts } from "../minimalContractVerifier";
 import { promises as fs} from "fs";
 import { SecurityCouncilManagementDeploymentResult } from "./types";
 import mainnetConfig from "./configs/mainnet";
 import goerliConfig from "./configs/arbgoerli";
 import { assertDefined } from "./utils";
+import { ethers } from "ethers";
 
 // todo: replace with cli option
 const TESTNET = true;
@@ -127,6 +128,21 @@ async function main() {
     etherscanApiKey: chainIdToApiKey[config.govChain.chainID]
   };
 
+  // nominee election gov proxy (only need to verify one since they all have same deployed bytecode)
+  const nomineeElectionGovProxyConfig: ContractVerificationConfig = {
+    factory: new TransparentUpgradeableProxy__factory(),
+    contractName: "TransparentUpgradeableProxy",
+    chainId: config.govChain.chainID,
+    address: scmDeployment.nomineeElectionGovernor,
+    constructorArgs: [
+      scmDeployment.nomineeElectionGovernorLogic,
+      config.l2ProxyAdmin,
+      []
+    ],
+    foundryProfile: "sec_council_mgmt",
+    etherscanApiKey: chainIdToApiKey[config.govChain.chainID]
+  };
+
   // member election gov logic
   const memberElectionGovConfig: ContractVerificationConfig = {
     factory: new SecurityCouncilMemberElectionGovernor__factory(),
@@ -178,6 +194,7 @@ async function main() {
     ...keyValueStoreConfigs,
     ...memberSyncActionConfigs,
     nomineeElectionGovConfig,
+    nomineeElectionGovProxyConfig,
     memberElectionGovConfig,
     managerConfig,
     removalGovConfig,
