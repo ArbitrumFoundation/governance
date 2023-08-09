@@ -308,5 +308,6 @@ export async function deployContracts(config: DeploymentConfig): Promise<Securit
     securityCouncilMemberRemoverGov: deployEvent.deployedContracts.securityCouncilMemberRemoverGov,
     securityCouncilMemberRemoverGovLogic: await contractImplementations.securityCouncilMemberRemoverGov,
     upgradeExecRouteBuilder: deployEvent.deployedContracts.upgradeExecRouteBuilder,
+    l2SecurityCouncilMgmtFactory: l2SecurityCouncilMgmtFactory.address,
   }
 }
