@@ -1,9 +1,8 @@
 import { JsonRpcProvider } from "@ethersproject/providers";
 import { promises as fs } from "fs";
 import { assertDefined } from "../../security-council-mgmt-deployment/utils"; // todo: move this somewhere else
-import { UpgradeExecRouteBuilder__factory } from "../../../typechain-types";
 import { SecurityCouncilManagementDeploymentResult } from "../../security-council-mgmt-deployment/types";
-import { ArbSys__factory } from "@arbitrum/sdk/dist/lib/abi/factories/ArbSys__factory";
+import { buildProposal } from "../buildProposal";
 
 async function main() {
   const provider = new JsonRpcProvider(assertDefined(process.env.ARB_URL, "ARB_URL is undefined"));
@@ -25,30 +24,16 @@ async function main() {
   const chainIds = Object.keys(actions).map(k => parseInt(k));
   const actionAddresses = chainIds.map((chainId) => actions[chainId]);
 
-  const routeBuilder = UpgradeExecRouteBuilder__factory.connect(
+  const proposal = await buildProposal(
+    provider,
     scmDeployment.upgradeExecRouteBuilder,
-    provider
-  );
-
-  const [,calldata] = await routeBuilder.createActionRouteDataWithDefaults(
-    chainIds, // chainids
-    actionAddresses, // actionAddresses
-    "0x0000000000000000000000000000000000000000000000000000000000000000", // timelockSalt
-  );
-
-  const decoded = ArbSys__factory.createInterface().decodeFunctionData("sendTxToL1", calldata);
-
-  const proposal = {
-    actionChainIds: chainIds,
+    chainIds,
     actionAddresses,
-    description: "TODO",
-    arbSysSendTxToL1Args: {
-      l1Timelock: decoded[0],
-      calldata: decoded[1],
-    },
-  };
+    "TODO: add description",
+  );
 
   const path = `${__dirname}/data/${chainId}-AIPX-data.json`;
+  await fs.mkdir(`${__dirname}/data`, { recursive: true });
   await fs.writeFile(path, JSON.stringify(proposal, null, 2));
   console.log("Wrote proposal data to", path);
   console.log(proposal);
