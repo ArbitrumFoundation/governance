@@ -3,6 +3,7 @@ import { promises as fs } from "fs";
 import { assertDefined } from "../../security-council-mgmt-deployment/utils"; // todo: move this somewhere else
 import { UpgradeExecRouteBuilder__factory } from "../../../typechain-types";
 import { SecurityCouncilManagementDeploymentResult } from "../../security-council-mgmt-deployment/types";
+import { ArbSys__factory } from "@arbitrum/sdk/dist/lib/abi/factories/ArbSys__factory";
 
 async function main() {
   const provider = new JsonRpcProvider(assertDefined(process.env.ARB_URL, "ARB_URL is undefined"));
@@ -29,18 +30,21 @@ async function main() {
     provider
   );
 
-  const [arbSys, calldata] = await routeBuilder.createActionRouteDataWithDefaults(
+  const [,calldata] = await routeBuilder.createActionRouteDataWithDefaults(
     chainIds, // chainids
     actionAddresses, // actionAddresses
     "0x0000000000000000000000000000000000000000000000000000000000000000", // timelockSalt
   );
 
+  const decoded = ArbSys__factory.createInterface().decodeFunctionData("sendTxToL1", calldata);
+
   const proposal = {
     actionChainIds: chainIds,
     actionAddresses,
-    callToArbSys: {
-      arbSys,
-      calldata,
+    description: "TODO",
+    arbSysSendTxToL1Args: {
+      l1Timelock: decoded[0],
+      calldata: decoded[1],
     },
   };
 
