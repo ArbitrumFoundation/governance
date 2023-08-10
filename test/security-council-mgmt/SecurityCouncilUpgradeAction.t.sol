@@ -50,7 +50,7 @@ contract SecurityCouncilMemberSyncActionTest is Test, DeployGnosisWithModule {
         vm.prank(executor);
         upgradeExecutor.execute(action, upgradeCallData);
         assertTrue(
-            TestUtil.areAddressArraysEqual(newMembers, IGnosisSafe(safe).getOwners()),
+            TestUtil.areUniqueAddressArraysEqual(newMembers, IGnosisSafe(safe).getOwners()),
             "updated sucessfully"
         );
         assertEq(IGnosisSafe(safe).getThreshold(), threshold, "threshold preserved");

@@ -160,11 +160,15 @@ contract L2SecurityCouncilMgmtFactoryTest is Test, DeployGnosisWithModule {
         );
 
         assertTrue(
-            TestUtil.areAddressArraysEqual(securityCouncilManager.getFirstCohort(), firstCohort),
+            TestUtil.areUniqueAddressArraysEqual(
+                securityCouncilManager.getFirstCohort(), firstCohort
+            ),
             "first cohort set"
         );
         assertTrue(
-            TestUtil.areAddressArraysEqual(securityCouncilManager.getSecondCohort(), secondCohort),
+            TestUtil.areUniqueAddressArraysEqual(
+                securityCouncilManager.getSecondCohort(), secondCohort
+            ),
             "second cohort set"
         );
 

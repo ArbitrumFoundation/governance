@@ -65,7 +65,9 @@ contract SecurityCouncilMemberSyncActionTest is Test, DeployGnosisWithModule {
         vm.prank(executor);
         contracts.upgradeExecutor.execute(address(contracts.action), upgradeCallData);
         assertTrue(
-            TestUtil.areAddressArraysEqual(newMembers, IGnosisSafe(contracts.safe).getOwners()),
+            TestUtil.areUniqueAddressArraysEqual(
+                newMembers, IGnosisSafe(contracts.safe).getOwners()
+            ),
             "updated sucessfully"
         );
         assertEq(
@@ -211,7 +213,7 @@ contract SecurityCouncilMemberSyncActionTest is Test, DeployGnosisWithModule {
         vm.prank(executor);
         contracts.upgradeExecutor.execute(address(contracts.action), upgradeCallData);
         assertTrue(
-            TestUtil.areAddressArraysEqual(owners, IGnosisSafe(contracts.safe).getOwners()),
+            TestUtil.areUniqueAddressArraysEqual(owners, IGnosisSafe(contracts.safe).getOwners()),
             "old members preserved"
         );
 
@@ -228,7 +230,7 @@ contract SecurityCouncilMemberSyncActionTest is Test, DeployGnosisWithModule {
         vm.prank(executor);
         contracts.upgradeExecutor.execute(address(contracts.action), upgradeCallData);
         assertTrue(
-            TestUtil.areAddressArraysEqual(owners, IGnosisSafe(contracts.safe).getOwners()),
+            TestUtil.areUniqueAddressArraysEqual(owners, IGnosisSafe(contracts.safe).getOwners()),
             "old members preserved"
         );
         assertEq(
