@@ -46,17 +46,17 @@ const propCreator = new RoundTripProposalCreator(
     provider: new JsonRpcProvider(options.l1RpcUrl),
     timelockAddr: options.l1TimelockAddress,
   },
-  {
+  [{
     provider: new JsonRpcProvider(options.upgradeNetworkRpcUrl),
     upgradeExecutorAddr: options.upgradeExecutorAddress,
-  }
+  }]
 );
 
 propCreator
   .create(
-    options.upgradeAddress,
-    BigNumber.from(options.upgradeValue),
-    options.upgradeData,
+    [options.upgradeAddress],
+    [BigNumber.from(options.upgradeValue)],
+    [options.upgradeData],
     options.proposalDescription
   )
   .then((p) => console.log(p.callData))
