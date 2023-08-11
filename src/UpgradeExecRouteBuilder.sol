@@ -53,9 +53,9 @@ contract UpgradeExecRouteBuilder {
     /// @notice Default predecessor used when calling the L1 timelock
     bytes32 public constant DEFAULT_PREDECESSOR = bytes32(0);
 
-    /// @notice Address of the L1 timelock targetted by this route builder
+    /// @notice Address of the L1 timelock targeted by this route builder
     address public immutable l1TimelockAddr;
-    /// @notice The minimum delay of the L1 timelock targetted by this route builder
+    /// @notice The minimum delay of the L1 timelock targeted by this route builder
     /// @dev    If the min delay for this timelock changes then a new route builder will need to be deployed
     uint256 public immutable l1TimelockMinDelay;
     /// @notice Upgrade Executor locations for each chain (chainId => location)

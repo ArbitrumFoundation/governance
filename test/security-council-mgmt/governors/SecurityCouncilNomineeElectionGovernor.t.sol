@@ -563,6 +563,143 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
         _castVoteForContender(proposalId, _voter(0), _contender(2), 1);
     }
 
+    bytes32 private constant _TYPE_HASH = keccak256(
+        "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
+    );
+    bytes32 private constant _NAME_HASH = keccak256(bytes("SecurityCouncilNomineeElectionGovernor"));
+    bytes32 private constant _VERSION_HASH = keccak256(bytes("1"));
+    bytes32 public constant EXTENDED_BALLOT_TYPEHASH =
+        keccak256("ExtendedBallot(uint256 proposalId,uint8 support,string reason,bytes params)");
+
+    function _hashTypedDataV4(bytes32 structHash, address targetAddress)
+        internal
+        view
+        virtual
+        returns (bytes32)
+    {
+        bytes32 domainHash = keccak256(
+            abi.encode(_TYPE_HASH, _NAME_HASH, _VERSION_HASH, block.chainid, targetAddress)
+        );
+        return ECDSAUpgradeable.toTypedDataHash(domainHash, structHash);
+    }
+
+    function create712Hash(
+        uint256 proposalId,
+        uint8 support,
+        string memory reason,
+        bytes memory params,
+        address targetAddress
+    ) public view returns (bytes32) {
+        return _hashTypedDataV4(
+            keccak256(
+                abi.encode(
+                    EXTENDED_BALLOT_TYPEHASH,
+                    proposalId,
+                    support,
+                    keccak256(bytes(reason)),
+                    keccak256(params)
+                )
+            ),
+            targetAddress
+        );
+    }
+
+    function testCastBySig() public {
+        uint256 proposalId = _propose();
+        uint256 voterPrivKey = 0x4173fa62f15e8a9363d4dc11b951722b264fa38fbec64c0f6f14fc1e63f7edd4;
+        address voterAddress = vm.addr(voterPrivKey);
+
+        _addContender(proposalId, _contender(0));
+
+        // make sure the voter has enough votes
+        _mockGetPastVotes({
+            account: voterAddress,
+            blockNumber: governor.proposalSnapshot(proposalId),
+            votes: 100
+        });
+
+        bytes32 dataHash =
+            create712Hash(proposalId, 1, "a", abi.encode(_contender(0), 10), address(governor));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(voterPrivKey, dataHash);
+
+        vm.roll(governor.proposalSnapshot(proposalId) + 1);
+        vm.prank(voterAddress);
+        governor.castVoteWithReasonAndParamsBySig({
+            proposalId: proposalId,
+            support: 1,
+            reason: "a",
+            params: abi.encode(_contender(0), 10),
+            v: v,
+            r: r,
+            s: s
+        });
+
+        bytes32 dataHash2 =
+            create712Hash(proposalId, 1, "b", abi.encode(_contender(0), 10), address(governor));
+        (uint8 v2, bytes32 r2, bytes32 s2) = vm.sign(voterPrivKey, dataHash2);
+
+        vm.prank(voterAddress);
+        governor.castVoteWithReasonAndParamsBySig({
+            proposalId: proposalId,
+            support: 1,
+            reason: "b",
+            params: abi.encode(_contender(0), 10),
+            v: v2,
+            r: r2,
+            s: s2
+        });
+    }
+
+    function testCastBySigTwice() public {
+        uint256 proposalId = _propose();
+        uint256 voterPrivKey = 0x4173fa62f15e8a9363d4dc11b951722b264fa38fbec64c0f6f14fc1e63f7edd3;
+        address voterAddress = vm.addr(voterPrivKey);
+
+        _addContender(proposalId, _contender(0));
+
+        // make sure the voter has enough votes
+        _mockGetPastVotes({
+            account: voterAddress,
+            blockNumber: governor.proposalSnapshot(proposalId),
+            votes: 100
+        });
+
+        bytes32 dataHash =
+            create712Hash(proposalId, 1, "a", abi.encode(_contender(0), 10), address(governor));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(voterPrivKey, dataHash);
+
+        vm.roll(governor.proposalSnapshot(proposalId) + 1);
+        vm.prank(voterAddress);
+        governor.castVoteWithReasonAndParamsBySig({
+            proposalId: proposalId,
+            support: 1,
+            reason: "a",
+            params: abi.encode(_contender(0), 10),
+            v: v,
+            r: r,
+            s: s
+        });
+
+        vm.prank(voterAddress);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ElectionGovernor.VoteAlreadyCast.selector,
+                voterAddress,
+                proposalId,
+                keccak256(abi.encodePacked(dataHash, voterAddress))
+            )
+        );
+        governor.castVoteWithReasonAndParamsBySig({
+            proposalId: proposalId,
+            support: 1,
+            reason: "a",
+            params: abi.encode(_contender(0), 10),
+            v: v,
+            r: r,
+            s: s
+        });
+    }
+
     function testProposeFails() public {
         vm.expectRevert(
             abi.encodeWithSelector(SecurityCouncilNomineeElectionGovernor.ProposeDisabled.selector)

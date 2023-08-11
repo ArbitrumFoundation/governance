@@ -50,7 +50,7 @@ contract SecurityCouncilMemberSyncActionTest is Test, DeployGnosisWithModule {
         vm.prank(executor);
         upgradeExecutor.execute(action, upgradeCallData);
         assertTrue(
-            TestUtil.areAddressArraysEqual(newMembers, IGnosisSafe(safe).getOwners()),
+            TestUtil.areUniqueAddressArraysEqual(newMembers, IGnosisSafe(safe).getOwners()),
             "updated sucessfully"
         );
         assertEq(IGnosisSafe(safe).getThreshold(), threshold, "threshold preserved");
@@ -125,7 +125,7 @@ contract SecurityCouncilMemberSyncActionTest is Test, DeployGnosisWithModule {
             SecurityCouncilMemberSyncAction.perform.selector, safe, newMembers
         );
 
-        // [8], [9], [10] sucessfully get removed, leaving [11]'s previous owner to be [7]; removing [11] reverts as it's below the theshold,
+        // [8], [9], [10] sucessfully get removed, leaving [11]'s previous owner to be [7]; removing [11] reverts as it's below the threshold,
         bytes memory revertingRemoveMemberCall = abi.encodeWithSelector(
             IGnosisSafe.removeOwner.selector, prevMembers[7], prevMembers[11], 9
         );

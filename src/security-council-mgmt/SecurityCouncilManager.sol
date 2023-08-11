@@ -36,12 +36,16 @@ contract SecurityCouncilManager is
     event MemberReplaced(address indexed replacedMember, address indexed newMember, Cohort cohort);
     event MemberRotated(address indexed replacedAddress, address indexed newAddress, Cohort cohort);
     event SecurityCouncilAdded(
-        address securityCouncil, address updateAction, uint256 securityCouncilsLength
+        address indexed securityCouncil,
+        address indexed updateAction,
+        uint256 securityCouncilsLength
     );
     event SecurityCouncilRemoved(
-        address securityCouncil, address updateAction, uint256 securityCouncilsLength
+        address indexed securityCouncil,
+        address indexed updateAction,
+        uint256 securityCouncilsLength
     );
-    event UpgradeExecRouteBuilderSet(address UpgradeExecRouteBuilder);
+    event UpgradeExecRouteBuilderSet(address indexed UpgradeExecRouteBuilder);
 
     // The Security Council members are separated into two cohorts, allowing a whole cohort to be replaced, as
     // specified by the Arbitrum Constitution.
@@ -69,7 +73,7 @@ contract SecurityCouncilManager is
     /// @notice Nonce to ensure that scheduled updates create unique entries in the timelocks
     uint256 public updateNonce;
 
-    /// @notice Size of cohort under ordinary circumstancces
+    /// @notice Size of cohort under ordinary circumstances
     uint256 public cohortSize;
 
     /// @notice Magic value used by the L1 timelock to indicate that a retryable ticket should be created
@@ -428,7 +432,7 @@ contract SecurityCouncilManager is
         ArbitrumTimelock(l2CoreGovTimelock).schedule({
             target: to, // ArbSys address - this will trigger a call from L2->L1
             value: 0,
-            // call to ArbSys.sendTxToL1; target the L1 timelock with the calldata previously constucted
+            // call to ArbSys.sendTxToL1; target the L1 timelock with the calldata previously constructed
             data: data,
             predecessor: bytes32(0),
             // must be unique as the proposal hash is used for replay protection in the L2 timelock
@@ -441,4 +445,11 @@ contract SecurityCouncilManager is
             delay: ArbitrumTimelock(l2CoreGovTimelock).getMinDelay()
         });
     }
+    /**
+     * @dev This empty reserved space is put in place to allow future versions to add new
+     * variables without shifting down storage in the inheritance chain.
+     * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
+     */
+
+    uint256[43] private __gap;
 }
