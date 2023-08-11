@@ -454,7 +454,7 @@ contract SecurityCouncilNomineeElectionGovernor is
         revert CastVoteDisabled();
     }
 
-    // CHRIS TODO: docs and tests
+    /// @inheritdoc ElectionGovernor
     function castVoteWithReasonAndParamsBySig(
         uint256 proposalId,
         uint8 support,
