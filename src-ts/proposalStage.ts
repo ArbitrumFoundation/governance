@@ -488,10 +488,10 @@ export class L1TimelockExecutionStage implements ProposalStage {
     }
 
     await (
-      await timelock.functions.execute(
-        callScheduledArgs.target,
-        callScheduledArgs.value,
-        callScheduledArgs.data,
+      await timelock.functions.executeBatch(
+        [callScheduledArgs.target],
+        [callScheduledArgs.value],
+        [callScheduledArgs.data],
         constants.HashZero,
         id(this.proposalDescription),
         { value: value }
