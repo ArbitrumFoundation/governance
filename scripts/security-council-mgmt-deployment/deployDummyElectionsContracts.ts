@@ -88,7 +88,7 @@ async function deployToken(signer: Wallet) {
   await proxy.deployTransaction.wait();
 
   const token = L2ArbitrumToken__factory.connect(proxy.address, signer);
-  await token.initialize(zxDead, ethers.utils.parseEther("10000000000"), signer.address, { nonce: nonce++ });
+  await (await token.initialize(zxDead, ethers.utils.parseEther("10000000000"), signer.address, { nonce: nonce++ })).wait();
 
   return token;
 }
