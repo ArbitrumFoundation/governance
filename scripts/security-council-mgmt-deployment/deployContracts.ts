@@ -20,9 +20,10 @@ import { GnosisSafeProxyFactory__factory } from "../../types/ethers-contracts/fa
 import { GnosisSafeL2__factory } from "../../types/ethers-contracts/factories/GnosisSafeL2__factory";
 import { JsonRpcProvider } from "@ethersproject/providers";
 import { getL2Network } from "@arbitrum/sdk";
-import { Wallet, constants } from "ethers";
+import { Overrides, Wallet, constants } from "ethers";
 import { DeploymentConfig, ChainConfig, SecurityCouncilManagementDeploymentResult } from "./types";
 import { randomNonce } from "./utils";
+import { PromiseOrValue } from "../../typechain-types/common";
 
 function getSigner(chain: ChainConfig): Wallet {
   return new Wallet(chain.privateKey, new JsonRpcProvider(chain.rpcUrl));
@@ -35,7 +36,8 @@ async function deployGnosisSafe(
   owners: string[],
   threshold: number,
   nonce: number,
-  signer: Wallet
+  signer: Wallet,
+  overrides?: Overrides & { from?: PromiseOrValue<string> }
 ) {
   const factory = GnosisSafeProxyFactory__factory.connect(factoryAddress, signer);
   const safeInterface = GnosisSafeL2__factory.createInterface();
@@ -51,7 +53,7 @@ async function deployGnosisSafe(
     constants.AddressZero, // payment receiver
   ]);
 
-  const tx = await factory.createProxyWithNonce(singletonAddress, setupCalldata, nonce);
+  const tx = await factory.createProxyWithNonce(singletonAddress, setupCalldata, nonce, overrides);
   
   const receipt = await tx.wait();
   const proxyCreatedEvent = receipt.events?.filter((e) => e.topics[0] === factory.interface.getEventTopic("ProxyCreation"))[0];
@@ -91,6 +93,13 @@ export async function deployContracts(config: DeploymentConfig): Promise<Securit
   const govChainSigner = getSigner(config.govChain);
   const hostChainSigner = getSigner(config.hostChain);
 
+  // keep track of account nonces because ethers isn't doing this
+  console.log("Getting nonces...");
+  const nonces: {[key: number]: number} = {};
+  for (const chain of allChains) {
+    nonces[chain.chainID] = await getSigner(chain).getTransactionCount();
+  }
+
   // 1. deploy action contracts and key value stores
   console.log("Deploying action contracts and key value stores...");
 
@@ -101,12 +110,12 @@ export async function deployContracts(config: DeploymentConfig): Promise<Securit
     const signer = getSigner(chain);
 
     console.log(`\tDeploying KeyValueStore to chain ${chain.chainID}...`);
-    const kvStore = await new KeyValueStore__factory(signer).deploy();
+    const kvStore = await new KeyValueStore__factory(signer).deploy({ nonce: nonces[chain.chainID]++ });
     await kvStore.deployTransaction.wait();
 
     console.log(`\tDeploying SecurityCouncilMemberSyncAction to chain ${chain.chainID}...`);
     
-    const action = await new SecurityCouncilMemberSyncAction__factory(signer).deploy(kvStore.address);
+    const action = await new SecurityCouncilMemberSyncAction__factory(signer).deploy(kvStore.address, { nonce: nonces[chain.chainID]++ });
     await action.deployTransaction.wait();
 
     keyValueStores[chain.chainID] = kvStore.address;
@@ -128,7 +137,8 @@ export async function deployContracts(config: DeploymentConfig): Promise<Securit
     owners,
     config.nonEmergencySignerThreshold,
     randomNonce(),
-    govChainSigner
+    govChainSigner,
+    { nonce: nonces[config.govChain.chainID]++ }
   );
 
   for (const chain of allChains) {
@@ -142,7 +152,8 @@ export async function deployContracts(config: DeploymentConfig): Promise<Securit
       owners,
       config.emergencySignerThreshold,
       randomNonce(),
-      signer
+      signer,
+      { nonce: nonces[chain.chainID]++ }
     );
 
     emergencyGnosisSafes[chain.chainID] = safe;
@@ -152,19 +163,27 @@ export async function deployContracts(config: DeploymentConfig): Promise<Securit
   console.log("Deploying contract implementations...");
 
   console.log(`\tDeploying SecurityCouncilNomineeElectionGovernor to chain ${config.govChain.chainID}...`);
-  const nomineeElectionGovernor = await new SecurityCouncilNomineeElectionGovernor__factory(govChainSigner).deploy();
+  const nomineeElectionGovernor = await new SecurityCouncilNomineeElectionGovernor__factory(govChainSigner).deploy(
+    { nonce: nonces[config.govChain.chainID]++ }
+  );
   nomineeElectionGovernor.deployTransaction.wait();
 
   console.log(`\tDeploying SecurityCouncilMemberElectionGovernor to chain ${config.govChain.chainID}...`);
-  const memberElectionGovernor = await new SecurityCouncilMemberElectionGovernor__factory(govChainSigner).deploy();
+  const memberElectionGovernor = await new SecurityCouncilMemberElectionGovernor__factory(govChainSigner).deploy(
+    { nonce: nonces[config.govChain.chainID]++ }
+  );
   memberElectionGovernor.deployTransaction.wait();
 
   console.log(`\tDeploying SecurityCouncilManager to chain ${config.govChain.chainID}...`);
-  const securityCouncilManager = await new SecurityCouncilManager__factory(govChainSigner).deploy();
+  const securityCouncilManager = await new SecurityCouncilManager__factory(govChainSigner).deploy(
+    { nonce: nonces[config.govChain.chainID]++ }
+  );
   securityCouncilManager.deployTransaction.wait();
 
   console.log(`\tDeploying SecurityCouncilMemberRemovalGovernor to chain ${config.govChain.chainID}...`);
-  const securityCouncilMemberRemoverGov = await new SecurityCouncilMemberRemovalGovernor__factory(govChainSigner).deploy();
+  const securityCouncilMemberRemoverGov = await new SecurityCouncilMemberRemovalGovernor__factory(govChainSigner).deploy(
+    { nonce: nonces[config.govChain.chainID]++ }
+  );
   securityCouncilMemberRemoverGov.deployTransaction.wait();
 
   // finished object
@@ -234,12 +253,18 @@ export async function deployContracts(config: DeploymentConfig): Promise<Securit
 
   // 5. deploy sc mgmt factory
   console.log("Deploying sc mgmt factory...");
-  const l2SecurityCouncilMgmtFactory = await new L2SecurityCouncilMgmtFactory__factory(govChainSigner).deploy();
+  const l2SecurityCouncilMgmtFactory = await new L2SecurityCouncilMgmtFactory__factory(govChainSigner).deploy(
+    { nonce: nonces[config.govChain.chainID]++ }
+  );
   await l2SecurityCouncilMgmtFactory.deployTransaction.wait();
 
   // 6. call factory.deploy()
   console.log("Calling factory.deploy()...");
-  const deployTx = await l2SecurityCouncilMgmtFactory.connect(govChainSigner).deploy(deployParams, contractImplementations);
+  const deployTx = await l2SecurityCouncilMgmtFactory.connect(govChainSigner).deploy(
+    deployParams, 
+    contractImplementations, 
+    { nonce: nonces[config.govChain.chainID]++ }
+  );
   const deployReceipt = await deployTx.wait();
 
   const deployEvent = deployReceipt.events?.filter(
@@ -262,7 +287,8 @@ export async function deployContracts(config: DeploymentConfig): Promise<Securit
     config.emergencySignerThreshold,
     config.nonEmergencySignerThreshold,
     deployEvent.deployedContracts.securityCouncilManager,
-    config.l2AddressRegistry
+    config.l2AddressRegistry,
+    { nonce: nonces[config.govChain.chainID]++ }
   );
   govChainActivationAction.deployTransaction.wait();
   activationActionContracts[config.govChain.chainID] = govChainActivationAction.address;
@@ -274,7 +300,8 @@ export async function deployContracts(config: DeploymentConfig): Promise<Securit
     config.hostChain.prevEmergencySecurityCouncil,
     config.emergencySignerThreshold,
     config.l1Executor,
-    config.l1Timelock
+    config.l1Timelock,
+    { nonce: nonces[config.hostChain.chainID]++ }
   );
   hostChainActivationAction.deployTransaction.wait();
   activationActionContracts[config.hostChain.chainID] = hostChainActivationAction.address;
@@ -287,7 +314,8 @@ export async function deployContracts(config: DeploymentConfig): Promise<Securit
       emergencyGnosisSafes[chain.chainID],
       chain.prevEmergencySecurityCouncil,
       config.emergencySignerThreshold,
-      chain.upExecLocation
+      chain.upExecLocation,
+      { nonce: nonces[chain.chainID]++ }
     );
     activationAction.deployTransaction.wait();
     activationActionContracts[chain.chainID] = activationAction.address;

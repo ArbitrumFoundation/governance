@@ -58,27 +58,37 @@ const partialDeployParams: DeployParamsPartial = {
   fullWeightDuration: minutes(5),
 }
 
+// nonce of deployer account
+let nonce: number;
+
 function minutes(n: number) {
   return Math.round(n * 60);
 }
 
+async function deployBytecode(signer: Wallet, bytecode: string) {
+  const factory = new ethers.ContractFactory([], bytecode, signer);
+  const contract = await factory.deploy({ nonce: nonce++ });
+  await contract.deployTransaction.wait();
+  return contract;
+}
+
 function deployNoopContract(signer: Wallet) {
-  // returns 1
-  const bytecode = "60088060093d393df360015f5260205ff3";
-  return new ethers.ContractFactory([], bytecode, signer).deploy();
+  return deployBytecode(signer, "60088060093d393df360015f5260205ff3");
 }
 
 function deployDummyGnosisSafe(signer: Wallet) {
   const bytecode = "608060405234801561001057600080fd5b50610154806100206000396000f3fe608060405234801561001057600080fd5b50600436106100365760003560e01c80632f54bf6e1461003b578063a0e67e2b14610064575b600080fd5b61004f6100493660046100a1565b50600190565b60405190151581526020015b60405180910390f35b61006c610079565b60405161005b91906100d1565b60408051600c8082526101a08201909252606091602082016101808036833701905050905090565b6000602082840312156100b357600080fd5b81356001600160a01b03811681146100ca57600080fd5b9392505050565b6020808252825182820181905260009190848201906040850190845b818110156101125783516001600160a01b0316835292840192918401916001016100ed565b5090969550505050505056fea26469706673582212200450c5c9306adc3deb1c0f327c8ca37c917cad674222ad7536b032eb3c0c3e5c64736f6c63430008100033";
-  return new ethers.ContractFactory([], bytecode, signer).deploy();
+  return deployBytecode(signer, bytecode);
 }
 
 async function deployToken(signer: Wallet) {
-  const impl = await new L2ArbitrumToken__factory(signer).deploy();
-  const proxy = await new TransparentUpgradeableProxy__factory(signer).deploy(impl.address, zxDead, "0x");
+  const impl = await new L2ArbitrumToken__factory(signer).deploy({ nonce: nonce++ });
+  await impl.deployTransaction.wait();
+  const proxy = await new TransparentUpgradeableProxy__factory(signer).deploy(impl.address, zxDead, "0x", { nonce: nonce++ });
+  await proxy.deployTransaction.wait();
 
   const token = L2ArbitrumToken__factory.connect(proxy.address, signer);
-  await token.initialize(zxDead, ethers.utils.parseEther("10000000000"), signer.address);
+  await token.initialize(zxDead, ethers.utils.parseEther("10000000000"), signer.address, { nonce: nonce++ });
 
   return token;
 }
@@ -113,11 +123,23 @@ async function makeFullDeployParams(partialDeployParams: DeployParamsPartial, si
 }
 
 async function deployImplementationsForFactory(signer: Wallet) {
+  const nomineeElectionGovernor = await new SecurityCouncilNomineeElectionGovernor__factory(signer).deploy({ nonce: nonce++ });
+  await nomineeElectionGovernor.deployTransaction.wait();
+
+  const memberElectionGovernor = await new SecurityCouncilMemberElectionGovernor__factory(signer).deploy({ nonce: nonce++ });
+  await memberElectionGovernor.deployTransaction.wait();
+
+  const securityCouncilManager = await new SecurityCouncilManager__factory(signer).deploy({ nonce: nonce++ });
+  await securityCouncilManager.deployTransaction.wait();
+
+  const securityCouncilMemberRemoverGov = await new SecurityCouncilMemberRemovalGovernor__factory(signer).deploy({ nonce: nonce++ });
+  await securityCouncilMemberRemoverGov.deployTransaction.wait();
+
   return {
-    nomineeElectionGovernor: (await new SecurityCouncilNomineeElectionGovernor__factory(signer).deploy()).address,
-    memberElectionGovernor: (await new SecurityCouncilMemberElectionGovernor__factory(signer).deploy()).address,
-    securityCouncilManager: (await new SecurityCouncilManager__factory(signer).deploy()).address,
-    securityCouncilMemberRemoverGov: (await new SecurityCouncilMemberRemovalGovernor__factory(signer).deploy()).address,
+    nomineeElectionGovernor: nomineeElectionGovernor.address,
+    memberElectionGovernor: memberElectionGovernor.address,
+    securityCouncilManager: securityCouncilManager.address,
+    securityCouncilMemberRemoverGov: securityCouncilMemberRemoverGov.address,
   }
 }
 
@@ -128,10 +150,14 @@ async function main() {
 
   const signer = new ethers.Wallet(process.env.PRIVATE_KEY, new ethers.providers.JsonRpcProvider(process.env.RPC_URL));
 
+  // fetch the current nonce
+  nonce = await signer.getTransactionCount();
+
   const implementations = await deployImplementationsForFactory(signer);
 
   // deploy the actual factory contract
-  const factory = await new L2SecurityCouncilMgmtFactory__factory(signer).deploy();
+  const factory = await new L2SecurityCouncilMgmtFactory__factory(signer).deploy({ nonce: nonce++ });
+  await factory.deployTransaction.wait();
 
   // make full deploy params
   const fullDeployParams = await makeFullDeployParams(partialDeployParams, signer);
@@ -140,6 +166,7 @@ async function main() {
   const deployTx = await factory.deploy(
     fullDeployParams,
     implementations,
+    { nonce: nonce++ }
   );
 
   const deployReceipt = await deployTx.wait();
