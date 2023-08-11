@@ -203,7 +203,7 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
         uint256[] memory topNomineesPacked = new uint256[](k);
 
         for (uint16 i = 0; i < nominees.length; i++) {
-            // The nominee's index in the address array is stored in the 16 leftmost bits; the remaining bits store the nominee's weight
+            // The nominee's index in the address array is stored in the 16 rightmost bits; the remaining bits store the nominee's weight
             uint256 packed = (uint256(weights[i]) << 16) | i;
             // Packed weight/index values can be compared when comparing weights, since the values of the weights will outweigh any difference in index;
             // the index value only takes effect here as tie-breaker if the weights are equal.
