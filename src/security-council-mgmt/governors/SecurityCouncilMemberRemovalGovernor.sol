@@ -67,6 +67,7 @@ contract SecurityCouncilMemberRemovalGovernor is
         uint64 _minPeriodAfterQuorum,
         uint256 _proposalExpirationBlocks
     ) public initializer {
+        __Governor_init("SecurityCouncilMemberRemovalGovernor");
         __GovernorSettings_init(_votingDelay, _votingPeriod, _proposalThreshold);
         __GovernorCountingSimple_init();
         __GovernorVotes_init(_token);
