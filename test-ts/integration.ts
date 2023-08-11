@@ -18,9 +18,10 @@ import {
   GPMAllEvent,
   GPMEventName,
   GPMStatusEvent,
-  GovernorProposalMonitor,
+  ProposalMonitor,
 } from "../src-ts/proposalMonitor";
-import { ProposalStageStatus, RoundTripProposalPipelineFactory } from "../src-ts/proposalStage";
+import { ProposalStageStatus } from "../src-ts/proposalStage";
+import { RoundTripProposalPipelineFactory } from "../src-ts/proposalPipeline";
 import {
   ArbitrumTimelock,
   L1ArbitrumTimelock,
@@ -303,17 +304,18 @@ export const l2L1MonitoringValueTest = async (
 
   const pipelineFactory = new RoundTripProposalPipelineFactory(l2Signer, l1Signer, l2Signer);
 
-  const proposalMonitor = new GovernorProposalMonitor(
+  const proposalMonitor = new ProposalMonitor(
     l2GovernorContract.address,
     l2Signer.provider!,
     1000,
     5,
     await l2Signer.provider!.getBlockNumber(),
-    pipelineFactory
+    pipelineFactory,
+    true
   );
   proposalMonitor.on(GPMEventName.TRACKER_STATUS, (e: GPMStatusEvent) => {
     console.log(
-      `Gov:${e.governorAddress}, Prop:${e.proposalId}, Stage:${e.stage}, Status:${
+      `Gov:${e.originAddress}, Prop:${e.proposalId}, Stage:${e.stage}, Status:${
         ProposalStageStatus[e.status]
       }`
     );
@@ -437,17 +439,18 @@ export const l2L1L2MonitoringValueTest = async (
 
   const pipelineFactory = new RoundTripProposalPipelineFactory(l2Signer, l1Signer, l2Signer);
 
-  const proposalMonitor = new GovernorProposalMonitor(
+  const proposalMonitor = new ProposalMonitor(
     l2GovernorContract.address,
     l2Signer.provider!,
     1000,
     5,
     await l2Signer.provider!.getBlockNumber(),
-    pipelineFactory
+    pipelineFactory,
+    true
   );
   proposalMonitor.on(GPMEventName.TRACKER_STATUS, (e: GPMStatusEvent) => {
     console.log(
-      `Gov:${e.governorAddress}, Prop:${e.proposalId}, Stage:${e.stage}, Status:${
+      `Gov:${e.originAddress}, Prop:${e.proposalId}, Stage:${e.stage}, Status:${
         ProposalStageStatus[e.status]
       }`
     );
@@ -541,17 +544,18 @@ export const l2L1MonitoringTest = async (
 
   const pipelineFactory = new RoundTripProposalPipelineFactory(l2Signer, l1Signer, l2Signer);
 
-  const proposalMonitor = new GovernorProposalMonitor(
+  const proposalMonitor = new ProposalMonitor(
     l2GovernorContract.address,
     l2Signer.provider!,
     1000,
     5,
     await l2Signer.provider!.getBlockNumber(),
-    pipelineFactory
+    pipelineFactory,
+    true
   );
   proposalMonitor.on(GPMEventName.TRACKER_STATUS, (e: GPMStatusEvent) => {
     console.log(
-      `Gov:${e.governorAddress}, Prop:${e.proposalId}, Stage:${e.stage}, Status:${
+      `Gov:${e.originAddress}, Prop:${e.proposalId}, Stage:${e.stage}, Status:${
         ProposalStageStatus[e.status]
       }`
     );
@@ -639,17 +643,18 @@ export const l2L1L2MonitoringTest = async (
 
   const pipelineFactory = new RoundTripProposalPipelineFactory(l2Signer, l1Signer, l2Signer);
 
-  const proposalMonitor = new GovernorProposalMonitor(
+  const proposalMonitor = new ProposalMonitor(
     l2GovernorContract.address,
     l2Signer.provider!,
     1000,
     5,
     await l2Signer.provider!.getBlockNumber(),
-    pipelineFactory
+    pipelineFactory,
+    true
   );
   proposalMonitor.on(GPMEventName.TRACKER_STATUS, (e: GPMStatusEvent) => {
     console.log(
-      `Gov:${e.governorAddress}, Prop:${e.proposalId}, Stage:${e.stage}, Status:${
+      `Gov:${e.originAddress}, Prop:${e.proposalId}, Stage:${e.stage}, Status:${
         ProposalStageStatus[e.status]
       }`
     );

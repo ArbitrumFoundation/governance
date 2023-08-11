@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Proposal States</title>
+    <script src="https://d3js.org/d3.v6.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #FFFFFF;
+            color: #1A2231;
+            margin: 20px;
+        }
+
+        h1,
+        h2,
+        h3 {
+            margin: 15px 0;
+            color: #1A2231;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+            background-color: #FFFFFF;
+            color: #1A2231;
+            border: 1px solid #000000;
+        }
+
+        th,
+        td {
+            border: 1px solid #000000;
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #1A2231;
+            color: #FFFFFF;
+        }
+
+        caption {
+            caption-side: top;
+            font-weight: bold;
+            padding: 10px;
+            color: #1A2231;
+            background-color: #f9f9f9;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+        a {
+            color: #000000;
+        }
+
+        .governor-separator {
+            border-top: 4px solid #28A0F0;
+            margin: 20px 0;
+        }
+
+        .status-executed {
+            background-color: #d4f7d8;
+        }
+
+        .status-pending {
+            background-color: #fcf6c8;
+        }
+
+        .status-terminated {
+            background-color: #fde0c8;
+        }
+
+        .status-ready {
+            background-color: #28A0F0;
+        }
+
+        .flashing-div {
+            background-color: #28A0F0;
+            animation: flash 1s infinite;
+        }
+
+        @keyframes flash {
+
+            0%,
+            100% {
+                background-color: #28A0F0;
+            }
+
+            50% {
+                background-color: #FFFFFF;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Proposal States</h1>
+    <div id="data-container"></div>
+    <script>
+        function fetchData() {
+            fetch(`./proposalState.json?${Date.now()}`)
+                .then(response => response.json())
+                .then(data => {
+                    function tTree(stage, x, y, func) {
+                        func(stage, x, y);
+                        for (let i = 0; i < stage.children.length; i++) {
+                            if (i !== 0) {
+                                y++;
+                            }
+
+                            const coords = tTree(stage.children[i], x + 1, y, func);
+                            y = coords.y;
+                        }
+
+                        return { x, y };
+                    };
+
+                    function convertToTable(stage) {
+                        let maxes = {
+                            x: 0,
+                            y: 0,
+                        };
+
+                        tTree(stage, 0, 0, (_, x, y) => {
+                            if (x > maxes.x) maxes.x = x;
+                            if (y > maxes.y) maxes.y = y;
+                        });
+
+                        const table = [];
+                        for (let y = 0; y < maxes.y + 1; y++) {
+                            table.push(new Array(maxes.x + 1).fill(""));
+                        }
+
+                        tTree(stage, 0, 0, (s, x, y) => {
+                            table[y][x] = { name: s.name, status: s.status, identfier: s.identifier, explorerLink: s.explorerLink };
+                        });
+
+                        const headers = [];
+
+                        tTree(stage, 0, 0, (s, x, y) => {
+                            headers[x] = s.name;
+                        });
+
+                        return { headers, table };
+                    };
+
+                    const container = document.getElementById('data-container');
+                    container.innerHTML = '';
+
+                    const separator = document.createElement('div');
+                    separator.className = 'governor-separator';
+                    container.appendChild(separator);
+
+                    Object.keys(data).forEach(governorAddress => {
+                        const governorDiv = document.createElement('div');
+                        container.appendChild(governorDiv);
+
+                        let govName;
+                        if (governorAddress.toLowerCase() === '0xf07DeD9dC292157749B6Fd268E37DF6EA38395B9'.toLowerCase()) {
+                            govName = 'Core Governor';
+                        } else if (governorAddress.toLowerCase() === '0x789fC99093B09aD01C34DC7251D0C89ce743e5a4'.toLowerCase()) {
+                            govName = 'Treasury Governor';
+                        } else {
+                            govName = 'Unknown Governor';
+                        }
+
+                        governorDiv.innerHTML = `<h2>${govName}: ${governorAddress}</h2>`;
+
+
+                        data[governorAddress].forEach((stage, i, arr) => {
+                            // Convert the tree data to table data
+                            const tableData = convertToTable(stage);
+
+                            const proposalDiv = document.createElement('div');
+                            governorDiv.appendChild(proposalDiv);
+                            if (stage.proposalLink) {
+                                proposalDiv.innerHTML = `<h3><a href="${stage.proposalLink}">Proposal ID: ${stage.identifier}</a></h3>`;
+                            } else {
+                                proposalDiv.innerHTML = `<h3>Proposal ID: ${stage.identifier}</h3>`;
+                            }
+
+                            // Identify unique stages for the current proposal
+                            const table = document.createElement('table');
+                            proposalDiv.appendChild(table);
+
+                            let thead = document.createElement('thead');
+                            table.appendChild(thead);
+                            thead.innerHTML = `<tr>${tableData.headers.map(stage => `<th>${stage}</th>`).join('')}</tr>`;
+
+                            let tbody = document.createElement('tbody');
+                            table.appendChild(tbody);
+
+                            tableData.table.forEach(row => {
+                                let tr = document.createElement('tr');
+                                tbody.appendChild(tr);
+
+                                tr.innerHTML = Array.from(row).map(item => {
+                                    const status = item.status || '';
+                                    let statusClass;
+                                    switch (status) {
+                                        case 'EXECUTED':
+                                            statusClass = 'status-executed';
+                                            break;
+                                        case 'PENDING':
+                                            statusClass = 'status-pending';
+                                            break;
+                                        case 'TERMINATED':
+                                            statusClass = 'status-terminated';
+                                            break;
+                                        case 'READY':
+                                            statusClass = 'flashing-div';
+                                            break;
+                                        default:
+                                            statusClass = '';
+                                    }
+                                    if (status === "EXECUTED" && item.explorerLink) {
+                                        return `<td class="${statusClass}"><a href="${item.explorerLink}">${status}</a></td>`;
+                                    } else {
+                                        return `<td class="${statusClass}">${status}</td>`;
+                                    }
+                                }).join('');
+                            });
+                        });
+
+                        const separator = document.createElement('div');
+                        separator.className = 'governor-separator';
+                        container.appendChild(separator);
+
+                    });
+                })
+                .catch(error => console.error('An error occurred:', error)
+                )
+        }
+
+        window.onload = function () {
+            fetchData(); // Fetch the data when the page loads
+            setInterval(fetchData, 5000); // Re-fetch the data every 5 seconds
+        };
+    </script>
+</body>
+
+</html>

@@ -35,7 +35,8 @@
     "coverage:filtered-report": "forge coverage --report lcov && lcov --remove ./lcov.info -o ./lcov.info.pruned 'node_modules' 'test' 'hardhatTest' 'gov-action-contracts'",
     "coverage:htmlreport": "rm -rf ./report &&  genhtml ./lcov.info.pruned -o report --branch-coverage",
     "coverage:open-report": "open ./report/index.html",
-    "coverage:report": "yarn coverage:filtered-report && yarn coverage:htmlreport && yarn coverage:open-report"
+    "coverage:report": "yarn coverage:filtered-report && yarn coverage:htmlreport && yarn coverage:open-report",
+    "propmon:ui": "cd src-ts && http-server . -p 8080"
   },
   "devDependencies": {
     "@arbitrum/sdk": "^3.1.6",
@@ -55,6 +56,7 @@
     "ethers": "^5.7.2",
     "hardhat": "^2.12.0",
     "hardhat-gas-reporter": "^1.0.9",
+    "http-server": "^14.1.1",
     "solidity-coverage": "^0.8.2",
     "ts-node": "^10.9.1",
     "typechain": "^8.1.0",

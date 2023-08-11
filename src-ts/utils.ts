@@ -1,5 +1,5 @@
 import { DeployedContracts } from "./types";
-import fs from "fs";
+import * as fs from "fs";
 
 export const wait = async (ms: number) => new Promise((res) => setTimeout(res, ms));
 

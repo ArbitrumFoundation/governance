@@ -1,105 +1,135 @@
-import { Provider } from "@ethersproject/providers";
+import { BlockTag, Provider, TransactionReceipt } from "@ethersproject/providers";
 import { L2ArbitrumGovernor__factory } from "../typechain-types";
 import { ProposalCreatedEventObject } from "../typechain-types/src/L2ArbitrumGovernor";
 import { wait } from "./utils";
 import {
-  ProposalStagePipelineFactory,
-  ProposalStageStatus,
-  ProposalStageTracker,
-} from "./proposalStage";
+  StageFactory,
+  StageTracker,
+  TrackerEventName,
+  TrackerEvent,
+  TrackerErrorEvent,
+} from "./proposalPipeline";
 import { EventEmitter } from "events";
 
-export enum GPMEventName {
-  TRACKER_STARTED = "TRACKER_STARTED",
-  TRACKER_ENDED = "TRACKER_ENDED",
-  TRACKER_ERRORED = "TRACKER_ERRORED",
-  /**
-   * The stage being tracked has changed, or has changed status
-   */
-  TRACKER_STATUS = "TRACKED_STATUS",
-}
-export interface GPMEvent {
-  governorAddress: string;
-  proposalId: string;
-}
-export interface GPMErroredEvent extends GPMEvent {
-  error: Error;
-}
-export interface GPMStatusEvent extends GPMEvent {
-  status: ProposalStageStatus;
-  stage: string;
-  identifier: string;
-}
-export type GPMAllEvent = GPMEvent | GPMErroredEvent;
+export type GPMEvent = TrackerEvent & { originAddress: string };
+export type GPMErrorEvent = TrackerErrorEvent & { originAddress: string };
 
 /**
  * Monitors a governor contract for created proposals. Starts a new proposal pipeline when
  * a proposal is created.
  */
-export class GovernorProposalMonitor extends EventEmitter {
+export class ProposalMonitor extends EventEmitter {
   constructor(
-    public readonly governorAddress: string,
-    public readonly governorProvider: Provider,
+    public readonly originAddress: string,
+    public readonly originProvider: Provider,
     public readonly pollingIntervalMs: number,
     public readonly blockLag: number,
     public readonly startBlockNumber: number,
-    public readonly pipelineFactory: ProposalStagePipelineFactory
+    public readonly stageFactory: StageFactory,
+    public readonly writeMode: boolean
   ) {
     super();
   }
 
-  public emit(eventName: GPMEventName.TRACKER_STARTED, args: GPMEvent): boolean;
-  public emit(eventName: GPMEventName.TRACKER_ENDED, args: GPMEvent): boolean;
-  public emit(eventName: GPMEventName.TRACKER_ERRORED, args: GPMErroredEvent): boolean;
-  public emit(eventName: GPMEventName.TRACKER_STATUS, args: GPMStatusEvent): boolean;
-  public override emit(eventName: GPMEventName, args: GPMAllEvent) {
+  public emit(eventName: TrackerEventName.TRACKER_STARTED, args: GPMEvent): boolean;
+  public emit(eventName: TrackerEventName.TRACKER_ENDED, args: GPMEvent): boolean;
+  public emit(eventName: TrackerEventName.TRACKER_ERRORED, args: GPMErrorEvent): boolean;
+  public emit(eventName: TrackerEventName.TRACKER_STATUS, args: GPMEvent): boolean;
+  public override emit(eventName: TrackerEventName, args: GPMEvent | GPMErrorEvent) {
     return super.emit(eventName, args);
+  }
+
+  public on(eventName: TrackerEventName.TRACKER_STARTED, listener: (args: GPMEvent) => void): this;
+  public on(eventName: TrackerEventName.TRACKER_ENDED, listener: (args: GPMEvent) => void): this;
+  public on(
+    eventName: TrackerEventName.TRACKER_ERRORED,
+    listener: (args: GPMErrorEvent) => void
+  ): this;
+  public on(eventName: TrackerEventName.TRACKER_STATUS, listener: (args: GPMEvent) => void): this;
+  public override on(
+    eventName: TrackerEventName,
+    listener: ((args: GPMEvent) => void) | ((args: GPMErrorEvent) => void)
+  ): this {
+    return super.on(eventName, listener);
   }
 
   private polling = false;
 
-  public async monitorSingleProposal(log: ProposalCreatedEventObject) {
-    const gen = this.pipelineFactory.createPipeline(
-      this.governorAddress,
-      log.proposalId.toHexString(),
-      log.targets[0],
-      (log as any)[3][0], // ethers is parsing an array with a single 0 big number as undefined, so we lookup by index
-      log.calldatas[0],
-      log.description
+  public async monitorSingleProposal(receipt: TransactionReceipt) {
+    const nextStages = await this.stageFactory.nextStages(receipt);
+
+    for (const nStage of nextStages) {
+      const tracker = new StageTracker(
+        this.stageFactory,
+        nStage,
+        this.pollingIntervalMs,
+        this.writeMode
+      );
+
+      tracker.on(TrackerEventName.TRACKER_STATUS, (args) =>
+        this.emit(TrackerEventName.TRACKER_STATUS, {
+          originAddress: this.originAddress,
+          ...args,
+        })
+      );
+      tracker.on(TrackerEventName.TRACKER_STARTED, (args) =>
+        this.emit(TrackerEventName.TRACKER_STARTED, {
+          originAddress: this.originAddress,
+          ...args,
+        })
+      );
+      tracker.on(TrackerEventName.TRACKER_ERRORED, (args) =>
+        this.emit(TrackerEventName.TRACKER_ERRORED, {
+          originAddress: this.originAddress,
+          ...args,
+        })
+      );
+      tracker.on(TrackerEventName.TRACKER_ENDED, (args) =>
+        this.emit(TrackerEventName.TRACKER_ENDED, {
+          originAddress: this.originAddress,
+          ...args,
+        })
+      );
+      tracker.run();
+    }
+  }
+
+  public async getProposalCreatedTransactions(
+    fromBlock: BlockTag,
+    toBlock: BlockTag,
+    proposalId?: string
+  ) {
+    const governor = L2ArbitrumGovernor__factory.connect(this.originAddress, this.originProvider);
+
+    const proposalCreatedFilter =
+      governor.filters[
+        "ProposalCreated(uint256,address,address[],uint256[],string[],bytes[],uint256,uint256,string)"
+      ]();
+
+    const receipts = await Promise.all(
+      Array.from(
+        new Set(
+          (
+            await this.originProvider.getLogs({
+              fromBlock,
+              toBlock,
+              ...proposalCreatedFilter,
+            })
+          )
+            .filter((l) => {
+              return (
+                !proposalId ||
+                (
+                  governor.interface.parseLog(l).args as unknown as ProposalCreatedEventObject
+                ).proposalId.toHexString() === proposalId
+              );
+            })
+            .map((l) => l.transactionHash)
+        )
+      ).map((t) => this.originProvider.getTransactionReceipt(t))
     );
 
-    const propStageTracker = new ProposalStageTracker(gen, this.pollingIntervalMs);
-    propStageTracker.on("status", (args) =>
-      this.emit(GPMEventName.TRACKER_STATUS, {
-        governorAddress: this.governorAddress,
-        proposalId: log.proposalId.toHexString(),
-        ...args,
-      })
-    );
-
-    this.emit(GPMEventName.TRACKER_STARTED, {
-      governorAddress: this.governorAddress,
-      proposalId: log.proposalId.toHexString(),
-    });
-
-    propStageTracker
-      .run()
-      .then(() => {
-        this.emit(GPMEventName.TRACKER_ENDED, {
-          governorAddress: this.governorAddress,
-          proposalId: log.proposalId.toHexString(),
-        });
-      })
-      .catch((e) => {
-        // an error in the runner shouldn't halt the whole monitor,
-        // as doing so would halt other successful runners. Emit the info
-        // to be handled elsewhere
-        this.emit(GPMEventName.TRACKER_ERRORED, {
-          governorAddress: this.governorAddress,
-          proposalId: log.proposalId.toHexString(),
-          error: e,
-        });
-      });
+    return receipts;
   }
 
   public async start() {
@@ -113,28 +143,14 @@ export class GovernorProposalMonitor extends EventEmitter {
 
     while (this.polling) {
       const blockNow = Math.max(
-        (await this.governorProvider.getBlockNumber()) - this.blockLag,
+        (await this.originProvider.getBlockNumber()) - this.blockLag,
         blockThen
       );
 
-      const governor = L2ArbitrumGovernor__factory.connect(
-        this.governorAddress,
-        this.governorProvider
-      );
+      const receipts = await this.getProposalCreatedTransactions(blockThen, blockNow);
 
-      const proposalCreatedFilter =
-        governor.filters[
-          "ProposalCreated(uint256,address,address[],uint256[],string[],bytes[],uint256,uint256,string)"
-        ]();
-      const logs = (
-        await this.governorProvider.getLogs({
-          fromBlock: blockThen,
-          toBlock: blockNow - 1,
-          ...proposalCreatedFilter,
-        })
-      ).map((l) => governor.interface.parseLog(l).args as unknown as ProposalCreatedEventObject);
-      for (const log of logs) {
-        await this.monitorSingleProposal(log);
+      for (const r of receipts) {
+        await this.monitorSingleProposal(r);
       }
 
       await wait(this.pollingIntervalMs);
