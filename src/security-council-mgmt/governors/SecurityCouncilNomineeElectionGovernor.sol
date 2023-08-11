@@ -454,6 +454,21 @@ contract SecurityCouncilNomineeElectionGovernor is
         revert CastVoteDisabled();
     }
 
+    /// @inheritdoc ElectionGovernor
+    function castVoteWithReasonAndParamsBySig(
+        uint256 proposalId,
+        uint8 support,
+        string calldata reason,
+        bytes memory params,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) public virtual override(GovernorUpgradeable, ElectionGovernor) returns (uint256) {
+        return ElectionGovernor.castVoteWithReasonAndParamsBySig(
+            proposalId, support, reason, params, v, r, s
+        );
+    }
+
     /**
      * @dev This empty reserved space is put in place to allow future versions to add new
      * variables without shifting down storage in the inheritance chain.
