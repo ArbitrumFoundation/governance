@@ -451,5 +451,5 @@ contract SecurityCouncilManager is
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
      */
 
-    uint256[50] private __gap;
+    uint256[43] private __gap;
 }
