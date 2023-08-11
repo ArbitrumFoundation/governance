@@ -9,7 +9,6 @@ import { getL2Network } from "@arbitrum/sdk";
 import { JsonRpcProvider } from "@ethersproject/providers";
 import { ethers } from "ethers";
 
-// todo: replace with cli option
 const TESTNET = true;
 
 const apiKeys = {
