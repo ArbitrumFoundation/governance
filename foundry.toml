@@ -8,7 +8,7 @@ optimizer_runs = 20000
 via_ir = false
 
 [profile.sec_council_mgmt]
-optimizer_runs = 1900
+optimizer_runs = 1500
 
 [fmt]
 number_underscore = 'thousands'

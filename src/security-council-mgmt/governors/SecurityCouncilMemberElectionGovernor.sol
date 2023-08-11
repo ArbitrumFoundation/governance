@@ -211,4 +211,19 @@ contract SecurityCouncilMemberElectionGovernor is
     {
         revert CastVoteDisabled();
     }
+
+    /// @inheritdoc ElectionGovernor
+    function castVoteWithReasonAndParamsBySig(
+        uint256 proposalId,
+        uint8 support,
+        string calldata reason,
+        bytes memory params,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) public virtual override(GovernorUpgradeable, ElectionGovernor) returns (uint256) {
+        return ElectionGovernor.castVoteWithReasonAndParamsBySig(
+            proposalId, support, reason, params, v, r, s
+        );
+    }
 }
