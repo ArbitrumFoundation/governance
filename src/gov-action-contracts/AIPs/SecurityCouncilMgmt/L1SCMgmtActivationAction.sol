@@ -36,7 +36,7 @@ contract L1SCMgmtActivationAction {
             _upgradeExecutor: l1UpgradeExecutor
         });
 
-        // swap in new emergency security counicl canceller role
+        // swap in new emergency security council canceller role
         bytes32 TIMELOCK_CANCELLER_ROLE = l1Timelock.CANCELLER_ROLE();
         require(
             l1Timelock.hasRole(TIMELOCK_CANCELLER_ROLE, address(prevEmergencySecurityCouncil)),

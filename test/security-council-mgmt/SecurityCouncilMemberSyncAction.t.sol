@@ -65,7 +65,9 @@ contract SecurityCouncilMemberSyncActionTest is Test, DeployGnosisWithModule {
         vm.prank(executor);
         contracts.upgradeExecutor.execute(address(contracts.action), upgradeCallData);
         assertTrue(
-            TestUtil.areAddressArraysEqual(newMembers, IGnosisSafe(contracts.safe).getOwners()),
+            TestUtil.areUniqueAddressArraysEqual(
+                newMembers, IGnosisSafe(contracts.safe).getOwners()
+            ),
             "updated sucessfully"
         );
         assertEq(
@@ -142,7 +144,7 @@ contract SecurityCouncilMemberSyncActionTest is Test, DeployGnosisWithModule {
             SecurityCouncilMemberSyncAction.perform.selector, safe, newMembers
         );
 
-        // [8], [9], [10] sucessfully get removed, leaving [11]'s previous owner to be [7]; removing [11] reverts as it's below the theshold,
+        // [8], [9], [10] sucessfully get removed, leaving [11]'s previous owner to be [7]; removing [11] reverts as it's below the threshold,
         bytes memory revertingRemoveMemberCall = abi.encodeWithSelector(
             IGnosisSafe.removeOwner.selector, prevMembers[7], prevMembers[11], 9
         );
@@ -211,7 +213,7 @@ contract SecurityCouncilMemberSyncActionTest is Test, DeployGnosisWithModule {
         vm.prank(executor);
         contracts.upgradeExecutor.execute(address(contracts.action), upgradeCallData);
         assertTrue(
-            TestUtil.areAddressArraysEqual(owners, IGnosisSafe(contracts.safe).getOwners()),
+            TestUtil.areUniqueAddressArraysEqual(owners, IGnosisSafe(contracts.safe).getOwners()),
             "old members preserved"
         );
 
@@ -228,7 +230,7 @@ contract SecurityCouncilMemberSyncActionTest is Test, DeployGnosisWithModule {
         vm.prank(executor);
         contracts.upgradeExecutor.execute(address(contracts.action), upgradeCallData);
         assertTrue(
-            TestUtil.areAddressArraysEqual(owners, IGnosisSafe(contracts.safe).getOwners()),
+            TestUtil.areUniqueAddressArraysEqual(owners, IGnosisSafe(contracts.safe).getOwners()),
             "old members preserved"
         );
         assertEq(

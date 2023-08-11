@@ -134,10 +134,12 @@ contract SecurityCouncilManagerTest is Test {
         scm.initialize(firstCohort, secondCohort, securityCouncils, roles, l2CoreGovTimelock, uerb);
 
         assertTrue(
-            TestUtil.areAddressArraysEqual(firstCohort, scm.getFirstCohort()), "first cohort set"
+            TestUtil.areUniqueAddressArraysEqual(firstCohort, scm.getFirstCohort()),
+            "first cohort set"
         );
         assertTrue(
-            TestUtil.areAddressArraysEqual(secondCohort, scm.getSecondCohort()), "second cohort set"
+            TestUtil.areUniqueAddressArraysEqual(secondCohort, scm.getSecondCohort()),
+            "second cohort set"
         );
 
         assertTrue(scm.hasRole(scm.DEFAULT_ADMIN_ROLE(), roles.admin), "admin role set");
@@ -183,7 +185,7 @@ contract SecurityCouncilManagerTest is Test {
             remainingMembers[i - 1] = firstCohort[i];
         }
         assertTrue(
-            TestUtil.areAddressArraysEqual(remainingMembers, scm.getFirstCohort()),
+            TestUtil.areUniqueAddressArraysEqual(remainingMembers, scm.getFirstCohort()),
             "member removed from first chohort"
         );
     }
@@ -224,12 +226,12 @@ contract SecurityCouncilManagerTest is Test {
         newFirstCohort[5] = memberToAdd;
 
         assertTrue(
-            TestUtil.areAddressArraysEqual(newFirstCohort, scm.getFirstCohort()),
+            TestUtil.areUniqueAddressArraysEqual(newFirstCohort, scm.getFirstCohort()),
             "member added to first chohort"
         );
 
         assertTrue(
-            TestUtil.areAddressArraysEqual(secondCohort, scm.getSecondCohort()),
+            TestUtil.areUniqueAddressArraysEqual(secondCohort, scm.getSecondCohort()),
             "second cohort untouched"
         );
     }
@@ -250,12 +252,12 @@ contract SecurityCouncilManagerTest is Test {
         newSecondCohort[5] = memberToAdd;
 
         assertTrue(
-            TestUtil.areAddressArraysEqual(newSecondCohort, scm.getSecondCohort()),
+            TestUtil.areUniqueAddressArraysEqual(newSecondCohort, scm.getSecondCohort()),
             "member added to second chohort"
         );
 
         assertTrue(
-            TestUtil.areAddressArraysEqual(firstCohort, scm.getFirstCohort()),
+            TestUtil.areUniqueAddressArraysEqual(firstCohort, scm.getFirstCohort()),
             "first cohort untouched"
         );
     }
@@ -299,11 +301,11 @@ contract SecurityCouncilManagerTest is Test {
             newFirstCohortArray[i] = firstCohort[i];
         }
         assertTrue(
-            TestUtil.areAddressArraysEqual(newFirstCohortArray, scm.getFirstCohort()),
+            TestUtil.areUniqueAddressArraysEqual(newFirstCohortArray, scm.getFirstCohort()),
             "first cohort updated"
         );
         assertTrue(
-            TestUtil.areAddressArraysEqual(secondCohort, scm.getSecondCohort()),
+            TestUtil.areUniqueAddressArraysEqual(secondCohort, scm.getSecondCohort()),
             "second cohort untouched"
         );
         vm.stopPrank();
@@ -320,11 +322,11 @@ contract SecurityCouncilManagerTest is Test {
             newSecondCohortArray[i] = secondCohort[i];
         }
         assertTrue(
-            TestUtil.areAddressArraysEqual(newSecondCohortArray, scm.getSecondCohort()),
+            TestUtil.areUniqueAddressArraysEqual(newSecondCohortArray, scm.getSecondCohort()),
             "second cohort updated"
         );
         assertTrue(
-            TestUtil.areAddressArraysEqual(firstCohort, scm.getFirstCohort()),
+            TestUtil.areUniqueAddressArraysEqual(firstCohort, scm.getFirstCohort()),
             "first cohort untouched"
         );
         vm.stopPrank();
@@ -342,11 +344,11 @@ contract SecurityCouncilManagerTest is Test {
             newFirstCohortArray[i] = firstCohort[i];
         }
         assertTrue(
-            TestUtil.areAddressArraysEqual(newFirstCohortArray, scm.getFirstCohort()),
+            TestUtil.areUniqueAddressArraysEqual(newFirstCohortArray, scm.getFirstCohort()),
             "first cohort rotated"
         );
         assertTrue(
-            TestUtil.areAddressArraysEqual(secondCohort, scm.getSecondCohort()),
+            TestUtil.areUniqueAddressArraysEqual(secondCohort, scm.getSecondCohort()),
             "second cohort untouched"
         );
         vm.stopPrank();
@@ -439,11 +441,12 @@ contract SecurityCouncilManagerTest is Test {
         checkScheduleWasCalled();
 
         assertTrue(
-            TestUtil.areAddressArraysEqual(newCohort, scm.getFirstCohort()), "first cohort updated"
+            TestUtil.areUniqueAddressArraysEqual(newCohort, scm.getFirstCohort()),
+            "first cohort updated"
         );
 
         assertTrue(
-            TestUtil.areAddressArraysEqual(secondCohort, scm.getSecondCohort()),
+            TestUtil.areUniqueAddressArraysEqual(secondCohort, scm.getSecondCohort()),
             "second cohort untouched"
         );
     }
@@ -456,11 +459,11 @@ contract SecurityCouncilManagerTest is Test {
         checkScheduleWasCalled();
 
         assertTrue(
-            TestUtil.areAddressArraysEqual(newCohort, scm.getSecondCohort()),
+            TestUtil.areUniqueAddressArraysEqual(newCohort, scm.getSecondCohort()),
             "second cohort updated"
         );
         assertTrue(
-            TestUtil.areAddressArraysEqual(firstCohort, scm.getFirstCohort()),
+            TestUtil.areUniqueAddressArraysEqual(firstCohort, scm.getFirstCohort()),
             "first cohort untouched"
         );
     }
@@ -498,7 +501,7 @@ contract SecurityCouncilManagerTest is Test {
         assertFalse(scm.secondCohortIncludes(firstCohort[0]), "secondCohortIncludes works");
 
         assertTrue(
-            TestUtil.areAddressArraysEqual(scm.getBothCohorts(), bothCohorts),
+            TestUtil.areUniqueAddressArraysEqual(scm.getBothCohorts(), bothCohorts),
             "getBothCohorts works"
         );
     }
