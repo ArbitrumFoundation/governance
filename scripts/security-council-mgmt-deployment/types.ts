@@ -85,4 +85,6 @@ export type SecurityCouncilManagementDeploymentResult = {
   upgradeExecRouteBuilder: string;
 
   activationActionContracts: {[key: number]: string};
+
+  l2SecurityCouncilMgmtFactory: string;
 };
