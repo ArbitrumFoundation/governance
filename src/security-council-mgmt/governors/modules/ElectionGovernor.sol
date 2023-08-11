@@ -8,9 +8,9 @@ import "../../Common.sol";
 
 /// @notice Common functionality used by nominee and member election governors
 abstract contract ElectionGovernor is GovernorUpgradeable {
-    /// @dev When a vote is cast using a signature we store a hash of the vote data
-    ///      so that the signature cannot be replayed
-    mapping(bytes32 => bool) private _usedNonces;
+    /// @notice When a vote is cast using a signature we store a hash of the vote data
+    ///         so that the signature cannot be replayed
+    mapping(bytes32 => bool) public usedNonces;
 
     /// @notice The vote was already cast by the signer
     /// @param voter The address that signed the vote
@@ -46,10 +46,10 @@ abstract contract ElectionGovernor is GovernorUpgradeable {
         bytes32 replayHash = keccak256(bytes.concat(dataHash, bytes20(voter)));
 
         // ensure that the signature cannot be replayed by storing a nonce of the data
-        if (_usedNonces[replayHash]) {
+        if (usedNonces[replayHash]) {
             revert VoteAlreadyCast(voter, proposalId, replayHash);
         }
-        _usedNonces[replayHash] = true;
+        usedNonces[replayHash] = true;
 
         return _castVote(proposalId, voter, support, reason, params);
     }
