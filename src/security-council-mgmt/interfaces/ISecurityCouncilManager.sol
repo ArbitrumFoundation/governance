@@ -103,7 +103,7 @@ interface ISecurityCouncilManager {
     function getBothCohorts() external view returns (address[] memory);
     /// @notice Length of security councils array
     function securityCouncilsLength() external view returns (uint256);
-    /// @notice Size of cohort under ordinary circumstancces
+    /// @notice Size of cohort under ordinary circumstances
     function cohortSize() external view returns (uint256);
     /// @notice Add new security council to be included in security council management system.
     /// @param _securityCouncilData Security council info

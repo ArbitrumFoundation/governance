@@ -4,12 +4,15 @@ pragma solidity 0.8.16;
 /// @title  A global key value store
 /// @notice Stores values against a key, combines msg.sender with the provided key to ensure uniqueness
 contract KeyValueStore {
+    event ValueSet(address indexed sender, uint256 indexed key, uint256 value);
+
     mapping(uint256 => uint256) public store;
 
     /// @notice Sets a value in the store
     /// @dev    Combines the provided key with the msg.sender to ensure uniqueness
     function set(uint256 key, uint256 value) external {
         store[computeKey(msg.sender, key)] = value;
+        emit ValueSet({sender: msg.sender, key: key, value: value});
     }
 
     /// @notice Get a value from the store for the current msg.sender

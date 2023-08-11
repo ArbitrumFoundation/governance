@@ -23,7 +23,7 @@ contract NonGovernanceChainSCMgmtActivationAction {
     }
 
     function perform() external {
-        // swap in new memgency security council
+        // swap in new emergency security council
         SecurityCouncilMgmtUpgradeLib.replaceEmergencySecurityCouncil({
             _prevSecurityCouncil: prevEmergencySecurityCouncil,
             _newSecurityCouncil: newEmergencySecurityCouncil,

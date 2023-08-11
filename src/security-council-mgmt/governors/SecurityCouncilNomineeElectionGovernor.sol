@@ -261,7 +261,7 @@ contract SecurityCouncilNomineeElectionGovernor is
     }
 
     /// @notice Allows the nomineeVetter to exclude a noncompliant nominee.
-    /// @dev    Can be called only after a nomninee election proposal has "succeeded" (voting has ended) and before the nominee vetting period has ended.
+    /// @dev    Can be called only after a nominee election proposal has "succeeded" (voting has ended) and before the nominee vetting period has ended.
     ///         Will revert if the provided account is not a nominee (had less than the required votes).
     function excludeNominee(uint256 proposalId, address nominee)
         external
@@ -453,4 +453,11 @@ contract SecurityCouncilNomineeElectionGovernor is
     {
         revert CastVoteDisabled();
     }
+
+    /**
+     * @dev This empty reserved space is put in place to allow future versions to add new
+     * variables without shifting down storage in the inheritance chain.
+     * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
+     */
+    uint256[45] private __gap;
 }

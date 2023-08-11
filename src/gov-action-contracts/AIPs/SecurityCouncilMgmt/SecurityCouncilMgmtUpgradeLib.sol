@@ -44,12 +44,13 @@ library SecurityCouncilMgmtUpgradeLib {
         address[] memory prevOwners = _safe1.getOwners();
         address[] memory newOwners = safe2.getOwners();
         require(
-            areAddressArraysEqual(prevOwners, newOwners),
+            areUniqueAddressArraysEqual(prevOwners, newOwners),
             "SecurityCouncilMgmtUpgradeLib: owners mismatch"
         );
     }
 
-    function areAddressArraysEqual(address[] memory array1, address[] memory array2)
+    /// @notice assumes each address array has no repeated elements (i.e., as is the enforced for gnosis safe owners)
+    function areUniqueAddressArraysEqual(address[] memory array1, address[] memory array2)
         public
         pure
         returns (bool)
@@ -62,19 +63,6 @@ library SecurityCouncilMgmtUpgradeLib {
             bool found = false;
             for (uint256 j = 0; j < array2.length; j++) {
                 if (array1[i] == array2[j]) {
-                    found = true;
-                    break;
-                }
-            }
-            if (!found) {
-                return false;
-            }
-        }
-
-        for (uint256 i = 0; i < array2.length; i++) {
-            bool found = false;
-            for (uint256 j = 0; j < array1.length; j++) {
-                if (array2[i] == array1[j]) {
                     found = true;
                     break;
                 }

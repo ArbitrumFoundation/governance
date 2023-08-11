@@ -203,8 +203,11 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
         uint256[] memory topNomineesPacked = new uint256[](k);
 
         for (uint16 i = 0; i < nominees.length; i++) {
+            // The nominee's index in the address array is stored in the 16 rightmost bits; the remaining bits store the nominee's weight
             uint256 packed = (uint256(weights[i]) << 16) | i;
-
+            // Packed weight/index values can be compared when comparing weights, since the values of the weights will outweigh any difference in index;
+            // the index value only takes effect here as tie-breaker if the weights are equal.
+            // If the current weight is greater than the smallest of the top-6 weights so far, replace the smallest element with it and re-sort.
             if (topNomineesPacked[0] < packed) {
                 topNomineesPacked[0] = packed;
                 LibSort.insertionSort(topNomineesPacked);
@@ -213,6 +216,7 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
 
         address[] memory topNomineesAddresses = new address[](k);
         for (uint16 i = 0; i < k; i++) {
+            // retrieve the index from the packed value to look up the nominee's address.
             topNomineesAddresses[i] = nominees[uint16(topNomineesPacked[i])];
         }
 
@@ -221,7 +225,7 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
 
     /// @notice Returns the weight of a vote for a given proposal, block number, and number of votes.
     ///         Each vote has weight 1 until the fullWeightVotingDeadline is reached, after which each vote has linearly
-    ///         deacreasing weight, reaching 0 at the proposalDeadline.
+    ///         decreasing weight, reaching 0 at the proposalDeadline.
     function votesToWeight(uint256 proposalId, uint256 blockNumber, uint256 votes)
         public
         view
