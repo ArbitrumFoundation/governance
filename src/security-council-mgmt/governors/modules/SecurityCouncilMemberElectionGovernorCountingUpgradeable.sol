@@ -231,7 +231,9 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
         view
         returns (uint240)
     {
-        // Before proposalSnapshot all votes have 0 weight
+        // Votes have zero weight until after snapshot block
+        // Votes are not counted anyway on the actual snapshot block due to a check
+        // in token.getPastVotes()
         uint256 startBlock = proposalSnapshot(proposalId);
         if (blockNumber <= startBlock) {
             return 0;
