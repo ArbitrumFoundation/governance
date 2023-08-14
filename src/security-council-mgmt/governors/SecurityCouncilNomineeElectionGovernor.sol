@@ -385,12 +385,14 @@ contract SecurityCouncilNomineeElectionGovernor is
     }
 
     /// @notice Returns cohort currently up for election
+    /// @dev    Between elections returns the value from the previous election
     function currentCohort() public view returns (Cohort) {
         // current cohort is at electionCount - 1
         return electionCount == 0 ? Cohort.FIRST : electionIndexToCohort(electionCount - 1);
     }
 
     /// @notice Returns cohort not currently up for election
+    /// @dev    Between elections returns the value from the previous election
     function otherCohort() public view returns (Cohort) {
         // previous cohort is at electionCount - 2
         return (electionCount < 2) ? Cohort.SECOND : electionIndexToCohort(electionCount - 2);
