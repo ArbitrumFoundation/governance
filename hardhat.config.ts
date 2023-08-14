@@ -18,7 +18,7 @@ const solidityProfiles = {
     settings: {
       optimizer: {
         enabled: true,
-        runs: 1900
+        runs: 1500
       },
     }
   }
