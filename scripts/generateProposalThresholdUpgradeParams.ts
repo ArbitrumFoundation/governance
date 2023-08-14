@@ -21,7 +21,7 @@ const main = async () => {
         provider: l2Provider,
     }
 
-    const proposalCreator = new RoundTripProposalCreator(L1GovConfig, upgradeConfig)
+    const proposalCreator = new RoundTripProposalCreator(L1GovConfig, [upgradeConfig])
 
     const description = `
     This proposal sets the minimum threshold for proposal submission to 5,000,000 delegated votes. This is intended to minimize proposal-spam. 
@@ -30,7 +30,7 @@ const main = async () => {
     The proposal was submitted via the slow non-emergency security council path, since the upgrade is routine and unlikely to elicit objections 
     (it aligns the contracts values with those already in the constitution) and isn't security-critical.
     `
-    const args = await  proposalCreator.createTimelockScheduleArgs(L2GovConfig, "0x8f89288a199f92cd6c5c9fd97b530ea5e8685563", description)
+    const args = await  proposalCreator.createTimelockScheduleArgs(L2GovConfig, ["0x8f89288a199f92cd6c5c9fd97b530ea5e8685563"], description)
     console.log(args);
     
 }
