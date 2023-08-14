@@ -25,7 +25,7 @@ contract SecurityCouncilMemberRemovalGovernor is
     ArbitrumGovernorProposalExpirationUpgradeable,
     OwnableUpgradeable
 {
-    uint256 public constant voteSuccessDenominator = 10_000;
+    uint256 public constant VOTE_SUCCESS_DENOMINATOR = 10_000;
     uint256 public voteSuccessNumerator;
     ISecurityCouncilManager public securityCouncilManager;
 
@@ -67,6 +67,7 @@ contract SecurityCouncilMemberRemovalGovernor is
         uint64 _minPeriodAfterQuorum,
         uint256 _proposalExpirationBlocks
     ) public initializer {
+        __Governor_init("SecurityCouncilMemberRemovalGovernor");
         __GovernorSettings_init(_votingDelay, _votingPeriod, _proposalThreshold);
         __GovernorCountingSimple_init();
         __GovernorVotes_init(_token);
@@ -98,9 +99,9 @@ contract SecurityCouncilMemberRemovalGovernor is
     }
 
     /// @notice Propose a security council member removal. Method conforms to the governor propose interface
-    ///         but enforces that only calls to securityCouncilManager's removeMember can be propsoed.
+    ///         but enforces that only calls to securityCouncilManager's removeMember can be proposed.
     /// @param targets Target contract operation; must be [securityCouncilManager]
-    /// @param values Value for removeMmeber; must be [0]
+    /// @param values Value for removeMember; must be [0]
     /// @param calldatas Operation calldata; must be [removeMember with address argument]
     /// @param description rationale for member removal
     function propose(
@@ -154,10 +155,11 @@ contract SecurityCouncilMemberRemovalGovernor is
         (uint256 againstVotes, uint256 forVotes,) = proposalVotes(proposalId);
 
         // for-votes / total-votes  >  success-numerator/ success-denominator
-        return voteSuccessDenominator * forVotes > (forVotes + againstVotes) * voteSuccessNumerator;
+        return
+            VOTE_SUCCESS_DENOMINATOR * forVotes > (forVotes + againstVotes) * voteSuccessNumerator;
     }
 
-    /// @notice A removal proposal if a theshold of all cast votes vote in favor of removal.
+    /// @notice A removal proposal if a threshold of all cast votes vote in favor of removal.
     ///         Thus, abstaining would be exactly equivalent to voting against.
     ///         To prevent any confusion, abstaining is disallowed.
     function _countVote(
@@ -174,13 +176,13 @@ contract SecurityCouncilMemberRemovalGovernor is
     }
 
     /// @notice Set numerator for removal vote to succeed; only DAO can call
-    /// @param _voteSuccessNumerator new numberator value
+    /// @param _voteSuccessNumerator new numerator value
     function setVoteSuccessNumerator(uint256 _voteSuccessNumerator) public onlyOwner {
         _setVoteSuccessNumerator(_voteSuccessNumerator);
     }
 
     function _setVoteSuccessNumerator(uint256 _voteSuccessNumerator) internal {
-        if (!(0 < _voteSuccessNumerator && _voteSuccessNumerator <= voteSuccessDenominator)) {
+        if (!(0 < _voteSuccessNumerator && _voteSuccessNumerator <= VOTE_SUCCESS_DENOMINATOR)) {
             revert InvalidVoteSuccessNumerator(_voteSuccessNumerator);
         }
         voteSuccessNumerator = _voteSuccessNumerator;
@@ -261,4 +263,11 @@ contract SecurityCouncilMemberRemovalGovernor is
         // to normal changes in the security council membership.
         return ArbitrumGovernorProposalExpirationUpgradeable.state(proposalId);
     }
+
+    /**
+     * @dev This empty reserved space is put in place to allow future versions to add new
+     * variables without shifting down storage in the inheritance chain.
+     * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
+     */
+    uint256[48] private __gap;
 }
