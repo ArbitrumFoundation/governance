@@ -34,6 +34,15 @@ Can only be called by the Emergency Security Council. This is a utility function
 
 Can only be called by the Emergency Security Council. Functionally this is the same as Replace, however semantically it infers different intent. Rotate should be called when a entity wish to replace their address, but it is the same entity that controls the newly added address.
 
+### Add Security Council
+
+Can be called by DAO and the emergency security council. Adds an additional security council whose members will be updated by the election system. 
+
+### Remove Security Council
+
+Can be called by DAO and the emergency security council. Removes a security council from being updated by the election system.
+
+
 ## Race conditions
 Since the Security Council Manager can be updated from a number of sources race conditions can occur in the updates. Some of these updates are long lived processes (the elections), so care must be taking to avoid these kinds of race conditions.
 
