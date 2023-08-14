@@ -5,6 +5,9 @@ import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 import "../../address-registries/L1AddressRegistry.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 
+/// @notice Upgdae implement of L1ArbitrumTimelock to fix bug in scheduleBatch;
+/// properly handle batches in which more than one operation.
+/// creates a retryable ticket. Bug is non-critical since workarounds exist
 contract UpdateL1CoreTimelockAction {
     ProxyAdmin public immutable govProxyAdmin;
     L1AddressRegistry public immutable l1AddressRegistry;

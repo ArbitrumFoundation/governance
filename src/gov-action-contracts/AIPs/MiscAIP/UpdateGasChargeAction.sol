@@ -4,6 +4,8 @@ pragma solidity 0.8.16;
 import "@arbitrum/nitro-contracts/src/precompiles/ArbOwner.sol";
 import "@arbitrum/nitro-contracts/src/precompiles/ArbGasInfo.sol";
 
+///@notice Update fixed cost of posting a batch from 100000 to 240000 L1 gas units, which more accurately reflects actual cost.
+/// Also properly disable amortized cost cap (should be 0, not max(int64))
 contract UpdateGasChargeAction {
     int64 public immutable newPerBatchGasCharge;
 
