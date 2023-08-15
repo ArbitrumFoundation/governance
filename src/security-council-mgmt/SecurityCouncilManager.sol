@@ -147,25 +147,10 @@ contract SecurityCouncilManager is
         emit CohortReplaced(_newCohort, _cohort);
     }
 
-    /// @inheritdoc ISecurityCouncilManager
-    function checkMemberAddress(address member) public view {
-        if (member == address(0)) {
+    function _addMemberToCohortArray(address _newMember, Cohort _cohort) internal {
+        if (_newMember == address(0)) {
             revert ZeroAddress();
         }
-        if (member == SENTINEL_OWNERS) {
-            revert SentinelOwner();
-        }
-
-        for (uint256 i = 0; i < securityCouncils.length; i++) {
-            if (securityCouncils[i].securityCouncil == member) {
-                revert MemberIsCouncil(member);
-            }
-        }
-    }
-
-    function _addMemberToCohortArray(address _newMember, Cohort _cohort) internal {
-        // the council cannot be added as a member of itself
-        checkMemberAddress(_newMember);
         address[] storage cohort = _cohort == Cohort.FIRST ? firstCohort : secondCohort;
         if (cohort.length == cohortSize) {
             revert CohortFull({cohort: _cohort});

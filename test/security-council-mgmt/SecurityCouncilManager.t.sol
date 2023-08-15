@@ -194,18 +194,6 @@ contract SecurityCouncilManagerTest is Test {
         vm.prank(roles.memberAdder);
         vm.expectRevert(ZeroAddress.selector);
         scm.addMember(address(0), Cohort.FIRST);
-
-        vm.prank(roles.memberAdder);
-        vm.expectRevert(ISecurityCouncilManager.SentinelOwner.selector);
-        scm.addMember(address(1), Cohort.FIRST);
-
-        vm.prank(roles.memberAdder);
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                ISecurityCouncilManager.MemberIsCouncil.selector, firstSC.securityCouncil
-            )
-        );
-        scm.addMember(firstSC.securityCouncil, Cohort.FIRST);
     }
 
     function testAddMemberAffordances() public {
