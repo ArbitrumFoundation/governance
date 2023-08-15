@@ -22,8 +22,7 @@ import { getL2Network } from "@arbitrum/sdk";
 import { Wallet, constants, ethers } from "ethers";
 import { DeploymentConfig, ChainConfig, SecurityCouncilManagementDeploymentResult, GovernedChainConfig } from "./types";
 import { randomNonce } from "./utils";
-import { SafeFactory } from '@safe-global/protocol-kit'
-import { EthersAdapter } from '@safe-global/protocol-kit'
+import { SafeFactory, EthersAdapter } from '@safe-global/protocol-kit'
 
 function getSigner(chain: ChainConfig): Wallet {
   return new Wallet(chain.privateKey, new JsonRpcProvider(chain.rpcUrl));
