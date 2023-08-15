@@ -155,7 +155,7 @@ contract SecurityCouncilMemberSyncActionTest is Test, DeployGnosisWithModule {
         assertEq(
             action.SENTINEL_OWNERS(),
             action.getPrevOwner(safe, owners[0]),
-            "sentinal owners is first owner's prev owner"
+            "sentinel owners is first owner's prev owner"
         );
 
         for (uint256 i = 1; i < owners.length; i++) {
