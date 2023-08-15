@@ -108,6 +108,11 @@ const main = async () => {
     console.log("UpdateL1CoreTimelockAction deployed at", action3.address);
 
     await l1Verifier.verifyWithAddress(
+        "l1Timelock",
+        newTimelockLogic.address,
+    );
+
+    await l1Verifier.verifyWithAddress(
         "UpdateL1CoreTimelockAction",
         action3.address,
         abi.encode(
