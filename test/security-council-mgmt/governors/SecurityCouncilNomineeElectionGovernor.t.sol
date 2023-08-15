@@ -411,14 +411,6 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
         );
         governor.includeNominee(proposalId, _contender(uint8(cohortSize)));
 
-        // check that checkMemberAddress is called and can cause revert
-        vm.mockCallRevert(
-            address(initParams.securityCouncilManager),
-            abi.encodeWithSelector(
-                initParams.securityCouncilManager.checkMemberAddress.selector, address(0)
-            ),
-            abi.encodeWithSelector(ZeroAddress.selector)
-        );
         vm.prank(initParams.nomineeVetter);
         vm.expectRevert(abi.encodeWithSelector(ZeroAddress.selector));
         governor.includeNominee(proposalId, address(0));
