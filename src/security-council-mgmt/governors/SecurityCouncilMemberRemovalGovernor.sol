@@ -154,7 +154,7 @@ contract SecurityCouncilMemberRemovalGovernor is
     {
         (uint256 againstVotes, uint256 forVotes,) = proposalVotes(proposalId);
 
-        // for-votes / total-votes  >  success-numerator/ success-denominator
+        // for-votes / total-votes  >=  success-numerator/ success-denominator
         return
             VOTE_SUCCESS_DENOMINATOR * forVotes >= (forVotes + againstVotes) * voteSuccessNumerator;
     }
