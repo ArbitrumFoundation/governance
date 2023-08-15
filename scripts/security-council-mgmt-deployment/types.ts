@@ -56,10 +56,6 @@ export type DeploymentConfig =
     hostChain: ChainConfig;
     /** i.e. [Nova], governedChains DOES NOT include the governance chain (i.e. ArbOne) */
     governedChains: GovernedChainConfig[];
-    gnosisSafeL2Singleton: string;
-    gnosisSafeL1Singleton: string;
-    gnosisSafeFallbackHandler: string;
-    gnosisSafeFactory: string;
   };
 
 export interface ChainIDToConnectedSigner {
