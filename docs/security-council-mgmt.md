@@ -180,6 +180,9 @@ The Security Council can also add a member once one has been removed if 9 of 12 
 Below is a diagram showing the interaction between the different components described above:
 ![](./security-council-colors.png)
 
+### Block periods
+The constitution specifies time periods in days and weeks, however in the implementation block numbers are used as a proxy for this. In the event of an L1 block time change the contracts here, and in general governance, would need to be updated to reflect the time periods again.
+
 ## Settings of interest
 Some of the following settings are updateable, others are presently not, see the in-code function documentation for how/if to update these settings and who can update them. The Constitution dictates the values of many of the settings and so in many cases will also need to be updated.
 
