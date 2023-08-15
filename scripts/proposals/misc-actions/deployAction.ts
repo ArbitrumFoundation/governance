@@ -70,7 +70,7 @@ const main = async () => {
         "SetSweepReceiverAction",
         action1.address,
         abi.encode(
-            ["address, address"],
+            ["address", "address"],
             [deployedContracts.l2AddressRegistry, mainnetTokenDistributor]
         )
     );
@@ -111,7 +111,7 @@ const main = async () => {
         "UpdateL1CoreTimelockAction",
         action3.address,
         abi.encode(
-            ["address, address, address"],
+            ["address", "address", "address"],
             [
                 deployedContracts.l1ProxyAdmin,
                 deployedContracts.l1AddressRegistry,
