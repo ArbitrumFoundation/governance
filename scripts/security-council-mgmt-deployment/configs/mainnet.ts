@@ -2,13 +2,10 @@ import { ethers } from "ethers";
 import { DeploymentConfig } from "../types";
 import { assertDefined, blocks, readDeployedContracts } from "../utils";
 
-import commonConfig from "./common";
-
 const deployedContracts = readDeployedContracts("./files/mainnet/deployedContracts.json");
 
 const config: DeploymentConfig = {
   ...deployedContracts,
-  ...commonConfig,
   emergencySignerThreshold: 9,
   nonEmergencySignerThreshold: 7,
   removalGovVotingDelay: blocks(3, 'days'),
