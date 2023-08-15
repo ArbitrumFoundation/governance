@@ -22,6 +22,9 @@ contract GovernanceChainSCMgmtActivationAction {
     address public immutable securityCouncilManager;
     IL2AddressRegistry public immutable l2AddressRegistry;
 
+    // TODO
+    bytes32 newConstitutionHash = bytes32(0);
+
     constructor(
         IGnosisSafe _newEmergencySecurityCouncil,
         IGnosisSafe _newNonEmergencySecurityCouncil,
@@ -143,6 +146,13 @@ contract GovernanceChainSCMgmtActivationAction {
                 TIMELOCK_CANCELLER_ROLE, address(prevEmergencySecurityCouncil)
             ),
             "GovernanceChainSCMgmtActivationAction: prev emergency security council still has cancellor role"
+        );
+        IArbitrumDAOConstitution arbitrumDaoConstitution =
+            l2AddressRegistry.arbitrumDAOConstitution();
+        arbitrumDaoConstitution.setConstitutionHash(newConstitutionHash);
+        require(
+            arbitrumDaoConstitution.constitutionHash() == newConstitutionHash,
+            "GovernanceChainSCMgmtActivationAction: new constitution hash not set"
         );
     }
 }
