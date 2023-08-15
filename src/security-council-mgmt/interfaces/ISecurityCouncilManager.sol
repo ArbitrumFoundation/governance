@@ -32,6 +32,8 @@ interface ISecurityCouncilManager {
     error InvalidNewCohortLength(address[] cohort, uint256 cohortSize);
     error CohortLengthMismatch(address[] cohort1, address[] cohort2);
     error InvalidCohort(Cohort cohort);
+    error SentinalOwner();
+    error MemberIsCouncil(address member);
 
     // security council data errors
     error MaxSecurityCouncils(uint256 securityCouncilCount);

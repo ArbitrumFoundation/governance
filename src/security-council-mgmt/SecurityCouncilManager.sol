@@ -47,6 +47,9 @@ contract SecurityCouncilManager is
     );
     event UpgradeExecRouteBuilderSet(address indexed UpgradeExecRouteBuilder);
 
+    // The gnosis safe Sentinal owner - cant be added to the safe
+    address internal constant SENTINEL_OWNERS = address(0x1);
+
     // The Security Council members are separated into two cohorts, allowing a whole cohort to be replaced, as
     // specified by the Arbitrum Constitution.
     // These two cohort arrays contain the source of truth for the members of the Security Council. When a membership
@@ -144,10 +147,23 @@ contract SecurityCouncilManager is
         emit CohortReplaced(_newCohort, _cohort);
     }
 
+    function checkNotCouncil(address member) internal view {
+        for (uint256 i = 0; i < securityCouncils.length; i++) {
+            if (securityCouncils[i].securityCouncil == member) {
+                revert MemberIsCouncil(member);
+            }
+        }
+    }
+
     function _addMemberToCohortArray(address _newMember, Cohort _cohort) internal {
         if (_newMember == address(0)) {
             revert ZeroAddress();
         }
+        if (_newMember == SENTINEL_OWNERS) {
+            revert SentinalOwner();
+        }
+        // the council cannot be added as a member of itself
+        checkNotCouncil(_newMember);
         address[] storage cohort = _cohort == Cohort.FIRST ? firstCohort : secondCohort;
         if (cohort.length == cohortSize) {
             revert CohortFull({cohort: _cohort});
