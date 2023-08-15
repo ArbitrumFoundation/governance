@@ -232,11 +232,7 @@ export async function deployContracts(config: DeploymentConfig): Promise<Securit
     ]
   };
   // some additional config checks
-  if((
-      BigNumber.from(await config.firstNominationStartDate.day).toNumber() === 31
-      || BigNumber.from(await config.firstNominationStartDate.day).toNumber() === 30
-      || BigNumber.from(await config.firstNominationStartDate.day).toNumber() === 29
-    ) 
+  if(BigNumber.from(await config.firstNominationStartDate.day).toNumber() > 28
     && BigNumber.from(await config.firstNominationStartDate.month).toNumber() === 8) {
       // Next election would be on undefined date in february
     throw new Error("Invalid date for first nomination start date. Please choose a date that is not the 29th, 30th, or 31st of August.")
