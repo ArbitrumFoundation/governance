@@ -198,7 +198,7 @@ async function main() {
           chainId: deploymentConfig.govChain.chainID,
           location: {
             inbox: (await getL2Network(deploymentConfig.govChain.chainID)).ethBridge.inbox,
-            upgradeExecutor: deploymentConfig.l1Executor,
+            upgradeExecutor: deploymentConfig.l2Executor,
           },
         },
         // (L2) governed chain executors
