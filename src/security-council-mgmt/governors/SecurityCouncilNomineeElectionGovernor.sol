@@ -288,6 +288,11 @@ contract SecurityCouncilNomineeElectionGovernor is
     ///         The Constitution must be followed adding nominees. For example this method can be used by the Foundation to add a
     ///         random member of the outgoing security council, if less than 6 members meet the threshold to become a nominee
     function includeNominee(uint256 proposalId, address account) external onlyNomineeVetter {
+        // although it's possible for more sec councils to be registered in between this account being
+        // included and the election completing, which could invalidate this check, it still serves as an
+        // additional safety check to not having it.
+        securityCouncilManager.checkMemberAddress(account);
+
         ProposalState state_ = state(proposalId);
         if (state_ != ProposalState.Succeeded) {
             revert ProposalNotSucceededState(state_);
