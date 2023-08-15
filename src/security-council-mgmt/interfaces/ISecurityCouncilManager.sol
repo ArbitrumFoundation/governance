@@ -136,6 +136,6 @@ interface ISecurityCouncilManager {
         returns (bytes32);
     /// @notice Each update increments an internal nonce that keeps updates unique, current value stored here
     function updateNonce() external returns (uint256);
-    /// @notice Check that the provided member can be an owner of all security councils
+    /// @notice Check that the provided member can be a signer of all security councils
     function checkMemberAddress(address member) external view;
 }
