@@ -376,7 +376,7 @@ contract SecurityCouncilManager is
         pure
         returns (bytes32)
     {
-        return keccak256(abi.encodePacked(_members, nonce));
+        return keccak256(abi.encode(_members, nonce));
     }
 
     /// @inheritdoc ISecurityCouncilManager

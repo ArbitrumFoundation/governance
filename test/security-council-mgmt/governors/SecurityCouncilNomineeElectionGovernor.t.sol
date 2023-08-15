@@ -410,6 +410,10 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
             )
         );
         governor.includeNominee(proposalId, _contender(uint8(cohortSize)));
+
+        vm.prank(initParams.nomineeVetter);
+        vm.expectRevert(abi.encodeWithSelector(ZeroAddress.selector));
+        governor.includeNominee(proposalId, address(0));
     }
 
     function testExecute() public {
