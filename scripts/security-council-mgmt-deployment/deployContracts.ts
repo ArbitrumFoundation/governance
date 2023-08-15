@@ -16,48 +16,108 @@ import {
   ContractsDeployedEventObject,
   ContractImplementationsStruct,
 } from "../../typechain-types/src/security-council-mgmt/factories/L2SecurityCouncilMgmtFactory";
-import { GnosisSafeProxyFactory__factory } from "../../types/ethers-contracts/factories/GnosisSafeProxyFactory__factory";
 import { GnosisSafeL2__factory } from "../../types/ethers-contracts/factories/GnosisSafeL2__factory";
 import { JsonRpcProvider } from "@ethersproject/providers";
 import { getL2Network } from "@arbitrum/sdk";
-import { BigNumber, Wallet, constants } from "ethers";
-import { DeploymentConfig, ChainConfig, SecurityCouncilManagementDeploymentResult } from "./types";
+import { BigNumber, Wallet, constants, ethers } from "ethers";
+import { DeploymentConfig, ChainConfig, SecurityCouncilManagementDeploymentResult, GovernedChainConfig } from "./types";
 import { randomNonce } from "./utils";
+import { SafeFactory, EthersAdapter } from '@safe-global/protocol-kit'
 
 function getSigner(chain: ChainConfig): Wallet {
   return new Wallet(chain.privateKey, new JsonRpcProvider(chain.rpcUrl));
 }
 
+// deploy gnosis safe with a module and set of owners
 async function deployGnosisSafe(
-  singletonAddress: string,
-  factoryAddress: string,
-  fallbackHandlerAddress: string,
   owners: string[],
   threshold: number,
+  module: string,
   nonce: number,
   signer: Wallet
 ) {
-  const factory = GnosisSafeProxyFactory__factory.connect(factoryAddress, signer);
-  const safeInterface = GnosisSafeL2__factory.createInterface();
+  const ethAdapter = new EthersAdapter({ ethers, signerOrProvider: signer })
+  const safeFactory = await SafeFactory.create({ ethAdapter })
 
-  const setupCalldata = safeInterface.encodeFunctionData("setup", [
-    owners,
-    threshold,
-    constants.AddressZero, // to
-    "0x", // data
-    fallbackHandlerAddress,
-    constants.AddressZero, // payment token
-    0, // payment
-    constants.AddressZero, // payment receiver
-  ]);
+  const safeSdk = await safeFactory.deploySafe({ 
+    safeAccountConfig: {
+      owners: [...owners, signer.address],
+      threshold: 1
+    }, 
+    saltNonce: nonce.toString() 
+  });
 
-  const tx = await factory.createProxyWithNonce(singletonAddress, setupCalldata, nonce);
-  
-  const receipt = await tx.wait();
-  const proxyCreatedEvent = receipt.events?.filter((e) => e.topics[0] === factory.interface.getEventTopic("ProxyCreation"))[0];
-  if (!proxyCreatedEvent) throw new Error("No proxy created event");
-  const proxyAddress = proxyCreatedEvent.args?.[0];
-  return proxyAddress;
+  let addDeployerAsModuleTx = await safeSdk.createTransaction({
+    safeTransactionData: {
+      to: await safeSdk.getAddress(),
+      value: "0",
+      data: (await safeSdk.createEnableModuleTx(signer.address)).data.data,
+    }
+  });
+  addDeployerAsModuleTx = await safeSdk.signTransaction(addDeployerAsModuleTx);
+
+  const addDeployerAsModuleTxResult = await safeSdk.executeTransaction(addDeployerAsModuleTx);
+  await addDeployerAsModuleTxResult.transactionResponse?.wait();
+
+  // make sure the deployer is a module
+  if (!await safeSdk.isModuleEnabled(signer.address)) {
+    throw new Error("Deployer is not a module");
+  }
+
+  // remove the deployer as an owner and set threshold 
+  let removeDeployerAsOwnerTx = await safeSdk.createTransaction({
+    safeTransactionData: {
+      to: await safeSdk.getAddress(),
+      value: "0",
+      data: (await safeSdk.createRemoveOwnerTx({ ownerAddress: signer.address, threshold })).data.data,
+    }
+  });
+  removeDeployerAsOwnerTx = await safeSdk.signTransaction(removeDeployerAsOwnerTx);
+
+  const removeDeployerAsOwnerTxResult = await safeSdk.executeTransaction(removeDeployerAsOwnerTx);
+  await removeDeployerAsOwnerTxResult.transactionResponse?.wait();
+
+  // make sure the deployer is not an owner
+  if (await safeSdk.isOwner(signer.address)) {
+    throw new Error("Deployer is still an owner");
+  }
+
+  // make sure the threshold is correct
+  if (await safeSdk.getThreshold() !== threshold) {
+    throw new Error("Threshold is not correct");
+  }
+
+  const safe = GnosisSafeL2__factory.connect(await safeSdk.getAddress(), signer);
+
+  // add the intended module
+  const addModuleTx = await safe.execTransactionFromModule(
+    safe.address,
+    0,
+    (await safeSdk.createEnableModuleTx(module)).data.data,
+    0 // operation = call
+  );
+  await addModuleTx.wait();
+
+  // make sure the module is enabled
+  if (!await safeSdk.isModuleEnabled(module)) {
+    throw new Error("Module is not enabled");
+  }
+
+  // remove the deployer as a module
+  const removeDeployerAsModuleTx = await safe.execTransactionFromModule(
+    safe.address, 
+    0, 
+    (await safeSdk.createDisableModuleTx(signer.address)).data.data,
+    0 // operation = call
+  );
+  await removeDeployerAsModuleTx.wait();
+
+  // make sure the deployer is not a module
+  if (await safeSdk.isModuleEnabled(signer.address)) {
+    throw new Error("Deployer is still a module");
+  }
+
+  return safe.address;
 }
 
 async function checkChainConfigs(chains: ChainConfig[]) {
@@ -102,12 +162,12 @@ export async function deployContracts(config: DeploymentConfig): Promise<Securit
 
     console.log(`\tDeploying KeyValueStore to chain ${chain.chainID}...`);
     const kvStore = await new KeyValueStore__factory(signer).deploy();
-    await kvStore.deployTransaction.wait();
+    await kvStore.deployed();
 
     console.log(`\tDeploying SecurityCouncilMemberSyncAction to chain ${chain.chainID}...`);
-    
+
     const action = await new SecurityCouncilMemberSyncAction__factory(signer).deploy(kvStore.address);
-    await action.deployTransaction.wait();
+    await action.deployed();
 
     keyValueStores[chain.chainID] = kvStore.address;
     securityCouncilMemberSyncActions[chain.chainID] = action.address;
@@ -122,11 +182,9 @@ export async function deployContracts(config: DeploymentConfig): Promise<Securit
   console.log(`\tDeploying non-emergency Gnosis Safe to chain ${config.govChain.chainID}...`);
 
   const nonEmergencyGnosisSafe = await deployGnosisSafe(
-    config.gnosisSafeL2Singleton,
-    config.gnosisSafeFactory,
-    config.gnosisSafeFallbackHandler,
     owners,
     config.nonEmergencySignerThreshold,
+    config.l2Executor,
     randomNonce(),
     govChainSigner
   );
@@ -134,13 +192,23 @@ export async function deployContracts(config: DeploymentConfig): Promise<Securit
   for (const chain of allChains) {
     const signer = getSigner(chain);
 
+    let executor;
+    switch (chain.chainID) {
+      case config.hostChain.chainID:
+        executor = config.l1Executor;
+        break;
+      case config.govChain.chainID:
+        executor = config.l2Executor;
+        break;
+      default:
+        executor = (chain as GovernedChainConfig).upExecLocation;
+    }
+
     console.log(`\tDeploying emergency Gnosis Safe to chain ${chain.chainID}...`);
     const safe = await deployGnosisSafe(
-      chain.chainID === config.hostChain.chainID ? config.gnosisSafeL1Singleton : config.gnosisSafeL2Singleton,
-      config.gnosisSafeFactory,
-      config.gnosisSafeFallbackHandler,
       owners,
       config.emergencySignerThreshold,
+      executor,
       randomNonce(),
       signer
     );
@@ -153,19 +221,19 @@ export async function deployContracts(config: DeploymentConfig): Promise<Securit
 
   console.log(`\tDeploying SecurityCouncilNomineeElectionGovernor to chain ${config.govChain.chainID}...`);
   const nomineeElectionGovernor = await new SecurityCouncilNomineeElectionGovernor__factory(govChainSigner).deploy();
-  nomineeElectionGovernor.deployTransaction.wait();
+  await nomineeElectionGovernor.deployed();
 
   console.log(`\tDeploying SecurityCouncilMemberElectionGovernor to chain ${config.govChain.chainID}...`);
   const memberElectionGovernor = await new SecurityCouncilMemberElectionGovernor__factory(govChainSigner).deploy();
-  memberElectionGovernor.deployTransaction.wait();
+  await memberElectionGovernor.deployed();
 
   console.log(`\tDeploying SecurityCouncilManager to chain ${config.govChain.chainID}...`);
   const securityCouncilManager = await new SecurityCouncilManager__factory(govChainSigner).deploy();
-  securityCouncilManager.deployTransaction.wait();
+  await securityCouncilManager.deployed();
 
   console.log(`\tDeploying SecurityCouncilMemberRemovalGovernor to chain ${config.govChain.chainID}...`);
   const securityCouncilMemberRemoverGov = await new SecurityCouncilMemberRemovalGovernor__factory(govChainSigner).deploy();
-  securityCouncilMemberRemoverGov.deployTransaction.wait();
+  await securityCouncilMemberRemoverGov.deployed();
 
   // finished object
   const contractImplementations: ContractImplementationsStruct = {
@@ -193,7 +261,7 @@ export async function deployContracts(config: DeploymentConfig): Promise<Securit
         chainId: config.govChain.chainID,
         location: {
           inbox: (await getL2Network(config.govChain.chainID)).ethBridge.inbox,
-          upgradeExecutor: config.l1Executor,
+          upgradeExecutor: config.l2Executor,
         },
       },
       // (L2) governed chain executors
@@ -244,7 +312,7 @@ export async function deployContracts(config: DeploymentConfig): Promise<Securit
   // 5. deploy sc mgmt factory
   console.log("Deploying sc mgmt factory...");
   const l2SecurityCouncilMgmtFactory = await new L2SecurityCouncilMgmtFactory__factory(govChainSigner).deploy();
-  await l2SecurityCouncilMgmtFactory.deployTransaction.wait();
+  await l2SecurityCouncilMgmtFactory.deployed();
 
   // 6. call factory.deploy()
   console.log("Calling factory.deploy()...");
@@ -273,7 +341,7 @@ export async function deployContracts(config: DeploymentConfig): Promise<Securit
     deployEvent.deployedContracts.securityCouncilManager,
     config.l2AddressRegistry
   );
-  govChainActivationAction.deployTransaction.wait();
+  await govChainActivationAction.deployed();
   activationActionContracts[config.govChain.chainID] = govChainActivationAction.address;
 
   // 7b. deploy activation action contract to host chain
@@ -285,7 +353,7 @@ export async function deployContracts(config: DeploymentConfig): Promise<Securit
     config.l1Executor,
     config.l1Timelock
   );
-  hostChainActivationAction.deployTransaction.wait();
+  await hostChainActivationAction.deployed();
   activationActionContracts[config.hostChain.chainID] = hostChainActivationAction.address;
 
   // 7c. deploy activation action contract to governed chains
@@ -298,7 +366,7 @@ export async function deployContracts(config: DeploymentConfig): Promise<Securit
       config.emergencySignerThreshold,
       chain.upExecLocation
     );
-    activationAction.deployTransaction.wait();
+    await activationAction.deployed();
     activationActionContracts[chain.chainID] = activationAction.address;
   }
 
