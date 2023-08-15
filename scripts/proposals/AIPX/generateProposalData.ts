@@ -3,6 +3,8 @@ import { promises as fs } from "fs";
 import { assertDefined } from "../../security-council-mgmt-deployment/utils"; // todo: move this somewhere else
 import { SecurityCouncilManagementDeploymentResult } from "../../security-council-mgmt-deployment/types";
 import { buildProposal } from "../buildProposal";
+import dotenv from "dotenv";
+dotenv.config();
 
 const description = `
 Security Council Elections
