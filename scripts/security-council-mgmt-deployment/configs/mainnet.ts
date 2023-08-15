@@ -22,7 +22,7 @@ const config: DeploymentConfig = {
     year: 2023,
     month: 9,
     day: 15,
-    hour: 12, // todo
+    hour: 12,
   },
   nomineeVettingDuration: blocks(14, 'days'),
   nomineeVetter: "0x000000000000000000000000000000000000dead", // todo
