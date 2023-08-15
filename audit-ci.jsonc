@@ -41,6 +41,8 @@
         // tough-cookie Prototype Pollution vulnerability
         "GHSA-72xf-g2v4-qvf3",
         // Server-Side Request Forgery in Request
-        "GHSA-p8p7-x288-28g6"
+        "GHSA-p8p7-x288-28g6",
+        // OpenZeppelin: Using ERC2771Context with a custom forwarder can yield address(0)
+        "GHSA-g4vp-m682-qqmp"
     ]
   }

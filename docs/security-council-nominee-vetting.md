@@ -27,3 +27,5 @@ During the 14 day vetting period the Foundation should include new addresses if 
 1. Members from the outgoing cohort that fulfil the requirements to not be excluded should be chosen at random.
 2. Contenders who did not receive 0.2% threshold of votes should be included, in order of votes descending
 3. If there still aren’t 6 nominees the Foundation may include any address they see fit
+
+In the event that the Foundation does not fill these spots the DAO or Security Council will need to take action to remedy the situation.

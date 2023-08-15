@@ -19,7 +19,7 @@ import {
 import { GnosisSafeL2__factory } from "../../types/ethers-contracts/factories/GnosisSafeL2__factory";
 import { JsonRpcProvider } from "@ethersproject/providers";
 import { getL2Network } from "@arbitrum/sdk";
-import { Wallet, constants, ethers } from "ethers";
+import { BigNumber, Wallet, constants, ethers } from "ethers";
 import { DeploymentConfig, ChainConfig, SecurityCouncilManagementDeploymentResult, GovernedChainConfig } from "./types";
 import { randomNonce } from "./utils";
 import { SafeFactory, EthersAdapter } from '@safe-global/protocol-kit'
@@ -299,6 +299,15 @@ export async function deployContracts(config: DeploymentConfig): Promise<Securit
       }
     ]
   };
+  // some additional config checks
+  if(BigNumber.from(await config.firstNominationStartDate.day).toNumber() > 28
+    && BigNumber.from(await config.firstNominationStartDate.month).toNumber() === 8) {
+      // Next election would be on undefined date in february
+    throw new Error("Invalid date for first nomination start date. Please choose a date that is not the 29th, 30th, or 31st of August.")
+  }
+  if(new Set(await Promise.all((config.firstCohort).concat(config.secondCohort))).size !== 12) {
+    throw new Error("Invalid cohort. Please ensure that all addresses are unique.")
+  }
 
   // 5. deploy sc mgmt factory
   console.log("Deploying sc mgmt factory...");
