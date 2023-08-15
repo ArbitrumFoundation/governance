@@ -19,7 +19,7 @@ This vote is meant to enable the smart contract system that will allow for the e
 A successful vote will lead to an on-chain proposal that updates the constitution text with the new sections below, as well as the new Security Council election system being activated within the broader Arbitrum governance architecture.
 Implementation Status
 The code representing the proposed architecture is final and available for full review in: https://github.com/ArbitrumFoundation/governance/commit/46dd56f55f4e0d96548fb6546122d47623c7a804. 
-The work has already been audited by Trail of Bits and the identified issues have been patched, the full audit report is available here. 
+The work has already been audited by Trail of Bits and the identified issues have been patched, the full audit report is available in the codebase. 
 A Code4Rena audit competition has also been completed for the election system.
 
 Background
