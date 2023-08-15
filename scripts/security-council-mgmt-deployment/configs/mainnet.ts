@@ -22,7 +22,7 @@ const config: DeploymentConfig = {
     hour: 12,
   },
   nomineeVettingDuration: blocks(14, 'days'),
-  nomineeVetter: "0x000000000000000000000000000000000000dead", // todo
+  nomineeVetter: "0xc610984d9C96a7CE54Bcd335CEee9b0e3874380C",
   nomineeQuorumNumerator: 20, // 0.2%
   nomineeVotingPeriod: blocks(7, 'days'),
   memberVotingPeriod: blocks(21, 'days'),
