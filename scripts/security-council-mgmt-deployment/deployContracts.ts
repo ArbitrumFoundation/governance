@@ -65,7 +65,7 @@ async function deployGnosisSafe(
     throw new Error("Deployer is not a module");
   }
 
-  // remove the deployer as an owner
+  // remove the deployer as an owner and set threshold 
   let removeDeployerAsOwnerTx = await safeSdk.createTransaction({
     safeTransactionData: {
       to: await safeSdk.getAddress(),
