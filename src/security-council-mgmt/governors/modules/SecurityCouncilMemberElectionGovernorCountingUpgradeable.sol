@@ -74,6 +74,8 @@ abstract contract SecurityCouncilMemberElectionGovernorCountingUpgradeable is
     }
 
     /// @notice Set the full weight duration
+    /// @dev    Note that this should not be called during an ongoing election
+    ///         as it may lead to inconsistent weights in the ongoing election
     function setFullWeightDuration(uint256 newFullWeightDuration) public onlyGovernance {
         if (newFullWeightDuration > votingPeriod()) {
             revert FullWeightDurationGreaterThanVotingPeriod(newFullWeightDuration, votingPeriod());
