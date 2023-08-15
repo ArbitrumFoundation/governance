@@ -32,7 +32,7 @@ contract UpdateL1CoreTimelockAction {
             TransparentUpgradeableProxy(payable(address(l1AddressRegistry.l1Timelock())));
         govProxyAdmin.upgrade(timelockProxy, newTimelockImplementation);
 
-        // // verify
+        // verify
         require(
             govProxyAdmin.getProxyImplementation(timelockProxy) == newTimelockImplementation,
             "UpdateL1CoreTimelockAction: new implementation set"
