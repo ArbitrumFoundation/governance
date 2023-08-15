@@ -196,7 +196,7 @@ contract SecurityCouncilManagerTest is Test {
         scm.addMember(address(0), Cohort.FIRST);
 
         vm.prank(roles.memberAdder);
-        vm.expectRevert(ISecurityCouncilManager.SentinalOwner.selector);
+        vm.expectRevert(ISecurityCouncilManager.SentinelOwner.selector);
         scm.addMember(address(1), Cohort.FIRST);
 
         vm.prank(roles.memberAdder);

@@ -47,7 +47,7 @@ contract SecurityCouncilManager is
     );
     event UpgradeExecRouteBuilderSet(address indexed UpgradeExecRouteBuilder);
 
-    // The gnosis safe Sentinal owner - cant be added to the safe
+    // The gnosis safe Sentinel owner - cant be added to the safe
     address internal constant SENTINEL_OWNERS = address(0x1);
 
     // The Security Council members are separated into two cohorts, allowing a whole cohort to be replaced, as
@@ -160,7 +160,7 @@ contract SecurityCouncilManager is
             revert ZeroAddress();
         }
         if (_newMember == SENTINEL_OWNERS) {
-            revert SentinalOwner();
+            revert SentinelOwner();
         }
         // the council cannot be added as a member of itself
         checkNotCouncil(_newMember);
