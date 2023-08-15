@@ -156,7 +156,7 @@ contract SecurityCouncilMemberRemovalGovernor is
 
         // for-votes / total-votes  >  success-numerator/ success-denominator
         return
-            VOTE_SUCCESS_DENOMINATOR * forVotes > (forVotes + againstVotes) * voteSuccessNumerator;
+            VOTE_SUCCESS_DENOMINATOR * forVotes >= (forVotes + againstVotes) * voteSuccessNumerator;
     }
 
     /// @notice A removal proposal if a threshold of all cast votes vote in favor of removal.

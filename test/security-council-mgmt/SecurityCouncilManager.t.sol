@@ -190,6 +190,12 @@ contract SecurityCouncilManagerTest is Test {
         );
     }
 
+    function testAddMemberSpecialAddresses() public {
+        vm.prank(roles.memberAdder);
+        vm.expectRevert(ZeroAddress.selector);
+        scm.addMember(address(0), Cohort.FIRST);
+    }
+
     function testAddMemberAffordances() public {
         vm.prank(rando);
         vm.expectRevert();
