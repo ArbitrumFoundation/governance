@@ -7,7 +7,7 @@ import dotenv from "dotenv";
 dotenv.config();
 
 const description = `
-Security Council Elections
+AIP 5: Activate Security Council Elections
 Category: Constitutional - Process
 As part of its governance, the Arbitrum DAO incorporates a Security Council that can take certain emergency and non-emergency actions:
 Section 3 of the Constitution describes this council in more detail.
