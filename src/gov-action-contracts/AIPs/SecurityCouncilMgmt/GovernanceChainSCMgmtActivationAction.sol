@@ -22,7 +22,7 @@ contract GovernanceChainSCMgmtActivationAction {
     address public immutable securityCouncilManager;
     IL2AddressRegistry public immutable l2AddressRegistry;
 
-    bytes32 immutable newConstitutionHash =
+    bytes32 public constant newConstitutionHash =
         0x60acde40ad14f4ecdb1bea0704d1e3889264fb029231c9016352c670703b35d6;
 
     constructor(
