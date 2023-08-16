@@ -1,6 +1,8 @@
 import { ethers } from "ethers";
 import { DeploymentConfig } from "../types";
 import { assertDefined, blocks, readDeployedContracts } from "../utils";
+import dotenv from "dotenv";
+dotenv.config();
 
 const deployedContracts = readDeployedContracts("./files/mainnet/deployedContracts.json");
 

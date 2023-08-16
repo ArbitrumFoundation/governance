@@ -3,9 +3,11 @@ import { promises as fs } from "fs";
 import { assertDefined } from "../../security-council-mgmt-deployment/utils"; // todo: move this somewhere else
 import { SecurityCouncilManagementDeploymentResult } from "../../security-council-mgmt-deployment/types";
 import { buildProposal } from "../buildProposal";
+import dotenv from "dotenv";
+dotenv.config();
 
 const description = `
-Security Council Elections
+AIP 5: Activate Security Council Elections
 Category: Constitutional - Process
 As part of its governance, the Arbitrum DAO incorporates a Security Council that can take certain emergency and non-emergency actions:
 Section 3 of the Constitution describes this council in more detail.
@@ -18,7 +20,7 @@ A smart contract system has been developed to enable on-chain voting. That syste
 This vote is meant to enable the smart contract system that will allow for the elections, as well as temperature check with the DAO.
 A successful vote will lead to an on-chain proposal that updates the constitution text with the new sections below, as well as the new Security Council election system being activated within the broader Arbitrum governance architecture.
 Implementation Status
-The code representing the proposed architecture is final and available for full review in: https://github.com/ArbitrumFoundation/governance/commit/46dd56f55f4e0d96548fb6546122d47623c7a804. 
+The code representing the proposed architecture is final and available for full review in: https://github.com/arbitrumfoundation/governance/tree/46dd56f55f4e0d96548fb6546122d47623c7a804. 
 The work has already been audited by Trail of Bits and the identified issues have been patched, the full audit report is available in the codebase. 
 A Code4Rena audit competition has also been completed for the election system.
 
@@ -204,7 +206,7 @@ async function main() {
     actionAddresses
   );
 
-  const path = `${__dirname}/data/${chainId}-AIPX-data.json`;
+  const path = `${__dirname}/data/${chainId}-AIP5-data.json`;
   await fs.mkdir(`${__dirname}/data`, { recursive: true });
   await fs.writeFile(path, JSON.stringify(proposal, null, 2));
   console.log("Wrote proposal data to", path);
