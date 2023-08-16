@@ -20,7 +20,7 @@ A smart contract system has been developed to enable on-chain voting. That syste
 This vote is meant to enable the smart contract system that will allow for the elections, as well as temperature check with the DAO.
 A successful vote will lead to an on-chain proposal that updates the constitution text with the new sections below, as well as the new Security Council election system being activated within the broader Arbitrum governance architecture.
 Implementation Status
-The code representing the proposed architecture is final and available for full review in: https://github.com/arbitrumfoundation/governance/tree/46dd56f55f4e0d96548fb6546122d47623c7a804. 
+The code representing the proposed architecture is final and available for full review in: https://github.com/arbitrumfoundation/governance/tree/949b303a8bc27d6b763d434e1ee15b6c87a765cd. 
 The work has already been audited by Trail of Bits and the identified issues have been patched, the full audit report is available in the codebase. 
 A Code4Rena audit competition has also been completed for the election system.
 
