@@ -284,15 +284,15 @@ export const l2L1MonitoringValueTest = async (
       provider: l1Signer.provider! as JsonRpcProvider,
       timelockAddr: l1TimelockContract.address,
     },
-    {
+    [{
       provider: l1Signer.provider! as JsonRpcProvider,
       upgradeExecutorAddr: l1UpgradeExecutor.address,
-    }
+    }]
   );
   const proposal = await propCreator.create(
-    testUpgrade.address,
-    upgradeValue,
-    upgradeExecution,
+    [testUpgrade.address],
+    [upgradeValue],
+    [upgradeExecution],
     proposalString
   );
 
@@ -421,15 +421,15 @@ export const l2L1L2MonitoringValueTest = async (
       provider: l1Signer.provider! as JsonRpcProvider,
       timelockAddr: l1TimelockContract.address,
     },
-    {
+    [{
       provider: l2Signer.provider! as JsonRpcProvider,
       upgradeExecutorAddr: l2UpgradeExecutor.address,
-    }
+    }]
   );
   const proposal = await propCreator.create(
-    testUpgrade.address,
-    upgradeValue,
-    transferExecution,
+    [testUpgrade.address],
+    [upgradeValue],
+    [transferExecution],
     proposalString
   );
   const stageFactory = new StageFactory(
@@ -528,15 +528,15 @@ export const l2L1MonitoringTest = async (
       provider: l1Signer.provider! as JsonRpcProvider,
       timelockAddr: l1TimelockContract.address,
     },
-    {
+    [{
       provider: l1Signer.provider! as JsonRpcProvider,
       upgradeExecutorAddr: l1UpgradeExecutor.address,
-    }
+    }]
   );
   const proposal = await propCreator.create(
-    testUpgrade.address,
-    BigNumber.from(0),
-    upgradeExecution,
+    [testUpgrade.address],
+    [BigNumber.from(0)],
+    [upgradeExecution],
     proposalString
   );
 
@@ -630,15 +630,15 @@ export const l2L1L2MonitoringTest = async (
       provider: l1Signer.provider! as JsonRpcProvider,
       timelockAddr: l1TimelockContract.address,
     },
-    {
+    [{
       provider: l2Signer.provider! as JsonRpcProvider,
       upgradeExecutorAddr: l2UpgradeExecutor.address,
-    }
+    }]
   );
   const proposal = await propCreator.create(
-    testUpgrade.address,
-    BigNumber.from(0),
-    upgradeExecution,
+    [testUpgrade.address],
+    [BigNumber.from(0)],
+    [upgradeExecution],
     proposalString
   );
 
