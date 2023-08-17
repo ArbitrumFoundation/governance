@@ -1,6 +1,7 @@
 #!/bin/bash
 
-forge build
+# compile contracts so out/ directory is populated
+forge build --optimizer-runs 0
 
 CONTRACTS=$(find out/ -name "*Action.json" | sed 's/\.json$//' | awk -F/ '{print $NF}')
 
