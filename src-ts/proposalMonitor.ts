@@ -14,11 +14,7 @@ import { EventEmitter } from "events";
 export type GPMEvent = TrackerEvent & { originAddress: string };
 export type GPMErrorEvent = TrackerErrorEvent & { originAddress: string };
 
-/**
- * Monitors a governor contract for created proposals. Starts a new proposal pipeline when
- * a proposal is created.
- */
-export class ProposalMonitor extends EventEmitter {
+export abstract class ProposalMonitor extends EventEmitter {
   constructor(
     public readonly originAddress: string,
     public readonly originProvider: Provider,
@@ -56,7 +52,7 @@ export class ProposalMonitor extends EventEmitter {
   private polling = false;
 
   public async monitorSingleProposal(receipt: TransactionReceipt) {
-    const nextStages = await this.stageFactory.nextStages(receipt);
+    const nextStages = await this.stageFactory.extractStages(receipt);
 
     for (const nStage of nextStages) {
       const tracker = new StageTracker(
@@ -94,43 +90,11 @@ export class ProposalMonitor extends EventEmitter {
     }
   }
 
-  public async getProposalCreatedTransactions(
+  public abstract getOriginReceipts(
     fromBlock: BlockTag,
     toBlock: BlockTag,
-    proposalId?: string
-  ) {
-    const governor = L2ArbitrumGovernor__factory.connect(this.originAddress, this.originProvider);
-
-    const proposalCreatedFilter =
-      governor.filters[
-        "ProposalCreated(uint256,address,address[],uint256[],string[],bytes[],uint256,uint256,string)"
-      ]();
-
-    const receipts = await Promise.all(
-      Array.from(
-        new Set(
-          (
-            await this.originProvider.getLogs({
-              fromBlock,
-              toBlock,
-              ...proposalCreatedFilter,
-            })
-          )
-            .filter((l) => {
-              return (
-                !proposalId ||
-                (
-                  governor.interface.parseLog(l).args as unknown as ProposalCreatedEventObject
-                ).proposalId.toHexString() === proposalId
-              );
-            })
-            .map((l) => l.transactionHash)
-        )
-      ).map((t) => this.originProvider.getTransactionReceipt(t))
-    );
-
-    return receipts;
-  }
+    originId?: string
+  ): Promise<TransactionReceipt[]>;
 
   public async start() {
     if (this.polling === true) {
@@ -147,7 +111,7 @@ export class ProposalMonitor extends EventEmitter {
         blockThen
       );
 
-      const receipts = await this.getProposalCreatedTransactions(blockThen, blockNow);
+      const receipts = await this.getOriginReceipts(blockThen, blockNow);
 
       for (const r of receipts) {
         await this.monitorSingleProposal(r);
@@ -163,5 +127,38 @@ export class ProposalMonitor extends EventEmitter {
       throw new Error("Proposal monitor not already started");
     }
     this.polling = false;
+  }
+}
+
+/**
+ * Monitors a governor contract for created proposals. Starts a new proposal pipeline when
+ * a proposal is created.
+ */
+export class GovernorProposalMonitor extends ProposalMonitor {
+  public override async getOriginReceipts(
+    fromBlock: BlockTag,
+    toBlock: BlockTag,
+    proposalId?: string
+  ) {
+    const governor = L2ArbitrumGovernor__factory.connect(this.originAddress, this.originProvider);
+    const logs = await this.originProvider.getLogs({
+      fromBlock,
+      toBlock,
+      ...governor.filters.ProposalCreated(),
+    });
+
+    const filteredTxHashes = logs
+      .filter(
+        (l) =>
+          !proposalId ||
+          (
+            governor.interface.parseLog(l).args as unknown as ProposalCreatedEventObject
+          ).proposalId.toHexString() === proposalId
+      )
+      .map((l) => l.transactionHash);
+
+    return await Promise.all(
+      Array.from(new Set(filteredTxHashes)).map((t) => this.originProvider.getTransactionReceipt(t))
+    );
   }
 }

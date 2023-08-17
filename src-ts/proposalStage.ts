@@ -1,10 +1,13 @@
 import {
   getL2Network,
+  L1ToL2Message,
   L1ToL2MessageReader,
   L1ToL2MessageStatus,
   L1ToL2MessageWriter,
+  L1TransactionReceipt,
   L2ToL1Message,
   L2ToL1MessageStatus,
+  L2TransactionReceipt,
 } from "@arbitrum/sdk";
 import { Outbox__factory } from "@arbitrum/sdk/dist/lib/abi/factories/Outbox__factory";
 import { L2ToL1TxEvent as NitroL2ToL1TransactionEvent } from "@arbitrum/sdk/dist/lib/abi/ArbSys";
@@ -19,6 +22,14 @@ import {
 } from "../typechain-types";
 import { Inbox__factory } from "@arbitrum/sdk/dist/lib/abi/factories/Inbox__factory";
 import { EventArgs } from "@arbitrum/sdk/dist/lib/dataEntities/event";
+import { InboxMessageKind } from "@arbitrum/sdk/dist/lib/dataEntities/message";
+import { SubmitRetryableMessageDataParser } from "@arbitrum/sdk/dist/lib/message/messageDataParser";
+import { BridgeCallTriggeredEventObject } from "../typechain-types/@arbitrum/nitro-contracts/src/bridge/IBridge";
+import { Bridge__factory } from "@arbitrum/sdk/dist/lib/abi/factories/Bridge__factory";
+import {
+  ProposalCreatedEventObject,
+  ProposalQueuedEventObject,
+} from "../typechain-types/src/L2ArbitrumGovernor";
 type Provider = providers.Provider;
 
 export function isSigner(signerOrProvider: Signer | Provider): signerOrProvider is Signer {
@@ -146,6 +157,34 @@ export class GovernorQueueStage implements ProposalStage {
     );
   }
 
+  public static async extractStages(
+    receipt: TransactionReceipt,
+    arbOneSignerOrProvider: Provider | Signer
+  ): Promise<GovernorQueueStage[]> {
+    const govInterface = L2ArbitrumGovernor__factory.createInterface();
+    const proposalStages: GovernorQueueStage[] = [];
+    for (const log of receipt.logs) {
+      if (log.topics.find((t) => t === govInterface.getEventTopic("ProposalCreated"))) {
+        const propCreatedEvent = govInterface.parseLog(log)
+          .args as unknown as ProposalCreatedEventObject;
+
+        proposalStages.push(
+          new GovernorQueueStage(
+            propCreatedEvent.proposalId.toHexString(),
+            propCreatedEvent.targets,
+            (propCreatedEvent as any)[3], // ethers is parsing an array with a single 0 big number as undefined, so we lookup by index
+            propCreatedEvent.calldatas,
+            propCreatedEvent.description,
+            log.address,
+            arbOneSignerOrProvider
+          )
+        );
+      }
+    }
+
+    return proposalStages;
+  }
+
   public async status(): Promise<ProposalStageStatus> {
     const gov = L2ArbitrumGovernor__factory.connect(this.governorAddress, this.signerOrProvider);
 
@@ -236,6 +275,101 @@ export class L2TimelockExecutionBatchStage implements ProposalStage {
       predecessor,
       salt
     );
+  }
+
+  public static async getProposalCreatedData(
+    governor: string,
+    proposalId: string,
+    provider: Provider,
+    startBlock: number
+  ): Promise<ProposalCreatedEventObject | undefined> {
+    const govInterface = L2ArbitrumGovernor__factory.createInterface();
+    const filterTopics = govInterface.encodeFilterTopics("ProposalCreated", []);
+    const logs = await provider.getLogs({
+      fromBlock: startBlock,
+      toBlock: "latest",
+      address: governor,
+      topics: filterTopics,
+    });
+
+    const proposalEvents = logs
+      .map((log) => {
+        const parsedLog = govInterface.parseLog(log);
+        return parsedLog.args as unknown as ProposalCreatedEventObject;
+      })
+      .filter((event) => event.proposalId.toHexString() === proposalId);
+
+    if (proposalEvents.length > 1) {
+      throw new Error(`More than one proposal created event found for proposal ${proposalId}`);
+    }
+
+    return proposalEvents.length === 1 ? proposalEvents[0] : undefined;
+  }
+
+  // CHRIS: TODO: we have this twice
+  public static findTimelockAddress(operationId: string, logs: ethers.providers.Log[]) {
+    const timelockInterface = ArbitrumTimelock__factory.createInterface();
+    for (const log of logs) {
+      if (
+        log.topics.find((t) => t === timelockInterface.getEventTopic("CallScheduled")) &&
+        log.topics.find((t) => t === operationId)
+      ) {
+        return log.address;
+      }
+    }
+  }
+
+  public static async extractStages(
+    receipt: TransactionReceipt,
+    arbOneSignerOrProvider: Provider | Signer,
+    startBlock: number
+  ): Promise<L2TimelockExecutionBatchStage[]> {
+    const govInterface = L2ArbitrumGovernor__factory.createInterface();
+    const proposalStages: L2TimelockExecutionBatchStage[] = [];
+    for (const log of receipt.logs) {
+      if (log.topics.find((t) => t === govInterface.getEventTopic("ProposalQueued"))) {
+        const propCreatedObj = govInterface.parseLog(log)
+          .args as unknown as ProposalQueuedEventObject;
+
+        const propCreatedEvent = await this.getProposalCreatedData(
+          log.address,
+          propCreatedObj.proposalId.toHexString(),
+          await getProvider(arbOneSignerOrProvider)!,
+          startBlock
+        );
+        if (!propCreatedEvent) {
+          throw new Error(
+            `Could not find proposal created event: ${propCreatedObj.proposalId.toHexString()}`
+          );
+        }
+        // calculate the operation id, and look for it in this receipt
+        const operationId = L2TimelockExecutionBatchStage.hashOperationBatch(
+          propCreatedEvent.targets,
+          (propCreatedEvent as any)[3],
+          propCreatedEvent.calldatas,
+          constants.HashZero,
+          id(propCreatedEvent.description)
+        );
+        const timelockAddress = this.findTimelockAddress(operationId, receipt.logs);
+        if (!timelockAddress) {
+          throw new Error(`Could not find timelock address for operation id ${operationId}`);
+        }
+        // we know the operation id
+        const executeBatch = new L2TimelockExecutionBatchStage(
+          propCreatedEvent.targets,
+          (propCreatedEvent as any)[3],
+          propCreatedEvent.calldatas,
+          constants.HashZero,
+          id(propCreatedEvent.description),
+          timelockAddress,
+          arbOneSignerOrProvider
+        );
+
+        proposalStages.push(executeBatch);
+      }
+    }
+
+    return proposalStages;
   }
 
   public static hashOperation(
@@ -388,6 +522,18 @@ export class L1OutboxStage implements ProposalStage {
     );
   }
 
+  public static async extractStages(
+    receipt: TransactionReceipt,
+    l1SignerOrProvider: Signer | Provider,
+    arbOneProvider: ethers.providers.Provider
+  ): Promise<L1OutboxStage[]> {
+    const l2Receipt = new L2TransactionReceipt(receipt);
+    const l2ToL1Events =
+      (await l2Receipt.getL2ToL1Events()) as EventArgs<NitroL2ToL1TransactionEvent>[];
+
+    return l2ToL1Events.map((e) => new L1OutboxStage(e, l1SignerOrProvider, arbOneProvider));
+  }
+
   public async status(): Promise<ProposalStageStatus> {
     const message = L2ToL1Message.fromEvent(this.l1SignerOrProvider, this.l2ToL1TxEvent);
 
@@ -467,18 +613,82 @@ export class L1TimelockExecutionStage implements ProposalStage {
     public readonly salt: string,
     public readonly l1SignerOrProvider: Signer | Provider
   ) {
-    interface Node {
-      x?: number;
-      y?: number;
-      children: Node[];
-    }
-
     this.identifier = keccak256(
       defaultAbiCoder.encode(
         ["address", "uint256", "bytes", "bytes32", "bytes32"],
         [target, value, data, predecessor, salt]
       )
     );
+  }
+
+  public static findTimelockAddress(operationId: string, logs: ethers.providers.Log[]) {
+    const timelockInterface = ArbitrumTimelock__factory.createInterface();
+    for (const log of logs) {
+      if (
+        log.topics.find((t) => t === timelockInterface.getEventTopic("CallScheduled")) &&
+        log.topics.find((t) => t === operationId)
+      ) {
+        return log.address;
+      }
+    }
+  }
+
+  // CHRIS: TODO: follows a pattern?
+  public static async extractStages(
+    receipt: TransactionReceipt,
+    l1SignerOrProvider: Signer | Provider
+  ): Promise<L1TimelockExecutionStage[]> {
+    const timelockInterface = ArbitrumTimelock__factory.createInterface();
+    const bridgeInterface = Bridge__factory.createInterface();
+    const proposalStages: L1TimelockExecutionStage[] = [];
+    for (const log of receipt.logs) {
+      // CHRIS: TODO: would be better if we could use the address here, what else could we do?
+
+      if (log.topics.find((t) => t === bridgeInterface.getEventTopic("BridgeCallTriggered"))) {
+        const bridgeCallTriggered = bridgeInterface.parseLog(log)
+          .args as unknown as BridgeCallTriggeredEventObject;
+        const funcSig = bridgeCallTriggered.data.slice(0, 10);
+
+        const schedFunc =
+          timelockInterface.functions["schedule(address,uint256,bytes,bytes32,bytes32,uint256)"];
+        const schedBatchFunc =
+          timelockInterface.functions[
+            "scheduleBatch(address[],uint256[],bytes[],bytes32,bytes32,uint256)"
+          ];
+        if (funcSig === timelockInterface.getSighash(schedFunc)) {
+          const scheduleBatchData = L2TimelockExecutionBatchStage.decodeSchedule(
+            bridgeCallTriggered.data
+          );
+          const operationId = L2TimelockExecutionBatchStage.hashOperation(
+            scheduleBatchData.target,
+            scheduleBatchData.value,
+            scheduleBatchData.callData,
+            scheduleBatchData.predecessor,
+            scheduleBatchData.salt
+          );
+          const timelockAddress = this.findTimelockAddress(operationId, receipt.logs);
+          if (!timelockAddress) {
+            throw new Error(`Could not find timelock address for operation id ${operationId}`);
+          }
+
+          proposalStages.push(
+            new L1TimelockExecutionStage(
+              timelockAddress,
+              scheduleBatchData.target,
+              scheduleBatchData.value,
+              scheduleBatchData.callData,
+              scheduleBatchData.predecessor,
+              scheduleBatchData.salt,
+              l1SignerOrProvider
+            )
+          );
+        } else if (funcSig === timelockInterface.getSighash(schedBatchFunc)) {
+          throw new Error("Schedule batch not implemented");
+        }
+      }
+    }
+
+    return proposalStages;
   }
 
   public async status(): Promise<ProposalStageStatus> {
@@ -601,6 +811,36 @@ export class RetryableExecutionStage implements ProposalStage {
 
   constructor(public readonly l1ToL2Message: L1ToL2MessageReader | L1ToL2MessageWriter) {
     this.identifier = l1ToL2Message.retryableCreationId;
+  }
+
+  public static async extractStages(
+    receipt: TransactionReceipt,
+    l2ProviderOrSigner: Provider | Signer
+  ): Promise<RetryableExecutionStage[]> {
+    const stages: RetryableExecutionStage[] = [];
+    const l1Receipt = new L1TransactionReceipt(receipt);
+    const l1ToL2Events = l1Receipt.getMessageEvents();
+    const network = await getL2Network(l2ProviderOrSigner);
+    for (const e of l1ToL2Events.filter(
+      (e) =>
+        e.bridgeMessageEvent.kind === InboxMessageKind.L1MessageType_submitRetryableTx &&
+        e.bridgeMessageEvent.inbox.toLowerCase() === network.ethBridge.inbox.toLowerCase()
+    )) {
+      const messageParser = new SubmitRetryableMessageDataParser();
+      const inboxMessageData = messageParser.parse(e.inboxMessageEvent.data);
+      const message = L1ToL2Message.fromEventComponents(
+        l2ProviderOrSigner,
+        network.chainID,
+        e.bridgeMessageEvent.sender,
+        e.inboxMessageEvent.messageNum,
+        e.bridgeMessageEvent.baseFeeL1,
+        inboxMessageData
+      );
+
+      stages.push(new RetryableExecutionStage(message));
+    }
+
+    return stages;
   }
 
   public async status(): Promise<ProposalStageStatus> {

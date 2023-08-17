@@ -13,7 +13,12 @@ dotenv.config();
 import yargs from "yargs";
 import { wait } from "./utils";
 import * as path from "path";
-import { GPMErrorEvent, GPMEvent, ProposalMonitor } from "./proposalMonitor";
+import {
+  GPMErrorEvent,
+  GPMEvent,
+  GovernorProposalMonitor,
+  ProposalMonitor,
+} from "./proposalMonitor";
 
 const ETH_KEY = process.env.ETH_KEY || "";
 const ARB_KEY = process.env.ARB_KEY || "";
@@ -73,44 +78,23 @@ const attachConsole = (proposalMonitor: ProposalMonitor, monitorName: string) =>
 
 const startMonitor = async (
   monitorName: string,
-  governorAddress: string,
-  govChainSignerOrProvider: Signer | Provider,
-  l1SignerOrProvider: Signer | Provider,
-  novaSignerOrProvider: Signer | Provider,
+  monitor: ProposalMonitor,
   jsonLogger?: JsonLogger,
   proposalId?: string
 ) => {
-  const proposalMonitor = new ProposalMonitor(
-    governorAddress,
-    getProvider(govChainSignerOrProvider)!,
-    options.pollingIntervalSeconds * 1000,
-    options.blockLag,
-    options.startBlock,
-    new StageFactory(
-      options.startBlock,
-      govChainSignerOrProvider,
-      l1SignerOrProvider,
-      novaSignerOrProvider
-    ),
-    options.writeMode
-  );
-  attachConsole(proposalMonitor, monitorName);
+  attachConsole(monitor, monitorName);
 
   if (jsonLogger) {
-    jsonLogger.subscribeToMonitor(proposalMonitor);
+    jsonLogger.subscribeToMonitor(monitor);
   }
   if (proposalId) {
-    const receipts = await proposalMonitor.getProposalCreatedTransactions(
-      options.startBlock,
-      "latest",
-      proposalId
-    );
+    const receipts = await monitor.getOriginReceipts(options.startBlock, "latest", proposalId);
     if (receipts.length !== 1) {
       throw new Error(`Proposal not found: ${proposalId}`);
     }
-    await proposalMonitor.monitorSingleProposal(receipts[0]);
+    await monitor.monitorSingleProposal(receipts[0]);
   } else {
-    await proposalMonitor.start();
+    await monitor.start();
   }
 };
 
@@ -191,6 +175,57 @@ class JsonLogger {
       } else {
         const prevStage = emittedStages.get(prevKey);
         if (!prevStage) {
+          // CHRIS: TODO: why did we get this error?
+          //           Error: Could not find prev stage 0xf07DeD9dC292157749B6Fd268E37DF6EA38395B9:: for 0xf07DeD9dC292157749B6Fd268E37DF6EA38395B9:GovernorQueueStage:0xefaff02f18aefc52054968545b057ce1b4f41e7b48f9a8f189f749d6aa8ab79a
+          // {
+          //   originAddress: '0xf07DeD9dC292157749B6Fd268E37DF6EA38395B9',
+          //   status: undefined,
+          //   stage: 'GovernorQueueStage',
+          //   identifier: '0xefaff02f18aefc52054968545b057ce1b4f41e7b48f9a8f189f749d6aa8ab79a',
+          //   error: Error: Could not find prev stage 0xf07DeD9dC292157749B6Fd268E37DF6EA38395B9:: for 0xf07DeD9dC292157749B6Fd268E37DF6EA38395B9:GovernorQueueStage:0xefaff02f18aefc52054968545b057ce1b4f41e7b48f9a8f189f749d6aa8ab79a
+          //       at ProposalMonitor.<anonymous> (/home/chris/code/governance-ocl/src-ts/proposalMonitorCli.ts:194:17)
+          //       at ProposalMonitor.emit (node:events:532:35)
+          //       at ProposalMonitor.emit (node:domain:475:12)
+          //       at ProposalMonitor.emit (/home/chris/code/governance-ocl/src-ts/proposalMonitor.ts:39:18)
+          //       at StageTracker.<anonymous> (/home/chris/code/governance-ocl/src-ts/proposalMonitor.ts:70:14)
+          //       at StageTracker.emit (node:events:520:28)
+          //       at StageTracker.emit (node:domain:475:12)
+          //       at StageTracker.emit (/home/chris/code/governance-ocl/src-ts/proposalPipeline.ts:295:18)
+          //       at StageTracker.run (/home/chris/code/governance-ocl/src-ts/proposalPipeline.ts:333:16)
+          //       at runMicrotasks (<anonymous>)
+          // }
+          // Error!
+          // /home/chris/code/governance-ocl/src-ts/proposalPipeline.ts:448
+          //           throw new ProposalStageError(
+          //                 ^
+          // ProposalStageError: [GovernorQueueStage:0xefaff02f18aefc52054968545b057ce1b4f41e7b48f9a8f189f749d6aa8ab79a] Consecutive error
+          //     at StageTracker.run (/home/chris/code/governance-ocl/src-ts/proposalPipeline.ts:448:17)
+          //     at runMicrotasks (<anonymous>)
+          //     at processTicksAndRejections (node:internal/process/task_queues:96:5)
+          // Caused By: Error: Could not find prev stage 0xf07DeD9dC292157749B6Fd268E37DF6EA38395B9:: for 0xf07DeD9dC292157749B6Fd268E37DF6EA38395B9:GovernorQueueStage:0xefaff02f18aefc52054968545b057ce1b4f41e7b48f9a8f189f749d6aa8ab79a
+          //     at ProposalMonitor.<anonymous> (/home/chris/code/governance-ocl/src-ts/proposalMonitorCli.ts:194:17)
+          //     at ProposalMonitor.emit (node:events:532:35)
+          //     at ProposalMonitor.emit (node:domain:475:12)
+          //     at ProposalMonitor.emit (/home/chris/code/governance-ocl/src-ts/proposalMonitor.ts:39:18)
+          //     at StageTracker.<anonymous> (/home/chris/code/governance-ocl/src-ts/proposalMonitor.ts:70:14)
+          //     at StageTracker.emit (node:events:520:28)
+          //     at StageTracker.emit (node:domain:475:12)
+          //     at StageTracker.emit (/home/chris/code/governance-ocl/src-ts/proposalPipeline.ts:295:18)
+          //     at StageTracker.run (/home/chris/code/governance-ocl/src-ts/proposalPipeline.ts:333:16)
+          //     at runMicrotasks (<anonymous>) {
+          //   identifier: '0xefaff02f18aefc52054968545b057ce1b4f41e7b48f9a8f189f749d6aa8ab79a',
+          //   stageName: 'GovernorQueueStage',
+          //   inner: Error: Could not find prev stage 0xf07DeD9dC292157749B6Fd268E37DF6EA38395B9:: for 0xf07DeD9dC292157749B6Fd268E37DF6EA38395B9:GovernorQueueStage:0xefaff02f18aefc52054968545b057ce1b4f41e7b48f9a8f189f749d6aa8ab79a
+          //       at ProposalMonitor.<anonymous> (/home/chris/code/governance-ocl/src-ts/proposalMonitorCli.ts:194:17)
+          //       at ProposalMonitor.emit (node:events:532:35)
+          //       at ProposalMonitor.emit (node:domain:475:12)
+          //       at ProposalMonitor.emit (/home/chris/code/governance-ocl/src-ts/proposalMonitor.ts:39:18)
+          //       at StageTracker.<anonymous> (/home/chris/code/governance-ocl/src-ts/proposalMonitor.ts:70:14)
+          //       at StageTracker.emit (node:events:520:28)
+          //       at StageTracker.emit (node:domain:475:12)
+          //       at StageTracker.emit (/home/chris/code/governance-ocl/src-ts/proposalPipeline.ts:295:18)
+          //       at StageTracker.run (/home/chris/code/governance-ocl/src-ts/proposalPipeline.ts:333:16)
+          //       at runMicrotasks (<anonymous>)
           throw new Error(`Could not find prev stage ${prevKey} for ${key}`);
         }
         prevStage.children.push(pipelineStage);
@@ -225,32 +260,36 @@ const main = async () => {
     jsonLogger.start();
   }
 
-  // round trips originate from the core governor
-  const roundTrip = startMonitor(
-    "RoundTrip",
+  const stageFactory = new StageFactory(
+    options.startBlock,
+    govChainSignerOrProvider,
+    l1SignerOrProvider,
+    novaSignerOrProvider
+  );
+
+  const coreGovMonitor = new GovernorProposalMonitor(
     options.coreGovernorAddress,
-    govChainSignerOrProvider,
-    l1SignerOrProvider,
-    novaSignerOrProvider,
-    jsonLogger,
-    options.proposalId
+    getProvider(govChainSignerOrProvider)!,
+    options.pollingIntervalSeconds * 1000,
+    options.blockLag,
+    options.startBlock,
+    stageFactory,
+    options.writeMode
   );
+  const roundTrip = startMonitor("RoundTrip", coreGovMonitor, jsonLogger, options.proposalId);
 
-  // treasury proposals only have 1 timelock, so they can use the arb one only pipeline factory
-  const treasury = startMonitor(
-    "Treasury",
+  const treasuryMonitor = new GovernorProposalMonitor(
     options.treasuryGovernorAddress,
-    govChainSignerOrProvider,
-    l1SignerOrProvider,
-    novaSignerOrProvider,
-    jsonLogger,
-    options.proposalId
+    getProvider(govChainSignerOrProvider)!,
+    options.pollingIntervalSeconds * 1000,
+    options.blockLag,
+    options.startBlock,
+    stageFactory,
+    options.writeMode
   );
+  const treasury = startMonitor("Treasury", treasuryMonitor, jsonLogger, options.proposalId);
 
-  await Promise.all([
-    roundTrip,
-    treasury
-  ]);
+  await Promise.all([roundTrip, treasury]);
 };
 
 main().then(() => console.log("Done."));
