@@ -7,7 +7,7 @@ import dotenv from "dotenv";
 dotenv.config();
 
 const description = `
-AIP 5: Activate Security Council Elections
+AIP 6: Activate Security Council Elections
 Category: Constitutional - Process
 As part of its governance, the Arbitrum DAO incorporates a Security Council that can take certain emergency and non-emergency actions:
 Section 3 of the Constitution describes this council in more detail.
@@ -206,7 +206,7 @@ async function main() {
     actionAddresses
   );
 
-  const path = `${__dirname}/data/${chainId}-AIP5-data.json`;
+  const path = `${__dirname}/data/${chainId}-AIP6-data.json`;
   await fs.mkdir(`${__dirname}/data`, { recursive: true });
   await fs.writeFile(path, JSON.stringify(proposal, null, 2));
   console.log("Wrote proposal data to", path);
