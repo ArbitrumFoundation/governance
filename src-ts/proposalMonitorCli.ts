@@ -16,6 +16,7 @@ import * as path from "path";
 import {
   GPMErrorEvent,
   GPMEvent,
+  GnosisSafeProposalMonitor,
   GovernorProposalMonitor,
   ProposalMonitor,
 } from "./proposalMonitor";
@@ -28,8 +29,9 @@ const options = yargs(process.argv.slice(2))
     l1RpcUrl: { type: "string", demandOption: true },
     govChainRpcUrl: { type: "string", demandOption: true },
     novaRpcUrl: { type: "string", demandOption: true },
-    coreGovernorAddress: { type: "string", demandOption: true },
-    treasuryGovernorAddress: { type: "string", demandOption: true },
+    coreGovernorAddress: { type: "string", demandOption: false },
+    treasuryGovernorAddress: { type: "string", demandOption: false },
+    sevenTwelveCouncilAddress: { type: "string", demandOption: false },
     startBlock: { type: "number", demandOption: false, default: 72559827 },
     pollingIntervalSeconds: { type: "number", demandOption: false, default: 300 },
     blockLag: { type: "number", demandOption: false, default: 5 },
@@ -41,8 +43,9 @@ const options = yargs(process.argv.slice(2))
   l1RpcUrl: string;
   govChainRpcUrl: string;
   novaRpcUrl: string;
-  coreGovernorAddress: string;
-  treasuryGovernorAddress: string;
+  coreGovernorAddress?: string;
+  treasuryGovernorAddress?: string;
+  sevenTwelveCouncilAddress?: string;
   startBlock: number;
   pollingIntervalSeconds: number;
   blockLag: number;
@@ -139,103 +142,58 @@ class JsonLogger {
     const originKey = `${proposalMonitor.originAddress}::`;
 
     proposalMonitor.on(TrackerEventName.TRACKER_ERRORED, (e: GPMErrorEvent) => {
-      console.log(e);
-      console.log("Error!");
-      // CHRIS: TODO: clean up in here
+      console.log("Emitted error event");
+      console.error(e);
     });
 
     proposalMonitor.on(TrackerEventName.TRACKER_STATUS, (e: GPMEvent) => {
-      if (!this.data[proposalMonitor.originAddress]) {
-        this.data[proposalMonitor.originAddress] = [];
-      }
+      try {
+        if (!this.data[proposalMonitor.originAddress]) {
+          this.data[proposalMonitor.originAddress] = [];
+        }
 
-      const key = `${e.originAddress}:${e.stage}:${e.identifier}`;
-      const prevKey = `${e.originAddress}:${e.prevStage?.stage || ""}:${
-        e.prevStage?.identifier || ""
-      }`;
+        const key = `${e.originAddress}:${e.stage}:${e.identifier}`;
+        const prevKey = `${e.originAddress}:${e.prevStage?.stage || ""}:${
+          e.prevStage?.identifier || ""
+        }`;
 
-      let proposalLink: string | undefined;
-      if (prevKey === originKey && e.stage === "GovernorQueueStage") {
-        proposalLink =
-          "https://www.tally.xyz/gov/arbitrum/proposal/" + BigNumber.from(e.identifier).toString();
-      }
+        let proposalLink: string | undefined;
+        if (prevKey === originKey && e.stage === "GovernorQueueStage") {
+          proposalLink =
+            "https://www.tally.xyz/gov/arbitrum/proposal/" +
+            BigNumber.from(e.identifier).toString();
+        }
 
-      // create a stage from this event
-      const pipelineStage: PipelineStage = {
-        name: e.stage,
-        identifier: e.identifier,
-        status: ProposalStageStatus[e.status],
-        explorerLink: e.publicExecutionUrl,
-        proposalLink,
-        children: [],
-      };
+        // create a stage from this event
+        const pipelineStage: PipelineStage = {
+          name: e.stage,
+          identifier: e.identifier,
+          status: ProposalStageStatus[e.status],
+          explorerLink: e.publicExecutionUrl,
+          proposalLink,
+          children: [],
+        };
 
-      if (prevKey === originKey && !emittedStages.has(key)) {
-        this.data[proposalMonitor.originAddress].push(pipelineStage);
-      } else {
-        const prevStage = emittedStages.get(prevKey);
-        if (!prevStage) {
-          // CHRIS: TODO: why did we get this error?
-          //           Error: Could not find prev stage 0xf07DeD9dC292157749B6Fd268E37DF6EA38395B9:: for 0xf07DeD9dC292157749B6Fd268E37DF6EA38395B9:GovernorQueueStage:0xefaff02f18aefc52054968545b057ce1b4f41e7b48f9a8f189f749d6aa8ab79a
-          // {
-          //   originAddress: '0xf07DeD9dC292157749B6Fd268E37DF6EA38395B9',
-          //   status: undefined,
-          //   stage: 'GovernorQueueStage',
-          //   identifier: '0xefaff02f18aefc52054968545b057ce1b4f41e7b48f9a8f189f749d6aa8ab79a',
-          //   error: Error: Could not find prev stage 0xf07DeD9dC292157749B6Fd268E37DF6EA38395B9:: for 0xf07DeD9dC292157749B6Fd268E37DF6EA38395B9:GovernorQueueStage:0xefaff02f18aefc52054968545b057ce1b4f41e7b48f9a8f189f749d6aa8ab79a
-          //       at ProposalMonitor.<anonymous> (/home/chris/code/governance-ocl/src-ts/proposalMonitorCli.ts:194:17)
-          //       at ProposalMonitor.emit (node:events:532:35)
-          //       at ProposalMonitor.emit (node:domain:475:12)
-          //       at ProposalMonitor.emit (/home/chris/code/governance-ocl/src-ts/proposalMonitor.ts:39:18)
-          //       at StageTracker.<anonymous> (/home/chris/code/governance-ocl/src-ts/proposalMonitor.ts:70:14)
-          //       at StageTracker.emit (node:events:520:28)
-          //       at StageTracker.emit (node:domain:475:12)
-          //       at StageTracker.emit (/home/chris/code/governance-ocl/src-ts/proposalPipeline.ts:295:18)
-          //       at StageTracker.run (/home/chris/code/governance-ocl/src-ts/proposalPipeline.ts:333:16)
-          //       at runMicrotasks (<anonymous>)
-          // }
-          // Error!
-          // /home/chris/code/governance-ocl/src-ts/proposalPipeline.ts:448
-          //           throw new ProposalStageError(
-          //                 ^
-          // ProposalStageError: [GovernorQueueStage:0xefaff02f18aefc52054968545b057ce1b4f41e7b48f9a8f189f749d6aa8ab79a] Consecutive error
-          //     at StageTracker.run (/home/chris/code/governance-ocl/src-ts/proposalPipeline.ts:448:17)
-          //     at runMicrotasks (<anonymous>)
-          //     at processTicksAndRejections (node:internal/process/task_queues:96:5)
-          // Caused By: Error: Could not find prev stage 0xf07DeD9dC292157749B6Fd268E37DF6EA38395B9:: for 0xf07DeD9dC292157749B6Fd268E37DF6EA38395B9:GovernorQueueStage:0xefaff02f18aefc52054968545b057ce1b4f41e7b48f9a8f189f749d6aa8ab79a
-          //     at ProposalMonitor.<anonymous> (/home/chris/code/governance-ocl/src-ts/proposalMonitorCli.ts:194:17)
-          //     at ProposalMonitor.emit (node:events:532:35)
-          //     at ProposalMonitor.emit (node:domain:475:12)
-          //     at ProposalMonitor.emit (/home/chris/code/governance-ocl/src-ts/proposalMonitor.ts:39:18)
-          //     at StageTracker.<anonymous> (/home/chris/code/governance-ocl/src-ts/proposalMonitor.ts:70:14)
-          //     at StageTracker.emit (node:events:520:28)
-          //     at StageTracker.emit (node:domain:475:12)
-          //     at StageTracker.emit (/home/chris/code/governance-ocl/src-ts/proposalPipeline.ts:295:18)
-          //     at StageTracker.run (/home/chris/code/governance-ocl/src-ts/proposalPipeline.ts:333:16)
-          //     at runMicrotasks (<anonymous>) {
-          //   identifier: '0xefaff02f18aefc52054968545b057ce1b4f41e7b48f9a8f189f749d6aa8ab79a',
-          //   stageName: 'GovernorQueueStage',
-          //   inner: Error: Could not find prev stage 0xf07DeD9dC292157749B6Fd268E37DF6EA38395B9:: for 0xf07DeD9dC292157749B6Fd268E37DF6EA38395B9:GovernorQueueStage:0xefaff02f18aefc52054968545b057ce1b4f41e7b48f9a8f189f749d6aa8ab79a
-          //       at ProposalMonitor.<anonymous> (/home/chris/code/governance-ocl/src-ts/proposalMonitorCli.ts:194:17)
-          //       at ProposalMonitor.emit (node:events:532:35)
-          //       at ProposalMonitor.emit (node:domain:475:12)
-          //       at ProposalMonitor.emit (/home/chris/code/governance-ocl/src-ts/proposalMonitor.ts:39:18)
-          //       at StageTracker.<anonymous> (/home/chris/code/governance-ocl/src-ts/proposalMonitor.ts:70:14)
-          //       at StageTracker.emit (node:events:520:28)
-          //       at StageTracker.emit (node:domain:475:12)
-          //       at StageTracker.emit (/home/chris/code/governance-ocl/src-ts/proposalPipeline.ts:295:18)
-          //       at StageTracker.run (/home/chris/code/governance-ocl/src-ts/proposalPipeline.ts:333:16)
-          //       at runMicrotasks (<anonymous>)
+        if (prevKey === originKey && !emittedStages.has(key)) {
+          this.data[proposalMonitor.originAddress].push(pipelineStage);
+        } else if (!emittedStages.has(key)) {
+          const prevStage = emittedStages.get(prevKey);
+          if (!prevStage) {
+            throw new Error(`Could not find prev stage ${prevKey} for ${key}`);
+          }
+          prevStage.children.push(pipelineStage);
+        } else {
           throw new Error(`Could not find prev stage ${prevKey} for ${key}`);
         }
-        prevStage.children.push(pipelineStage);
-      }
 
-      // set the stage
-      if (!emittedStages.has(key)) {
-        emittedStages.set(key, pipelineStage);
-      } else {
-        emittedStages.get(key)!.status = pipelineStage.status;
+        // set the stage
+        if (!emittedStages.has(key)) {
+          emittedStages.set(key, pipelineStage);
+        } else {
+          emittedStages.get(key)!.status = pipelineStage.status;
+        }
+      } catch (err) {
+        console.error(err);
       }
     });
   }
@@ -267,29 +225,52 @@ const main = async () => {
     novaSignerOrProvider
   );
 
-  const coreGovMonitor = new GovernorProposalMonitor(
-    options.coreGovernorAddress,
-    getProvider(govChainSignerOrProvider)!,
-    options.pollingIntervalSeconds * 1000,
-    options.blockLag,
-    options.startBlock,
-    stageFactory,
-    options.writeMode
-  );
-  const roundTrip = startMonitor("RoundTrip", coreGovMonitor, jsonLogger, options.proposalId);
+  let roundTrip;
+  if (options.coreGovernorAddress) {
+    console.log("Starting Core Governor Monitor");
+    const coreGovMonitor = new GovernorProposalMonitor(
+      options.coreGovernorAddress,
+      getProvider(govChainSignerOrProvider)!,
+      options.pollingIntervalSeconds * 1000,
+      options.blockLag,
+      options.startBlock,
+      stageFactory,
+      options.writeMode
+    );
+    roundTrip = startMonitor("RoundTrip", coreGovMonitor, jsonLogger, options.proposalId);
+  }
 
-  const treasuryMonitor = new GovernorProposalMonitor(
-    options.treasuryGovernorAddress,
-    getProvider(govChainSignerOrProvider)!,
-    options.pollingIntervalSeconds * 1000,
-    options.blockLag,
-    options.startBlock,
-    stageFactory,
-    options.writeMode
-  );
-  const treasury = startMonitor("Treasury", treasuryMonitor, jsonLogger, options.proposalId);
+  let treasury;
+  if (options.treasuryGovernorAddress) {
+    console.log("Starting Treasury Governor Monitor");
+    const treasuryMonitor = new GovernorProposalMonitor(
+      options.treasuryGovernorAddress,
+      getProvider(govChainSignerOrProvider)!,
+      options.pollingIntervalSeconds * 1000,
+      options.blockLag,
+      options.startBlock,
+      stageFactory,
+      options.writeMode
+    );
+    treasury = startMonitor("Treasury", treasuryMonitor, jsonLogger, options.proposalId);
+  }
 
-  await Promise.all([roundTrip, treasury]);
+  let sevTwelve;
+  if (options.sevenTwelveCouncilAddress) {
+    console.log("Starting 7-12 Council Monitor");
+    const sevenTwelveMonitor = new GnosisSafeProposalMonitor(
+      options.sevenTwelveCouncilAddress,
+      getProvider(govChainSignerOrProvider)!,
+      options.pollingIntervalSeconds * 1000,
+      options.blockLag,
+      options.startBlock,
+      stageFactory,
+      options.writeMode
+    );
+    sevTwelve = startMonitor("7-12 Council", sevenTwelveMonitor, jsonLogger, options.proposalId);
+  }
+
+  await Promise.all([roundTrip, treasury, sevTwelve]);
 };
 
 main().then(() => console.log("Done."));

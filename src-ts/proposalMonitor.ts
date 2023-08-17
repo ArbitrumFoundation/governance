@@ -10,6 +10,8 @@ import {
   TrackerErrorEvent,
 } from "./proposalPipeline";
 import { EventEmitter } from "events";
+import { Interface } from "@ethersproject/abi";
+import { BigNumber } from "ethers";
 
 export type GPMEvent = TrackerEvent & { originAddress: string };
 export type GPMErrorEvent = TrackerErrorEvent & { originAddress: string };
@@ -154,6 +156,38 @@ export class GovernorProposalMonitor extends ProposalMonitor {
           (
             governor.interface.parseLog(l).args as unknown as ProposalCreatedEventObject
           ).proposalId.toHexString() === proposalId
+      )
+      .map((l) => l.transactionHash);
+
+    return await Promise.all(
+      Array.from(new Set(filteredTxHashes)).map((t) => this.originProvider.getTransactionReceipt(t))
+    );
+  }
+}
+
+export class GnosisSafeProposalMonitor extends ProposalMonitor {
+  public override async getOriginReceipts(fromBlock: BlockTag, toBlock: BlockTag, txHash?: string) {
+    const gnosisSafeInterface = new Interface([
+      "event ExecutionSuccess(bytes32 indexed txHash, uint256 payment)",
+    ]);
+    const executionSuccessEvent = gnosisSafeInterface.encodeFilterTopics("ExecutionSuccess", []);
+    const logs = await this.originProvider.getLogs({
+      fromBlock,
+      toBlock,
+      topics: executionSuccessEvent,
+      address: this.originAddress,
+    });
+
+    const filteredTxHashes = logs
+      .filter(
+        (l) =>
+          !txHash ||
+          (
+            gnosisSafeInterface.parseLog(l).args as unknown as {
+              txHash: string;
+              payment: BigNumber;
+            }
+          ).txHash === txHash
       )
       .map((l) => l.transactionHash);
 

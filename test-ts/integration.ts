@@ -14,14 +14,9 @@ import { expect } from "chai";
 import { BigNumber, Signer, constants } from "ethers";
 import { defaultAbiCoder, id, keccak256, parseEther, randomBytes } from "ethers/lib/utils";
 import { RoundTripProposalCreator } from "../src-ts/proposalCreator";
-import {
-  GPMAllEvent,
-  GPMEventName,
-  GPMStatusEvent,
-  ProposalMonitor,
-} from "../src-ts/proposalMonitor";
+import { GPMErrorEvent, GPMEvent, GovernorProposalMonitor } from "../src-ts/proposalMonitor";
 import { ProposalStageStatus } from "../src-ts/proposalStage";
-import { RoundTripProposalPipelineFactory } from "../src-ts/proposalPipeline";
+import { StageFactory, TrackerEventName } from "../src-ts/proposalPipeline";
 import {
   ArbitrumTimelock,
   L1ArbitrumTimelock,
@@ -33,7 +28,6 @@ import {
   UpgradeExecutor,
   UpgradeExecutor__factory,
 } from "../typechain-types";
-import { ProposalCreatedEventObject } from "../typechain-types/src/L2ArbitrumGovernor";
 
 const wait = async (ms: number) => new Promise((res) => setTimeout(res, ms));
 
@@ -302,29 +296,34 @@ export const l2L1MonitoringValueTest = async (
     proposalString
   );
 
-  const pipelineFactory = new RoundTripProposalPipelineFactory(l2Signer, l1Signer, l2Signer);
-
-  const proposalMonitor = new ProposalMonitor(
+  const stageFactory = new StageFactory(
+    await l2Signer.provider!.getBlockNumber(),
+    l2Signer,
+    l1Signer,
+    l2Signer
+  );
+  const proposalMonitor = new GovernorProposalMonitor(
     l2GovernorContract.address,
     l2Signer.provider!,
     1000,
     5,
     await l2Signer.provider!.getBlockNumber(),
-    pipelineFactory,
+    stageFactory,
     true
   );
-  proposalMonitor.on(GPMEventName.TRACKER_STATUS, (e: GPMStatusEvent) => {
+
+  proposalMonitor.on(TrackerEventName.TRACKER_STATUS, (e: GPMEvent) => {
     console.log(
-      `Gov:${e.originAddress}, Prop:${e.proposalId}, Stage:${e.stage}, Status:${
-        ProposalStageStatus[e.status]
-      }`
+      `Proposal status update:  Gov:${e.originAddress}, Prop:${e.identifier}  Stage:${
+        e.stage
+      } Status:${ProposalStageStatus[e.status]}`
     );
   });
 
-  proposalMonitor.on(GPMEventName.TRACKER_ERRORED, (e) => console.error(e));
+  proposalMonitor.on(TrackerEventName.TRACKER_ERRORED, (e) => console.error(e));
 
   const trackerEnd = new Promise<void>((resolve) =>
-    proposalMonitor.once(GPMEventName.TRACKER_ENDED, (e: GPMAllEvent) => {
+    proposalMonitor.once(TrackerEventName.TRACKER_ENDED, (e: GPMErrorEvent) => {
       resolve();
     })
   );
@@ -337,10 +336,7 @@ export const l2L1MonitoringValueTest = async (
     })
   ).wait();
 
-  await proposalMonitor.monitorSingleProposal(
-    l2GovernorContract.interface.parseLog(receipt.logs[0])
-      .args as unknown as ProposalCreatedEventObject
-  );
+  await proposalMonitor.monitorSingleProposal(receipt);
 
   // put the l2 value in the l1 timelock
   await (
@@ -436,29 +432,34 @@ export const l2L1L2MonitoringValueTest = async (
     transferExecution,
     proposalString
   );
-
-  const pipelineFactory = new RoundTripProposalPipelineFactory(l2Signer, l1Signer, l2Signer);
-
-  const proposalMonitor = new ProposalMonitor(
+  const stageFactory = new StageFactory(
+    await l2Signer.provider!.getBlockNumber(),
+    l2Signer,
+    l1Signer,
+    l2Signer
+  );
+  const proposalMonitor = new GovernorProposalMonitor(
     l2GovernorContract.address,
     l2Signer.provider!,
     1000,
     5,
     await l2Signer.provider!.getBlockNumber(),
-    pipelineFactory,
+    stageFactory,
     true
   );
-  proposalMonitor.on(GPMEventName.TRACKER_STATUS, (e: GPMStatusEvent) => {
+
+  proposalMonitor.on(TrackerEventName.TRACKER_STATUS, (e: GPMEvent) => {
     console.log(
-      `Gov:${e.originAddress}, Prop:${e.proposalId}, Stage:${e.stage}, Status:${
-        ProposalStageStatus[e.status]
-      }`
+      `Proposal status update:  Gov:${e.originAddress}, Prop:${e.identifier}  Stage:${
+        e.stage
+      } Status:${ProposalStageStatus[e.status]}`
     );
   });
-  proposalMonitor.on(GPMEventName.TRACKER_ERRORED, (e) => console.error(e));
+
+  proposalMonitor.on(TrackerEventName.TRACKER_ERRORED, (e) => console.error(e));
 
   const trackerEnd = new Promise<void>((resolve) =>
-    proposalMonitor.once(GPMEventName.TRACKER_ENDED, (e: GPMAllEvent) => {
+    proposalMonitor.once(TrackerEventName.TRACKER_ENDED, (e: GPMErrorEvent) => {
       resolve();
     })
   );
@@ -471,10 +472,7 @@ export const l2L1L2MonitoringValueTest = async (
     })
   ).wait();
 
-  await proposalMonitor.monitorSingleProposal(
-    l2GovernorContract.interface.parseLog(receipt.logs[0])
-      .args as unknown as ProposalCreatedEventObject
-  );
+  await proposalMonitor.monitorSingleProposal(receipt);
 
   // put the l2 value in the l1 timelock
   await (
@@ -542,28 +540,34 @@ export const l2L1MonitoringTest = async (
     proposalString
   );
 
-  const pipelineFactory = new RoundTripProposalPipelineFactory(l2Signer, l1Signer, l2Signer);
-
-  const proposalMonitor = new ProposalMonitor(
+  const stageFactory = new StageFactory(
+    await l2Signer.provider!.getBlockNumber(),
+    l2Signer,
+    l1Signer,
+    l2Signer
+  );
+  const proposalMonitor = new GovernorProposalMonitor(
     l2GovernorContract.address,
     l2Signer.provider!,
     1000,
     5,
     await l2Signer.provider!.getBlockNumber(),
-    pipelineFactory,
+    stageFactory,
     true
   );
-  proposalMonitor.on(GPMEventName.TRACKER_STATUS, (e: GPMStatusEvent) => {
+
+  proposalMonitor.on(TrackerEventName.TRACKER_STATUS, (e: GPMEvent) => {
     console.log(
-      `Gov:${e.originAddress}, Prop:${e.proposalId}, Stage:${e.stage}, Status:${
-        ProposalStageStatus[e.status]
-      }`
+      `Proposal status update:  Gov:${e.originAddress}, Prop:${e.identifier}  Stage:${
+        e.stage
+      } Status:${ProposalStageStatus[e.status]}`
     );
   });
-  proposalMonitor.on(GPMEventName.TRACKER_ERRORED, (e) => console.error(e));
+
+  proposalMonitor.on(TrackerEventName.TRACKER_ERRORED, (e) => console.error(e));
 
   const trackerEnd = new Promise<void>((resolve) =>
-    proposalMonitor.once(GPMEventName.TRACKER_ENDED, (e: GPMAllEvent) => {
+    proposalMonitor.once(TrackerEventName.TRACKER_ENDED, (e: GPMErrorEvent) => {
       resolve();
     })
   );
@@ -576,10 +580,7 @@ export const l2L1MonitoringTest = async (
     })
   ).wait();
 
-  await proposalMonitor.monitorSingleProposal(
-    l2GovernorContract.interface.parseLog(receipt.logs[0])
-      .args as unknown as ProposalCreatedEventObject
-  );
+  await proposalMonitor.monitorSingleProposal(receipt);
 
   // wait a while then cast a vote
   await mineBlocksAndWaitForProposalState(l2GovernorContract, proposal.id(), 1, localMiners);
@@ -641,29 +642,34 @@ export const l2L1L2MonitoringTest = async (
     proposalString
   );
 
-  const pipelineFactory = new RoundTripProposalPipelineFactory(l2Signer, l1Signer, l2Signer);
-
-  const proposalMonitor = new ProposalMonitor(
+  const stageFactory = new StageFactory(
+    await l2Signer.provider!.getBlockNumber(),
+    l2Signer,
+    l1Signer,
+    l2Signer
+  );
+  const proposalMonitor = new GovernorProposalMonitor(
     l2GovernorContract.address,
     l2Signer.provider!,
     1000,
     5,
     await l2Signer.provider!.getBlockNumber(),
-    pipelineFactory,
+    stageFactory,
     true
   );
-  proposalMonitor.on(GPMEventName.TRACKER_STATUS, (e: GPMStatusEvent) => {
+
+  proposalMonitor.on(TrackerEventName.TRACKER_STATUS, (e: GPMEvent) => {
     console.log(
-      `Gov:${e.originAddress}, Prop:${e.proposalId}, Stage:${e.stage}, Status:${
-        ProposalStageStatus[e.status]
-      }`
+      `Proposal status update:  Gov:${e.originAddress}, Prop:${e.identifier}  Stage:${
+        e.stage
+      } Status:${ProposalStageStatus[e.status]}`
     );
   });
 
-  proposalMonitor.on(GPMEventName.TRACKER_ERRORED, (e) => console.error(e));
+  proposalMonitor.on(TrackerEventName.TRACKER_ERRORED, (e) => console.error(e));
 
   const trackerEnd = new Promise<void>((resolve) =>
-    proposalMonitor.once(GPMEventName.TRACKER_ENDED, (e: GPMAllEvent) => {
+    proposalMonitor.once(TrackerEventName.TRACKER_ENDED, (e: GPMErrorEvent) => {
       resolve();
     })
   );
@@ -676,10 +682,7 @@ export const l2L1L2MonitoringTest = async (
     })
   ).wait();
 
-  await proposalMonitor.monitorSingleProposal(
-    l2GovernorContract.interface.parseLog(receipt.logs[0])
-      .args as unknown as ProposalCreatedEventObject
-  );
+  await proposalMonitor.monitorSingleProposal(receipt);
 
   // wait a while then cast a vote
   await mineBlocksAndWaitForProposalState(l2GovernorContract, proposal.id(), 1, localMiners);
