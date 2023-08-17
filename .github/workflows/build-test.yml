@@ -78,7 +78,10 @@ jobs:
       - name: Install packages
         run: yarn
 
-      - name: Check gas snapshot
+      - name: Check if jq is installed
+        run: jq --version
+
+      - name: Check action storage
         run: make test-action-storage
 
   test-only-doesnt-exist:
