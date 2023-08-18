@@ -1,7 +1,8 @@
 import {
   GovernorQueueStage,
   L1OutboxStage,
-  L1TimelockExecutionStage,
+  L1TimelockExecutionBatchStage,
+  L1TimelockExecutionSingleStage,
   L2TimelockExecutionBatchStage,
   ProposalStage,
   ProposalStageError,
@@ -31,7 +32,8 @@ export class StageFactory {
         this.arbOneSignerOrProvider,
         this.startBlock
       )),
-      ...(await L1TimelockExecutionStage.extractStages(receipt, this.l1SignerOrProvider)),
+      ...(await L1TimelockExecutionSingleStage.extractStages(receipt, this.l1SignerOrProvider)),
+      ...(await L1TimelockExecutionBatchStage.extractStages(receipt, this.l1SignerOrProvider)),
       ...(await RetryableExecutionStage.extractStages(receipt, this.arbOneSignerOrProvider)),
       ...(await RetryableExecutionStage.extractStages(receipt, this.novaSignerOrProvider)),
       ...(await L1OutboxStage.extractStages(

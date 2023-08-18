@@ -30,6 +30,7 @@ import {
   ProposalCreatedEventObject,
   ProposalQueuedEventObject,
 } from "../typechain-types/src/L2ArbitrumGovernor";
+import { CallScheduledEventObject } from "../typechain-types/src/ArbitrumTimelock";
 type Provider = providers.Provider;
 
 export function isSigner(signerOrProvider: Signer | Provider): signerOrProvider is Signer {
@@ -597,30 +598,7 @@ export class L1OutboxStage implements ProposalStage {
   }
 }
 
-/**
- * When an l1 timelock period has passed, execute the proposal action or create a retryable ticket
- */
-export class L1TimelockExecutionStage implements ProposalStage {
-  public name: string = "L1TimelockExecutionStage";
-  public readonly identifier: string;
-
-  public constructor(
-    public readonly timelockAddress: string,
-    public readonly target: string,
-    public readonly value: BigNumber,
-    public readonly data: string,
-    public readonly predecessor: string,
-    public readonly salt: string,
-    public readonly l1SignerOrProvider: Signer | Provider
-  ) {
-    this.identifier = keccak256(
-      defaultAbiCoder.encode(
-        ["address", "uint256", "bytes", "bytes32", "bytes32"],
-        [target, value, data, predecessor, salt]
-      )
-    );
-  }
-
+abstract class L1TimelockExecutionStage {
   public static findTimelockAddress(operationId: string, logs: ethers.providers.Log[]) {
     const timelockInterface = ArbitrumTimelock__factory.createInterface();
     for (const log of logs) {
@@ -633,63 +611,12 @@ export class L1TimelockExecutionStage implements ProposalStage {
     }
   }
 
-  // CHRIS: TODO: follows a pattern?
-  public static async extractStages(
-    receipt: TransactionReceipt,
-    l1SignerOrProvider: Signer | Provider
-  ): Promise<L1TimelockExecutionStage[]> {
-    const timelockInterface = ArbitrumTimelock__factory.createInterface();
-    const bridgeInterface = Bridge__factory.createInterface();
-    const proposalStages: L1TimelockExecutionStage[] = [];
-    for (const log of receipt.logs) {
-      // CHRIS: TODO: would be better if we could use the address here, what else could we do?
-
-      if (log.topics.find((t) => t === bridgeInterface.getEventTopic("BridgeCallTriggered"))) {
-        const bridgeCallTriggered = bridgeInterface.parseLog(log)
-          .args as unknown as BridgeCallTriggeredEventObject;
-        const funcSig = bridgeCallTriggered.data.slice(0, 10);
-
-        const schedFunc =
-          timelockInterface.functions["schedule(address,uint256,bytes,bytes32,bytes32,uint256)"];
-        const schedBatchFunc =
-          timelockInterface.functions[
-            "scheduleBatch(address[],uint256[],bytes[],bytes32,bytes32,uint256)"
-          ];
-        if (funcSig === timelockInterface.getSighash(schedFunc)) {
-          const scheduleBatchData = L2TimelockExecutionBatchStage.decodeSchedule(
-            bridgeCallTriggered.data
-          );
-          const operationId = L2TimelockExecutionBatchStage.hashOperation(
-            scheduleBatchData.target,
-            scheduleBatchData.value,
-            scheduleBatchData.callData,
-            scheduleBatchData.predecessor,
-            scheduleBatchData.salt
-          );
-          const timelockAddress = this.findTimelockAddress(operationId, receipt.logs);
-          if (!timelockAddress) {
-            throw new Error(`Could not find timelock address for operation id ${operationId}`);
-          }
-
-          proposalStages.push(
-            new L1TimelockExecutionStage(
-              timelockAddress,
-              scheduleBatchData.target,
-              scheduleBatchData.value,
-              scheduleBatchData.callData,
-              scheduleBatchData.predecessor,
-              scheduleBatchData.salt,
-              l1SignerOrProvider
-            )
-          );
-        } else if (funcSig === timelockInterface.getSighash(schedBatchFunc)) {
-          throw new Error("Schedule batch not implemented");
-        }
-      }
-    }
-
-    return proposalStages;
-  }
+  constructor(
+    public readonly name: string,
+    public readonly timelockAddress: string,
+    public readonly l1SignerOrProvider: Signer | Provider,
+    public readonly identifier: string
+  ) {}
 
   public async status(): Promise<ProposalStageStatus> {
     const timelock = L1ArbitrumTimelock__factory.connect(
@@ -717,59 +644,37 @@ export class L1TimelockExecutionStage implements ProposalStage {
     );
   }
 
-  public async execute(): Promise<void> {
+  public async getExecutionValue(target: string, data: string): Promise<BigNumber> {
     const timelock = L1ArbitrumTimelock__factory.connect(
       this.timelockAddress,
       this.l1SignerOrProvider
     );
-
     const retryableMagic = await timelock.RETRYABLE_TICKET_MAGIC();
-    let value = this.value;
-    const provider = getProvider(this.l1SignerOrProvider);
-    if (this.target.toLowerCase() === retryableMagic.toLowerCase()) {
-      const parsedData = defaultAbiCoder.decode(
-        ["address", "address", "uint256", "uint256", "uint256", "bytes"],
-        this.data
-      );
-      const inboxAddress = parsedData[0] as string;
-      const innerValue = parsedData[2] as BigNumber;
-      const innerGasLimit = parsedData[3] as BigNumber;
-      const innerMaxFeePerGas = parsedData[4] as BigNumber;
-      const innerData = parsedData[5] as string;
-
-      const inbox = Inbox__factory.connect(inboxAddress, provider!);
+    const parsedData = defaultAbiCoder.decode(
+      ["address", "address", "uint256", "uint256", "uint256", "bytes"],
+      data
+    );
+    const inboxAddress = parsedData[0] as string;
+    const innerValue = parsedData[2] as BigNumber;
+    const innerGasLimit = parsedData[3] as BigNumber;
+    const innerMaxFeePerGas = parsedData[4] as BigNumber;
+    const innerData = parsedData[5] as string;
+    if (target.toLowerCase() === retryableMagic.toLowerCase()) {
+      const inbox = Inbox__factory.connect(inboxAddress, timelock.provider!);
       const submissionFee = await inbox.callStatic.calculateRetryableSubmissionFee(
         hexDataLength(innerData),
         0
       );
 
-      const timelockBalance = await provider!.getBalance(this.timelockAddress);
-      if (timelockBalance.lt(innerValue)) {
-        throw new ProposalStageError(
-          `Timelock does not contain enough balance to cover l2 value: ${timelockBalance.toString()} : ${innerValue.toString()}`,
-          this.identifier,
-          this.name
-        );
-      }
-
       // enough value to create a retryable ticket = submission fee + gas
       // the l2value needs to already be in the contract
-      value = submissionFee
+      return submissionFee
         .mul(2) // add some leeway for the base fee to increase
-        .add(innerGasLimit.mul(innerMaxFeePerGas));
+        .add(innerGasLimit.mul(innerMaxFeePerGas))
+        .add(innerValue);
+    } else {
+      return innerValue;
     }
-
-    // CHRIS: TODO: this needs to be executeBatch
-    await (
-      await timelock.functions.execute(
-        this.target,
-        this.value,
-        this.data,
-        this.predecessor,
-        this.salt,
-        { value: value }
-      )
-    ).wait();
   }
 
   public async getExecuteReceipt(): Promise<TransactionReceipt> {
@@ -786,9 +691,9 @@ export class L1TimelockExecutionStage implements ProposalStage {
       ...callExecutedFilter,
     });
 
-    if (logs.length !== 1) {
+    if (logs.length > 0) {
       throw new ProposalStageError(
-        `CallExecuted logs length not 1: ${logs.length}`,
+        `CallExecuted logs length not greater than 0: ${logs.length}`,
         this.identifier,
         this.name
       );
@@ -800,6 +705,213 @@ export class L1TimelockExecutionStage implements ProposalStage {
   public async getExecutionUrl(): Promise<string> {
     const execReceipt = await this.getExecuteReceipt();
     return `https://etherscan.io/tx/${execReceipt.transactionHash}`;
+  }
+}
+
+/**
+ * When an l1 timelock period has passed, execute the proposal action
+ */
+export class L1TimelockExecutionSingleStage
+  extends L1TimelockExecutionStage
+  implements ProposalStage
+{
+  public constructor(
+    timelockAddress: string,
+    public readonly target: string,
+    public readonly value: BigNumber,
+    public readonly data: string,
+    public readonly predecessor: string,
+    public readonly salt: string,
+    l1SignerOrProvider: Signer | Provider
+  ) {
+    super(
+      "L1TimelockExecutionSingleStage",
+      timelockAddress,
+      l1SignerOrProvider,
+      keccak256(
+        defaultAbiCoder.encode(
+          ["address", "uint256", "bytes", "bytes32", "bytes32"],
+          [target, value, data, predecessor, salt]
+        )
+      )
+    );
+  }
+
+  // CHRIS: TODO: follows a pattern?
+  public static async extractStages(
+    receipt: TransactionReceipt,
+    l1SignerOrProvider: Signer | Provider
+  ): Promise<L1TimelockExecutionSingleStage[]> {
+    const timelockInterface = ArbitrumTimelock__factory.createInterface();
+    const bridgeInterface = Bridge__factory.createInterface();
+    const proposalStages: L1TimelockExecutionSingleStage[] = [];
+    for (const log of receipt.logs) {
+      // CHRIS: TODO: would be better if we could use the address here, what else could we do?
+      if (log.topics.find((t) => t === bridgeInterface.getEventTopic("BridgeCallTriggered"))) {
+        const bridgeCallTriggered = bridgeInterface.parseLog(log)
+          .args as unknown as BridgeCallTriggeredEventObject;
+        const funcSig = bridgeCallTriggered.data.slice(0, 10);
+
+        const schedFunc =
+          timelockInterface.functions["schedule(address,uint256,bytes,bytes32,bytes32,uint256)"];
+        if (funcSig === timelockInterface.getSighash(schedFunc)) {
+          const scheduleBatchData = L2TimelockExecutionBatchStage.decodeSchedule(
+            bridgeCallTriggered.data
+          );
+          const operationId = L2TimelockExecutionBatchStage.hashOperation(
+            scheduleBatchData.target,
+            scheduleBatchData.value,
+            scheduleBatchData.callData,
+            scheduleBatchData.predecessor,
+            scheduleBatchData.salt
+          );
+          const timelockAddress = this.findTimelockAddress(operationId, receipt.logs);
+          if (!timelockAddress) {
+            throw new Error(`Could not find timelock address for operation id ${operationId}`);
+          }
+
+          proposalStages.push(
+            new L1TimelockExecutionSingleStage(
+              timelockAddress,
+              scheduleBatchData.target,
+              scheduleBatchData.value,
+              scheduleBatchData.callData,
+              scheduleBatchData.predecessor,
+              scheduleBatchData.salt,
+              l1SignerOrProvider
+            )
+          );
+        }
+      }
+    }
+
+    return proposalStages;
+  }
+
+  public async execute(): Promise<void> {
+    const timelock = L1ArbitrumTimelock__factory.connect(
+      this.timelockAddress,
+      this.l1SignerOrProvider
+    );
+
+    const l1Value = await this.getExecutionValue(this.target, this.data);
+    await (
+      await timelock.functions.execute(
+        this.target,
+        this.value,
+        this.data,
+        this.predecessor,
+        this.salt,
+        { value: l1Value }
+      )
+    ).wait();
+  }
+}
+
+/**
+ * When an l1 timelock period has passed, execute the batch proposal action
+ */
+export class L1TimelockExecutionBatchStage
+  extends L1TimelockExecutionStage
+  implements ProposalStage
+{
+  public constructor(
+    timelockAddress: string,
+    public readonly targets: string[],
+    public readonly values: BigNumber[],
+    public readonly datas: string[],
+    public readonly predecessor: string,
+    public readonly salt: string,
+    l1SignerOrProvider: Signer | Provider
+  ) {
+    super(
+      "L1TimelockExecutionBatchStage",
+      timelockAddress,
+      l1SignerOrProvider,
+      keccak256(
+        defaultAbiCoder.encode(
+          ["address[]", "uint256[]", "bytes[]", "bytes32", "bytes32"],
+          [targets, values, datas, predecessor, salt]
+        )
+      )
+    );
+  }
+
+  // CHRIS: TODO: follows a pattern?
+  public static async extractStages(
+    receipt: TransactionReceipt,
+    l1SignerOrProvider: Signer | Provider
+  ): Promise<L1TimelockExecutionBatchStage[]> {
+    const timelockInterface = ArbitrumTimelock__factory.createInterface();
+    const bridgeInterface = Bridge__factory.createInterface();
+    const proposalStages: L1TimelockExecutionBatchStage[] = [];
+
+    for (const log of receipt.logs) {
+      // CHRIS: TODO: would be better if we could use the address here, what else could we do?
+
+      if (log.topics.find((t) => t === bridgeInterface.getEventTopic("BridgeCallTriggered"))) {
+        const bridgeCallTriggered = bridgeInterface.parseLog(log)
+          .args as unknown as BridgeCallTriggeredEventObject;
+        const funcSig = bridgeCallTriggered.data.slice(0, 10);
+        const schedBatchFunc =
+          timelockInterface.functions[
+            "scheduleBatch(address[],uint256[],bytes[],bytes32,bytes32,uint256)"
+          ];
+        if (funcSig === timelockInterface.getSighash(schedBatchFunc)) {
+          // find all the schedule batch events
+          const scheduleBatchData = L2TimelockExecutionBatchStage.decodeScheduleBatch(
+            bridgeCallTriggered.data
+          );
+          const operationId = L2TimelockExecutionBatchStage.hashOperationBatch(
+            scheduleBatchData.targets,
+            scheduleBatchData.values,
+            scheduleBatchData.callDatas,
+            scheduleBatchData.predecessor,
+            scheduleBatchData.salt
+          );
+          const timelockAddress = this.findTimelockAddress(operationId, receipt.logs);
+          if (!timelockAddress) {
+            throw new Error(`Could not find timelock address for operation id ${operationId}`);
+          }
+          proposalStages.push(
+            new L1TimelockExecutionBatchStage(
+              timelockAddress,
+              scheduleBatchData.targets,
+              scheduleBatchData.values,
+              scheduleBatchData.callDatas,
+              scheduleBatchData.predecessor,
+              scheduleBatchData.salt,
+              l1SignerOrProvider
+            )
+          );
+        }
+      }
+    }
+
+    return proposalStages;
+  }
+
+  public async execute(): Promise<void> {
+    const timelock = L1ArbitrumTimelock__factory.connect(
+      this.timelockAddress,
+      this.l1SignerOrProvider
+    );
+
+    const values = [];
+    for (let index = 0; index < this.targets.length; index++) {
+      values[index] = await this.getExecutionValue(this.targets[index], this.datas[index]);
+    }
+
+    await (
+      await timelock.functions.executeBatch(
+        this.targets,
+        this.values,
+        this.datas,
+        this.predecessor,
+        this.salt,
+        { value: values.reduce((a, b) => a.add(b), BigNumber.from(0)) }
+      )
+    ).wait();
   }
 }
 
