@@ -68,7 +68,7 @@ export interface ProposalStage {
   /**
    * An etherscan url for the execution receipt. Only available for mainnet transactions
    */
-  getExecutionUrl(): Promise<string>;
+  getExecutionUrl(): Promise<string | undefined>;
 }
 
 /**
@@ -245,7 +245,7 @@ export class GovernorQueueStage implements ProposalStage {
     return await provider!.getTransactionReceipt(logs[0].transactionHash);
   }
 
-  public async getExecutionUrl(): Promise<string> {
+  public async getExecutionUrl(): Promise<string | undefined> {
     const execReceipt = await this.getExecuteReceipt();
     return `https://arbiscan.io/tx/${execReceipt.transactionHash}`;
   }
@@ -1000,14 +1000,14 @@ export class RetryableExecutionStage implements ProposalStage {
     return redeemResult.l2TxReceipt;
   }
 
-  public async getExecutionUrl(): Promise<string> {
+  public async getExecutionUrl(): Promise<string | undefined> {
     const execReceipt = await this.getExecuteReceipt();
     if (this.l1ToL2Message.chainId === 42161) {
       return `https://arbiscan.io/tx/${execReceipt.transactionHash}`;
     } else if (this.l1ToL2Message.chainId === 42170) {
       return `https://nova.arbiscan.io/tx/${execReceipt.transactionHash}`;
     } else {
-      throw new Error(`Unknown chainId: ${this.l1ToL2Message.chainId}`);
+      return undefined;
     }
   }
 }
