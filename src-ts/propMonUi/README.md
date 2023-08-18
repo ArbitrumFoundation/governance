@@ -11,9 +11,7 @@ To run the Proposal Monitor - from project root:
 ```
 yarn
 yarn build
-ts-node ./src-ts/proposalMonitorCli.ts --jsonOutputLocation ./src-ts/propMonUi/proposalState.json --l1RpcUrl https://m
-ainnet.infura.io/v3/<your id here> --govChainRpcUrl https://arb1.arbitrum.io/rpc --novaRpcUrl https://nova.arbitrum.io/rpc --coreGovernorAddress 0xf07DeD9dC292157749
-B6Fd268E37DF6EA38395B9 --treasuryGovernorAddress 0x789fC99093B09aD01C34DC7251D0C89ce743e5a4 --pollingIntervalSeconds 1
+ts-node ./src-ts/proposalMonitorCli.ts --jsonOutputLocation ./src-ts/propMonUi/proposalState.json --l1RpcUrl https://mainnet.infura.io/v3/<your id here> --govChainRpcUrl https://arb1.arbitrum.io/rpc --novaRpcUrl https://nova.arbitrum.io/rpc --coreGovernorAddress 0xf07DeD9dC292157749B6Fd268E37DF6EA38395B9 --treasuryGovernorAddress 0x789fC99093B09aD01C34DC7251D0C89ce743e5a4 --pollingIntervalSeconds 1
 ```
 
 To run the Proposal Monitor UI:
