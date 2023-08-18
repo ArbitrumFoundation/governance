@@ -139,9 +139,6 @@ export class GovernorQueueStage implements ProposalStage {
   public readonly identifier: string;
 
   public constructor(
-    // CHRIS: TODO: do we want the prop id?
-    public readonly proposalId: string,
-
     public readonly targets: string[],
     public readonly values: BigNumber[],
     public readonly callDatas: string[],
@@ -171,7 +168,6 @@ export class GovernorQueueStage implements ProposalStage {
 
         proposalStages.push(
           new GovernorQueueStage(
-            propCreatedEvent.proposalId.toHexString(),
             propCreatedEvent.targets,
             (propCreatedEvent as any)[3], // ethers is parsing an array with a single 0 big number as undefined, so we lookup by index
             propCreatedEvent.calldatas,
@@ -189,7 +185,7 @@ export class GovernorQueueStage implements ProposalStage {
   public async status(): Promise<ProposalStageStatus> {
     const gov = L2ArbitrumGovernor__factory.connect(this.governorAddress, this.signerOrProvider);
 
-    const state = (await gov.state(this.proposalId)) as GovernorTimelockStatus;
+    const state = (await gov.state(this.identifier)) as GovernorTimelockStatus;
 
     switch (state) {
       case GovernorTimelockStatus.Pending:
@@ -268,7 +264,6 @@ export class L2TimelockExecutionBatchStage implements ProposalStage {
     public readonly timelockAddress: string,
     public readonly signerOrProvider: Signer | Provider
   ) {
-    // CHRIS: TODO: check all these ids
     this.identifier = L2TimelockExecutionBatchStage.hashOperationBatch(
       targets,
       values,
@@ -307,7 +302,9 @@ export class L2TimelockExecutionBatchStage implements ProposalStage {
     return proposalEvents.length === 1 ? proposalEvents[0] : undefined;
   }
 
-  // CHRIS: TODO: we have this twice
+  /**
+   * Find the timelock address - it is the address from which CallScheduled events are emitted
+   */
   public static findTimelockAddress(operationId: string, logs: ethers.providers.Log[]) {
     const timelockInterface = ArbitrumTimelock__factory.createInterface();
     for (const log of logs) {
@@ -493,7 +490,6 @@ export class L2TimelockExecutionBatchStage implements ProposalStage {
       throw new ProposalStageError(`Logs length not 1: ${logs.length}`, this.identifier, this.name);
     }
 
-    // CHRIS: TODO: look for these [0] entries - they  may all need to be changed
     return await provider!.getTransactionReceipt(logs[0].transactionHash);
   }
 
@@ -599,18 +595,6 @@ export class L1OutboxStage implements ProposalStage {
 }
 
 abstract class L1TimelockExecutionStage {
-  public static findTimelockAddress(operationId: string, logs: ethers.providers.Log[]) {
-    const timelockInterface = ArbitrumTimelock__factory.createInterface();
-    for (const log of logs) {
-      if (
-        log.topics.find((t) => t === timelockInterface.getEventTopic("CallScheduled")) &&
-        log.topics.find((t) => t === operationId)
-      ) {
-        return log.address;
-      }
-    }
-  }
-
   constructor(
     public readonly name: string,
     public readonly timelockAddress: string,
@@ -737,7 +721,6 @@ export class L1TimelockExecutionSingleStage
     );
   }
 
-  // CHRIS: TODO: follows a pattern?
   public static async extractStages(
     receipt: TransactionReceipt,
     l1SignerOrProvider: Signer | Provider
@@ -746,7 +729,6 @@ export class L1TimelockExecutionSingleStage
     const bridgeInterface = Bridge__factory.createInterface();
     const proposalStages: L1TimelockExecutionSingleStage[] = [];
     for (const log of receipt.logs) {
-      // CHRIS: TODO: would be better if we could use the address here, what else could we do?
       if (log.topics.find((t) => t === bridgeInterface.getEventTopic("BridgeCallTriggered"))) {
         const bridgeCallTriggered = bridgeInterface.parseLog(log)
           .args as unknown as BridgeCallTriggeredEventObject;
@@ -765,7 +747,10 @@ export class L1TimelockExecutionSingleStage
             scheduleBatchData.predecessor,
             scheduleBatchData.salt
           );
-          const timelockAddress = this.findTimelockAddress(operationId, receipt.logs);
+          const timelockAddress = L2TimelockExecutionBatchStage.findTimelockAddress(
+            operationId,
+            receipt.logs
+          );
           if (!timelockAddress) {
             throw new Error(`Could not find timelock address for operation id ${operationId}`);
           }
@@ -837,7 +822,6 @@ export class L1TimelockExecutionBatchStage
     );
   }
 
-  // CHRIS: TODO: follows a pattern?
   public static async extractStages(
     receipt: TransactionReceipt,
     l1SignerOrProvider: Signer | Provider
@@ -847,8 +831,6 @@ export class L1TimelockExecutionBatchStage
     const proposalStages: L1TimelockExecutionBatchStage[] = [];
 
     for (const log of receipt.logs) {
-      // CHRIS: TODO: would be better if we could use the address here, what else could we do?
-
       if (log.topics.find((t) => t === bridgeInterface.getEventTopic("BridgeCallTriggered"))) {
         const bridgeCallTriggered = bridgeInterface.parseLog(log)
           .args as unknown as BridgeCallTriggeredEventObject;
@@ -869,7 +851,10 @@ export class L1TimelockExecutionBatchStage
             scheduleBatchData.predecessor,
             scheduleBatchData.salt
           );
-          const timelockAddress = this.findTimelockAddress(operationId, receipt.logs);
+          const timelockAddress = L2TimelockExecutionBatchStage.findTimelockAddress(
+            operationId,
+            receipt.logs
+          );
           if (!timelockAddress) {
             throw new Error(`Could not find timelock address for operation id ${operationId}`);
           }

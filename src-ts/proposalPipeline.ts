@@ -106,18 +106,61 @@ export class StageTracker extends EventEmitter {
     return super.on(eventName, listener);
   }
 
+  private propagateTrackerSubcriptions(tracker: StageTracker) {
+    // propagate events to the listener of this tracker - add some info about the previous stage
+    tracker.on(TrackerEventName.TRACKER_STATUS, (args) => {
+      this.emit(TrackerEventName.TRACKER_STATUS, {
+        ...args,
+        prevStage: args.prevStage || {
+          stage: this.stage.name,
+          identifier: this.stage.identifier,
+        },
+      });
+    });
+    tracker.on(TrackerEventName.TRACKER_ENDED, (args) => {
+      this.emit(TrackerEventName.TRACKER_ENDED, {
+        ...args,
+        prevStage: args.prevStage || {
+          stage: this.stage.name,
+          identifier: this.stage.identifier,
+        },
+      });
+    });
+    tracker.on(TrackerEventName.TRACKER_STARTED, (args) => {
+      this.emit(TrackerEventName.TRACKER_STARTED, {
+        ...args,
+        prevStage: args.prevStage || {
+          stage: this.stage.name,
+          identifier: this.stage.identifier,
+        },
+      });
+    });
+    tracker.on(TrackerEventName.TRACKER_ERRORED, (args) => {
+      this.emit(TrackerEventName.TRACKER_ERRORED, {
+        ...args,
+        prevStage: args.prevStage || {
+          stage: this.stage.name,
+          identifier: this.stage.identifier,
+        },
+      });
+    });
+  }
+
   public async run() {
     let polling = true;
     let consecutiveErrors = 0;
-    let currentStatus: ProposalStageStatus | undefined = undefined;
+    let currentStatus: ProposalStageStatus = await this.stage.status();
+    this.emit(TrackerEventName.TRACKER_STARTED, {
+      identifier: this.stage.identifier,
+      stage: this.stage.name,
+      status: currentStatus,
+    });
 
     while (polling) {
       try {
         const status = await this.stage.status();
         if (currentStatus !== status) {
           // emit an event if the status changes
-          // CHRIS: TODO: add the other events
-
           this.emit(TrackerEventName.TRACKER_STATUS, {
             status,
             stage: this.stage.name,
@@ -146,44 +189,8 @@ export class StageTracker extends EventEmitter {
                 this.writeMode
               );
 
-              // propagate events to the listener of this tracker - add some info about the previous stage
-              tracker.on(TrackerEventName.TRACKER_STATUS, (args) => {
-                this.emit(TrackerEventName.TRACKER_STATUS, {
-                  ...args,
-                  prevStage: args.prevStage || {
-                    stage: this.stage.name,
-                    identifier: this.stage.identifier,
-                  },
-                });
-              });
-              tracker.on(TrackerEventName.TRACKER_ENDED, (args) => {
-                this.emit(TrackerEventName.TRACKER_ENDED, {
-                  ...args,
-                  prevStage: args.prevStage || {
-                    stage: this.stage.name,
-                    identifier: this.stage.identifier,
-                  },
-                });
-              });
-              tracker.on(TrackerEventName.TRACKER_STARTED, (args) => {
-                this.emit(TrackerEventName.TRACKER_STARTED, {
-                  ...args,
-                  prevStage: args.prevStage || {
-                    stage: this.stage.name,
-                    identifier: this.stage.identifier,
-                  },
-                });
-              });
-              tracker.on(TrackerEventName.TRACKER_ERRORED, (args) => {
-                this.emit(TrackerEventName.TRACKER_ERRORED, {
-                  ...args,
-                  prevStage: args.prevStage || {
-                    stage: this.stage.name,
-                    identifier: this.stage.identifier,
-                  },
-                });
-              });
-              // CHRIS: TODO: lets put all these together
+              this.propagateTrackerSubcriptions(tracker)
+              // run but dont await
               tracker.run();
             }
 
@@ -227,7 +234,7 @@ export class StageTracker extends EventEmitter {
         if (consecutiveErrors > 5) {
           // emit an error here
           this.emit(TrackerEventName.TRACKER_ERRORED, {
-            status: currentStatus!,
+            status: currentStatus,
             stage: this.stage.name,
             identifier: this.stage.identifier,
             error: error,
@@ -244,5 +251,11 @@ export class StageTracker extends EventEmitter {
         await wait(this.pollingIntervalMs);
       }
     }
+
+    this.emit(TrackerEventName.TRACKER_ENDED, {
+      identifier: this.stage.identifier,
+      stage: this.stage.name,
+      status: currentStatus,
+    });
   }
 }
