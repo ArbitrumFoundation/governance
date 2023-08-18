@@ -691,7 +691,7 @@ abstract class L1TimelockExecutionStage {
       ...callExecutedFilter,
     });
 
-    if (logs.length > 0) {
+    if (logs.length < 1) {
       throw new ProposalStageError(
         `CallExecuted logs length not greater than 0: ${logs.length}`,
         this.identifier,
