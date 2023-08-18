@@ -149,11 +149,11 @@ export class StageTracker extends EventEmitter {
   public async run() {
     let polling = true;
     let consecutiveErrors = 0;
-    let currentStatus: ProposalStageStatus = await this.stage.status();
+    let currentStatus: ProposalStageStatus | undefined = undefined;
     this.emit(TrackerEventName.TRACKER_STARTED, {
       identifier: this.stage.identifier,
       stage: this.stage.name,
-      status: currentStatus,
+      status: await this.stage.status(),
     });
 
     while (polling) {
@@ -234,7 +234,7 @@ export class StageTracker extends EventEmitter {
         if (consecutiveErrors > 5) {
           // emit an error here
           this.emit(TrackerEventName.TRACKER_ERRORED, {
-            status: currentStatus,
+            status: currentStatus!,
             stage: this.stage.name,
             identifier: this.stage.identifier,
             error: error,
@@ -255,7 +255,7 @@ export class StageTracker extends EventEmitter {
     this.emit(TrackerEventName.TRACKER_ENDED, {
       identifier: this.stage.identifier,
       stage: this.stage.name,
-      status: currentStatus,
+      status: currentStatus!,
     });
   }
 }
