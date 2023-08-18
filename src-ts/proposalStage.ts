@@ -628,22 +628,22 @@ abstract class L1TimelockExecutionStage {
     );
   }
 
-  public async getExecutionValue(target: string, data: string): Promise<BigNumber> {
+  public async getExecutionValue(target: string, data: string): Promise<BigNumber | undefined> {
     const timelock = L1ArbitrumTimelock__factory.connect(
       this.timelockAddress,
       this.l1SignerOrProvider
     );
     const retryableMagic = await timelock.RETRYABLE_TICKET_MAGIC();
-    const parsedData = defaultAbiCoder.decode(
-      ["address", "address", "uint256", "uint256", "uint256", "bytes"],
-      data
-    );
-    const inboxAddress = parsedData[0] as string;
-    const innerValue = parsedData[2] as BigNumber;
-    const innerGasLimit = parsedData[3] as BigNumber;
-    const innerMaxFeePerGas = parsedData[4] as BigNumber;
-    const innerData = parsedData[5] as string;
     if (target.toLowerCase() === retryableMagic.toLowerCase()) {
+      const parsedData = defaultAbiCoder.decode(
+        ["address", "address", "uint256", "uint256", "uint256", "bytes"],
+        data
+      );
+      const inboxAddress = parsedData[0] as string;
+      const innerValue = parsedData[2] as BigNumber;
+      const innerGasLimit = parsedData[3] as BigNumber;
+      const innerMaxFeePerGas = parsedData[4] as BigNumber;
+      const innerData = parsedData[5] as string;
       const inbox = Inbox__factory.connect(inboxAddress, timelock.provider!);
       const submissionFee = await inbox.callStatic.calculateRetryableSubmissionFee(
         hexDataLength(innerData),
@@ -656,8 +656,6 @@ abstract class L1TimelockExecutionStage {
         .mul(2) // add some leeway for the base fee to increase
         .add(innerGasLimit.mul(innerMaxFeePerGas))
         .add(innerValue);
-    } else {
-      return innerValue;
     }
   }
 
@@ -779,7 +777,7 @@ export class L1TimelockExecutionSingleStage
       this.l1SignerOrProvider
     );
 
-    const l1Value = await this.getExecutionValue(this.target, this.data);
+    const l1Value = (await this.getExecutionValue(this.target, this.data)) || this.value;
     await (
       await timelock.functions.execute(
         this.target,
@@ -884,8 +882,9 @@ export class L1TimelockExecutionBatchStage
 
     const values = [];
     for (let index = 0; index < this.targets.length; index++) {
-      console.log(this.targets[index], this.datas[index]);
-      values[index] = await this.getExecutionValue(this.targets[index], this.datas[index]);
+      values[index] =
+        (await this.getExecutionValue(this.targets[index], this.datas[index])) ||
+        this.values[index];
     }
 
     await (
