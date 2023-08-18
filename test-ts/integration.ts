@@ -14,7 +14,7 @@ import { expect } from "chai";
 import { BigNumber, Signer, constants } from "ethers";
 import { defaultAbiCoder, id, keccak256, parseEther, randomBytes } from "ethers/lib/utils";
 import { RoundTripProposalCreator } from "../src-ts/proposalCreator";
-import { GPMErrorEvent, GPMEvent, GovernorProposalMonitor } from "../src-ts/proposalMonitor";
+import { GPMEvent, GovernorProposalMonitor } from "../src-ts/proposalMonitor";
 import { ProposalStageStatus } from "../src-ts/proposalStage";
 import { StageFactory, TrackerEventName } from "../src-ts/proposalPipeline";
 import {
@@ -23,6 +23,7 @@ import {
   L1ArbitrumTimelock__factory,
   L2ArbitrumGovernor,
   L2ArbitrumGovernor__factory,
+  NoteStore,
   NoteStore__factory,
   TestUpgrade__factory,
   UpgradeExecutor,
@@ -250,6 +251,17 @@ const mineBlocksAndWaitForProposalState = async (
   }
 };
 
+const noteExists = (noteStore: NoteStore, noteId: string) =>
+  new Promise<void>(async (resolve) => {
+    while (true) {
+      if (await noteStore.exists(noteId)) {
+        resolve();
+        break;
+      }
+      await wait(1000);
+    }
+  });
+
 export const l2L1MonitoringValueTest = async (
   l1Signer: Signer,
   l2Signer: Signer,
@@ -284,10 +296,12 @@ export const l2L1MonitoringValueTest = async (
       provider: l1Signer.provider! as JsonRpcProvider,
       timelockAddr: l1TimelockContract.address,
     },
-    [{
-      provider: l1Signer.provider! as JsonRpcProvider,
-      upgradeExecutorAddr: l1UpgradeExecutor.address,
-    }]
+    [
+      {
+        provider: l1Signer.provider! as JsonRpcProvider,
+        upgradeExecutorAddr: l1UpgradeExecutor.address,
+      },
+    ]
   );
   const proposal = await propCreator.create(
     [testUpgrade.address],
@@ -322,12 +336,6 @@ export const l2L1MonitoringValueTest = async (
 
   proposalMonitor.on(TrackerEventName.TRACKER_ERRORED, (e) => console.error(e));
 
-  const trackerEnd = new Promise<void>((resolve) =>
-    proposalMonitor.once(TrackerEventName.TRACKER_ENDED, (e: GPMErrorEvent) => {
-      resolve();
-    })
-  );
-
   // send the proposal
   const receipt = await (
     await proposer.sendTransaction({
@@ -353,7 +361,7 @@ export const l2L1MonitoringValueTest = async (
   const noteBefore = await noteStore.exists(noteId);
   expect(noteBefore, "Note exists before").to.be.false;
 
-  await mineBlocksUntilComplete(trackerEnd, localMiners);
+  await mineBlocksUntilComplete(noteExists(noteStore, noteId), localMiners);
 
   const noteAfter = await noteStore.exists(noteId);
   expect(noteAfter, "Note exists after").to.be.true;
@@ -421,10 +429,12 @@ export const l2L1L2MonitoringValueTest = async (
       provider: l1Signer.provider! as JsonRpcProvider,
       timelockAddr: l1TimelockContract.address,
     },
-    [{
-      provider: l2Signer.provider! as JsonRpcProvider,
-      upgradeExecutorAddr: l2UpgradeExecutor.address,
-    }]
+    [
+      {
+        provider: l2Signer.provider! as JsonRpcProvider,
+        upgradeExecutorAddr: l2UpgradeExecutor.address,
+      },
+    ]
   );
   const proposal = await propCreator.create(
     [testUpgrade.address],
@@ -458,12 +468,6 @@ export const l2L1L2MonitoringValueTest = async (
 
   proposalMonitor.on(TrackerEventName.TRACKER_ERRORED, (e) => console.error(e));
 
-  const trackerEnd = new Promise<void>((resolve) =>
-    proposalMonitor.once(TrackerEventName.TRACKER_ENDED, (e: GPMErrorEvent) => {
-      resolve();
-    })
-  );
-
   // send the proposal
   const receipt = await (
     await proposer.sendTransaction({
@@ -489,7 +493,7 @@ export const l2L1L2MonitoringValueTest = async (
   const noteBefore = await noteStore.exists(noteId);
   expect(noteBefore, "Note exists before").to.be.false;
 
-  await mineBlocksUntilComplete(trackerEnd, localMiners);
+  await mineBlocksUntilComplete(noteExists(noteStore, noteId), localMiners);
 
   const noteAfter = await noteStore.exists(noteId);
   expect(noteAfter, "Note exists after").to.be.true;
@@ -528,10 +532,12 @@ export const l2L1MonitoringTest = async (
       provider: l1Signer.provider! as JsonRpcProvider,
       timelockAddr: l1TimelockContract.address,
     },
-    [{
-      provider: l1Signer.provider! as JsonRpcProvider,
-      upgradeExecutorAddr: l1UpgradeExecutor.address,
-    }]
+    [
+      {
+        provider: l1Signer.provider! as JsonRpcProvider,
+        upgradeExecutorAddr: l1UpgradeExecutor.address,
+      },
+    ]
   );
   const proposal = await propCreator.create(
     [testUpgrade.address],
@@ -566,12 +572,6 @@ export const l2L1MonitoringTest = async (
 
   proposalMonitor.on(TrackerEventName.TRACKER_ERRORED, (e) => console.error(e));
 
-  const trackerEnd = new Promise<void>((resolve) =>
-    proposalMonitor.once(TrackerEventName.TRACKER_ENDED, (e: GPMErrorEvent) => {
-      resolve();
-    })
-  );
-
   // send the proposal
   const receipt = await (
     await proposer.sendTransaction({
@@ -589,7 +589,7 @@ export const l2L1MonitoringTest = async (
   const noteBefore = await noteStore.exists(noteId);
   expect(noteBefore, "Note exists before").to.be.false;
 
-  await mineBlocksUntilComplete(trackerEnd, localMiners);
+  await mineBlocksUntilComplete(noteExists(noteStore, noteId), localMiners);
 
   const noteAfter = await noteStore.exists(noteId);
   expect(noteAfter, "Note exists after").to.be.true;
@@ -630,10 +630,12 @@ export const l2L1L2MonitoringTest = async (
       provider: l1Signer.provider! as JsonRpcProvider,
       timelockAddr: l1TimelockContract.address,
     },
-    [{
-      provider: l2Signer.provider! as JsonRpcProvider,
-      upgradeExecutorAddr: l2UpgradeExecutor.address,
-    }]
+    [
+      {
+        provider: l2Signer.provider! as JsonRpcProvider,
+        upgradeExecutorAddr: l2UpgradeExecutor.address,
+      },
+    ]
   );
   const proposal = await propCreator.create(
     [testUpgrade.address],
@@ -668,12 +670,6 @@ export const l2L1L2MonitoringTest = async (
 
   proposalMonitor.on(TrackerEventName.TRACKER_ERRORED, (e) => console.error(e));
 
-  const trackerEnd = new Promise<void>((resolve) =>
-    proposalMonitor.once(TrackerEventName.TRACKER_ENDED, (e: GPMErrorEvent) => {
-      resolve();
-    })
-  );
-
   // send the proposal
   const receipt = await (
     await proposer.sendTransaction({
@@ -691,7 +687,7 @@ export const l2L1L2MonitoringTest = async (
   const noteBefore = await noteStore.exists(noteId);
   expect(noteBefore, "Note exists before").to.be.false;
 
-  await mineBlocksUntilComplete(trackerEnd, localMiners);
+  await mineBlocksUntilComplete(noteExists(noteStore, noteId), localMiners);
 
   const noteAfter = await noteStore.exists(noteId);
   expect(noteAfter, "Note exists after").to.be.true;
