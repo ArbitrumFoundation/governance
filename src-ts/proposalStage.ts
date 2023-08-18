@@ -884,6 +884,7 @@ export class L1TimelockExecutionBatchStage
 
     const values = [];
     for (let index = 0; index < this.targets.length; index++) {
+      console.log(this.targets[index], this.datas[index]);
       values[index] = await this.getExecutionValue(this.targets[index], this.datas[index]);
     }
 
