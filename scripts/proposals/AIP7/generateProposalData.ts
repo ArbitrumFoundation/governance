@@ -91,7 +91,7 @@ const main = async () => {
         },
     };
 
-    const path = `${__dirname}/data/42161-AIP4-data.json`;
+    const path = `${__dirname}/data/42161-AIP7-data.json`;
     fs.writeFileSync(path, JSON.stringify(proposal, null, 2));
     console.log("Wrote proposal data to", path);
     console.log(proposal);
