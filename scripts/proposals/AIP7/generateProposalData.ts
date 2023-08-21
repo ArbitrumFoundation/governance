@@ -10,20 +10,16 @@ dotenv.config();
 
 const ARB_URL = process.env.ARB_URL;
 const ARB_KEY = process.env.ARB_KEY;
-const ARBISCAN_API_KEY = process.env.ARBISCAN_API_KEY;
 
 const ETH_URL = process.env.ETH_URL;
 const ETH_KEY = process.env.ETH_KEY;
-const ETHERSCAN_API_KEY = process.env.ETHERSCAN_API_KEY;
 
 
 if (!ARB_URL) throw new Error("ARB_URL required");
 if (!ARB_KEY) throw new Error("ARB_KEY required");
-if (!ARBISCAN_API_KEY) throw new Error("ARBISCAN_API_KEY required");
 
 if (!ETH_URL) throw new Error("ETH_URL required");
 if (!ETH_KEY) throw new Error("ETH_KEY required");
-if (!ETHERSCAN_API_KEY) throw new Error("ETHERSCAN_API_KEY required");
 
 const mainnetDeployedContracts = importDeployedContracts("./files/mainnet/deployedContracts.json");
 
