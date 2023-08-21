@@ -1,18 +1,12 @@
-import { BigNumber, Signer, Wallet } from "ethers";
-import { JsonRpcProvider, Provider } from "@ethersproject/providers";
-import {
-  GovernorQueueStage,
-  ProposalStage,
-  ProposalStageStatus,
-  getProvider,
-} from "./proposalStage";
+import { BigNumber, Wallet } from "ethers";
+import { JsonRpcProvider } from "@ethersproject/providers";
+import { ProposalStageStatus, getProvider } from "./proposalStage";
 import { StageFactory, TrackerEventName } from "./proposalPipeline";
 import * as dotenv from "dotenv";
 import * as fs from "fs";
 dotenv.config();
 import yargs from "yargs";
 import { wait } from "./utils";
-import * as path from "path";
 import {
   GPMErrorEvent,
   GPMEvent,

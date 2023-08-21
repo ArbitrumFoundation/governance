@@ -7,14 +7,11 @@ The UI has two components:
 
 Note: You can run via ts-node installed globally, or compile with tsc and run with node.
 
-To run the Proposal Monitor - from project root:
+To run both components together:
 ```
 yarn
 yarn build
-ts-node ./src-ts/proposalMonitorCli.ts --jsonOutputLocation ./src-ts/propMonUi/proposalState.json --l1RpcUrl https://mainnet.infura.io/v3/<your id here> --govChainRpcUrl https://arb1.arbitrum.io/rpc --novaRpcUrl https://nova.arbitrum.io/rpc --coreGovernorAddress 0xf07DeD9dC292157749B6Fd268E37DF6EA38395B9 --treasuryGovernorAddress 0x789fC99093B09aD01C34DC7251D0C89ce743e5a4 --pollingIntervalSeconds 1
+ETH_RPC=<your ethereum rpc here> yarn propmon
 ```
 
-To run the Proposal Monitor UI:
-```
-yarn propmon:ui
-```
+Then navigate to `localhost:8080/propMonUi/propMonUi.html` in a browser. You will need to wait around 30 seconds whilst the propmon discovers all proposals and their stages. The propmon creates a proposalStage.json file that contains a json representation of the data you see on the web page.
