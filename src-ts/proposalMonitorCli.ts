@@ -8,7 +8,6 @@ dotenv.config();
 import yargs from "yargs";
 import { wait } from "./utils";
 import {
-  GPMErrorEvent,
   GPMEvent,
   GnosisSafeProposalMonitor,
   GovernorProposalMonitor,
@@ -57,7 +56,7 @@ const attachConsole = (proposalMonitor: ProposalMonitor, monitorName: string) =>
     console.log(`${monitorName} tracker ended:  Gov:${e.originAddress}, Prop:${e.identifier}`);
   });
 
-  proposalMonitor.on(TrackerEventName.TRACKER_ERRORED, (e: GPMErrorEvent) => {
+  proposalMonitor.on(TrackerEventName.TRACKER_ERRORED, (e: GPMEvent) => {
     console.log(
       `${monitorName} tracker errored:  Gov:${e.originAddress}, Prop:${e.identifier} Stage:${
         e.stage
@@ -135,7 +134,7 @@ class JsonLogger {
     const emittedStages: Map<string, PipelineStage> = new Map();
     const originKey = `${proposalMonitor.originAddress}::`;
 
-    proposalMonitor.on(TrackerEventName.TRACKER_ERRORED, (e: GPMErrorEvent) => {
+    proposalMonitor.on(TrackerEventName.TRACKER_ERRORED, (e: GPMEvent) => {
       console.log("Emitted error event");
       console.error(e);
     });

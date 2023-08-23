@@ -54,15 +54,16 @@ export enum TrackerEventName {
    */
   TRACKER_STATUS = "TRACKED_STATUS",
 }
+
+export const AllTrackerEvents = Object.values(TrackerEventName);
+
 export interface TrackerEvent {
   identifier: string;
   status: ProposalStageStatus;
   stage: string;
   prevStage?: Omit<TrackerEvent, "status">;
   publicExecutionUrl?: string;
-}
-export interface TrackerErrorEvent extends TrackerEvent {
-  error: Error;
+  error?: Error
 }
 
 export class StageTracker extends EventEmitter {
@@ -75,73 +76,28 @@ export class StageTracker extends EventEmitter {
     super();
   }
 
-  public emit(eventName: TrackerEventName.TRACKER_STARTED, args: TrackerEvent): boolean;
-  public emit(eventName: TrackerEventName.TRACKER_ENDED, args: TrackerEvent): boolean;
-  public emit(eventName: TrackerEventName.TRACKER_ERRORED, args: TrackerErrorEvent): boolean;
-  public emit(eventName: TrackerEventName.TRACKER_STATUS, args: TrackerEvent): boolean;
-  public override emit(eventName: TrackerEventName, args: TrackerEvent | TrackerErrorEvent) {
+  public override emit(eventName: TrackerEventName, args: TrackerEvent) {
     return super.emit(eventName, args);
   }
 
-  public on(
-    eventName: TrackerEventName.TRACKER_STARTED,
-    listener: (args: TrackerEvent) => void
-  ): this;
-  public on(
-    eventName: TrackerEventName.TRACKER_ENDED,
-    listener: (args: TrackerEvent) => void
-  ): this;
-  public on(
-    eventName: TrackerEventName.TRACKER_ERRORED,
-    listener: (args: TrackerErrorEvent) => void
-  ): this;
-  public on(
-    eventName: TrackerEventName.TRACKER_STATUS,
-    listener: (args: TrackerEvent) => void
-  ): this;
   public override on(
     eventName: TrackerEventName,
-    listener: ((args: TrackerEvent) => void) | ((args: TrackerErrorEvent) => void)
+    listener: (args: TrackerEvent) => void
   ): this {
     return super.on(eventName, listener);
   }
 
   private propagateTrackerSubcriptions(tracker: StageTracker) {
     // propagate events to the listener of this tracker - add some info about the previous stage
-    tracker.on(TrackerEventName.TRACKER_STATUS, (args) => {
-      this.emit(TrackerEventName.TRACKER_STATUS, {
-        ...args,
-        prevStage: args.prevStage || {
-          stage: this.stage.name,
-          identifier: this.stage.identifier,
-        },
-      });
-    });
-    tracker.on(TrackerEventName.TRACKER_ENDED, (args) => {
-      this.emit(TrackerEventName.TRACKER_ENDED, {
-        ...args,
-        prevStage: args.prevStage || {
-          stage: this.stage.name,
-          identifier: this.stage.identifier,
-        },
-      });
-    });
-    tracker.on(TrackerEventName.TRACKER_STARTED, (args) => {
-      this.emit(TrackerEventName.TRACKER_STARTED, {
-        ...args,
-        prevStage: args.prevStage || {
-          stage: this.stage.name,
-          identifier: this.stage.identifier,
-        },
-      });
-    });
-    tracker.on(TrackerEventName.TRACKER_ERRORED, (args) => {
-      this.emit(TrackerEventName.TRACKER_ERRORED, {
-        ...args,
-        prevStage: args.prevStage || {
-          stage: this.stage.name,
-          identifier: this.stage.identifier,
-        },
+    AllTrackerEvents.forEach((ev) => {
+      tracker.on(ev, (args) => {
+        this.emit(ev, {
+          ...args,
+          prevStage: args.prevStage || {
+            stage: this.stage.name,
+            identifier: this.stage.identifier,
+          },
+        });
       });
     });
   }

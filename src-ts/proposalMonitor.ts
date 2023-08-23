@@ -7,14 +7,13 @@ import {
   StageTracker,
   TrackerEventName,
   TrackerEvent,
-  TrackerErrorEvent,
+  AllTrackerEvents,
 } from "./proposalPipeline";
 import { EventEmitter } from "events";
 import { Interface } from "@ethersproject/abi";
 import { BigNumber } from "ethers";
 
 export type GPMEvent = TrackerEvent & { originAddress: string };
-export type GPMErrorEvent = TrackerErrorEvent & { originAddress: string };
 
 export abstract class ProposalMonitor extends EventEmitter {
   constructor(
@@ -29,24 +28,13 @@ export abstract class ProposalMonitor extends EventEmitter {
     super();
   }
 
-  public emit(eventName: TrackerEventName.TRACKER_STARTED, args: GPMEvent): boolean;
-  public emit(eventName: TrackerEventName.TRACKER_ENDED, args: GPMEvent): boolean;
-  public emit(eventName: TrackerEventName.TRACKER_ERRORED, args: GPMErrorEvent): boolean;
-  public emit(eventName: TrackerEventName.TRACKER_STATUS, args: GPMEvent): boolean;
-  public override emit(eventName: TrackerEventName, args: GPMEvent | GPMErrorEvent) {
+  public override emit(eventName: TrackerEventName, args: GPMEvent) {
     return super.emit(eventName, args);
   }
 
-  public on(eventName: TrackerEventName.TRACKER_STARTED, listener: (args: GPMEvent) => void): this;
-  public on(eventName: TrackerEventName.TRACKER_ENDED, listener: (args: GPMEvent) => void): this;
-  public on(
-    eventName: TrackerEventName.TRACKER_ERRORED,
-    listener: (args: GPMErrorEvent) => void
-  ): this;
-  public on(eventName: TrackerEventName.TRACKER_STATUS, listener: (args: GPMEvent) => void): this;
   public override on(
     eventName: TrackerEventName,
-    listener: ((args: GPMEvent) => void) | ((args: GPMErrorEvent) => void)
+    listener: (args: GPMEvent) => void
   ): this {
     return super.on(eventName, listener);
   }
@@ -63,31 +51,16 @@ export abstract class ProposalMonitor extends EventEmitter {
         this.pollingIntervalMs,
         this.writeMode
       );
+      
+      AllTrackerEvents.forEach((ev) => {
+        tracker.on(ev, (args) => {
+          this.emit(ev, {
+            ...args,
+            originAddress: this.originAddress,
+          });
+        });
+      });
 
-      tracker.on(TrackerEventName.TRACKER_STATUS, (args) =>
-        this.emit(TrackerEventName.TRACKER_STATUS, {
-          originAddress: this.originAddress,
-          ...args,
-        })
-      );
-      tracker.on(TrackerEventName.TRACKER_STARTED, (args) =>
-        this.emit(TrackerEventName.TRACKER_STARTED, {
-          originAddress: this.originAddress,
-          ...args,
-        })
-      );
-      tracker.on(TrackerEventName.TRACKER_ERRORED, (args) =>
-        this.emit(TrackerEventName.TRACKER_ERRORED, {
-          originAddress: this.originAddress,
-          ...args,
-        })
-      );
-      tracker.on(TrackerEventName.TRACKER_ENDED, (args) =>
-        this.emit(TrackerEventName.TRACKER_ENDED, {
-          originAddress: this.originAddress,
-          ...args,
-        })
-      );
       tracker.run();
     }
   }
