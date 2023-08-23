@@ -226,28 +226,29 @@ export class RoundTripProposalCreator {
         l1Values.push(upgradeExecutorValue);
       }
     }
-    let l1TimelockScheduleCallData: string;
-
-    if (useSchedule) {
-      if (upgradeAddrs.length > 1) throw new Error("Must use schedule batch for multiple messages");
-      l1TimelockScheduleCallData = l1Timelock.interface.encodeFunctionData("schedule", [
-        l1Targets[0],
-        l1Values[0],
-        l1CallDatas[0],
-        constants.HashZero,
-        descriptionHash,
-        minDelay,
-      ]);
-    } else {
-      l1TimelockScheduleCallData = l1Timelock.interface.encodeFunctionData("scheduleBatch", [
-        l1Targets,
-        l1Values,
-        l1CallDatas,
-        constants.HashZero,
-        descriptionHash,
-        minDelay,
-      ]);
-    }
+    let l1TimelockScheduleCallData = (() => {
+      if (useSchedule) {
+        if (upgradeAddrs.length > 1)
+          throw new Error("Must use schedule batch for multiple messages");
+        return l1Timelock.interface.encodeFunctionData("schedule", [
+          l1Targets[0],
+          l1Values[0],
+          l1CallDatas[0],
+          constants.HashZero,
+          descriptionHash,
+          minDelay,
+        ]);
+      } else {
+        return l1Timelock.interface.encodeFunctionData("scheduleBatch", [
+          l1Targets,
+          l1Values,
+          l1CallDatas,
+          constants.HashZero,
+          descriptionHash,
+          minDelay,
+        ]);
+      }
+    })();
 
     return {
       l1TimelockTo,
