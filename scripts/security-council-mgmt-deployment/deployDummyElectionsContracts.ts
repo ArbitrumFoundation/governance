@@ -3,6 +3,8 @@ import { L2ArbitrumToken__factory, L2SecurityCouncilMgmtFactory__factory, Securi
 import { DeployParamsStruct } from "../../typechain-types/src/security-council-mgmt/factories/L2SecurityCouncilMgmtFactory";
 import { TransparentUpgradeableProxy__factory } from "@arbitrum/sdk/dist/lib/abi/factories/TransparentUpgradeableProxy__factory";
 import { getNamedObjectItems } from "./utils";
+import dotenv from "dotenv";
+dotenv.config();
 
 // env vars:
 // RPC_URL (optional, defaults to http://localhost:8545)
