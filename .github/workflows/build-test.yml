@@ -55,6 +55,35 @@ jobs:
       - name: Check gas snapshot
         run: make gas-check
 
+  test-action-storage:
+    name: Test action storage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: recursive
+          
+      - name: Setup node/yarn
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
+          cache: 'yarn'
+          cache-dependency-path: '**/yarn.lock'
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+      
+      - name: Install packages
+        run: yarn
+
+      - name: Check if jq is installed
+        run: jq --version
+
+      - name: Check action storage
+        run: make test-action-storage
+
   test-only-doesnt-exist:
     name: No .only
     runs-on: ubuntu-latest
