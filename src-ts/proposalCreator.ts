@@ -226,7 +226,7 @@ export class RoundTripProposalCreator {
         l1Values.push(upgradeExecutorValue);
       }
     }
-    let l1TimelockScheduleCallData = (() => {
+    const l1TimelockScheduleCallData = (() => {
       if (useSchedule) {
         if (upgradeAddrs.length > 1)
           throw new Error("Must use schedule batch for multiple messages");
