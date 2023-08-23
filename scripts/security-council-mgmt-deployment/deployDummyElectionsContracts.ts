@@ -1,5 +1,3 @@
-// not sure how to handle config, so just going to hardcode in an object for now
-
 import { Wallet, ethers } from "ethers";
 import { L2ArbitrumToken__factory, L2SecurityCouncilMgmtFactory__factory, SecurityCouncilManager__factory, SecurityCouncilMemberElectionGovernor__factory, SecurityCouncilMemberRemovalGovernor__factory, SecurityCouncilNomineeElectionGovernor__factory } from "../../typechain-types";
 import { DeployParamsStruct } from "../../typechain-types/src/security-council-mgmt/factories/L2SecurityCouncilMgmtFactory";
@@ -44,22 +42,23 @@ const partialDeployParams: DeployParamsPartial = {
   ],
   l1TimelockMinDelay: 0,
   removalGovVotingDelay: 0,
-  removalGovVotingPeriod: minutes(10),
+  removalGovVotingPeriod: minutes(5 * 60),
   removalGovQuorumNumerator: 1000, // 10%
   removalGovProposalThreshold: ethers.utils.parseEther("1000000"), // 1 million tokens
   removalGovVoteSuccessNumerator: 8333, // todo: check this
-  removalGovMinPeriodAfterQuorum: minutes(3),
+  removalGovMinPeriodAfterQuorum: minutes(60),
   removalProposalExpirationBlocks: 100, // number of blocks after which a successful removal proposal expires
-  nomineeVettingDuration: minutes(10),
-  nomineeVetter: zxDead,
+  nomineeVettingDuration: minutes(60),
+  nomineeVetter: "0x000000000000000000000000000000000000dead",
   nomineeQuorumNumerator: 20, // 0.2%
-  nomineeVotingPeriod: minutes(10),
-  memberVotingPeriod: minutes(10),
-  fullWeightDuration: minutes(5),
+  nomineeVotingPeriod: minutes(5 * 60),
+  memberVotingPeriod: minutes(5 * 60),
+  fullWeightDuration: minutes(60),
 }
 
+// convert minutes to blocks
 function minutes(n: number) {
-  return Math.round(n * 60);
+  return Math.round(n * 60 / 12); // divide by 12 because 1 block per 12 seconds
 }
 
 async function deployBytecode(signer: Wallet, bytecode: string) {
