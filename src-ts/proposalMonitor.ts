@@ -32,10 +32,7 @@ export abstract class ProposalMonitor extends EventEmitter {
     return super.emit(eventName, args);
   }
 
-  public override on(
-    eventName: TrackerEventName,
-    listener: (args: GPMEvent) => void
-  ): this {
+  public override on(eventName: TrackerEventName, listener: (args: GPMEvent) => void): this {
     return super.on(eventName, listener);
   }
 
@@ -51,15 +48,15 @@ export abstract class ProposalMonitor extends EventEmitter {
         this.pollingIntervalMs,
         this.writeMode
       );
-      
-      AllTrackerEvents.forEach((ev) => {
+
+      for (const ev of AllTrackerEvents) {
         tracker.on(ev, (args) => {
           this.emit(ev, {
             ...args,
             originAddress: this.originAddress,
           });
         });
-      });
+      }
 
       tracker.run();
     }

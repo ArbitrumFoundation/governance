@@ -63,7 +63,7 @@ export interface TrackerEvent {
   stage: string;
   prevStage?: Omit<TrackerEvent, "status">;
   publicExecutionUrl?: string;
-  error?: Error
+  error?: Error;
 }
 
 export class StageTracker extends EventEmitter {
@@ -80,27 +80,11 @@ export class StageTracker extends EventEmitter {
     return super.emit(eventName, args);
   }
 
-  public override on(
-    eventName: TrackerEventName,
-    listener: (args: TrackerEvent) => void
-  ): this {
+  public override on(eventName: TrackerEventName, listener: (args: TrackerEvent) => void): this {
     return super.on(eventName, listener);
   }
 
-  private propagateTrackerSubcriptions(tracker: StageTracker) {
-    // propagate events to the listener of this tracker - add some info about the previous stage
-    AllTrackerEvents.forEach((ev) => {
-      tracker.on(ev, (args) => {
-        this.emit(ev, {
-          ...args,
-          prevStage: args.prevStage || {
-            stage: this.stage.name,
-            identifier: this.stage.identifier,
-          },
-        });
-      });
-    });
-  }
+  private propagateTrackerSubcriptions(tracker: StageTracker) {}
 
   public async run() {
     let polling = true;
@@ -145,7 +129,19 @@ export class StageTracker extends EventEmitter {
                 this.writeMode
               );
 
-              this.propagateTrackerSubcriptions(tracker)
+              // propagate events to the listener of this tracker - add some info about the previous stage
+              for (const ev of AllTrackerEvents) {
+                tracker.on(ev, (args) => {
+                  this.emit(ev, {
+                    ...args,
+                    prevStage: args.prevStage || {
+                      stage: this.stage.name,
+                      identifier: this.stage.identifier,
+                    },
+                  });
+                });
+              }
+
               // run but dont await
               tracker.run();
             }
