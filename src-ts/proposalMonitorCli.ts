@@ -111,7 +111,7 @@ interface GovernorStatus {
 class JsonLogger {
   constructor(public readonly fileLocation: string, public flushingIntervalMs: number) {}
 
-  private data: GovernorStatus = {};
+  public data: GovernorStatus = {};
   private writing = false;
 
   private writeToFile() {
