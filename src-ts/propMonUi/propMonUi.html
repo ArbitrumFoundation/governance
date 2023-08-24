@@ -181,7 +181,7 @@
                             const proposalDiv = document.createElement('div');
                             governorDiv.appendChild(proposalDiv);
                             if (stage.proposalLink) {
-                                proposalDiv.innerHTML = `<h3><a href="${stage.proposalLink}">Proposal ID: ${stage.identifier}</a></h3>`;
+                                proposalDiv.innerHTML = `<h3><a target="_blank" href="${stage.proposalLink}">Proposal ID: ${stage.identifier}</a></h3>`;
                             } else {
                                 proposalDiv.innerHTML = `<h3>Proposal ID: ${stage.identifier}</h3>`;
                             }
