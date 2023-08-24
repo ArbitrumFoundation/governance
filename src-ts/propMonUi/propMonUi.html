@@ -221,7 +221,7 @@
                                             statusClass = '';
                                     }
                                     if (status === "EXECUTED" && item.explorerLink) {
-                                        return `<td class="${statusClass}"><a href="${item.explorerLink}">${status}</a></td>`;
+                                        return `<td class="${statusClass}"><a target="_blank" href="${item.explorerLink}">${status}</a></td>`;
                                     } else {
                                         return `<td class="${statusClass}">${status}</td>`;
                                     }
