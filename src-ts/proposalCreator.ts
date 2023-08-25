@@ -218,7 +218,6 @@ export class RoundTripProposalCreator {
           )
         );
         // this value gets ignored from xchain upgrades
-
         l1Values.push(BigNumber.from(0));
       } else {
         l1Targets.push(upgradeExecutorTo);
