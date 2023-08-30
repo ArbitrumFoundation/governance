@@ -205,6 +205,15 @@ const main = async () => {
   const novaProvider = new JsonRpcProvider(options.novaRpcUrl);
   const novaSignerOrProvider = options.writeMode ? new Wallet(ARB_KEY, novaProvider) : novaProvider;
 
+  if (options.writeMode) {
+    console.log(`Starting proposal monitor in write mode:`);
+    console.log(`L1 signer: ${(l1SignerOrProvider as Wallet).address}`);
+    console.log(`Arb One signer: ${(govChainSignerOrProvider as Wallet).address}`);
+    console.log(`Nova signer: ${(novaSignerOrProvider as Wallet).address}`);
+  } else {
+    console.log(`Starting monitor in read-only mode`);
+  }
+
   let jsonLogger;
   if (options.jsonOutputLocation) {
     jsonLogger = new JsonLogger(options.jsonOutputLocation, 1000);
