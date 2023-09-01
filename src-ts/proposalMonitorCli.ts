@@ -101,6 +101,7 @@ interface PipelineStage {
   explorerLink?: string;
   proposalLink?: string;
   children: PipelineStage[];
+  description?: string
 }
 
 interface GovernorStatus {
@@ -165,6 +166,7 @@ class JsonLogger {
           explorerLink: e.publicExecutionUrl,
           proposalLink,
           children: [],
+          description: e.description
         };
 
         if (prevKey === originKey && !emittedStages.has(key)) {

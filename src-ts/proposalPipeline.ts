@@ -64,6 +64,8 @@ export interface TrackerEvent {
   prevStage?: Omit<TrackerEvent, "status">;
   publicExecutionUrl?: string;
   error?: Error;
+  description?: string;
+
 }
 
 export class StageTracker extends EventEmitter {
@@ -84,7 +86,7 @@ export class StageTracker extends EventEmitter {
     return super.on(eventName, listener);
   }
 
-  private propagateTrackerSubcriptions(tracker: StageTracker) {}
+  private propagateTrackerSubscriptions(tracker: StageTracker) {}
 
   public async run() {
     let polling = true;
@@ -109,6 +111,8 @@ export class StageTracker extends EventEmitter {
               status === ProposalStageStatus.EXECUTED
                 ? await this.stage.getExecutionUrl()
                 : undefined,
+                // @ts-ignore
+              description: this.stage.description || undefined
           });
           currentStatus = status;
         }
