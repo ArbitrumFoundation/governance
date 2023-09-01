@@ -190,10 +190,10 @@
                             } else {
                                 proposalDiv.innerHTML = `<h3>Proposal ID: ${stage.identifier}</h3>`;
                             }
-                            if (stage.description){
+                            if (stage.proposalDescription){
                                 const descDiv = document.createElement('div');
                                 descDiv.className = "desc";
-                                descDiv.innerHTML = `<b>Description:</b> ${stage.description.slice(0,300)}...`
+                                descDiv.innerHTML = `<b>Description:</b> ${stage.proposalDescription.slice(0,300)}...`
                                 proposalDiv.appendChild(descDiv)
                             }
 
