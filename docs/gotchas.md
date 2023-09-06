@@ -15,7 +15,8 @@ There are two L1 proxy admins - one for the governance contracts, once for the g
   In the both treasury timelock and the DAO treasury can be transfered via treasury gov DAO vote; however, only ARB in the DAO treasury is excluded from the quorum numerator calculation. Thus, the DAO’s ARB should ideally all be stored in the DAO Treasury. (Currently, the sweepReceiver in the TokenDistributor is set to the timelock, not the DAO treasury.)
 - **L2ArbitrumGovernoer onlyGovernance behavior**
 Typically, for a timelocked OZ governror, the `onlyGovernance` modifier ensures a call is made from the timelock; in L2ArbitrumGoverner, the _executor() method is overriden such that `onlyGovernance` enforces a call from the governor contract itself. This ensures calls guarded by `onlyGovernance` go through the full core proposal path, as calls from the governor could only be sent via `relay`. See the code comment on `relay` in [L2ArbitrumGoveror](../src/L2ArbitrumGovernor.sol) for more.
-- **L2 Proposal Cancelation** 
-There are two redundant affordances that the security council can use to cancel proposals in the L2 timelock: relaying through core governor, or using  its `CANCELLER_ROLE` affordance. Additionally, the later affordances is granted directly to the security council, not the `UpgradeExecutor` (this is inconsistent with how `UpgradeExecutors` are generally used elsewhere.)
-- **L1 Proposal Cancelation**
- The Security Council — not the L1 `UpgradeExecutor` — has the affordance to cancel proposals in the L1 timelock, inconsistent with how `UpgradeExecutors` are generally used elsewhere.
+
+- The `UpgradeExecRouteBuilder` contract is immutable; instead of upgrading it, it can be redeployed, in which case any references to its address should be updated as well (currently only referenced in SecurityCouncilManager).
+- The `UpgradeExecRouteBuilder`'s l1TimelockMinDelay variable should be equal to the minimum timelock delay on the core L1 timelock. If, for whatever reason, the value on the L1 timelock is ever increased, the UpgradeExecRouteBuilder should be redeployed with the new value accordingly.
+- Changes to members of the security council should be initiated via the SecurityCouncilManager, not via calling addOwner/removeOwner on the multisigs directly. This ensures that the security council's two cohorts remain properly tracked. 
+- Voting abstain on a SecurityCouncilMemberRemovalGovernor proposal is disallowed. 

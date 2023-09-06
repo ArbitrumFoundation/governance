@@ -1,6 +1,6 @@
 import { generateArbSysArgs } from "../../genGoverningChainTargetedProposalArgs";
 import { JsonRpcProvider } from "@ethersproject/providers";
-import { CoreGovPropposal } from "../coreGovProposalInterface";
+import { SingleActionCoreGovProposal } from "../coreGovProposalInterface";
 import fs from "fs";
 import dotenv from "dotenv";
 dotenv.config();
@@ -57,7 +57,7 @@ const main = async () => {
     actionAddress,
     description
   );
-  const proposal: CoreGovPropposal = {
+  const proposal: SingleActionCoreGovProposal = {
     actionChainID: chainId,
     actionAddress,
     description,
