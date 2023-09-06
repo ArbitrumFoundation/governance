@@ -6,6 +6,7 @@ This project contains smart contracts for Arbitrum token and governance. Please 
 * [Security Council Elections](./docs/security-council-mgmt.md)
 * [Security Audit](./audits/trail_of_bits_governance_report_1_6_2023.pdf)
 * [Gotchas](./docs/gotchas.md)
+* [Proposal Monitor](./docs/proposalMonitor.md)
 
 ## Run Foundry unit tests
 

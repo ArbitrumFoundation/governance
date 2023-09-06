@@ -40,7 +40,10 @@
     "coverage:htmlreport": "rm -rf ./report &&  genhtml ./lcov.info.pruned -o report --branch-coverage",
     "coverage:open-report": "node -e 'const opn = process.platform === \"darwin\" ? \"open\" : \"xdg-open\"; require(\"child_process\").exec(`${opn} ./report/index.html`)'",
     "coverage:report": "yarn coverage:filtered-report && yarn coverage:htmlreport && yarn coverage:open-report",
-    "coverage:refresh": "yarn coverage:filtered-report && yarn coverage:htmlreport"
+    "coverage:refresh": "yarn coverage:filtered-report && yarn coverage:htmlreport",
+    "propmon:ui": "cd src-ts && http-server . -p 8080",
+    "propmon:service": "ts-node ./src-ts/proposalMonitorCli.ts --jsonOutputLocation ./src-ts/propMonUi/proposalState.json --l1RpcUrl $ETH_RPC --govChainRpcUrl https://arb1.arbitrum.io/rpc --novaRpcUrl https://nova.arbitrum.io/rpc --coreGovernorAddress 0xf07DeD9dC292157749B6Fd268E37DF6EA38395B9 --treasuryGovernorAddress 0x789fC99093B09aD01C34DC7251D0C89ce743e5a4 --sevenTwelveCouncil 0x895c9fc6bcf06e553b54A9fE11D948D67a9B76FA --pollingIntervalSeconds 1",
+    "propmon": "yarn propmon:service & yarn propmon:ui"
   },
   "devDependencies": {
     "@arbitrum/sdk": "^3.1.6",
@@ -63,6 +66,7 @@
     "ethers": "^5.7.2",
     "hardhat": "^2.12.6",
     "hardhat-gas-reporter": "^1.0.9",
+    "http-server": "^14.1.1",
     "solidity-coverage": "^0.8.2",
     "ts-node": "^10.9.1",
     "typechain": "^8.1.0",
