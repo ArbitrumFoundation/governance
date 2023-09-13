@@ -585,7 +585,6 @@ export class L2TimelockExecutionBatchStage implements ProposalStage {
 
   public async execute(): Promise<void> {
     const timelock = ArbitrumTimelock__factory.connect(this.timelockAddress, this.signerOrProvider);
-    // this
     const tx = await timelock.functions.executeBatch(
       this.targets,
       this.values,
