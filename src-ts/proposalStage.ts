@@ -29,6 +29,7 @@ import { BridgeCallTriggeredEventObject } from "../typechain-types/@arbitrum/nit
 import { Bridge__factory } from "@arbitrum/sdk/dist/lib/abi/factories/Bridge__factory";
 import {
   ProposalCreatedEventObject,
+  ProposalExecutedEventObject,
   ProposalQueuedEventObject,
 } from "../typechain-types/src/L2ArbitrumGovernor";
 import { CallScheduledEventObject } from "../typechain-types/src/ArbitrumTimelock";
@@ -225,9 +226,9 @@ export class GovernorExecuteStage implements ProposalStage {
   }
 
   public async getExecuteReceipt(): Promise<TransactionReceipt> {
-    // TODO who does the ProposalExecuted filter not accept a string?
-    // @ts-ignore
-    const proposalExecutedFilter = this.governor.filters.ProposalExecuted(this.identifier);
+    const govInterface = GovernorUpgradeable__factory.createInterface();
+
+    const proposalExecutedFilter = this.governor.filters.ProposalExecuted();
     const provider = getProvider(this.signerOrProvider);
 
     const logs = await provider!.getLogs({
@@ -235,11 +236,13 @@ export class GovernorExecuteStage implements ProposalStage {
       toBlock: "latest",
       ...proposalExecutedFilter,
     });
-    if (logs.length !== 1) {
-      throw new ProposalStageError("Log length not 1", this.identifier, this.name);
+    for (let log of logs) {
+      const eventObject = govInterface.parseLog(log).args as unknown as ProposalExecutedEventObject;
+      if (eventObject.proposalId.toHexString() == this.identifier) {
+        return await provider!.getTransactionReceipt(log.transactionHash);
+      }
     }
-
-    return await provider!.getTransactionReceipt(logs[0].transactionHash);
+    throw new ProposalStageError("Execution event not found", this.identifier, this.name);
   }
 
   public async getExecutionUrl(): Promise<string | undefined> {
