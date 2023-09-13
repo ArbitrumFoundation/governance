@@ -19,6 +19,7 @@ import {
   ArbitrumTimelock__factory,
   L1ArbitrumTimelock__factory,
   L2ArbitrumGovernor__factory,
+  GovernorUpgradeable__factory,
 } from "../typechain-types";
 import { Inbox__factory } from "@arbitrum/sdk/dist/lib/abi/factories/Inbox__factory";
 import { EventArgs } from "@arbitrum/sdk/dist/lib/dataEntities/event";
@@ -96,9 +97,9 @@ export class UnreachableCaseError extends Error {
 }
 
 /**
- * Taken from the GovernorTimelockUpgradeable solidity
+ * Taken from the IGovernorUpgradeable solidity
  */
-enum GovernorTimelockStatus {
+enum ProposalState {
   Pending = 0,
   Active = 1,
   Canceled = 2,
@@ -129,6 +130,122 @@ export enum ProposalStageStatus {
    * The stage was terminated without execution
    */
   TERMINATED = 4,
+}
+
+export class GovernorExecuteStage implements ProposalStage {
+  public readonly name = "GovernorExecuteStage";
+  public readonly identifier: string;
+
+  public constructor(
+    public readonly targets: string[],
+    public readonly values: BigNumber[],
+    public readonly callDatas: string[],
+    public readonly description: string,
+
+    public readonly governorAddress: string,
+    public readonly signerOrProvider: Signer | providers.Provider
+  ) {
+    this.identifier = keccak256(
+      defaultAbiCoder.encode(
+        ["address[]", "uint256[]", "bytes[]", "bytes32"],
+        [targets, values, callDatas, id(description)]
+      )
+    );
+  }
+
+  public get governor() {
+    return GovernorUpgradeable__factory.connect(this.governorAddress, this.signerOrProvider);
+  }
+
+  public static async extractStages(
+    receipt: TransactionReceipt,
+    arbOneSignerOrProvider: Provider | Signer
+  ): Promise<GovernorExecuteStage[]> {
+    const govInterface = L2ArbitrumGovernor__factory.createInterface();
+    const proposalStages: GovernorExecuteStage[] = [];
+    // check if gov has timelock
+    for (const log of receipt.logs) {
+      if (log.topics.find((t) => t === govInterface.getEventTopic("ProposalCreated"))) {
+        // ensure gov has no timelock
+        const gov = L2ArbitrumGovernor__factory.connect(log.address, arbOneSignerOrProvider);
+        try {
+          await gov.timelock();
+          continue;
+        } catch {}
+
+        const propCreatedEvent = govInterface.parseLog(log)
+          .args as unknown as ProposalCreatedEventObject;
+
+        proposalStages.push(
+          new GovernorExecuteStage(
+            propCreatedEvent.targets,
+            (propCreatedEvent as any)[3], // ethers is parsing an array with a single 0 big number as undefined, so we lookup by index
+            propCreatedEvent.calldatas,
+            propCreatedEvent.description,
+            log.address,
+            arbOneSignerOrProvider
+          )
+        );
+      }
+    }
+
+    return proposalStages;
+  }
+
+  public async status(): Promise<ProposalStageStatus> {
+    const state = (await this.governor.state(this.identifier)) as ProposalState;
+
+    switch (state) {
+      case ProposalState.Pending:
+      case ProposalState.Active:
+        return ProposalStageStatus.PENDING;
+      case ProposalState.Succeeded:
+        return ProposalStageStatus.READY;
+      case ProposalState.Queued:
+      case ProposalState.Executed:
+        return ProposalStageStatus.EXECUTED;
+      case ProposalState.Canceled:
+      case ProposalState.Defeated:
+      case ProposalState.Expired:
+        return ProposalStageStatus.TERMINATED;
+      default:
+        throw new UnreachableCaseError(state);
+    }
+  }
+
+  public async execute(): Promise<void> {
+    await (
+      await this.governor.functions.execute(
+        this.targets,
+        this.values,
+        this.callDatas,
+        id(this.description)
+      )
+    ).wait();
+  }
+
+  public async getExecuteReceipt(): Promise<TransactionReceipt> {
+    // TODO who does the ProposalExecuted filter not accept a string?
+    // @ts-ignore
+    const proposalExecutedFilter = this.governor.filters.ProposalExecuted(this.identifier);
+    const provider = getProvider(this.signerOrProvider);
+
+    const logs = await provider!.getLogs({
+      fromBlock: 0,
+      toBlock: "latest",
+      ...proposalExecutedFilter,
+    });
+    if (logs.length !== 1) {
+      throw new ProposalStageError("Log length not 1", this.identifier, this.name);
+    }
+
+    return await provider!.getTransactionReceipt(logs[0].transactionHash);
+  }
+
+  public async getExecutionUrl(): Promise<string | undefined> {
+    const execReceipt = await this.getExecuteReceipt();
+    return `https://arbiscan.io/tx/${execReceipt.transactionHash}`;
+  }
 }
 
 /**
@@ -163,6 +280,14 @@ export class GovernorQueueStage implements ProposalStage {
     const proposalStages: GovernorQueueStage[] = [];
     for (const log of receipt.logs) {
       if (log.topics.find((t) => t === govInterface.getEventTopic("ProposalCreated"))) {
+        // ensure gov has timelock
+        const gov = L2ArbitrumGovernor__factory.connect(log.address, arbOneSignerOrProvider);
+        try {
+          await gov.timelock();
+        } catch {
+          continue;
+        }
+
         const propCreatedEvent = govInterface.parseLog(log)
           .args as unknown as ProposalCreatedEventObject;
 
@@ -185,20 +310,20 @@ export class GovernorQueueStage implements ProposalStage {
   public async status(): Promise<ProposalStageStatus> {
     const gov = L2ArbitrumGovernor__factory.connect(this.governorAddress, this.signerOrProvider);
 
-    const state = (await gov.state(this.identifier)) as GovernorTimelockStatus;
+    const state = (await gov.state(this.identifier)) as ProposalState;
 
     switch (state) {
-      case GovernorTimelockStatus.Pending:
-      case GovernorTimelockStatus.Active:
+      case ProposalState.Pending:
+      case ProposalState.Active:
         return ProposalStageStatus.PENDING;
-      case GovernorTimelockStatus.Succeeded:
+      case ProposalState.Succeeded:
         return ProposalStageStatus.READY;
-      case GovernorTimelockStatus.Queued:
-      case GovernorTimelockStatus.Executed:
+      case ProposalState.Queued:
+      case ProposalState.Executed:
         return ProposalStageStatus.EXECUTED;
-      case GovernorTimelockStatus.Canceled:
-      case GovernorTimelockStatus.Defeated:
-      case GovernorTimelockStatus.Expired:
+      case ProposalState.Canceled:
+      case ProposalState.Defeated:
+      case ProposalState.Expired:
         return ProposalStageStatus.TERMINATED;
       default:
         throw new UnreachableCaseError(state);
@@ -457,7 +582,7 @@ export class L2TimelockExecutionBatchStage implements ProposalStage {
 
   public async execute(): Promise<void> {
     const timelock = ArbitrumTimelock__factory.connect(this.timelockAddress, this.signerOrProvider);
-
+    // this
     const tx = await timelock.functions.executeBatch(
       this.targets,
       this.values,
