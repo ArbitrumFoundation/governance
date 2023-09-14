@@ -1,25 +1,28 @@
 import { Wallet } from "ethers";
-import { Multicall2__factory } from "../token-bridge-contracts/build/types";
 import { SecurityCouncilNomineeElectionGovernor__factory } from "../typechain-types";
-
+import { ArbitrumProvider } from "@arbitrum/sdk";
+import { JsonRpcProvider } from "@ethersproject/providers";
 export class SecurityCouncilElectionCreator {
   retryTime = 10 * 1000;
   public constructor(
     public readonly connectedSigner: Wallet,
-    public readonly nomineeElectionGovAddress: string,
-    public readonly multicallAddress: string
+    public readonly govChainProvider: JsonRpcProvider,
+    public readonly parentChainProvider: JsonRpcProvider,
+    public readonly nomineeElectionGovAddress: string
   ) {}
 
   public async checkAndCreateElection() {
-    const multicall = Multicall2__factory.connect(
-      this.multicallAddress,
-      this.connectedSigner.provider
-    );
     const gov = SecurityCouncilNomineeElectionGovernor__factory.connect(
       this.nomineeElectionGovAddress,
       this.connectedSigner.provider
     );
-    const parentChainTimestamp = await multicall.getCurrentBlockTimestamp();
+    const arbProvider = new ArbitrumProvider(this.govChainProvider);
+
+    const { l1BlockNumber } = await arbProvider.getBlock(await arbProvider.getBlockNumber());
+    const { timestamp: parentChainTimestamp } = await this.parentChainProvider.getBlock(
+      l1BlockNumber
+    );
+
     const electionTimestamp = await gov.electionToTimestamp(await gov.electionCount());
 
     const timeToElectionSeconds = electionTimestamp.sub(parentChainTimestamp).toNumber();

@@ -295,8 +295,9 @@ const main = async () => {
     if (options.writeMode) {
       const electionCreator = new SecurityCouncilElectionCreator(
         govChainSignerOrProvider as Wallet,
-        options.nomineeElectionGovernorAddress,
-        "0x7eCfBaa8742fDf5756DAC92fbc8b90a19b8815bF"
+        govChainProvider,
+        l1Provider,
+        options.nomineeElectionGovernorAddress
       );
       electionCreator.run();
     }
