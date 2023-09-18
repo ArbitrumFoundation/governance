@@ -7,6 +7,7 @@ docker-compose.yml
 docker-compose.override.yml
 
 # Ignore .git and .cache directories
+.git
 .cache
 
 # Ignore log, tmp, and dist directories
