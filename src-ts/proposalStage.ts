@@ -30,8 +30,6 @@ import {
   ProposalCreatedEventObject,
   ProposalQueuedEventObject,
 } from "../typechain-types/src/L2ArbitrumGovernor";
-import { CallScheduledEventObject } from "../typechain-types/src/ArbitrumTimelock";
-import { l2Networks } from "@arbitrum/sdk/dist/lib/dataEntities/networks";
 type Provider = providers.Provider;
 
 export function isSigner(signerOrProvider: Signer | Provider): signerOrProvider is Signer {
