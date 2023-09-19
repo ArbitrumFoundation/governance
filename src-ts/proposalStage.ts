@@ -30,7 +30,6 @@ import {
   ProposalCreatedEventObject,
   ProposalQueuedEventObject,
 } from "../typechain-types/src/L2ArbitrumGovernor";
-import { CallScheduledEventObject } from "../typechain-types/src/ArbitrumTimelock";
 type Provider = providers.Provider;
 
 export function isSigner(signerOrProvider: Signer | Provider): signerOrProvider is Signer {
@@ -277,13 +276,15 @@ export class L2TimelockExecutionBatchStage implements ProposalStage {
     governor: string,
     proposalId: string,
     provider: Provider,
-    startBlock: number
+    startBlock: number,
+    endBlock: number
   ): Promise<ProposalCreatedEventObject | undefined> {
     const govInterface = L2ArbitrumGovernor__factory.createInterface();
     const filterTopics = govInterface.encodeFilterTopics("ProposalCreated", []);
+
     const logs = await provider.getLogs({
       fromBlock: startBlock,
-      toBlock: "latest",
+      toBlock: endBlock,
       address: governor,
       topics: filterTopics,
     });
@@ -319,25 +320,29 @@ export class L2TimelockExecutionBatchStage implements ProposalStage {
 
   public static async extractStages(
     receipt: TransactionReceipt,
-    arbOneSignerOrProvider: Provider | Signer,
-    startBlock: number
+    arbOneSignerOrProvider: Provider | Signer
   ): Promise<L2TimelockExecutionBatchStage[]> {
     const govInterface = L2ArbitrumGovernor__factory.createInterface();
     const proposalStages: L2TimelockExecutionBatchStage[] = [];
     for (const log of receipt.logs) {
       if (log.topics.find((t) => t === govInterface.getEventTopic("ProposalQueued"))) {
-        const propCreatedObj = govInterface.parseLog(log)
+        const propQueuedObj = govInterface.parseLog(log)
           .args as unknown as ProposalQueuedEventObject;
+
+        // 10m ~ 1 month on arbitrum
+        const propCreatedStart = log.blockNumber - 10000000;
+        const propCreatedEnd = log.blockNumber;
 
         const propCreatedEvent = await this.getProposalCreatedData(
           log.address,
-          propCreatedObj.proposalId.toHexString(),
+          propQueuedObj.proposalId.toHexString(),
           await getProvider(arbOneSignerOrProvider)!,
-          startBlock
+          propCreatedStart,
+          propCreatedEnd
         );
         if (!propCreatedEvent) {
           throw new Error(
-            `Could not find proposal created event: ${propCreatedObj.proposalId.toHexString()}`
+            `Could not find proposal created event: ${propQueuedObj.proposalId.toHexString()}`
           );
         }
         // calculate the operation id, and look for it in this receipt
@@ -362,7 +367,6 @@ export class L2TimelockExecutionBatchStage implements ProposalStage {
           timelockAddress,
           arbOneSignerOrProvider
         );
-
         proposalStages.push(executeBatch);
       }
     }
@@ -918,12 +922,16 @@ export class RetryableExecutionStage implements ProposalStage {
     const stages: RetryableExecutionStage[] = [];
     const l1Receipt = new L1TransactionReceipt(receipt);
     const l1ToL2Events = l1Receipt.getMessageEvents();
-    const network = await getL2Network(l2ProviderOrSigner);
+    let network;
     for (const e of l1ToL2Events.filter(
-      (e) =>
-        e.bridgeMessageEvent.kind === InboxMessageKind.L1MessageType_submitRetryableTx &&
-        e.bridgeMessageEvent.inbox.toLowerCase() === network.ethBridge.inbox.toLowerCase()
+      (e) => e.bridgeMessageEvent.kind === InboxMessageKind.L1MessageType_submitRetryableTx
     )) {
+      if (!network) {
+        network = await getL2Network(l2ProviderOrSigner);
+      }
+      if (e.bridgeMessageEvent.inbox.toLowerCase() !== network.ethBridge.inbox.toLowerCase()) {
+        continue;
+      }
       const messageParser = new SubmitRetryableMessageDataParser();
       const inboxMessageData = messageParser.parse(e.inboxMessageEvent.data);
       const message = L1ToL2Message.fromEventComponents(

@@ -310,12 +310,7 @@ export const l2L1MonitoringValueTest = async (
     proposalString
   );
 
-  const stageFactory = new StageFactory(
-    await l2Signer.provider!.getBlockNumber(),
-    l2Signer,
-    l1Signer,
-    l2Signer
-  );
+  const stageFactory = new StageFactory(l2Signer, l1Signer, l2Signer);
   const proposalMonitor = new GovernorProposalMonitor(
     l2GovernorContract.address,
     l2Signer.provider!,
@@ -442,12 +437,7 @@ export const l2L1L2MonitoringValueTest = async (
     [transferExecution],
     proposalString
   );
-  const stageFactory = new StageFactory(
-    await l2Signer.provider!.getBlockNumber(),
-    l2Signer,
-    l1Signer,
-    l2Signer
-  );
+  const stageFactory = new StageFactory(l2Signer, l1Signer, l2Signer);
   const proposalMonitor = new GovernorProposalMonitor(
     l2GovernorContract.address,
     l2Signer.provider!,
@@ -546,12 +536,7 @@ export const l2L1MonitoringTest = async (
     proposalString
   );
 
-  const stageFactory = new StageFactory(
-    await l2Signer.provider!.getBlockNumber(),
-    l2Signer,
-    l1Signer,
-    l2Signer
-  );
+  const stageFactory = new StageFactory(l2Signer, l1Signer, l2Signer);
   const proposalMonitor = new GovernorProposalMonitor(
     l2GovernorContract.address,
     l2Signer.provider!,
@@ -644,12 +629,7 @@ export const l2L1L2MonitoringTest = async (
     proposalString
   );
 
-  const stageFactory = new StageFactory(
-    await l2Signer.provider!.getBlockNumber(),
-    l2Signer,
-    l1Signer,
-    l2Signer
-  );
+  const stageFactory = new StageFactory(l2Signer, l1Signer, l2Signer);
   const proposalMonitor = new GovernorProposalMonitor(
     l2GovernorContract.address,
     l2Signer.provider!,
