@@ -1,7 +1,8 @@
-import { Wallet } from "ethers";
+import { Wallet, BigNumber } from "ethers";
 import { SecurityCouncilNomineeElectionGovernor__factory } from "../typechain-types";
-import { ArbitrumProvider } from "@arbitrum/sdk";
 import { JsonRpcProvider } from "@ethersproject/providers";
+import { getL1BlockNumberFromL2 } from "./utils";
+
 export class SecurityCouncilElectionCreator {
   retryTime = 10 * 1000;
   public constructor(
@@ -16,11 +17,11 @@ export class SecurityCouncilElectionCreator {
       this.nomineeElectionGovAddress,
       this.connectedSigner.provider
     );
-    const arbProvider = new ArbitrumProvider(this.govChainProvider);
 
-    const { l1BlockNumber } = await arbProvider.getBlock(await arbProvider.getBlockNumber());
+    const l1BlockNumber = await getL1BlockNumberFromL2(this.govChainProvider);
+    
     const { timestamp: parentChainTimestamp } = await this.parentChainProvider.getBlock(
-      l1BlockNumber
+      l1BlockNumber.toNumber()
     );
 
     const electionTimestamp = await gov.electionToTimestamp(await gov.electionCount());
@@ -32,7 +33,13 @@ export class SecurityCouncilElectionCreator {
       setTimeout(this.run, this.retryTime);
     } else {
       console.log(`Next election starts in ${timeToElectionSeconds} seconds`);
-      setTimeout(this.run, Math.max(timeToElectionSeconds * 1000, this.retryTime));
+      setTimeout(
+        this.run.bind(this),
+        Math.max(
+          Math.min(timeToElectionSeconds * 1000, 2147483647 /**32 bit int max */),
+          this.retryTime
+        )
+      );
     }
   }
 
