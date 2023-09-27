@@ -73,7 +73,6 @@ contract L2GovernanceFactoryTest is Test {
             ArbitrumDAOConstitution arbitrumDAOConstitution
         )
     {
-        L2GovernanceFactory l2GovernanceFactory;
         {
             address _coreTimelockLogic = address(new ArbitrumTimelock());
             address _coreGovernorLogic = address(new L2ArbitrumGovernor());

@@ -101,6 +101,7 @@ interface PipelineStage {
   explorerLink?: string;
   proposalLink?: string;
   children: PipelineStage[];
+  proposalDescription?: string
 }
 
 interface GovernorStatus {
@@ -165,6 +166,7 @@ class JsonLogger {
           explorerLink: e.publicExecutionUrl,
           proposalLink,
           children: [],
+          proposalDescription: e.proposalDescription
         };
 
         if (prevKey === originKey && !emittedStages.has(key)) {
@@ -205,6 +207,15 @@ const main = async () => {
   const novaProvider = new JsonRpcProvider(options.novaRpcUrl);
   const novaSignerOrProvider = options.writeMode ? new Wallet(ARB_KEY, novaProvider) : novaProvider;
 
+  if (options.writeMode) {
+    console.log(`Starting proposal monitor in write mode:`);
+    console.log(`L1 signer: ${(l1SignerOrProvider as Wallet).address}`);
+    console.log(`Arb One signer: ${(govChainSignerOrProvider as Wallet).address}`);
+    console.log(`Nova signer: ${(novaSignerOrProvider as Wallet).address}`);
+  } else {
+    console.log(`Starting monitor in read-only mode`);
+  }
+
   let jsonLogger;
   if (options.jsonOutputLocation) {
     jsonLogger = new JsonLogger(options.jsonOutputLocation, 1000);
@@ -212,7 +223,6 @@ const main = async () => {
   }
 
   const stageFactory = new StageFactory(
-    options.startBlock,
     govChainSignerOrProvider,
     l1SignerOrProvider,
     novaSignerOrProvider

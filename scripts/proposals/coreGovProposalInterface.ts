@@ -7,3 +7,13 @@ export interface CoreGovPropposal {
         calldata: string
     }
 }
+
+export interface CoreGovProposal {
+  actionChainIds: number[];
+  actionAddresses: string[];
+  description: string;
+  arbSysSendTxToL1Args: {
+    l1Timelock: string;
+    calldata: string;
+  },
+}

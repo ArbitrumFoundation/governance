@@ -21,6 +21,11 @@
             color: #1A2231;
         }
 
+        div.desc{
+            background-color: #eaeaea;
+            padding: 10px;
+        }
+
         table {
             width: 100%;
             border-collapse: collapse;
@@ -180,10 +185,16 @@
 
                             const proposalDiv = document.createElement('div');
                             governorDiv.appendChild(proposalDiv);
-                            if (stage.proposalLink) {
+                            if (stage.proposalLink) {                                
                                 proposalDiv.innerHTML = `<h3><a target="_blank" href="${stage.proposalLink}">Proposal ID: ${stage.identifier}</a></h3>`;
                             } else {
                                 proposalDiv.innerHTML = `<h3>Proposal ID: ${stage.identifier}</h3>`;
+                            }
+                            if (stage.proposalDescription){
+                                const descDiv = document.createElement('div');
+                                descDiv.className = "desc";
+                                descDiv.innerHTML = `<b>Description:</b> ${stage.proposalDescription.slice(0,300)}...`
+                                proposalDiv.appendChild(descDiv)
                             }
 
                             // Identify unique stages for the current proposal

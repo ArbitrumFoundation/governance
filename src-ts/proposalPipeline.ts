@@ -18,7 +18,6 @@ import { wait } from "./utils";
 
 export class StageFactory {
   constructor(
-    public readonly startBlock: number,
     public readonly arbOneSignerOrProvider: Signer | Provider,
     public readonly l1SignerOrProvider: Signer | Provider,
     public readonly novaSignerOrProvider: Signer | Provider
@@ -27,11 +26,7 @@ export class StageFactory {
   public async extractStages(receipt: TransactionReceipt): Promise<ProposalStage[]> {
     return [
       ...(await GovernorQueueStage.extractStages(receipt, this.arbOneSignerOrProvider)),
-      ...(await L2TimelockExecutionBatchStage.extractStages(
-        receipt,
-        this.arbOneSignerOrProvider,
-        this.startBlock
-      )),
+      ...(await L2TimelockExecutionBatchStage.extractStages(receipt, this.arbOneSignerOrProvider)),
       ...(await L1TimelockExecutionSingleStage.extractStages(receipt, this.l1SignerOrProvider)),
       ...(await L1TimelockExecutionBatchStage.extractStages(receipt, this.l1SignerOrProvider)),
       ...(await RetryableExecutionStage.extractStages(receipt, this.arbOneSignerOrProvider)),
@@ -64,6 +59,7 @@ export interface TrackerEvent {
   prevStage?: Omit<TrackerEvent, "status">;
   publicExecutionUrl?: string;
   error?: Error;
+  proposalDescription?: string;
 }
 
 export class StageTracker extends EventEmitter {
@@ -83,8 +79,6 @@ export class StageTracker extends EventEmitter {
   public override on(eventName: TrackerEventName, listener: (args: TrackerEvent) => void): this {
     return super.on(eventName, listener);
   }
-
-  private propagateTrackerSubcriptions(tracker: StageTracker) {}
 
   public async run() {
     let polling = true;
@@ -109,6 +103,8 @@ export class StageTracker extends EventEmitter {
               status === ProposalStageStatus.EXECUTED
                 ? await this.stage.getExecutionUrl()
                 : undefined,
+            proposalDescription:
+              this.stage instanceof GovernorQueueStage ? this.stage.description : undefined,
           });
           currentStatus = status;
         }
