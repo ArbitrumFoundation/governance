@@ -1,6 +1,6 @@
-export interface SingleActionCoreGovProposal {
-    actionChainID: number;
-    actionAddress: string;
+export interface CoreGovPropposal {
+    actionChainID: number[];
+    actionAddress: string[];
     description: string;
     arbSysSendTxToL1Args: {
         l1Timelock: string;
