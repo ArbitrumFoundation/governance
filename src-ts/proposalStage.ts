@@ -135,6 +135,9 @@ export enum ProposalStageStatus {
   TERMINATED = 4,
 }
 
+/**
+ * Governor with no timelock and no vetting period (i.e., SecurityCouncilMemberElectionGovernor)
+ */
 export class BaseGovernorExecuteStage implements ProposalStage {
   public readonly identifier: string;
 
@@ -163,6 +166,9 @@ export class BaseGovernorExecuteStage implements ProposalStage {
     return GovernorUpgradeable__factory.connect(this.governorAddress, this.signerOrProvider);
   }
 
+  /**
+   * Extract and instantiate appropriate governor proposal stage
+   */
   public static async extractStages(
     receipt: TransactionReceipt,
     arbOneSignerOrProvider: Provider | Signer
@@ -174,8 +180,6 @@ export class BaseGovernorExecuteStage implements ProposalStage {
         const propCreatedEvent = govInterface.parseLog(log)
           .args as unknown as ProposalCreatedEventObject;
 
-        // ensure gov has no timelock and no vetting period
-        
         if (await hasTimelock(log.address, getProvider(arbOneSignerOrProvider)!)) {
           proposalStages.push(
             new GovernorQueueStage(
@@ -286,10 +290,11 @@ export class GovernorWithVetterExecuteStage extends BaseGovernorExecuteStage {
   }
 
   public async status(): Promise<ProposalStageStatus> {
+    // If governor status returns "ready", check if in vetting period
     const status = await super.status();
     if (status == ProposalStageStatus.READY) {
       const vettingDeadline = await this.governor.proposalVettingDeadline(this.identifier);
-      const blockNumber = await getL1BlockNumberFromL2(getProvider(this.signerOrProvider)!)
+      const blockNumber = await getL1BlockNumberFromL2(getProvider(this.signerOrProvider)!);
       if (blockNumber.lte(vettingDeadline)) {
         return ProposalStageStatus.PENDING;
       }
@@ -306,18 +311,26 @@ export class GovernorQueueStage extends BaseGovernorExecuteStage {
     return "GovernorQueueStage";
   }
 
-  public async execute(): Promise<void> {
-    const gov = L2ArbitrumGovernor__factory.connect(this.governorAddress, this.signerOrProvider);
+  public get governor() {
+    return L2ArbitrumGovernor__factory.connect(this.governorAddress, this.signerOrProvider);
+  }
 
+  /**
+   * Execute on timelock
+   */
+  public async execute(): Promise<void> {
     await (
-      await gov.functions.queue(this.targets, this.values, this.callDatas, id(this.description))
+      await this.governor.functions.queue(
+        this.targets,
+        this.values,
+        this.callDatas,
+        id(this.description)
+      )
     ).wait();
   }
 
   public async getExecuteReceipt(): Promise<TransactionReceipt> {
-    const gov = L2ArbitrumGovernor__factory.connect(this.governorAddress, this.signerOrProvider);
-
-    const timelockAddress = await gov.timelock();
+    const timelockAddress = await this.governor.timelock();
     const timelock = ArbitrumTimelock__factory.connect(timelockAddress, this.signerOrProvider);
     const opId = await timelock.hashOperationBatch(
       this.targets,
