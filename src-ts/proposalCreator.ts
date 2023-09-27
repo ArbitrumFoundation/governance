@@ -153,7 +153,8 @@ export class RoundTripProposalCreator {
     upgradeAddrs: string[],
     upgradeValues: BigNumber[],
     upgradeDatas: string[],
-    proposalDescription: string
+    proposalDescription: string,
+    useSchedule = false // defaults to scheduleBatch in L1 timelock. If true, will use schedule. Can only be used if only one action is included in proposal
   ) {
     if (
       new Set([
@@ -224,15 +225,29 @@ export class RoundTripProposalCreator {
         l1Values.push(upgradeExecutorValue);
       }
     }
-
-    const l1TimelockScheduleCallData = l1Timelock.interface.encodeFunctionData("scheduleBatch", [
-      l1Targets,
-      l1Values,
-      l1CallDatas,
-      constants.HashZero,
-      descriptionHash,
-      minDelay,
-    ]);
+    const l1TimelockScheduleCallData = (() => {
+      if (useSchedule) {
+        if (upgradeAddrs.length > 1)
+          throw new Error("Must use schedule batch for multiple messages");
+        return l1Timelock.interface.encodeFunctionData("schedule", [
+          l1Targets[0],
+          l1Values[0],
+          l1CallDatas[0],
+          constants.HashZero,
+          descriptionHash,
+          minDelay,
+        ]);
+      } else {
+        return l1Timelock.interface.encodeFunctionData("scheduleBatch", [
+          l1Targets,
+          l1Values,
+          l1CallDatas,
+          constants.HashZero,
+          descriptionHash,
+          minDelay,
+        ]);
+      }
+    })();
 
     return {
       l1TimelockTo,
@@ -285,7 +300,6 @@ export class RoundTripProposalCreator {
       predecessor?: string;
     } = {}
   ) {
-
     // default upgrade value and predecessor values
     const { upgradeValue = constants.Zero, predecessor = "0x" } = options;
 

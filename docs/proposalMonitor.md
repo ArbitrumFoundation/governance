@@ -15,3 +15,10 @@ ETH_RPC=<your ethereum rpc here> yarn propmon
 ```
 
 Then navigate to `localhost:8080/propMonUi/propMonUi.html` in a browser. You will need to wait around 30 seconds whilst the propmon discovers all proposals and their stages. The propmon creates a proposalStage.json file that contains a json representation of the data you see on the web page.
+
+## Running with docker
+```
+docker build -t propmon -f propMon.Dockerfile .
+docker run -p 8080:8080 -e ETH_RPC=<your ethereum rpc here> propmon
+```
+Navigate to `localhost:8080/propMonUi/propMonUi.html`

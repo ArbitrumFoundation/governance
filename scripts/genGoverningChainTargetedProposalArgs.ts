@@ -18,9 +18,10 @@ export const generateArbSysArgs = async (
   l2Provider: JsonRpcProvider,
   l2UpgradeAddr: string,
   description: string,
+  useSchedule = false,
   upgradeValue = BigNumber.from(0),
   actionIfaceStr = "function perform() external",
-  upgradeArgs = []
+  upgradeArgs = [],
 ) => {
   const actionIface = new utils.Interface([actionIfaceStr]);
   const upgradeData = actionIface.encodeFunctionData("perform", upgradeArgs);
@@ -58,5 +59,5 @@ export const generateArbSysArgs = async (
   };
 
   const proposalCreator = new RoundTripProposalCreator(L1GovConfig, [upgradeConfig]);
-  return proposalCreator.createRoundTripCallDataForArbSysCall([l2UpgradeAddr], [upgradeValue],[upgradeData], description);
+  return proposalCreator.createRoundTripCallDataForArbSysCall([l2UpgradeAddr], [upgradeValue],[upgradeData], description, useSchedule);
 };

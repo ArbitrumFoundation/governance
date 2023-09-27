@@ -227,7 +227,6 @@ const main = async () => {
   }
 
   const stageFactory = new StageFactory(
-    options.startBlock,
     govChainSignerOrProvider,
     l1SignerOrProvider,
     novaSignerOrProvider
