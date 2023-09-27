@@ -10,7 +10,7 @@ import {
   RetryableExecutionStage,
   UnreachableCaseError,
   getProvider,
-  GovernorExecuteStage
+  BaseGovernorExecuteStage
 } from "./proposalStage";
 import { Signer } from "ethers";
 import { Provider, TransactionReceipt } from "@ethersproject/abstract-provider";
@@ -27,8 +27,7 @@ export class StageFactory {
 
   public async extractStages(receipt: TransactionReceipt): Promise<ProposalStage[]> {
     return [
-      ...(await GovernorExecuteStage.extractStages(receipt, this.arbOneSignerOrProvider)),
-      ...(await GovernorQueueStage.extractStages(receipt, this.arbOneSignerOrProvider)),
+      ...(await BaseGovernorExecuteStage.extractStages(receipt, this.arbOneSignerOrProvider)),
       ...(await L2TimelockExecutionBatchStage.extractStages(
         receipt,
         this.arbOneSignerOrProvider,
