@@ -1,10 +1,10 @@
-// not sure how to handle config, so just going to hardcode in an object for now
-
 import { Wallet, ethers } from "ethers";
 import { L2ArbitrumToken__factory, L2SecurityCouncilMgmtFactory__factory, SecurityCouncilManager__factory, SecurityCouncilMemberElectionGovernor__factory, SecurityCouncilMemberRemovalGovernor__factory, SecurityCouncilNomineeElectionGovernor__factory } from "../../typechain-types";
 import { DeployParamsStruct } from "../../typechain-types/src/security-council-mgmt/factories/L2SecurityCouncilMgmtFactory";
 import { TransparentUpgradeableProxy__factory } from "@arbitrum/sdk/dist/lib/abi/factories/TransparentUpgradeableProxy__factory";
 import { getNamedObjectItems } from "./utils";
+import dotenv from "dotenv";
+dotenv.config();
 
 // env vars:
 // RPC_URL (optional, defaults to http://localhost:8545)
@@ -44,41 +44,49 @@ const partialDeployParams: DeployParamsPartial = {
   ],
   l1TimelockMinDelay: 0,
   removalGovVotingDelay: 0,
-  removalGovVotingPeriod: minutes(10),
+  removalGovVotingPeriod: minutes(5 * 60),
   removalGovQuorumNumerator: 1000, // 10%
   removalGovProposalThreshold: ethers.utils.parseEther("1000000"), // 1 million tokens
   removalGovVoteSuccessNumerator: 8333, // todo: check this
-  removalGovMinPeriodAfterQuorum: minutes(3),
+  removalGovMinPeriodAfterQuorum: minutes(60),
   removalProposalExpirationBlocks: 100, // number of blocks after which a successful removal proposal expires
-  nomineeVettingDuration: minutes(10),
-  nomineeVetter: zxDead,
+  nomineeVettingDuration: minutes(60),
+  nomineeVetter: "0x000000000000000000000000000000000000dead",
   nomineeQuorumNumerator: 20, // 0.2%
-  nomineeVotingPeriod: minutes(10),
-  memberVotingPeriod: minutes(10),
-  fullWeightDuration: minutes(5),
+  nomineeVotingPeriod: minutes(5 * 60),
+  memberVotingPeriod: minutes(5 * 60),
+  fullWeightDuration: minutes(60),
 }
 
+// convert minutes to blocks
 function minutes(n: number) {
-  return Math.round(n * 60);
+  return Math.round(n * 60 / 12); // divide by 12 because 1 block per 12 seconds
+}
+
+async function deployBytecode(signer: Wallet, bytecode: string) {
+  const contract = await new ethers.ContractFactory([], bytecode, signer).deploy();
+  await contract.deployed();
+  return contract;
 }
 
 function deployNoopContract(signer: Wallet) {
-  // returns 1
-  const bytecode = "60088060093d393df360015f5260205ff3";
-  return new ethers.ContractFactory([], bytecode, signer).deploy();
+  return deployBytecode(signer, "60088060093d393df360015f5260205ff3");
 }
 
 function deployDummyGnosisSafe(signer: Wallet) {
   const bytecode = "608060405234801561001057600080fd5b50610154806100206000396000f3fe608060405234801561001057600080fd5b50600436106100365760003560e01c80632f54bf6e1461003b578063a0e67e2b14610064575b600080fd5b61004f6100493660046100a1565b50600190565b60405190151581526020015b60405180910390f35b61006c610079565b60405161005b91906100d1565b60408051600c8082526101a08201909252606091602082016101808036833701905050905090565b6000602082840312156100b357600080fd5b81356001600160a01b03811681146100ca57600080fd5b9392505050565b6020808252825182820181905260009190848201906040850190845b818110156101125783516001600160a01b0316835292840192918401916001016100ed565b5090969550505050505056fea26469706673582212200450c5c9306adc3deb1c0f327c8ca37c917cad674222ad7536b032eb3c0c3e5c64736f6c63430008100033";
-  return new ethers.ContractFactory([], bytecode, signer).deploy();
+  return deployBytecode(signer, bytecode);
 }
 
 async function deployToken(signer: Wallet) {
   const impl = await new L2ArbitrumToken__factory(signer).deploy();
+  await impl.deployed();
+
   const proxy = await new TransparentUpgradeableProxy__factory(signer).deploy(impl.address, zxDead, "0x");
+  await proxy.deployed();
 
   const token = L2ArbitrumToken__factory.connect(proxy.address, signer);
-  await token.initialize(zxDead, ethers.utils.parseEther("10000000000"), signer.address);
+  await (await token.initialize(zxDead, ethers.utils.parseEther("10000000000"), signer.address)).wait();
 
   return token;
 }
@@ -113,11 +121,23 @@ async function makeFullDeployParams(partialDeployParams: DeployParamsPartial, si
 }
 
 async function deployImplementationsForFactory(signer: Wallet) {
+  const nomineeElectionGovernor = await new SecurityCouncilNomineeElectionGovernor__factory(signer).deploy();
+  await nomineeElectionGovernor.deployed();
+
+  const memberElectionGovernor = await new SecurityCouncilMemberElectionGovernor__factory(signer).deploy();
+  await memberElectionGovernor.deployed();
+
+  const securityCouncilManager = await new SecurityCouncilManager__factory(signer).deploy();
+  await securityCouncilManager.deployed();
+
+  const securityCouncilMemberRemoverGov = await new SecurityCouncilMemberRemovalGovernor__factory(signer).deploy();
+  await securityCouncilMemberRemoverGov.deployed();
+
   return {
-    nomineeElectionGovernor: (await new SecurityCouncilNomineeElectionGovernor__factory(signer).deploy()).address,
-    memberElectionGovernor: (await new SecurityCouncilMemberElectionGovernor__factory(signer).deploy()).address,
-    securityCouncilManager: (await new SecurityCouncilManager__factory(signer).deploy()).address,
-    securityCouncilMemberRemoverGov: (await new SecurityCouncilMemberRemovalGovernor__factory(signer).deploy()).address,
+    nomineeElectionGovernor: nomineeElectionGovernor.address,
+    memberElectionGovernor: memberElectionGovernor.address,
+    securityCouncilManager: securityCouncilManager.address,
+    securityCouncilMemberRemoverGov: securityCouncilMemberRemoverGov.address,
   }
 }
 
@@ -132,6 +152,7 @@ async function main() {
 
   // deploy the actual factory contract
   const factory = await new L2SecurityCouncilMgmtFactory__factory(signer).deploy();
+  await factory.deployed();
 
   // make full deploy params
   const fullDeployParams = await makeFullDeployParams(partialDeployParams, signer);
