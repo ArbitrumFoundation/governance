@@ -28,10 +28,10 @@
     "@openzeppelin/contracts-upgradeable" "4.5.2"
     hardhat "^2.6.6"
 
-"@arbitrum/sdk@^3.1.6":
-  version "3.1.6"
-  resolved "https://registry.npmjs.org/@arbitrum/sdk/-/sdk-3.1.6.tgz"
-  integrity sha512-wY7RHmvY26yc/OuwpJY+kjgAmUJZDGDXaQxfSQTp2t6sSFO+8oFFVsKIthBCY2RpDGFUVTGpRjCUEXiuJ6/SFA==
+"@arbitrum/sdk@^3.1.11":
+  version "3.1.11"
+  resolved "https://registry.yarnpkg.com/@arbitrum/sdk/-/sdk-3.1.11.tgz#14fa67daceef7568b949e4a2695d561dd47eec5b"
+  integrity sha512-qD+igbOn8IoBH6ofvoV8OVYiEv/Dhszw9mFNp1QDY6srBihGAh/cUuA1PQ+tBSdhYda+gWcELBT5kbbVkpbE9w==
   dependencies:
     "@ethersproject/address" "^5.0.8"
     "@ethersproject/bignumber" "^5.1.1"

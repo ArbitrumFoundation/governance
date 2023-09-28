@@ -19,6 +19,8 @@ import {
   ArbitrumTimelock__factory,
   L1ArbitrumTimelock__factory,
   L2ArbitrumGovernor__factory,
+  GovernorUpgradeable__factory,
+  SecurityCouncilNomineeElectionGovernor__factory,
 } from "../typechain-types";
 import { Inbox__factory } from "@arbitrum/sdk/dist/lib/abi/factories/Inbox__factory";
 import { EventArgs } from "@arbitrum/sdk/dist/lib/dataEntities/event";
@@ -28,8 +30,11 @@ import { BridgeCallTriggeredEventObject } from "../typechain-types/@arbitrum/nit
 import { Bridge__factory } from "@arbitrum/sdk/dist/lib/abi/factories/Bridge__factory";
 import {
   ProposalCreatedEventObject,
+  ProposalExecutedEventObject,
   ProposalQueuedEventObject,
 } from "../typechain-types/src/L2ArbitrumGovernor";
+import { hasTimelock, hasVettingPeriod, getL1BlockNumberFromL2 } from "./utils";
+
 type Provider = providers.Provider;
 
 export function isSigner(signerOrProvider: Signer | Provider): signerOrProvider is Signer {
@@ -95,9 +100,9 @@ export class UnreachableCaseError extends Error {
 }
 
 /**
- * Taken from the GovernorTimelockUpgradeable solidity
+ * Taken from the IGovernorUpgradeable solidity
  */
-enum GovernorTimelockStatus {
+enum ProposalState {
   Pending = 0,
   Active = 1,
   Canceled = 2,
@@ -131,10 +136,9 @@ export enum ProposalStageStatus {
 }
 
 /**
- * When a vote has passed, queue a proposal in the governor timelock
+ * Governor with no timelock and no vetting period (i.e., SecurityCouncilMemberElectionGovernor)
  */
-export class GovernorQueueStage implements ProposalStage {
-  public readonly name = "GovernorQueueStage";
+export class BaseGovernorExecuteStage implements ProposalStage {
   public readonly identifier: string;
 
   public constructor(
@@ -154,27 +158,62 @@ export class GovernorQueueStage implements ProposalStage {
     );
   }
 
+  public get name() {
+    return "BaseGovernorExecuteStage";
+  }
+
+  public get governor() {
+    return GovernorUpgradeable__factory.connect(this.governorAddress, this.signerOrProvider);
+  }
+
+  /**
+   * Extract and instantiate appropriate governor proposal stage
+   */
   public static async extractStages(
     receipt: TransactionReceipt,
     arbOneSignerOrProvider: Provider | Signer
-  ): Promise<GovernorQueueStage[]> {
+  ): Promise<BaseGovernorExecuteStage[]> {
     const govInterface = L2ArbitrumGovernor__factory.createInterface();
-    const proposalStages: GovernorQueueStage[] = [];
+    const proposalStages: BaseGovernorExecuteStage[] = [];
     for (const log of receipt.logs) {
       if (log.topics.find((t) => t === govInterface.getEventTopic("ProposalCreated"))) {
         const propCreatedEvent = govInterface.parseLog(log)
           .args as unknown as ProposalCreatedEventObject;
 
-        proposalStages.push(
-          new GovernorQueueStage(
-            propCreatedEvent.targets,
-            (propCreatedEvent as any)[3], // ethers is parsing an array with a single 0 big number as undefined, so we lookup by index
-            propCreatedEvent.calldatas,
-            propCreatedEvent.description,
-            log.address,
-            arbOneSignerOrProvider
-          )
-        );
+        if (await hasTimelock(log.address, getProvider(arbOneSignerOrProvider)!)) {
+          proposalStages.push(
+            new GovernorQueueStage(
+              propCreatedEvent.targets,
+              (propCreatedEvent as any)[3], // ethers is parsing an array with a single 0 big number as undefined, so we lookup by index
+              propCreatedEvent.calldatas,
+              propCreatedEvent.description,
+              log.address,
+              arbOneSignerOrProvider
+            )
+          );
+        } else if (await hasVettingPeriod(log.address, getProvider(arbOneSignerOrProvider)!)) {
+          proposalStages.push(
+            new GovernorWithVetterExecuteStage(
+              propCreatedEvent.targets,
+              (propCreatedEvent as any)[3], // ethers is parsing an array with a single 0 big number as undefined, so we lookup by index
+              propCreatedEvent.calldatas,
+              propCreatedEvent.description,
+              log.address,
+              arbOneSignerOrProvider
+            )
+          );
+        } else {
+          proposalStages.push(
+            new BaseGovernorExecuteStage(
+              propCreatedEvent.targets,
+              (propCreatedEvent as any)[3], // ethers is parsing an array with a single 0 big number as undefined, so we lookup by index
+              propCreatedEvent.calldatas,
+              propCreatedEvent.description,
+              log.address,
+              arbOneSignerOrProvider
+            )
+          );
+        }
       }
     }
 
@@ -182,22 +221,19 @@ export class GovernorQueueStage implements ProposalStage {
   }
 
   public async status(): Promise<ProposalStageStatus> {
-    const gov = L2ArbitrumGovernor__factory.connect(this.governorAddress, this.signerOrProvider);
-
-    const state = (await gov.state(this.identifier)) as GovernorTimelockStatus;
-
+    const state = (await this.governor.state(this.identifier)) as ProposalState;
     switch (state) {
-      case GovernorTimelockStatus.Pending:
-      case GovernorTimelockStatus.Active:
+      case ProposalState.Pending:
+      case ProposalState.Active:
         return ProposalStageStatus.PENDING;
-      case GovernorTimelockStatus.Succeeded:
+      case ProposalState.Succeeded:
         return ProposalStageStatus.READY;
-      case GovernorTimelockStatus.Queued:
-      case GovernorTimelockStatus.Executed:
+      case ProposalState.Queued:
+      case ProposalState.Executed:
         return ProposalStageStatus.EXECUTED;
-      case GovernorTimelockStatus.Canceled:
-      case GovernorTimelockStatus.Defeated:
-      case GovernorTimelockStatus.Expired:
+      case ProposalState.Canceled:
+      case ProposalState.Defeated:
+      case ProposalState.Expired:
         return ProposalStageStatus.TERMINATED;
       default:
         throw new UnreachableCaseError(state);
@@ -205,17 +241,96 @@ export class GovernorQueueStage implements ProposalStage {
   }
 
   public async execute(): Promise<void> {
-    const gov = L2ArbitrumGovernor__factory.connect(this.governorAddress, this.signerOrProvider);
-
     await (
-      await gov.functions.queue(this.targets, this.values, this.callDatas, id(this.description))
+      await this.governor.functions.execute(
+        this.targets,
+        this.values,
+        this.callDatas,
+        id(this.description)
+      )
     ).wait();
   }
 
   public async getExecuteReceipt(): Promise<TransactionReceipt> {
-    const gov = L2ArbitrumGovernor__factory.connect(this.governorAddress, this.signerOrProvider);
+    const govInterface = GovernorUpgradeable__factory.createInterface();
 
-    const timelockAddress = await gov.timelock();
+    const proposalExecutedFilter = this.governor.filters.ProposalExecuted();
+    const provider = getProvider(this.signerOrProvider);
+
+    const logs = await provider!.getLogs({
+      fromBlock: 0,
+      toBlock: "latest",
+      ...proposalExecutedFilter,
+    });
+    for (let log of logs) {
+      const eventObject = govInterface.parseLog(log).args as unknown as ProposalExecutedEventObject;
+      if (eventObject.proposalId.toHexString() == this.identifier) {
+        return await provider!.getTransactionReceipt(log.transactionHash);
+      }
+    }
+    throw new ProposalStageError("Execution event not found", this.identifier, this.name);
+  }
+
+  public async getExecutionUrl(): Promise<string | undefined> {
+    const execReceipt = await this.getExecuteReceipt();
+    return `https://arbiscan.io/tx/${execReceipt.transactionHash}`;
+  }
+}
+
+export class GovernorWithVetterExecuteStage extends BaseGovernorExecuteStage {
+  public get name() {
+    return "GovernorWithVetterExecuteStage";
+  }
+
+  public get governor() {
+    return SecurityCouncilNomineeElectionGovernor__factory.connect(
+      this.governorAddress,
+      this.signerOrProvider
+    );
+  }
+
+  public async status(): Promise<ProposalStageStatus> {
+    // If governor status returns "ready", check if in vetting period
+    const status = await super.status();
+    if (status == ProposalStageStatus.READY) {
+      const vettingDeadline = await this.governor.proposalVettingDeadline(this.identifier);
+      const blockNumber = await getL1BlockNumberFromL2(getProvider(this.signerOrProvider)!);
+      if (blockNumber.lte(vettingDeadline)) {
+        return ProposalStageStatus.PENDING;
+      }
+    }
+    return status;
+  }
+}
+
+/**
+ * When a vote has passed, queue a proposal in the governor timelock
+ */
+export class GovernorQueueStage extends BaseGovernorExecuteStage {
+  public get name() {
+    return "GovernorQueueStage";
+  }
+
+  public get governor() {
+    return L2ArbitrumGovernor__factory.connect(this.governorAddress, this.signerOrProvider);
+  }
+
+  /**
+   * Execute on timelock
+   */
+  public async execute(): Promise<void> {
+    await (
+      await this.governor.functions.queue(
+        this.targets,
+        this.values,
+        this.callDatas,
+        id(this.description)
+      )
+    ).wait();
+  }
+
+  public async getExecuteReceipt(): Promise<TransactionReceipt> {
+    const timelockAddress = await this.governor.timelock();
     const timelock = ArbitrumTimelock__factory.connect(timelockAddress, this.signerOrProvider);
     const opId = await timelock.hashOperationBatch(
       this.targets,
@@ -238,11 +353,6 @@ export class GovernorQueueStage implements ProposalStage {
     }
 
     return await provider!.getTransactionReceipt(logs[0].transactionHash);
-  }
-
-  public async getExecutionUrl(): Promise<string | undefined> {
-    const execReceipt = await this.getExecuteReceipt();
-    return `https://arbiscan.io/tx/${execReceipt.transactionHash}`;
   }
 }
 
@@ -461,7 +571,6 @@ export class L2TimelockExecutionBatchStage implements ProposalStage {
 
   public async execute(): Promise<void> {
     const timelock = ArbitrumTimelock__factory.connect(this.timelockAddress, this.signerOrProvider);
-
     const tx = await timelock.functions.executeBatch(
       this.targets,
       this.values,

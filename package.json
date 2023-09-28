@@ -42,11 +42,11 @@
     "coverage:report": "yarn coverage:filtered-report && yarn coverage:htmlreport && yarn coverage:open-report",
     "coverage:refresh": "yarn coverage:filtered-report && yarn coverage:htmlreport",
     "propmon:ui": "cd src-ts && http-server . -p 8080",
-    "propmon:service": "ts-node ./src-ts/proposalMonitorCli.ts --jsonOutputLocation ./src-ts/propMonUi/proposalState.json --l1RpcUrl $ETH_RPC --govChainRpcUrl https://arb1.arbitrum.io/rpc --novaRpcUrl https://nova.arbitrum.io/rpc --coreGovernorAddress 0xf07DeD9dC292157749B6Fd268E37DF6EA38395B9 --treasuryGovernorAddress 0x789fC99093B09aD01C34DC7251D0C89ce743e5a4 --sevenTwelveCouncil 0x895c9fc6bcf06e553b54A9fE11D948D67a9B76FA --pollingIntervalSeconds 5",
+    "propmon:service": "ts-node ./src-ts/proposalMonitorCli.ts --jsonOutputLocation ./src-ts/propMonUi/proposalState.json --l1RpcUrl $ETH_RPC --govChainRpcUrl https://arb1.arbitrum.io/rpc --novaRpcUrl https://nova.arbitrum.io/rpc --coreGovernorAddress 0xf07DeD9dC292157749B6Fd268E37DF6EA38395B9 --treasuryGovernorAddress 0x789fC99093B09aD01C34DC7251D0C89ce743e5a4 --sevenTwelveCouncil 0x895c9fc6bcf06e553b54A9fE11D948D67a9B76FA --nomineeElectionGovernorAddress 0x8a1cDA8dee421cD06023470608605934c16A05a0  --pollingIntervalSeconds 5",
     "propmon": "yarn propmon:service & yarn propmon:ui"
   },
   "devDependencies": {
-    "@arbitrum/sdk": "^3.1.6",
+    "@arbitrum/sdk": "^3.1.11",
     "@ethersproject/abi": "^5.7.0",
     "@ethersproject/providers": "^5.7.2",
     "@nomicfoundation/hardhat-chai-matchers": "^1.0.4",

@@ -2,6 +2,8 @@ import { BigNumber, Wallet } from "ethers";
 import { JsonRpcProvider } from "@ethersproject/providers";
 import { ProposalStageStatus, getProvider } from "./proposalStage";
 import { StageFactory, TrackerEventName } from "./proposalPipeline";
+import { SecurityCouncilElectionCreator } from "./securityCouncilElectionCreator";
+
 import * as dotenv from "dotenv";
 import * as fs from "fs";
 dotenv.config();
@@ -24,6 +26,7 @@ const options = yargs(process.argv.slice(2))
     novaRpcUrl: { type: "string", demandOption: true },
     coreGovernorAddress: { type: "string", demandOption: false },
     treasuryGovernorAddress: { type: "string", demandOption: false },
+    nomineeElectionGovernorAddress: { type: "string", demandOption: false },
     sevenTwelveCouncilAddress: { type: "string", demandOption: false },
     startBlock: { type: "number", demandOption: false, default: 72559827 },
     pollingIntervalSeconds: { type: "number", demandOption: false, default: 300 },
@@ -39,6 +42,7 @@ const options = yargs(process.argv.slice(2))
   coreGovernorAddress?: string;
   treasuryGovernorAddress?: string;
   sevenTwelveCouncilAddress?: string;
+  nomineeElectionGovernorAddress?: string;
   startBlock: number;
   pollingIntervalSeconds: number;
   blockLag: number;
@@ -101,7 +105,7 @@ interface PipelineStage {
   explorerLink?: string;
   proposalLink?: string;
   children: PipelineStage[];
-  proposalDescription?: string
+  proposalDescription?: string;
 }
 
 interface GovernorStatus {
@@ -166,7 +170,7 @@ class JsonLogger {
           explorerLink: e.publicExecutionUrl,
           proposalLink,
           children: [],
-          proposalDescription: e.proposalDescription
+          proposalDescription: e.proposalDescription,
         };
 
         if (prevKey === originKey && !emittedStages.has(key)) {
@@ -273,7 +277,32 @@ const main = async () => {
     sevTwelve = startMonitor("7-12 Council", sevenTwelveMonitor, jsonLogger, options.proposalId);
   }
 
-  await Promise.all([roundTrip, treasury, sevTwelve]);
+  let electionGov;
+  if (options.nomineeElectionGovernorAddress) {
+    console.log("Starting Security Council Elections Governor Monitor");
+    const electionMonitor = new GovernorProposalMonitor(
+      options.nomineeElectionGovernorAddress,
+      getProvider(govChainSignerOrProvider)!,
+      options.pollingIntervalSeconds * 1000,
+      options.blockLag,
+      options.startBlock,
+      stageFactory,
+      options.writeMode
+    );
+    electionGov = startMonitor("Election", electionMonitor, jsonLogger, options.proposalId);
+
+    if (options.writeMode) {
+      const electionCreator = new SecurityCouncilElectionCreator(
+        govChainSignerOrProvider as Wallet,
+        govChainProvider,
+        l1Provider,
+        options.nomineeElectionGovernorAddress
+      );
+      electionCreator.run();
+    }
+  }
+
+  await Promise.all([roundTrip, treasury, sevTwelve, electionGov]);
 };
 
 main().then(() => console.log("Done."));
