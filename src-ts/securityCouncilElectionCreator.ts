@@ -4,7 +4,7 @@ import { JsonRpcProvider } from "@ethersproject/providers";
 import { getL1BlockNumberFromL2 } from "./utils";
 
 export class SecurityCouncilElectionCreator {
-  retryTime = 10 * 1000;
+  public readonly retryTime = 10 * 1000;
   public constructor(
     public readonly connectedSigner: Wallet,
     public readonly govChainProvider: JsonRpcProvider,
