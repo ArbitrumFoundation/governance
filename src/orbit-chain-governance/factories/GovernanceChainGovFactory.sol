@@ -36,6 +36,14 @@ contract GovernanceChainGovFactory is Ownable {
     error NotAContract(address _address);
     error NotAGovernanceToken(address _address);
 
+    address public govLogic;
+    address public timelockLogic;
+
+    constructor() {
+        govLogic = address(new L2ArbitrumGovernor());
+        timelockLogic = address(new ArbitrumTimelock());
+    }
+
     function deployStep1(DeployParams memory params)
         public
         virtual
@@ -64,13 +72,12 @@ contract GovernanceChainGovFactory is Ownable {
 
         // deploy and init the timelock
         ArbitrumTimelock coreTimelock =
-            deployTimelock(ProxyAdmin(params._govChainProxyAdmin), address(new ArbitrumTimelock()));
+            deployTimelock(ProxyAdmin(params._govChainProxyAdmin), timelockLogic);
         coreTimelock.initialize(params._minTimelockDelay, new address[](0), new address[](0));
 
         // deploy and init the core governor
-        L2ArbitrumGovernor coreGov = deployGovernor(
-            ProxyAdmin(params._govChainProxyAdmin), address(new L2ArbitrumGovernor())
-        );
+        L2ArbitrumGovernor coreGov =
+            deployGovernor(ProxyAdmin(params._govChainProxyAdmin), govLogic);
         coreGov.initialize({
             _token: IVotesUpgradeable(params._governanceToken),
             _timelock: coreTimelock,
@@ -84,9 +91,8 @@ contract GovernanceChainGovFactory is Ownable {
 
         // governor can submit proposals to timelock propose
         coreTimelock.grantRole(coreTimelock.PROPOSER_ROLE(), address(coreGov));
-        bytes32 cancellerRole = coreTimelock.CANCELLER_ROLE();
         // upgrade executor can cancel
-        coreTimelock.grantRole(cancellerRole, params._govChainUpExec);
+        coreTimelock.grantRole(coreTimelock.CANCELLER_ROLE(), params._govChainUpExec);
 
         // anyone is allowed to execute on the timelock
         coreTimelock.grantRole(coreTimelock.EXECUTOR_ROLE(), address(0));
