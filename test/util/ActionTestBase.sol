@@ -16,6 +16,7 @@ import "../../src/L1ArbitrumTimelock.sol";
 import "../../src/FixedDelegateErc20Wallet.sol";
 import "../util/TestUtil.sol";
 import "../../src/UpgradeExecutor.sol";
+import "../../src/ArbitrumDAOConstitution.sol";
 import "../../src/gov-action-contracts/address-registries/L1AddressRegistry.sol" as _ar;
 import "../../src/gov-action-contracts/address-registries/L2AddressRegistry.sol" as _ar1;
 import "../../src/gov-action-contracts/address-registries/interfaces.sol" as _ifaces;
@@ -28,6 +29,8 @@ abstract contract ActionTestBase {
     address executor0 = address(138);
     address executor1 = address(139);
     address executor2 = address(140);
+
+    bytes32 constitutionHash = bytes32("0x010101");
 
     address[] outboxesToAdd;
     address[] outboxesToRemove;
@@ -49,7 +52,9 @@ abstract contract ActionTestBase {
     ArbitrumTimelock coreTimelock;
     L2ArbitrumGovernor treasuryGov;
     ArbitrumTimelock treasuryTimelock;
+    ArbitrumDAOConstitution arbitrumDAOConstitution;
     _ar1.L2AddressRegistry arbOneAddressRegistry;
+    FixedDelegateErc20Wallet treasuryWallet;
 
     function setUp() public {
         outboxesToAdd =
@@ -93,6 +98,9 @@ abstract contract ActionTestBase {
         executors2[0] = executor2;
         arbOneUe.initialize(address(arbOneUe), executors2);
 
+        arbitrumDAOConstitution = new ArbitrumDAOConstitution(constitutionHash);
+        arbitrumDAOConstitution.transferOwnership(address(arbOneUe));
+
         arbOneToken = L2ArbitrumToken(TestUtil.deployProxy(address(new L2ArbitrumToken())));
         arbOneToken.initialize(address(4567), 10_000_000_000, address(arbOneUe));
         coreTimelock =
@@ -121,13 +129,13 @@ abstract contract ActionTestBase {
         treasuryTimelock.revokeRole(treasuryTimelock.TIMELOCK_ADMIN_ROLE(), address(this));
         treasuryGov.initialize(arbOneToken, treasuryTimelock, address(arbOneUe), 7, 8, 600, 60, 60);
 
-        FixedDelegateErc20Wallet treasuryWallet =
+        treasuryWallet =
             FixedDelegateErc20Wallet(TestUtil.deployProxy(address(new FixedDelegateErc20Wallet())));
         treasuryWallet.initialize(
             address(arbOneToken), treasuryGov.EXCLUDE_ADDRESS(), address(treasuryTimelock)
         );
 
         arbOneAddressRegistry =
-        new _ar1.L2AddressRegistry(_ar1.IL2ArbitrumGoverner(address(coreGov)), _ar1.IL2ArbitrumGoverner(address(treasuryGov)), _ar1.IFixedDelegateErc20Wallet(address(treasuryWallet)));
+        new _ar1.L2AddressRegistry(_ar1.IL2ArbitrumGoverner(address(coreGov)), _ar1.IL2ArbitrumGoverner(address(treasuryGov)), _ar1.IFixedDelegateErc20Wallet(address(treasuryWallet)), _ar1.IArbitrumDAOConstitution(address(arbitrumDAOConstitution)));
     }
 }

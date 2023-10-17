@@ -1,3 +1,4 @@
+# when changing optimizer settings, make sure to also change settings in hardhat.config.ts
 [profile.default]
 src = 'src'
 out = 'out'
@@ -5,6 +6,10 @@ libs = ['lib']
 optimizer = true
 optimizer_runs = 20000
 via_ir = false
+solc_version = '0.8.16'
+
+[profile.sec_council_mgmt]
+optimizer_runs = 1500
 
 [fmt]
 number_underscore = 'thousands'
