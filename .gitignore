@@ -23,3 +23,5 @@ dist/
 report/
 lcov.info
 lcov.info.pruned
+types/
+proposalState.json

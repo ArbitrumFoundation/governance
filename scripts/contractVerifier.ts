@@ -54,6 +54,7 @@ export class ContractVerifier {
     arbitrumDAOConstitution: "src/ArbitrumDAOConstitution.sol:ArbitrumDAOConstitution",
     l1Executor: this.TUP,
     l1ProxyAdmin: this.PROXY_ADMIN,
+    l1TimelockLogic: "src/L1ArbitrumTimelock.sol:L1ArbitrumTimelock",
     l1Timelock: this.TUP,
     vestedWalletFactory: "src/ArbitrumVestingWalletFactory.sol:ArbitrumVestingWalletsFactory",
     l2TokenDistributor: "src/TokenDistributor.sol:TokenDistributor",
@@ -64,6 +65,10 @@ export class ContractVerifier {
     L2AddressRegistry: "src/gov-action-contracts/address-registries/L2AddressRegistry.sol:L2AddressRegistry",
     ArbGoerliSetInitialGovParamsAction: "src/gov-action-contracts/goerli/ArbGoerliSetInitialGovParamsAction.sol:ArbGoerliSetInitialGovParamsAction",
     AIP1Point2Action: "src/gov-action-contracts/AIPs/AIP1Point2Action.sol:AIP1Point2Action",
+    AIP4Action: "src/gov-action-contracts/AIPs/AIP4Action.sol:AIP4Action",
+    SetSweepReceiverAction: "src/gov-action-contracts/AIPs/AIP7/SetSweepReceiverAction.sol:SetSweepReceiverAction",
+    UpdateGasChargeAction: "src/gov-action-contracts/AIPs/AIP7/UpdateGasChargeAction.sol:UpdateGasChargeAction",
+    UpdateL1CoreTimelockAction: "src/gov-action-contracts/AIPs/AIP7/UpdateL1CoreTimelockAction.sol:UpdateL1CoreTimelockAction",
     ArbitrumFoundationVestingWalletProxy: this.TUP,
     ArbitrumFoundationVestingWalletLogic: "src/ArbitrumFoundationVestingWallet.sol:ArbitrumFoundationVestingWallet",
   };
@@ -77,7 +82,7 @@ export class ContractVerifier {
     this.verifyCommand = `forge verify-contract --chain-id ${chainId} --num-of-optimizations ${this.NUM_OF_OPTIMIZATIONS} --compiler-version ${this.COMPILER_VERSION}`;
   }
 
-  async verify(name: string, constructorArgs?: string) {
+  async verify(name: keyof typeof this.contractToSource, constructorArgs?: string) {
     const contractAddress = this.deployedContracts[name as keyof DeployProgressCache] as string;
     if (!contractAddress) {
       console.log(name, " not found");
@@ -86,11 +91,11 @@ export class ContractVerifier {
     await this.verifyWithAddress(name, contractAddress, constructorArgs);
   }
 
-  async verifyWithAddress(name: string, contractAddress: string, constructorArgs?: string) {
+  async verifyWithAddress(name: keyof typeof this.contractToSource, contractAddress: string, constructorArgs?: string) {
     // avoid rate limiting
     await new Promise((resolve) => setTimeout(resolve, 1000));
 
-    const sourceFile = this.contractToSource[name as keyof typeof this.contractToSource];
+    const sourceFile = this.contractToSource[name];
 
     let command = this.verifyCommand;
     if (constructorArgs) {

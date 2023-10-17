@@ -119,101 +119,140 @@ export class RoundTripProposalCreator {
   /**
    * A proposal creator for a specific round trip config
    * @param l1Config Config for the L1 network on which this l2 networks are based
-   * @param targetNetworkConfig Config for the network where the upgrade will actually take place - could be ArbOne, L1, or ArbNova.
+   * @param targetNetworkConfigs Configs for the network where the upgrades will actually take place - could be ArbOne, L1, or ArbNova (for mainnet).
    */
   constructor(
     public readonly l1Config: L1GovConfig,
-    public readonly targetNetworkConfig: UpgradeConfig
+    public readonly targetNetworkConfigs: UpgradeConfig[]
   ) {}
 
-    /**
+  /**
    * Creates calldata for roundtrio path; data to be used either in a proposal or directly in timelock.schedule
    */
-  public async createRoundTripCallData(   
-    upgradeAddr: string,
-    upgradeValue: BigNumber,
-    upgradeData: string,
-    proposalDescription: string){
+  public async createRoundTripCallData(
+    upgradeAddrs: string[],
+    upgradeValues: BigNumber[],
+    upgradeDatas: string[],
+    proposalDescription: string
+  ) {
+    const { l1TimelockTo, l1TimelockScheduleCallData } =
+      await this.createRoundTripCallDataForArbSysCall(
+        upgradeAddrs,
+        upgradeValues,
+        upgradeDatas,
+        proposalDescription
+      );
 
-      const {l1TimelockTo, l1TimelockScheduleCallData } = await  this.createRoundTripCallDataForArbSysCall(upgradeAddr, upgradeValue, upgradeData, proposalDescription) 
-
-      const iArbSys = ArbSys__factory.createInterface();
-      return iArbSys.encodeFunctionData("sendTxToL1", [
-        l1TimelockTo,
-        l1TimelockScheduleCallData,
-      ]);
-      
-    }
+    const iArbSys = ArbSys__factory.createInterface();
+    return iArbSys.encodeFunctionData("sendTxToL1", [l1TimelockTo, l1TimelockScheduleCallData]);
+  }
   /**
-   * Generates arguments for ArbSys.sendTxToL1 for a constitutional proposal. Can be used to submit a proposal in e.g. the Tally UI.  
-  */
-  public async createRoundTripCallDataForArbSysCall(   
-    upgradeAddr: string,
-    upgradeValue: BigNumber,
-    upgradeData: string,
-    proposalDescription: string){
-    const descriptionHash = id(proposalDescription);
+   * Generates arguments for ArbSys.sendTxToL1 for a constitutional proposal. Can be used to submit a proposal in e.g. the Tally UI.
+   */
+  public async createRoundTripCallDataForArbSysCall(
+    upgradeAddrs: string[],
+    upgradeValues: BigNumber[],
+    upgradeDatas: string[],
+    proposalDescription: string,
+    useSchedule = false // defaults to scheduleBatch in L1 timelock. If true, will use schedule. Can only be used if only one action is included in proposal
+  ) {
+    if (
+      new Set([
+        upgradeAddrs.length,
+        upgradeValues.length,
+        upgradeDatas.length,
+        this.targetNetworkConfigs.length,
+      ]).size > 1
+    )
+      throw new Error("Inputs array size mismatch");
 
-    // the upgrade executor
-    const iUpgradeExecutor = UpgradeExecutor__factory.createInterface();
-    const upgradeExecutorCallData = iUpgradeExecutor.encodeFunctionData(
-      "execute",
-      [upgradeAddr, upgradeData]
-    );
-    const upgradeExecutorTo = this.targetNetworkConfig.upgradeExecutorAddr;
-    const upgradeExecutorValue = upgradeValue;
+    const descriptionHash = id(proposalDescription);
 
     // the l1 timelock
     const l1TimelockTo = this.l1Config.timelockAddr;
-    const l1Timelock = L1ArbitrumTimelock__factory.connect(
-      l1TimelockTo,
-      this.l1Config.provider
-    );
+    const l1Timelock = L1ArbitrumTimelock__factory.connect(l1TimelockTo, this.l1Config.provider);
     const minDelay = await l1Timelock.getMinDelay();
 
-    const inbox = await (async () => {
-      this.targetNetworkConfig.provider;
-      try {
-        const l2Network = await getL2Network(this.targetNetworkConfig.provider);
-        return l2Network.ethBridge.inbox;
-      } catch (err) {
-        // just check this is an expected l1 chain id and throw if not
-        await getL1Network(this.targetNetworkConfig.provider);
-        return null;
+    const l1Targets: string[] = [];
+    const l1Values: BigNumber[] = [];
+    const l1CallDatas: string[] = [];
+
+    for (let i = 0; i < upgradeAddrs.length; i++) {
+      const upgradeAddr = upgradeAddrs[i];
+      const upgradeValue = upgradeValues[i];
+      const upgradeData = upgradeDatas[i];
+      const targetNetworkConfig = this.targetNetworkConfigs[i];
+
+      // indices of the target network configs should correspond to the indices of the upgradeAddrs (and upgradeValues and upgradeDatas)
+      // we include this sanity check to help catch a misconfiguration:
+      if ((await targetNetworkConfig.provider.getCode(upgradeAddr)).length == 2)
+        throw new Error("Action contract not found on configured network");
+
+      // the upgrade executor
+
+      const iUpgradeExecutor = UpgradeExecutor__factory.createInterface();
+      const upgradeExecutorCallData = iUpgradeExecutor.encodeFunctionData("execute", [
+        upgradeAddr,
+        upgradeData,
+      ]);
+      const upgradeExecutorTo = targetNetworkConfig.upgradeExecutorAddr;
+      const upgradeExecutorValue = upgradeValue;
+      const inbox = await (async () => {
+        targetNetworkConfig.provider;
+        try {
+          const l2Network = await getL2Network(targetNetworkConfig.provider);
+          return l2Network.ethBridge.inbox;
+        } catch (err) {
+          // just check this is an expected l1 chain id and throw if not
+          await getL1Network(targetNetworkConfig.provider);
+          return null;
+        }
+      })();
+
+      if (inbox) {
+        l1Targets.push(await l1Timelock.RETRYABLE_TICKET_MAGIC());
+        l1CallDatas.push(
+          defaultAbiCoder.encode(
+            ["address", "address", "uint256", "uint256", "uint256", "bytes"],
+            [inbox, upgradeExecutorTo, upgradeExecutorValue, 0, 0, upgradeExecutorCallData]
+          )
+        );
+        // this value gets ignored from xchain upgrades
+        l1Values.push(BigNumber.from(0));
+      } else {
+        l1Targets.push(upgradeExecutorTo);
+        l1CallDatas.push(upgradeExecutorCallData);
+        l1Values.push(upgradeExecutorValue);
+      }
+    }
+    const l1TimelockScheduleCallData = (() => {
+      if (useSchedule) {
+        if (upgradeAddrs.length > 1)
+          throw new Error("Must use schedule batch for multiple messages");
+        return l1Timelock.interface.encodeFunctionData("schedule", [
+          l1Targets[0],
+          l1Values[0],
+          l1CallDatas[0],
+          constants.HashZero,
+          descriptionHash,
+          minDelay,
+        ]);
+      } else {
+        return l1Timelock.interface.encodeFunctionData("scheduleBatch", [
+          l1Targets,
+          l1Values,
+          l1CallDatas,
+          constants.HashZero,
+          descriptionHash,
+          minDelay,
+        ]);
       }
     })();
-
-    let l1To: string, l1Data: string, l1Value: BigNumber;
-    if (inbox) {
-      l1To = await l1Timelock.RETRYABLE_TICKET_MAGIC();
-      l1Data = defaultAbiCoder.encode(
-        ["address", "address", "uint256", "uint256", "uint256", "bytes"],
-        [
-          inbox,
-          upgradeExecutorTo,
-          upgradeExecutorValue,
-          0,
-          0,
-          upgradeExecutorCallData,
-        ]
-      );
-      // this value gets ignored from xchain upgrades
-      l1Value = BigNumber.from(0);
-    } else {
-      l1To = upgradeExecutorTo;
-      l1Data = upgradeExecutorCallData;
-      l1Value = upgradeExecutorValue;
-    }
-
-    const l1TimelockScheduleCallData = l1Timelock.interface.encodeFunctionData(
-      "schedule",
-      [l1To, l1Value, l1Data, constants.HashZero, descriptionHash, minDelay]
-    );
 
     return {
       l1TimelockTo,
       l1TimelockScheduleCallData,
-    }
+    };
   }
 
   /**
@@ -225,70 +264,81 @@ export class RoundTripProposalCreator {
    * @returns
    */
   public async create(
-    upgradeAddr: string,
-    upgradeValue: BigNumber,
-    upgradeData: string,
+    upgradeAddrs: string[],
+    upgradeValues: BigNumber[],
+    upgradeDatas: string[],
     proposalDescription: string
   ): Promise<Proposal> {
-    const proposalCallData = await this.createRoundTripCallData(upgradeAddr, upgradeValue,upgradeData, proposalDescription)
-
-    return new Proposal(
-      ARB_SYS_ADDRESS,
-      BigNumber.from(0),
-      proposalCallData,
+    const proposalCallData = await this.createRoundTripCallData(
+      upgradeAddrs,
+      upgradeValues,
+      upgradeDatas,
       proposalDescription
     );
+
+    return new Proposal(ARB_SYS_ADDRESS, BigNumber.from(0), proposalCallData, proposalDescription);
   }
 
-    /**
+  /**
    * Outputs the arguments to be passed in to to the Core Governor Timelock's schedule method. This can be called by the 7 of 12 security council (non-critical delayed upgrade)
-   * @param l2GovConfig config for network where governance is located 
+   * @param l2GovConfig config for network where governance is located
    * @param upgradeAddr address of Governance Action contract (to be eventually passed into UpgradeExecutor.execute)
    * @param description The proposal description
    * @returns Object with Timelock.schedule params
    */
   public async createTimelockScheduleArgs(
     l2GovConfig: L2GovConfig,
-    upgradeAddr: string,
+    upgradeAddrs: string[],
     description: string,
     options: {
-      upgradeValue?: BigNumber,
+      upgradeValue?: BigNumber;
       _upgradeParams?: {
-        upgradeABI: string,
-        upgradeArgs: any[]
-      },
-      _delay?: BigNumber,
-      predecessor?: string,
+        upgradeABI: string;
+        upgradeArgs: any[];
+      };
+      _delay?: BigNumber;
+      predecessor?: string;
     } = {}
-  
-  )  {
+  ) {
     // default upgrade value and predecessor values
-    const { upgradeValue = constants.Zero, predecessor = "0x"   }  = options
-    
-    const l2Gov = await L2ArbitrumGovernor__factory.connect(  l2GovConfig.governorAddr, l2GovConfig.provider)
-    const l2TimelockAddress = await l2Gov.timelock()
-    const l2Timelock = await ArbitrumTimelock__factory.connect(l2TimelockAddress, l2GovConfig.provider)
+    const { upgradeValue = constants.Zero, predecessor = "0x" } = options;
 
-    const minDelay = await l2Timelock.getMinDelay(); 
-    const delay = options?._delay || minDelay // default to min delay
+    const l2Gov = await L2ArbitrumGovernor__factory.connect(
+      l2GovConfig.governorAddr,
+      l2GovConfig.provider
+    );
+    const l2TimelockAddress = await l2Gov.timelock();
+    const l2Timelock = await ArbitrumTimelock__factory.connect(
+      l2TimelockAddress,
+      l2GovConfig.provider
+    );
 
-    if (delay.lt(minDelay)) throw new Error("Timelock delay below minimum delay")
+    const minDelay = await l2Timelock.getMinDelay();
+    const delay = options?._delay || minDelay; // default to min delay
 
-    let ABI = options?._upgradeParams ?  [options?._upgradeParams.upgradeABI] :  [ "function perform() external" ]; // default to perform with no params
-    let upgradeArgs = options?._upgradeParams ?  options?._upgradeParams.upgradeArgs: [] // default to empty array / no values
+    if (delay.lt(minDelay)) throw new Error("Timelock delay below minimum delay");
+
+    let ABI = options?._upgradeParams
+      ? [options?._upgradeParams.upgradeABI]
+      : ["function perform() external"]; // default to perform with no params
+    let upgradeArgs = options?._upgradeParams ? options?._upgradeParams.upgradeArgs : []; // default to empty array / no values
     let actionIface = new utils.Interface(ABI);
-    const upgradeData =  actionIface.encodeFunctionData("perform", upgradeArgs)
+    const upgradeData = actionIface.encodeFunctionData("perform", upgradeArgs);
 
-    const proposalCallData = await this.createRoundTripCallData(upgradeAddr, upgradeValue, upgradeData, description)
-    const salt = keccak256(  defaultAbiCoder.encode( ["string"], [description]))
+    const proposalCallData = await this.createRoundTripCallData(
+      upgradeAddrs,
+      upgradeAddrs.map(() => upgradeValue),
+      upgradeAddrs.map(() => upgradeData),
+      description
+    );
+    const salt = keccak256(defaultAbiCoder.encode(["string"], [description]));
     return {
       target: ARB_SYS_ADDRESS,
       value: upgradeValue.toNumber(),
       data: proposalCallData,
       predecessor,
       salt,
-      delay: delay.toNumber()
-    }
-
+      delay: delay.toNumber(),
+    };
   }
 }

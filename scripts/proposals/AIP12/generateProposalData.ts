@@ -55,11 +55,12 @@ const main = async () => {
     l1Provider,
     l2Provider,
     actionAddress,
-    description
+    description,
+    true
   );
   const proposal: CoreGovPropposal = {
-    actionChainID: chainId,
-    actionAddress,
+    actionChainID: [chainId],
+    actionAddress: [actionAddress],
     description,
     arbSysSendTxToL1Args: {
       l1Timelock: l1TimelockTo,

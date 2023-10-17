@@ -4,11 +4,12 @@ pragma solidity 0.8.16;
 import "../../src/L1ArbitrumTimelock.sol";
 
 contract InboxMock is IInboxSubmissionFee {
+    address l2ToL1SenderMock = address(0);
     uint256 public msgNum = 1;
-    address public bridge;
+    address private mbridge;
 
     constructor(address _bridge) {
-        bridge = _bridge;
+        mbridge = _bridge;
     }
 
     /// @dev msg.value sent to the inbox isn't high enough
@@ -38,6 +39,21 @@ contract InboxMock is IInboxSubmissionFee {
         // Use current block basefee if baseFee parameter is 0
         return (1400 + 6 * dataLength) * (baseFee == 0 ? block.basefee : baseFee);
     }
+
+    struct RetryableTicket {
+        address from;
+        address to;
+        uint256 l2CallValue;
+        uint256 value;
+        uint256 maxSubmissionCost;
+        address excessFeeRefundAddress;
+        address callValueRefundAddress;
+        uint256 gasLimit;
+        uint256 maxFeePerGas;
+        bytes data;
+    }
+
+    RetryableTicket[] public retryableTickets;
 
     function createRetryableTicket(
         address to,
@@ -75,6 +91,45 @@ contract InboxMock is IInboxSubmissionFee {
             revert InsufficientSubmissionCost(submissionFee, maxSubmissionCost);
         }
 
+        retryableTickets.push(
+            RetryableTicket({
+                from: msg.sender,
+                to: to,
+                l2CallValue: l2CallValue,
+                value: msg.value,
+                maxSubmissionCost: maxSubmissionCost,
+                excessFeeRefundAddress: excessFeeRefundAddress,
+                callValueRefundAddress: callValueRefundAddress,
+                gasLimit: gasLimit,
+                maxFeePerGas: maxFeePerGas,
+                data: data
+            })
+        );
+
         return msgNum++;
+    }
+
+    function getRetryableTicket(uint256 index) external view returns (RetryableTicket memory) {
+        return retryableTickets[index];
+    }
+
+    function bridge() external view returns (IBridge) {
+        if (mbridge != address(0)) {
+            return IBridge(mbridge);
+        } else {
+            return IBridge(address(this));
+        }
+    }
+
+    function activeOutbox() external view returns (address) {
+        return address(this);
+    }
+
+    function setL2ToL1Sender(address sender) external {
+        l2ToL1SenderMock = sender;
+    }
+
+    function l2ToL1Sender() external view returns (address) {
+        return l2ToL1SenderMock;
     }
 }

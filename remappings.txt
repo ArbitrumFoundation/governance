@@ -1,8 +1,9 @@
-ds-test/=lib/forge-std/lib/ds-test/src/
 forge-std/=lib/forge-std/src/
+solady/=lib/solady/src/
 
 @arbitrum/token-bridge-contracts/=node_modules/@arbitrum/token-bridge-contracts
 @arbitrum/nitro-contracts/=node_modules/@arbitrum/nitro-contracts/
 
 @openzeppelin/contracts-upgradeable/=node_modules/@openzeppelin/contracts-upgradeable/
 @openzeppelin/contracts/=node_modules/@openzeppelin/contracts/
+@gnosis.pm/safe-contracts/=node_modules/@gnosis.pm/safe-contracts/

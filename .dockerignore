@@ -1,0 +1,16 @@
+# Ignore Dockerfile
+*.Dockerfile
+Dockerfile
+
+# Ignore docker-compose files
+docker-compose.yml
+docker-compose.override.yml
+
+# Ignore .git and .cache directories
+.git
+.cache
+
+# Ignore log, tmp, and dist directories
+log/*
+tmp/*
+dist/*
