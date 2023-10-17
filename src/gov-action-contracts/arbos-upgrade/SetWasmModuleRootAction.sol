@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.16;
 
-import "../../address-registries/L1AddressRegistry.sol";
+import "../address-registries/L1AddressRegistry.sol";
 
 /// @notice should be included in an operation batch in the L1 timelock along with UpgradeArbOSVersionAction
 contract SetWasmModuleRootAction {
