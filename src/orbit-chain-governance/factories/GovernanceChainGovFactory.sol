@@ -14,7 +14,7 @@ import "@openzeppelin/contracts/utils/Address.sol";
 struct DeployParams {
     address _governanceToken; // Address of IVotesUpgradeable token deployed on the governance chain
     address _govChainUpExec; // Address of governance UpgradeExecutor deployed on the governance chain
-    address _govChainProxyAdmin; // Address of UpgradeExecutor deployed on the governance chain
+    address _govChainProxyAdmin; // Address of ProxyAdmin deployed on the governance chain
     uint256 _proposalThreshold; // Number of votes required to submit a proposal
     uint256 _votingPeriod; // Time period in blocks during which voting for a proposal occurs
     uint256 _votingDelay; // Delay in blocks after a proposal is submitted before voting begins
@@ -23,7 +23,7 @@ struct DeployParams {
     uint256 _coreQuorumThreshold; // Required quorum for proposal to pass; has 10k denominator
 }
 /// @title Factory that deploys governance chain contracts for cross chain governance
-/// @notice Requries an UpgradeExecutor, a ProxyAdmin, and a governance token
+/// @notice Requires an UpgradeExecutor, a ProxyAdmin, and a governance token
 /// that implements IVotesUpgradeable to already be deployed on the governance chain.
 /// To be executed prior to ParentChainGovFactory on the parent chain.
 
@@ -68,7 +68,7 @@ contract GovernanceChainGovFactory is Ownable {
         catch (bytes memory) {
             revert NotAGovernanceToken(params._governanceToken);
         }
-        // end of santiy checks
+        // end of sanity checks
 
         // deploy and init the timelock
         ArbitrumTimelock coreTimelock =
