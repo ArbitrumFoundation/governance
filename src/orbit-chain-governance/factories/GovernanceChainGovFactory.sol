@@ -36,8 +36,8 @@ contract GovernanceChainGovFactory is Ownable {
     error NotAContract(address _address);
     error NotAGovernanceToken(address _address);
 
-    address public govLogic;
-    address public timelockLogic;
+    address immutable govLogic;
+    address immutable timelockLogic;
 
     constructor() {
         govLogic = address(new L2ArbitrumGovernor());
