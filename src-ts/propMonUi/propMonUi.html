@@ -167,14 +167,18 @@
                         const governorDiv = document.createElement('div');
                         container.appendChild(governorDiv);
 
-                        let govName;
-                        if (governorAddress.toLowerCase() === '0xf07DeD9dC292157749B6Fd268E37DF6EA38395B9'.toLowerCase()) {
-                            govName = 'Core Governor';
-                        } else if (governorAddress.toLowerCase() === '0x789fC99093B09aD01C34DC7251D0C89ce743e5a4'.toLowerCase()) {
-                            govName = 'Treasury Governor';
-                        } else {
-                            govName = 'Unknown Governor';
-                        }
+                        const govName = (()=>{
+                            switch (governorAddress.toLowerCase()) {
+                                case '0xf07DeD9dC292157749B6Fd268E37DF6EA38395B9'.toLowerCase():  
+                                    return 'Core Governor';
+                                case '0x789fC99093B09aD01C34DC7251D0C89ce743e5a4'.toLowerCase():  
+                                    return 'Treasury Governor';
+                                case '0x8a1cDA8dee421cD06023470608605934c16A05a0'.toLowerCase():  
+                                    return 'Election Governor'
+                                default:
+                                    return 'Unknown Governor';;
+                            }
+                        })()
 
                         governorDiv.innerHTML = `<h2>${govName}: ${governorAddress}</h2>`;
 
