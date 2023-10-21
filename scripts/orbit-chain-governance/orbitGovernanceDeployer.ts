@@ -57,10 +57,8 @@ export const deployGovernance = async () => {
   // get deployment data
   const rollupData = await getDeploymentData(parentChainDeployerWallet.provider!);
 
-  console.log(rollupData);
-
   /// step1
-  await (
+  const deploymentReceipt = await (
     await childChainFactory.deployStep1({
       _governanceToken: governanceToken.address,
       _govChainUpExec: rollupData.childChainUpgradeExecutor,
@@ -73,6 +71,26 @@ export const deployGovernance = async () => {
       _coreQuorumThreshold: 500,
     })
   ).wait();
+  console.log("Step1 finished");
+
+  //// step 2
+  const _parentChainUpExec = rollupData["upgrade-executor"];
+  const _parentChainProxyAdmin = rollupData.parentChainProxyAdmin;
+  const _inbox = rollupData.inbox;
+  const { coreTimelock: _childChainCoreTimelock, coreGoverner: _childChainCoreGov } =
+    _getParsedLogs(deploymentReceipt.logs, childChainFactory.interface, "Deployed")[0].args;
+  const _minTimelockDelay = 7;
+
+  await (
+    await parentChainFactory.deployStep2(
+      _parentChainUpExec,
+      _parentChainProxyAdmin,
+      _inbox,
+      _childChainCoreTimelock,
+      _minTimelockDelay
+    )
+  ).wait();
+  console.log("Step2 finished");
 };
 
 async function getDeploymentData(parentChainProvider: Provider) {
@@ -132,6 +150,8 @@ async function getDeploymentData(parentChainProvider: Provider) {
 
   let data = {
     ...parsedDeploymentData,
+    parentChainInbox: parsedDeploymentData.inbox,
+    parentChainProxyAdmin: parentChainDeploymentData.args.proxyAdmin,
     parentChainRouter: parentChainDeploymentData.args.router,
     parentChainStandardGateway: parentChainDeploymentData.args.standardGateway,
     parentChainCustomGateway: parentChainDeploymentData.args.customGateway,
@@ -141,6 +161,18 @@ async function getDeploymentData(parentChainProvider: Provider) {
 
   return data;
 }
+
+export const _getParsedLogs = (
+  logs: ethers.providers.Log[],
+  iface: ethers.utils.Interface,
+  eventName: string
+) => {
+  const eventFragment = iface.getEvent(eventName);
+  const parsedLogs = logs
+    .filter((curr: any) => curr.topics[0] === iface.getEventTopic(eventFragment))
+    .map((curr: any) => iface.parseLog(curr));
+  return parsedLogs;
+};
 
 //// OrbitTokenBridgeCreated event ABI
 const eventABI = [
