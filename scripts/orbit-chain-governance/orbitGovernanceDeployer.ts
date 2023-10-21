@@ -3,8 +3,6 @@ import {
   GovernanceChainGovFactory__factory,
   IBridge__factory,
   IInbox__factory,
-  IRollupCore__factory,
-  IRollupGetter__factory,
   ParentChainGovFactory__factory,
   WrappedNativeGovToken__factory,
 } from "../../typechain-types";
