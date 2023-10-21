@@ -1,13 +1,19 @@
 import { Wallet, ethers } from "ethers";
 import {
   GovernanceChainGovFactory__factory,
+  IBridge__factory,
+  IInbox__factory,
+  IRollupCore__factory,
+  IRollupGetter__factory,
   ParentChainGovFactory__factory,
   WrappedNativeGovToken__factory,
 } from "../../typechain-types";
-import { JsonRpcProvider } from "@ethersproject/providers";
+import { Filter, JsonRpcProvider, Provider } from "@ethersproject/providers";
 import { execSync } from "child_process";
 
 import dotenv from "dotenv";
+import { Interface } from "@ethersproject/abi";
+import { RollupCore__factory } from "@arbitrum/sdk/dist/lib/abi/factories/RollupCore__factory";
 dotenv.config();
 
 export const deployGovernance = async () => {
@@ -49,14 +55,16 @@ export const deployGovernance = async () => {
   const governanceToken = await governanceTokenFac.deployed();
 
   // get deployment data
-  const rollupData = await getDeploymentData();
+  const rollupData = await getDeploymentData(parentChainDeployerWallet.provider!);
+
+  console.log(rollupData);
 
   /// step1
   await (
     await childChainFactory.deployStep1({
       _governanceToken: governanceToken.address,
-      _govChainUpExec: governanceToken.address, // TODO set proper address
-      _govChainProxyAdmin: governanceToken.address, // TODO set proper address
+      _govChainUpExec: rollupData.childChainUpgradeExecutor,
+      _govChainProxyAdmin: rollupData.childChainUpgradeExecutor,
       _proposalThreshold: 100,
       _votingPeriod: 10,
       _votingDelay: 10,
@@ -67,15 +75,14 @@ export const deployGovernance = async () => {
   ).wait();
 };
 
-async function getDeploymentData() {
+async function getDeploymentData(parentChainProvider: Provider) {
+  /// get rollup data from config file
   let sequencerContainer = execSync('docker ps --filter "name=l3node" --format "{{.Names}}"')
     .toString()
     .trim();
-
   const deploymentData = execSync(
     `docker exec ${sequencerContainer} cat /config/l3deployment.json`
   ).toString();
-
   const parsedDeploymentData = JSON.parse(deploymentData) as {
     bridge: string;
     inbox: string;
@@ -85,8 +92,156 @@ async function getDeploymentData() {
     ["upgrade-executor"]: string;
   };
 
-  return parsedDeploymentData;
+  //// get parent chain deployment data
+  const filter: Filter = {
+    topics: [
+      ethers.utils.id(
+        "OrbitTokenBridgeCreated(address,address,address,address,address,address,address,address)"
+      ),
+      ethers.utils.hexZeroPad(parsedDeploymentData.inbox, 32),
+    ],
+  };
+  const logs = await parentChainProvider.getLogs({
+    ...filter,
+    fromBlock: 0,
+    toBlock: "latest",
+  });
+  if (logs.length === 0) {
+    throw new Error("Couldn't find any OrbitTokenBridgeCreated events in block range[0,latest]");
+  }
+  const eventIface = new Interface(eventABI);
+  const parentChainDeploymentData = eventIface.parseLog(logs[0]);
+
+  ///// get child chain deployment data
+  const rollup = await IBridge__factory.connect(
+    await IInbox__factory.connect(parsedDeploymentData.inbox, parentChainProvider).bridge(),
+    parentChainProvider
+  ).rollup();
+  const chainId = await RollupCore__factory.connect(rollup, parentChainProvider).chainId();
+
+  const tokenBridgeCreatorAddress = logs[0].address;
+  const tokenBridgeCreator = new ethers.Contract(
+    tokenBridgeCreatorAddress,
+    tokenBridgeCreatorABI,
+    parentChainProvider
+  );
+  const childChainUpgradeExecutor = await tokenBridgeCreator.getCanonicalL2UpgradeExecutorAddress(
+    chainId
+  );
+  const childChainProxyAdmin = await tokenBridgeCreator.getCanonicalL2ProxyAdminAddress(chainId);
+
+  let data = {
+    ...parsedDeploymentData,
+    parentChainRouter: parentChainDeploymentData.args.router,
+    parentChainStandardGateway: parentChainDeploymentData.args.standardGateway,
+    parentChainCustomGateway: parentChainDeploymentData.args.customGateway,
+    childChainUpgradeExecutor: childChainUpgradeExecutor,
+    childChainProxyAdmin: childChainProxyAdmin,
+  };
+
+  return data;
 }
+
+//// OrbitTokenBridgeCreated event ABI
+const eventABI = [
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: true,
+        internalType: "address",
+        name: "inbox",
+        type: "address",
+      },
+      {
+        indexed: true,
+        internalType: "address",
+        name: "owner",
+        type: "address",
+      },
+      {
+        indexed: false,
+        internalType: "address",
+        name: "router",
+        type: "address",
+      },
+      {
+        indexed: false,
+        internalType: "address",
+        name: "standardGateway",
+        type: "address",
+      },
+      {
+        indexed: false,
+        internalType: "address",
+        name: "customGateway",
+        type: "address",
+      },
+      {
+        indexed: false,
+        internalType: "address",
+        name: "wethGateway",
+        type: "address",
+      },
+      {
+        indexed: false,
+        internalType: "address",
+        name: "proxyAdmin",
+        type: "address",
+      },
+      {
+        indexed: false,
+        internalType: "address",
+        name: "upgradeExecutor",
+        type: "address",
+      },
+    ],
+    name: "OrbitTokenBridgeCreated",
+    type: "event",
+  },
+];
+
+//// subset of token bridge creator ABI
+const tokenBridgeCreatorABI = [
+  {
+    inputs: [
+      {
+        internalType: "uint256",
+        name: "chainId",
+        type: "uint256",
+      },
+    ],
+    name: "getCanonicalL2UpgradeExecutorAddress",
+    outputs: [
+      {
+        internalType: "address",
+        name: "",
+        type: "address",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "uint256",
+        name: "chainId",
+        type: "uint256",
+      },
+    ],
+    name: "getCanonicalL2ProxyAdminAddress",
+    outputs: [
+      {
+        internalType: "address",
+        name: "",
+        type: "address",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+];
 
 async function main() {
   console.log("Start governance deployment process...");
