@@ -6,9 +6,7 @@ import "@openzeppelin/contracts/utils/Address.sol";
 import "@arbitrum/nitro-contracts/src/bridge/IOutbox.sol";
 
 library OutboxActionLib {
-    function bridgeAddOutboxes(IBridgeGetter addressRegistry, address[] calldata outboxes)
-        internal
-    {
+    function bridgeAddOutboxes(IBridgeGetter addressRegistry, address[] memory outboxes) internal {
         IBridge bridge = addressRegistry.bridge();
         for (uint256 i = 0; i < outboxes.length; i++) {
             address outbox = outboxes[i];
@@ -20,7 +18,7 @@ library OutboxActionLib {
         }
     }
 
-    function bridgeRemoveOutboxes(IBridgeGetter addressRegistry, address[] calldata outboxes)
+    function bridgeRemoveOutboxes(IBridgeGetter addressRegistry, address[] memory outboxes)
         internal
     {
         IBridge bridge = addressRegistry.bridge();
