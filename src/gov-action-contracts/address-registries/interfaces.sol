@@ -77,4 +77,7 @@ interface IL1AddressRegistry is
     IL1TimelockGetter,
     IL1GatewayRouterGetter,
     IL1CustomGatewayGetter
-{}
+{
+    function getSequencers() external view returns (address[] memory);
+    function getOutboxes() external view returns (address[] memory);
+}

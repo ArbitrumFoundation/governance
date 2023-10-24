@@ -8,23 +8,16 @@ import "../sequencer/SequencerActionLib.sol";
 /// @notice unpause inbox and rollup, add outboxes and sequencers (i.e., undoes PauseAllAction)
 contract UnPauseAllAction {
     IL1AddressRegistry public immutable addressRegistry;
-    address[] sequencersToAdd;
-    address[] outboxesToAdd;
 
-    constructor(
-        IL1AddressRegistry _addressRegistry,
-        address[] memory _sequencersToAdd,
-        address[] memory outboxesToAdd
-    ) {
+    constructor(IL1AddressRegistry _addressRegistry) {
         addressRegistry = _addressRegistry;
-        sequencersToAdd = _sequencersToAdd;
-        outboxesToAdd = outboxesToAdd;
     }
 
     function perform() external {
         addressRegistry.inbox().unpause();
         addressRegistry.rollup().resume();
-        OutboxActionLib.bridgeAddOutboxes(addressRegistry, outboxesToAdd);
+        OutboxActionLib.bridgeAddOutboxes(addressRegistry, addressRegistry.getOutboxes());
+        address[] memory sequencersToAdd = addressRegistry.getSequencers();
         for (uint256 i = 0; i < sequencersToAdd.length; i++) {
             SequencerActionLib.addSequencer(addressRegistry, sequencersToAdd[i]);
         }

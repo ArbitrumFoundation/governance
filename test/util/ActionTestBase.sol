@@ -86,9 +86,11 @@ abstract contract ActionTestBase {
         l1Timelock.grantRole(l1Timelock.TIMELOCK_ADMIN_ROLE(), address(ue));
         l1Timelock.revokeRole(l1Timelock.TIMELOCK_ADMIN_ROLE(), address(l1Timelock));
         l1Timelock.revokeRole(l1Timelock.TIMELOCK_ADMIN_ROLE(), address(this));
+        address[] memory outboxes = new address[](0);
+        address[] memory sequencers = new address[](0);
 
         addressRegistry =
-        new _ar.L1AddressRegistry(IInbox(address(inbox)), _ifaces.IL1Timelock(address(l1Timelock)), _ifaces.IL1CustomGateway(address(0)), _ifaces.IL1GatewayRouter(address(0)));
+        new _ar.L1AddressRegistry(IInbox(address(inbox)), _ifaces.IL1Timelock(address(l1Timelock)), _ifaces.IL1CustomGateway(address(0)), _ifaces.IL1GatewayRouter(address(0)), outboxes, sequencers);
         bridgeGetter = _ifaces.IBridgeGetter(address(addressRegistry));
         inboxGetter = _ifaces.IInboxGetter(address(addressRegistry));
         sequencerInboxGetter = _ifaces.ISequencerInboxGetter(address(addressRegistry));
