@@ -37,7 +37,7 @@ async function main() {
     actionAddresses
   );
 
-  const path = `${__dirname}/data/${chainId}-AIP6-data.json`;
+  const path = `${__dirname}/data/${chainId}-dac-update-data.json`;
   await fs.mkdir(`${__dirname}/data`, { recursive: true });
   await fs.writeFile(path, JSON.stringify(proposal, null, 2));
   console.log("Wrote proposal data to", path);
