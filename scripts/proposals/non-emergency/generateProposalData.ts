@@ -24,7 +24,7 @@ async function main() {
     (await fs.readFile(scmDeploymentPath)).toString()
   ) as SecurityCouncilManagementDeploymentResult;
 
-  const addNovaKeysetAction = "0x20401c58bf9d309ed73500bd58131222c09727da"
+  const addNovaKeysetAction = "0xDef5CfE3246882BC7f65F9346a8b974BA27D3F4E"
 
   const chainIds = [1];
   const actionAddresses = [addNovaKeysetAction];
