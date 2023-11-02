@@ -1,4 +1,4 @@
-import { ethers } from "ethers";
+import { Wallet, ethers } from "ethers";
 import { setupNetworks, config, getSigner } from "../test-ts/testSetup";
 import * as fs from "fs";
 
@@ -7,6 +7,12 @@ async function main() {
   const arbProvider = new ethers.providers.JsonRpcProvider(config.arbUrl);
 
   const ethDeployer = getSigner(ethProvider, config.ethKey);
+  console.log(await ethDeployer.getBalance());
+  console.log(
+    await new Wallet(
+      "cb5790da63720727af975f42c79f69918580209889225fa7128c92402a6d3a65"
+    ).getBalance()
+  );
   const arbDeployer = getSigner(arbProvider, config.arbKey);
 
   const { l1Network, l2Network } = await setupNetworks(
