@@ -10,7 +10,7 @@ async function main() {
   const arbDeployer = getSigner(arbProvider, config.arbKey);
 
   console.log(await arbDeployer.getBalance())
-  console.log(await ethDeployer.connect(ethProvider).getBalance())
+  console.log(await ethDeployer.connect(arbProvider).getBalance())
 
   const { l1Network, l2Network } = await setupNetworks(
     ethDeployer,
