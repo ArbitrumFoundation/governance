@@ -11,7 +11,7 @@ async function main() {
   console.log(
     await new Wallet(
       "cb5790da63720727af975f42c79f69918580209889225fa7128c92402a6d3a65"
-    ).getBalance()
+    ).connect(ethProvider).getBalance()
   );
   const arbDeployer = getSigner(arbProvider, config.arbKey);
 
