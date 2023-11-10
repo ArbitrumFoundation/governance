@@ -26,6 +26,8 @@ const main = async () => {
     const l1Verifier = new ContractVerifier(l1ChainId, ETHERSCAN_API_KEY, {});
 
     // layer 1 side
+    // the keyset added in that action can be verified using the instructions in
+    // https://forum.arbitrum.foundation/t/non-emergency-security-council-action-update-arbitrum-nova-dac-keyset/19379
     const action = await new AddNovaKeysetAction__factory(l1Deployer).deploy();
     await action.deployed();
     console.log("AddNovaKeysetAction deployed at", action.address);

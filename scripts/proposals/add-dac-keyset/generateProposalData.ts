@@ -24,6 +24,8 @@ async function main() {
     (await fs.readFile(scmDeploymentPath)).toString()
   ) as SecurityCouncilManagementDeploymentResult;
 
+  // the keyset added in that action can be verified using the instructions in
+  // https://forum.arbitrum.foundation/t/non-emergency-security-council-action-update-arbitrum-nova-dac-keyset/19379
   const addNovaKeysetAction = "0xDef5CfE3246882BC7f65F9346a8b974BA27D3F4E"
 
   const chainIds = [1];
