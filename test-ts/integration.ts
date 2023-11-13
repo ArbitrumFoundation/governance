@@ -684,10 +684,12 @@ const execL1Component = async (
   crossChain: boolean,
   propForm?: Awaited<ReturnType<Proposal["formItUp"]>>
 ) => {
+  console.log("c1")
   const propFormNonEmpty = propForm!;
   const l2ToL1Messages = await l2Tx.getL2ToL1Messages(l1Signer);
   const withdrawMessage = await l2ToL1Messages[0];
 
+  console.log("c2")
   const state = { mining: true };
   await Promise.race([
     mineUntilStop(l1Deployer, state),
@@ -695,8 +697,11 @@ const execL1Component = async (
     withdrawMessage.waitUntilReadyToExecute(l2Signer.provider!),
   ]);
   state.mining = false;
+  console.log("c3")
 
   await (await withdrawMessage.execute(l2Deployer.provider!)).wait();
+
+  console.log("c4")
 
   await wait(5000);
 
@@ -707,6 +712,8 @@ const execL1Component = async (
     if (await l1TimelockContract.isOperationReady(opId)) break;
     await wait(1000);
   }
+
+  console.log("c5")
 
   // execute the proposal
   let value = BigNumber.from(0);
@@ -720,15 +727,22 @@ const execL1Component = async (
     value = submissionFee.mul(2);
   }
 
+  console.log("c6")
+
   const tx = await l1Signer.sendTransaction({
     to: propFormNonEmpty.l1Gov.execute.to,
     data: propFormNonEmpty.l1Gov.execute.data,
     value: value,
   });
 
+  console.log("c7")
+
   const rec = await tx.wait();
+  console.log("c8")
 
   expect(await proposalSuccess(), "L1 proposal success").to.be.true;
+
+  console.log("c9")
 
   return rec;
 };
