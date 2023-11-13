@@ -742,6 +742,7 @@ const proposeAndExecuteL2 = async (
   proposalSuccess: () => Promise<Boolean>,
   propFormed?: Awaited<ReturnType<Proposal["formItUp"]>>
 ) => {
+  console.log("a1")
   const propFormedNonEmpty = propFormed!;
   await (
     await l2Signer.sendTransaction({
@@ -749,6 +750,7 @@ const proposeAndExecuteL2 = async (
       data: propFormedNonEmpty.l2Gov.propose.data,
     })
   ).wait();
+  console.log("a2")
 
   const proposalId = propFormedNonEmpty.l2Gov.proposalId;
   const proposalVotes = await l2GovernorContract.proposalVotes(proposalId);
@@ -758,6 +760,7 @@ const proposeAndExecuteL2 = async (
     l1Signer: l1Deployer,
     l2Signer: l2Deployer,
   });
+  console.log("a3")
   // vote on the proposal
   expect(
     await (await l2GovernorContract.proposalVotes(proposalId)).forVotes.toString(),
@@ -772,6 +775,7 @@ const proposeAndExecuteL2 = async (
     l1Signer: l1Deployer,
     l2Signer: l2Deployer,
   });
+  console.log("a4")
 
   // queue the proposal
   await (
@@ -780,11 +784,14 @@ const proposeAndExecuteL2 = async (
       data: propFormedNonEmpty.l2Gov.queue.data,
     })
   ).wait();
+  console.log("a5")
 
   await mineBlocksAndWaitForProposalState(l2GovernorContract, proposalId, 5, {
     l1Signer: l1Deployer,
     l2Signer: l2Deployer,
   });
+
+  console.log("a6")
 
   const opIdBatch = propFormedNonEmpty.l2Gov.operationId;
   while (!(await l2TimelockContract.isOperationReady(opIdBatch))) {
@@ -793,12 +800,15 @@ const proposeAndExecuteL2 = async (
     await wait(1000);
   }
 
+  console.log("a7")
+
   const executionTx = await (
     await l2Signer.sendTransaction({
       to: propFormedNonEmpty.l2Gov.execute.to,
       data: propFormedNonEmpty.l2Gov.execute.data,
     })
   ).wait();
+  console.log("a8")
   expect(await proposalSuccess(), "Proposal not executed successfully").to.be.true;
   return executionTx;
 };
@@ -855,6 +865,7 @@ export const l2L1ProposalTest = async (
   const proposalSuccess = async () => {
     return true;
   };
+  console.log("a")
 
   const executionTx = await proposeAndExecuteL2(
     l2TimelockContract,
@@ -865,6 +876,7 @@ export const l2L1ProposalTest = async (
     proposalSuccess,
     formData
   );
+  console.log("b")
 
   const l2Transaction = new L2TransactionReceipt(executionTx);
 
@@ -878,6 +890,7 @@ export const l2L1ProposalTest = async (
 
     return true;
   };
+  console.log("c")
 
   await execL1Component(
     l1Deployer,
@@ -890,6 +903,8 @@ export const l2L1ProposalTest = async (
     false,
     formData
   );
+
+  console.log("d")
 };
 
 export const l2l1l2Proposal = async (
