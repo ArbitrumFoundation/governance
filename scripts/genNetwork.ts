@@ -21,6 +21,9 @@ async function main() {
     console.log(wal.address, (await wal.connect(arbProvider).getBalance()).toString());
   }
 
+  const a = new Wallet("b6b15c8cb491557369f3c7d2c287b053eb229daa9c22138887752191c9520659").connect(arbProvider)
+  console.log(a.address, (await a.getBalance()).toString());
+
   const { l1Network, l2Network } = await setupNetworks(
     ethDeployer,
     arbDeployer,
