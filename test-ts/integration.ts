@@ -684,12 +684,10 @@ const execL1Component = async (
   crossChain: boolean,
   propForm?: Awaited<ReturnType<Proposal["formItUp"]>>
 ) => {
-  console.log("c1")
   const propFormNonEmpty = propForm!;
   const l2ToL1Messages = await l2Tx.getL2ToL1Messages(l1Signer);
   const withdrawMessage = await l2ToL1Messages[0];
 
-  console.log("c2")
   const state = { mining: true };
   await Promise.race([
     mineUntilStop(l1Deployer, state),
@@ -697,11 +695,9 @@ const execL1Component = async (
     withdrawMessage.waitUntilReadyToExecute(l2Signer.provider!),
   ]);
   state.mining = false;
-  console.log("c3")
 
   await (await withdrawMessage.execute(l2Deployer.provider!)).wait();
 
-  console.log("c4")
 
   await wait(5000);
 
@@ -712,8 +708,6 @@ const execL1Component = async (
     if (await l1TimelockContract.isOperationReady(opId)) break;
     await wait(1000);
   }
-
-  console.log("c5")
 
   // execute the proposal
   let value = BigNumber.from(0);
@@ -727,23 +721,15 @@ const execL1Component = async (
     value = submissionFee.mul(2);
   }
 
-  console.log("c6")
-
   const tx = await l1Signer.sendTransaction({
     to: propFormNonEmpty.l1Gov.execute.to,
     data: propFormNonEmpty.l1Gov.execute.data,
     value: value,
   });
 
-  console.log("c7")
-
   const rec = await tx.wait();
-  console.log("c8")
 
   expect(await proposalSuccess(), "L1 proposal success").to.be.true;
-
-  console.log("c9")
-
   return rec;
 };
 
@@ -756,7 +742,6 @@ const proposeAndExecuteL2 = async (
   proposalSuccess: () => Promise<Boolean>,
   propFormed?: Awaited<ReturnType<Proposal["formItUp"]>>
 ) => {
-  console.log("a1")
   const propFormedNonEmpty = propFormed!;
   await (
     await l2Signer.sendTransaction({
@@ -764,7 +749,6 @@ const proposeAndExecuteL2 = async (
       data: propFormedNonEmpty.l2Gov.propose.data,
     })
   ).wait();
-  console.log("a2")
 
   const proposalId = propFormedNonEmpty.l2Gov.proposalId;
   const proposalVotes = await l2GovernorContract.proposalVotes(proposalId);
@@ -774,7 +758,6 @@ const proposeAndExecuteL2 = async (
     l1Signer: l1Deployer,
     l2Signer: l2Deployer,
   });
-  console.log("a3")
   // vote on the proposal
   expect(
     await (await l2GovernorContract.proposalVotes(proposalId)).forVotes.toString(),
@@ -789,7 +772,6 @@ const proposeAndExecuteL2 = async (
     l1Signer: l1Deployer,
     l2Signer: l2Deployer,
   });
-  console.log("a4")
 
   // queue the proposal
   await (
@@ -798,14 +780,11 @@ const proposeAndExecuteL2 = async (
       data: propFormedNonEmpty.l2Gov.queue.data,
     })
   ).wait();
-  console.log("a5")
 
   await mineBlocksAndWaitForProposalState(l2GovernorContract, proposalId, 5, {
     l1Signer: l1Deployer,
     l2Signer: l2Deployer,
   });
-
-  console.log("a6")
 
   const opIdBatch = propFormedNonEmpty.l2Gov.operationId;
   while (!(await l2TimelockContract.isOperationReady(opIdBatch))) {
@@ -814,15 +793,12 @@ const proposeAndExecuteL2 = async (
     await wait(1000);
   }
 
-  console.log("a7")
-
   const executionTx = await (
     await l2Signer.sendTransaction({
       to: propFormedNonEmpty.l2Gov.execute.to,
       data: propFormedNonEmpty.l2Gov.execute.data,
     })
   ).wait();
-  console.log("a8")
   expect(await proposalSuccess(), "Proposal not executed successfully").to.be.true;
   return executionTx;
 };
@@ -879,7 +855,6 @@ export const l2L1ProposalTest = async (
   const proposalSuccess = async () => {
     return true;
   };
-  console.log("a")
 
   const executionTx = await proposeAndExecuteL2(
     l2TimelockContract,
@@ -890,7 +865,6 @@ export const l2L1ProposalTest = async (
     proposalSuccess,
     formData
   );
-  console.log("b")
 
   const l2Transaction = new L2TransactionReceipt(executionTx);
 
@@ -904,7 +878,6 @@ export const l2L1ProposalTest = async (
 
     return true;
   };
-  console.log("c")
 
   await execL1Component(
     l1Deployer,
@@ -917,8 +890,6 @@ export const l2L1ProposalTest = async (
     false,
     formData
   );
-
-  console.log("d")
 };
 
 export const l2l1l2Proposal = async (
