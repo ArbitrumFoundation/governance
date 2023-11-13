@@ -1,6 +1,7 @@
 import { Wallet, ethers } from "ethers";
 import { setupNetworks, config, getSigner } from "../test-ts/testSetup";
 import * as fs from "fs";
+import { formatEther, parseEther } from "ethers/lib/utils";
 
 async function main() {
   const ethProvider = new ethers.providers.JsonRpcProvider(config.ethUrl);
@@ -8,7 +9,13 @@ async function main() {
 
   const ethDeployer = getSigner(ethProvider, config.ethKey);
   const arbDeployer = getSigner(arbProvider, config.arbKey);
-  
+  console.log(
+    "arbdeployer",
+    await arbDeployer.getAddress(),
+    (await arbDeployer.getBalance()).toString(),
+    formatEther(await arbDeployer.getBalance())
+  );
+
   const { l1Network, l2Network } = await setupNetworks(
     ethDeployer,
     arbDeployer,
