@@ -15,6 +15,11 @@ async function main() {
     (await arbDeployer.getBalance()).toString(),
     formatEther(await arbDeployer.getBalance())
   );
+  const l1mnemonic = "indoor dish desk flag debris potato excuse depart ticket judge file exit";
+  for (let index = 0; index < 5; index++) {
+    const wal = ethers.Wallet.fromMnemonic(l1mnemonic, "m/44'/60'/0'/0/" + index);
+    console.log((await wal.connect(arbProvider).getBalance()).toString());
+  }
 
   const { l1Network, l2Network } = await setupNetworks(
     ethDeployer,
