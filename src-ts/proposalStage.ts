@@ -24,6 +24,7 @@ import {
   ArbSys__factory,
 } from "../typechain-types";
 import { Inbox__factory } from "@arbitrum/sdk/dist/lib/abi/factories/Inbox__factory";
+import { RollupUserLogic__factory } from "@arbitrum/sdk/dist/lib/abi/factories/RollupUserLogic__factory";
 import { EventArgs } from "@arbitrum/sdk/dist/lib/dataEntities/event";
 import { InboxMessageKind } from "@arbitrum/sdk/dist/lib/dataEntities/message";
 import { SubmitRetryableMessageDataParser } from "@arbitrum/sdk/dist/lib/message/messageDataParser";
@@ -795,6 +796,16 @@ export class L1OutboxStage implements ProposalStage {
   public async status(): Promise<ProposalStageStatus> {
     const message = L2ToL1Message.fromEvent(this.l1SignerOrProvider, this.l2ToL1TxEvent);
     const status = await message.status(this.l2Provider);
+    const l2Network = await getL2Network(this.l2Provider);
+    const rollup = RollupUserLogic__factory.connect(l2Network.ethBridge.rollup, this.l2Provider);
+
+    const latestConfirmedNodeNum = await rollup.callStatic.latestConfirmed();
+    const latestCreatedNodeNum = await rollup.callStatic.latestNodeCreated();
+    console.log(
+      "assertion number",
+      latestConfirmedNodeNum.toNumber(),
+      latestCreatedNodeNum.toNumber()
+    );
 
     switch (status) {
       case L2ToL1MessageStatus.UNCONFIRMED:
