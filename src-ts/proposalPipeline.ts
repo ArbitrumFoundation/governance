@@ -96,7 +96,7 @@ export class StageTracker extends EventEmitter {
     while (polling) {
       try {
         const status = await this.stage.status();
-        if (currentStatus !== status) {
+        // if (currentStatus !== status) {
           // emit an event if the status changes
           this.emit(TrackerEventName.TRACKER_STATUS, {
             status,
@@ -110,7 +110,7 @@ export class StageTracker extends EventEmitter {
               this.stage instanceof GovernorQueueStage ? this.stage.description : undefined,
           });
           currentStatus = status;
-        }
+        // }
         switch (status) {
           case ProposalStageStatus.TERMINATED:
             // end of the road
