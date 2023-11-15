@@ -796,16 +796,6 @@ export class L1OutboxStage implements ProposalStage {
   public async status(): Promise<ProposalStageStatus> {
     const message = L2ToL1Message.fromEvent(this.l1SignerOrProvider, this.l2ToL1TxEvent);
     const status = await message.status(this.l2Provider);
-    const l2Network = await getL2Network(this.l2Provider);
-    const rollup = RollupUserLogic__factory.connect(l2Network.ethBridge.rollup, getProvider(this.l1SignerOrProvider)!);
-
-    const latestConfirmedNodeNum = await rollup.callStatic.latestConfirmed();
-    const latestCreatedNodeNum = await rollup.callStatic.latestNodeCreated();
-    console.log(
-      "assertion number",
-      latestConfirmedNodeNum.toNumber(),
-      latestCreatedNodeNum.toNumber()
-    );
 
     switch (status) {
       case L2ToL1MessageStatus.UNCONFIRMED:
