@@ -12,7 +12,7 @@ import {
 import { Outbox__factory } from "@arbitrum/sdk/dist/lib/abi/factories/Outbox__factory";
 import { L2ToL1TxEvent as NitroL2ToL1TransactionEvent } from "@arbitrum/sdk/dist/lib/abi/ArbSys";
 import { OutBoxTransactionExecutedEvent } from "@arbitrum/sdk/dist/lib/abi/Outbox";
-import { Log, TransactionReceipt } from "@ethersproject/providers";
+import { TransactionReceipt } from "@ethersproject/providers";
 import { BigNumber, constants, ethers, providers, Signer } from "ethers";
 import { defaultAbiCoder, hexDataLength, id, keccak256 } from "ethers/lib/utils";
 import {
@@ -24,7 +24,6 @@ import {
   ArbSys__factory,
 } from "../typechain-types";
 import { Inbox__factory } from "@arbitrum/sdk/dist/lib/abi/factories/Inbox__factory";
-import { RollupUserLogic__factory } from "@arbitrum/sdk/dist/lib/abi/factories/RollupUserLogic__factory";
 import { EventArgs } from "@arbitrum/sdk/dist/lib/dataEntities/event";
 import { InboxMessageKind } from "@arbitrum/sdk/dist/lib/dataEntities/message";
 import { SubmitRetryableMessageDataParser } from "@arbitrum/sdk/dist/lib/message/messageDataParser";
