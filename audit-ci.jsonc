@@ -49,6 +49,8 @@
         // undici - only used in hardhat, not used in prod
         "GHSA-wqq4-5wpv-mx2g",
         // get-func-name - only used in chai, not used in prod
-        "GHSA-4q6p-r6v2-jvc5"
+        "GHSA-4q6p-r6v2-jvc5",
+        // axios used only in sol2uml
+        "GHSA-wf5p-g6vw-rhxx"
     ]
   }

@@ -1,4 +1,4 @@
-import { Wallet, ethers } from "ethers";
+import { ethers } from "ethers";
 import { setupNetworks, config, getSigner } from "../test-ts/testSetup";
 import * as fs from "fs";
 
@@ -8,7 +8,7 @@ async function main() {
 
   const ethDeployer = getSigner(ethProvider, config.ethKey);
   const arbDeployer = getSigner(arbProvider, config.arbKey);
-  
+
   const { l1Network, l2Network } = await setupNetworks(
     ethDeployer,
     arbDeployer,
