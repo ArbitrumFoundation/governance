@@ -548,6 +548,8 @@ export class L2TimelockExecutionBatchStage extends L2TimelockExecutionStage {
   ): Promise<L2TimelockExecutionBatchStage[]> {
     const govInterface = L2ArbitrumGovernor__factory.createInterface();
     const proposalStages: L2TimelockExecutionBatchStage[] = [];
+    const timelockInterface = ArbitrumTimelock__factory.createInterface();
+
     for (const log of receipt.logs) {
       if (log.topics.find((t) => t === govInterface.getEventTopic("ProposalQueued"))) {
         const propQueuedObj = govInterface.parseLog(log)
@@ -594,6 +596,50 @@ export class L2TimelockExecutionBatchStage extends L2TimelockExecutionStage {
           arbOneSignerOrProvider
         );
         proposalStages.push(executeBatch);
+      } else if (log.topics[0] === timelockInterface.getEventTopic("CallScheduled")){
+        try {
+          const callScheduledArgs = timelockInterface.parseLog(log)
+            .args as CallScheduledEvent["args"];
+
+          const { data } = ArbSys__factory.createInterface().decodeFunctionData(
+            "sendTxToL1",
+            callScheduledArgs.data
+          );
+
+          const { salt } = this.decodeScheduleBatch(data);
+
+          // calculate the id and check if that operation exists
+          const operationId = this.hashOperationBatch(
+            [callScheduledArgs.target],
+            [callScheduledArgs[3]], // cant use .value as ethers fails with this
+            [callScheduledArgs.data],
+            callScheduledArgs.predecessor,
+            salt
+          );
+
+          if (operationId !== callScheduledArgs.id) {
+            throw new Error("Invalid operation id");
+          }
+
+          const timelockAddress = log.address;
+          const executeTimelock = new L2TimelockExecutionBatchStage(
+            [callScheduledArgs.target],
+            [callScheduledArgs[3]],
+            [callScheduledArgs.data],
+            callScheduledArgs.predecessor,
+            salt,
+            timelockAddress,
+            arbOneSignerOrProvider
+          );
+          if (
+            proposalStages.filter((s) => s.identifier === executeTimelock.identifier).length === 0
+          ) {
+            proposalStages.push(executeTimelock);
+          }
+        } catch (err) {          
+          // there are expected errors since the calldata may not be of the expected form for decoding
+          continue;
+        }
       }
     }
 
