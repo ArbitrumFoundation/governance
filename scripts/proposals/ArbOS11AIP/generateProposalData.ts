@@ -12,7 +12,7 @@ const mainnetDeployedContracts = importDeployedContracts("./files/mainnet/deploy
 
 dotenv.config();
 
-const description = "AIP 11 TODO ADD DESCRIPTION HERE";
+const description = fs.readFileSync("./scripts/proposals/ArbOS11AIP/description.txt").toString()
 
 const l1Provider = new JsonRpcProvider(process.env.ETH_URL);
 const govChainProvider = new JsonRpcProvider(process.env.ARB_URL);
