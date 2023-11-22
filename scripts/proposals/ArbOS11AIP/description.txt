@@ -1,4 +1,4 @@
-Arbitrum | 2023-11-22 19:49:44 UTC | #1
+Arbitrum
 
 # AIP: ArbOS Version 11
 
@@ -73,7 +73,14 @@ That commit builds a WASM module root of `0xf4389b835497a910d7ba3ebfb77aa93da985
 
 The Action smart contracts used to execute the on-chain upgrade can be viewed in 
 
-https://github.com/ArbitrumFoundation/governance/pull/227 
+https://github.com/ArbitrumFoundation/governance/pull/170
+
+Action contract addresses:
+[SetArbOneArbOS11ModuleRootAction](https://etherscan.io/address/0xe8e5dc1793d6fe39452ddcb90d12997fa39de1de#code)
+[SetNovaArbOS11ModuleRootAction](https://etherscan.io/address/0x6B125347f3B0790197d5247f32f91fd3e7140eD7#code)
+[SetArbOS11VersionAction](https://arbiscan.io/address/0xF6c7Dc6eaE78aBF2f32df899654ca425Dfa99481#code)
+[SetArbOS11VersionAction](https://nova.arbiscan.io/address/0x5357f4d3e8f8250a77bcddd5e58886ad1358220c#code)
+
 
 and have been audited by Trail of Bits.
 
