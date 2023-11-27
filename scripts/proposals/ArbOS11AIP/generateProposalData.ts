@@ -14,6 +14,10 @@ dotenv.config();
 
 const description = fs.readFileSync("./scripts/proposals/ArbOS11AIP/description.txt").toString()
 
+if(!process.env.ETH_URL) throw new Error("no eth rpc")
+if(!process.env.ARB_URL) throw new Error("no arb1 rpc")
+if(!process.env.NOVA_URL) throw new Error("no nova rpc")
+
 const l1Provider = new JsonRpcProvider(process.env.ETH_URL);
 const govChainProvider = new JsonRpcProvider(process.env.ARB_URL);
 const novaProvider = new JsonRpcProvider(process.env.NOVA_URL);

@@ -1,5 +1,3 @@
-Arbitrum
-
 # AIP: ArbOS Version 11
 
 # Constitutional
@@ -69,6 +67,8 @@ The canonical version of ArbOS 11 this proposal aims to adopt is implemented in 
 
 That commit builds a WASM module root of `0xf4389b835497a910d7ba3ebfb77aa93da985634f3c052de1290360635be40c4a`, which is a hash of the code that’s put on-chain for fraud proofs. You can verify this WASM module root on a x86_64 computer (i.e. not on ARM which builds slightly different symbol names) with Docker setup by checking out the previously mentioned commit of the nitro repository, running `git submodule update --init --recursive`, and then running `docker build . --target module-root-calc --tag wavm-machine && docker run --rm wavm-machine cat /workspace/target/machines/latest/module-root.txt` This uses Docker to perform a reproducible build of the WebAssembly code used in fraud proofs, and outputs its hash.
 
+The above code has audited by Trail of Bits - the audit report can be viewed in https://drive.google.com/file/d/1uwA1PK3AB9ggHMqaw91mubu5WHcEp398/view?usp=sharing
+
 ### Upgrade Action smart contracts
 
 The Action smart contracts used to execute the on-chain upgrade can be viewed in 
@@ -82,9 +82,7 @@ Action contract addresses:
 [SetArbOS11VersionAction](https://nova.arbiscan.io/address/0x5357f4d3e8f8250a77bcddd5e58886ad1358220c#code)
 
 
-and have been audited by Trail of Bits.
-
-The audit report can be viewed in https://drive.google.com/file/d/1N3197Z7DuqBpu9qdt-GWPewe8HQakfLY/view?usp=sharing
+The above code has audited by Trail of Bits - the audit report can be viewed in https://drive.google.com/file/d/1N3197Z7DuqBpu9qdt-GWPewe8HQakfLY/view?usp=sharing
 
 
 
@@ -138,5 +136,3 @@ diff-intersection.py ~/tmp/arbos-10-vs-11-geth.diff ~/tmp/arbos-11-vs-upstream-g
 In addition, you can pass the following arguments to `diff-intersection.py` to ignore files that are included by the replay binary but whose components are not used: `--ignore-files 'core/blockchain*.go' arbitrum_types/txoptions.go 'rawdb/**' 'rpc/**'`
 
 Note that by default, `diff-intersection.py` does a line based intersection. To instead do an intersection based on chunks in the diff, known as hunks in git terminology, you can add the `--only-hunks` flag.
-
--------------------------
