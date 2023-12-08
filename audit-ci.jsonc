@@ -43,6 +43,14 @@
         // Server-Side Request Forgery in Request
         "GHSA-p8p7-x288-28g6",
         // OpenZeppelin: Using ERC2771Context with a custom forwarder can yield address(0)
-        "GHSA-g4vp-m682-qqmp"
+        "GHSA-g4vp-m682-qqmp",
+        // regular expression DoS in debug - low severity
+        "GHSA-gxpj-cx7g-858c",
+        // undici - only used in hardhat, not used in prod
+        "GHSA-wqq4-5wpv-mx2g",
+        // get-func-name - only used in chai, not used in prod
+        "GHSA-4q6p-r6v2-jvc5",
+        // axios used only in sol2uml
+        "GHSA-wf5p-g6vw-rhxx"
     ]
   }

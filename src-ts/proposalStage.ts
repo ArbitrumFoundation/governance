@@ -21,6 +21,7 @@ import {
   L2ArbitrumGovernor__factory,
   GovernorUpgradeable__factory,
   SecurityCouncilNomineeElectionGovernor__factory,
+  ArbSys__factory,
 } from "../typechain-types";
 import { Inbox__factory } from "@arbitrum/sdk/dist/lib/abi/factories/Inbox__factory";
 import { EventArgs } from "@arbitrum/sdk/dist/lib/dataEntities/event";
@@ -34,6 +35,7 @@ import {
   ProposalQueuedEventObject,
 } from "../typechain-types/src/L2ArbitrumGovernor";
 import { hasTimelock, hasVettingPeriod, getL1BlockNumberFromL2 } from "./utils";
+import { CallScheduledEvent } from "../typechain-types/src/ArbitrumTimelock";
 
 type Provider = providers.Provider;
 
@@ -356,30 +358,16 @@ export class GovernorQueueStage extends BaseGovernorExecuteStage {
   }
 }
 
-/**
- * When a timelock period has passed, execute the proposal action
- */
-export class L2TimelockExecutionBatchStage implements ProposalStage {
-  public readonly name: string = "L2TimelockExecutionBatchStage";
+abstract class L2TimelockExecutionStage implements ProposalStage {
   public readonly identifier: string;
 
-  public constructor(
-    public readonly targets: string[],
-    public readonly values: BigNumber[],
-    public readonly callDatas: string[],
-    public readonly predecessor: string,
-    public readonly salt: string,
-
+  constructor(
+    public readonly name: string,
+    public readonly operationId: string,
     public readonly timelockAddress: string,
     public readonly signerOrProvider: Signer | Provider
   ) {
-    this.identifier = L2TimelockExecutionBatchStage.hashOperationBatch(
-      targets,
-      values,
-      callDatas,
-      predecessor,
-      salt
-    );
+    this.identifier = operationId;
   }
 
   public static async getProposalCreatedData(
@@ -426,62 +414,6 @@ export class L2TimelockExecutionBatchStage implements ProposalStage {
         return log.address;
       }
     }
-  }
-
-  public static async extractStages(
-    receipt: TransactionReceipt,
-    arbOneSignerOrProvider: Provider | Signer
-  ): Promise<L2TimelockExecutionBatchStage[]> {
-    const govInterface = L2ArbitrumGovernor__factory.createInterface();
-    const proposalStages: L2TimelockExecutionBatchStage[] = [];
-    for (const log of receipt.logs) {
-      if (log.topics.find((t) => t === govInterface.getEventTopic("ProposalQueued"))) {
-        const propQueuedObj = govInterface.parseLog(log)
-          .args as unknown as ProposalQueuedEventObject;
-
-        // 10m ~ 1 month on arbitrum
-        const propCreatedStart = log.blockNumber - 10000000;
-        const propCreatedEnd = log.blockNumber;
-
-        const propCreatedEvent = await this.getProposalCreatedData(
-          log.address,
-          propQueuedObj.proposalId.toHexString(),
-          await getProvider(arbOneSignerOrProvider)!,
-          propCreatedStart,
-          propCreatedEnd
-        );
-        if (!propCreatedEvent) {
-          throw new Error(
-            `Could not find proposal created event: ${propQueuedObj.proposalId.toHexString()}`
-          );
-        }
-        // calculate the operation id, and look for it in this receipt
-        const operationId = L2TimelockExecutionBatchStage.hashOperationBatch(
-          propCreatedEvent.targets,
-          (propCreatedEvent as any)[3],
-          propCreatedEvent.calldatas,
-          constants.HashZero,
-          id(propCreatedEvent.description)
-        );
-        const timelockAddress = this.findTimelockAddress(operationId, receipt.logs);
-        if (!timelockAddress) {
-          throw new Error(`Could not find timelock address for operation id ${operationId}`);
-        }
-        // we know the operation id
-        const executeBatch = new L2TimelockExecutionBatchStage(
-          propCreatedEvent.targets,
-          (propCreatedEvent as any)[3],
-          propCreatedEvent.calldatas,
-          constants.HashZero,
-          id(propCreatedEvent.description),
-          timelockAddress,
-          arbOneSignerOrProvider
-        );
-        proposalStages.push(executeBatch);
-      }
-    }
-
-    return proposalStages;
   }
 
   public static hashOperation(
@@ -541,58 +473,30 @@ export class L2TimelockExecutionBatchStage implements ProposalStage {
   public async status(): Promise<ProposalStageStatus> {
     const timelock = ArbitrumTimelock__factory.connect(this.timelockAddress, this.signerOrProvider);
 
-    const operationId = await L2TimelockExecutionBatchStage.hashOperationBatch(
-      this.targets,
-      this.values,
-      this.callDatas,
-      this.predecessor,
-      this.salt
-    );
-
     // operation was cancelled if it doesn't exist
-    const exists = await timelock.isOperation(operationId);
+    const exists = await timelock.isOperation(this.operationId);
     if (!exists) return ProposalStageStatus.TERMINATED;
 
     // if it does exist it should be in one of the following states
     // check isOperationReady before pending because pending is a super set of ready
-    const ready = await timelock.isOperationReady(operationId);
+    const ready = await timelock.isOperationReady(this.operationId);
     if (ready) return ProposalStageStatus.READY;
-    const pending = await timelock.isOperationPending(operationId);
+    const pending = await timelock.isOperationPending(this.operationId);
     if (pending) return ProposalStageStatus.PENDING;
-    const done = await timelock.isOperationDone(operationId);
+    const done = await timelock.isOperationDone(this.operationId);
     if (done) return ProposalStageStatus.EXECUTED;
 
     throw new ProposalStageError(
-      `Proposal exists in unexpected state: ${operationId}`,
-      this.identifier,
+      `Proposal exists in unexpected state: ${this.operationId}`,
+      this.operationId,
       this.name
     );
-  }
-
-  public async execute(): Promise<void> {
-    const timelock = ArbitrumTimelock__factory.connect(this.timelockAddress, this.signerOrProvider);
-    const tx = await timelock.functions.executeBatch(
-      this.targets,
-      this.values,
-      this.callDatas,
-      this.predecessor,
-      this.salt
-    );
-
-    await tx.wait();
   }
 
   public async getExecuteReceipt(): Promise<TransactionReceipt> {
     const timelock = ArbitrumTimelock__factory.connect(this.timelockAddress, this.signerOrProvider);
     const provider = getProvider(this.signerOrProvider);
-    const operationId = await L2TimelockExecutionBatchStage.hashOperationBatch(
-      this.targets,
-      this.values,
-      this.callDatas,
-      this.predecessor,
-      this.salt
-    );
-    const callExecutedFilter = timelock.filters.CallExecuted(operationId);
+    const callExecutedFilter = timelock.filters.CallExecuted(this.operationId);
     const logs = await provider!.getLogs({
       fromBlock: 0,
       toBlock: "latest",
@@ -609,6 +513,250 @@ export class L2TimelockExecutionBatchStage implements ProposalStage {
   public async getExecutionUrl(): Promise<string> {
     const execReceipt = await this.getExecuteReceipt();
     return `https://arbiscan.io/tx/${execReceipt.transactionHash}`;
+  }
+
+  public abstract execute(): Promise<void>;
+}
+
+/**
+ * When a timelock period has passed, execute the proposal action
+ */
+export class L2TimelockExecutionBatchStage extends L2TimelockExecutionStage {
+  public constructor(
+    public readonly targets: string[],
+    public readonly values: BigNumber[],
+    public readonly callDatas: string[],
+    public readonly predecessor: string,
+    public readonly salt: string,
+
+    timelockAddress: string,
+    signerOrProvider: Signer | Provider
+  ) {
+    const operationId = L2TimelockExecutionBatchStage.hashOperationBatch(
+      targets,
+      values,
+      callDatas,
+      predecessor,
+      salt
+    );
+    super("L2TimelockExecutionBatchStage", operationId, timelockAddress, signerOrProvider);
+  }
+
+  public static async extractStages(
+    receipt: TransactionReceipt,
+    arbOneSignerOrProvider: Provider | Signer
+  ): Promise<L2TimelockExecutionBatchStage[]> {
+    const govInterface = L2ArbitrumGovernor__factory.createInterface();
+    const proposalStages: L2TimelockExecutionBatchStage[] = [];
+    for (const log of receipt.logs) {
+      if (log.topics.find((t) => t === govInterface.getEventTopic("ProposalQueued"))) {
+        const propQueuedObj = govInterface.parseLog(log)
+          .args as unknown as ProposalQueuedEventObject;
+
+        // 10m ~ 1 month on arbitrum
+        const propCreatedStart = log.blockNumber - 10000000;
+        const propCreatedEnd = log.blockNumber;
+
+        const propCreatedEvent = await this.getProposalCreatedData(
+          log.address,
+          propQueuedObj.proposalId.toHexString(),
+          await getProvider(arbOneSignerOrProvider)!,
+          propCreatedStart,
+          propCreatedEnd
+        );
+        if (!propCreatedEvent) {
+          throw new Error(
+            `Could not find proposal created event: ${propQueuedObj.proposalId.toHexString()}`
+          );
+        }
+        // calculate the operation id, and look for it in this receipt
+        const operationId = L2TimelockExecutionBatchStage.hashOperationBatch(
+          propCreatedEvent.targets,
+          (propCreatedEvent as any)[3],
+          propCreatedEvent.calldatas,
+          constants.HashZero,
+          id(propCreatedEvent.description)
+        );
+        const timelockAddress = this.findTimelockAddress(operationId, receipt.logs);
+        if (!timelockAddress) {
+          // if we couldnt find the timelock address it's because the operation id was not found on a callscheduled event
+          // this could be because it was formed via batch instead of single, or vice versa, and is an expected result
+          continue;
+        }
+        // we know the operation id
+        const executeBatch = new L2TimelockExecutionBatchStage(
+          propCreatedEvent.targets,
+          (propCreatedEvent as any)[3],
+          propCreatedEvent.calldatas,
+          constants.HashZero,
+          id(propCreatedEvent.description),
+          timelockAddress,
+          arbOneSignerOrProvider
+        );
+        proposalStages.push(executeBatch);
+      }
+    }
+
+    return proposalStages;
+  }
+
+  public async execute(): Promise<void> {
+    const timelock = ArbitrumTimelock__factory.connect(this.timelockAddress, this.signerOrProvider);
+    const tx = await timelock.functions.executeBatch(
+      this.targets,
+      this.values,
+      this.callDatas,
+      this.predecessor,
+      this.salt
+    );
+
+    await tx.wait();
+  }
+}
+
+/**
+ * When a timelock period has passed, execute the proposal action
+ */
+export class L2TimelockExecutionSingleStage extends L2TimelockExecutionStage {
+  public constructor(
+    public readonly target: string,
+    public readonly value: BigNumber,
+    public readonly callData: string,
+    public readonly predecessor: string,
+    public readonly salt: string,
+
+    timelockAddress: string,
+    signerOrProvider: Signer | Provider
+  ) {
+    const operationId = L2TimelockExecutionSingleStage.hashOperation(
+      target,
+      value,
+      callData,
+      predecessor,
+      salt
+    );
+    super("L2TimelockExecutionSingleStage", operationId, timelockAddress, signerOrProvider);
+  }
+
+  public static async extractStages(
+    receipt: TransactionReceipt,
+    arbOneSignerOrProvider: Provider | Signer
+  ): Promise<L2TimelockExecutionSingleStage[]> {
+    const proposalStages: L2TimelockExecutionSingleStage[] = [];
+    const govInterface = L2ArbitrumGovernor__factory.createInterface();
+    const timelockInterface = ArbitrumTimelock__factory.createInterface();
+
+    for (const log of receipt.logs) {
+      if (log.topics[0] === timelockInterface.getEventTopic("CallScheduled")) {
+        // try to parse the call scheduled event to get get the operation id and form as stage
+        // the data should be a call to arbsys sendTxToL1
+        try {
+          const callScheduledArgs = timelockInterface.parseLog(log)
+            .args as CallScheduledEvent["args"];
+
+          const { data } = ArbSys__factory.createInterface().decodeFunctionData(
+            "sendTxToL1",
+            callScheduledArgs.data
+          );
+
+          const { salt } = this.decodeScheduleBatch(data);
+
+          // calculate the id and check if that operation exists
+          const operationId = this.hashOperation(
+            callScheduledArgs.target,
+            callScheduledArgs[3], // cant use .value as ethers fails with this
+            callScheduledArgs.data,
+            callScheduledArgs.predecessor,
+            salt
+          );
+
+          if (operationId !== callScheduledArgs.id) {
+            throw new Error("Invalid operation id");
+          }
+
+          const timelockAddress = log.address;
+          const executeTimelock = new L2TimelockExecutionSingleStage(
+            callScheduledArgs.target,
+            callScheduledArgs[3],
+            callScheduledArgs.data,
+            callScheduledArgs.predecessor,
+            salt,
+            timelockAddress,
+            arbOneSignerOrProvider
+          );
+          if (
+            proposalStages.filter((s) => s.identifier === executeTimelock.identifier).length === 0
+          ) {
+            proposalStages.push(executeTimelock);
+          }
+        } catch (err) {
+          // there are expected errors since the calldata may not be of the expected form for decoding
+          continue;
+        }
+      } else if (log.topics[0] === govInterface.getEventTopic("ProposalQueued")) {
+        const proposalId = (
+          govInterface.parseLog(log).args as unknown as ProposalQueuedEventObject
+        ).proposalId.toHexString();
+
+        // 10m ~ 1 month on arbitrum
+        const propCreatedStart = log.blockNumber - 10000000;
+        const propCreatedEnd = log.blockNumber;
+
+        const propCreatedEvent = await this.getProposalCreatedData(
+          log.address,
+          proposalId,
+          await getProvider(arbOneSignerOrProvider)!,
+          propCreatedStart,
+          propCreatedEnd
+        );
+        if (!propCreatedEvent) {
+          throw new Error(`Could not find proposal created event: ${proposalId}`);
+        }
+        // calculate the operation id, and look for it in this receipt
+        const operationId = L2TimelockExecutionSingleStage.hashOperation(
+          propCreatedEvent.targets[0],
+          (propCreatedEvent as any)[3][0],
+          propCreatedEvent.calldatas[0],
+          constants.HashZero,
+          id(propCreatedEvent.description)
+        );
+        const timelockAddress = this.findTimelockAddress(operationId, receipt.logs);
+        if (!timelockAddress) {
+          // if we couldnt find the timelock address it's because the operation id was not found on a callscheduled event
+          // this could be because it was formed via batch instead of single, or vice versa, and is an expected result
+          continue;
+        }
+        const executeTimelock = new L2TimelockExecutionSingleStage(
+          propCreatedEvent.targets[0],
+          (propCreatedEvent as any)[3][0],
+          propCreatedEvent.calldatas[0],
+          constants.HashZero,
+          id(propCreatedEvent.description),
+          timelockAddress,
+          arbOneSignerOrProvider
+        );
+        if (
+          proposalStages.filter((s) => s.identifier === executeTimelock.identifier).length === 0
+        ) {
+          proposalStages.push(executeTimelock);
+        }
+      }
+    }
+
+    return proposalStages;
+  }
+
+  public async execute(): Promise<void> {
+    const timelock = ArbitrumTimelock__factory.connect(this.timelockAddress, this.signerOrProvider);
+    const tx = await timelock.functions.execute(
+      this.target,
+      this.value,
+      this.callData,
+      this.predecessor,
+      this.salt
+    );
+
+    await tx.wait();
   }
 }
 
@@ -646,7 +794,6 @@ export class L1OutboxStage implements ProposalStage {
 
   public async status(): Promise<ProposalStageStatus> {
     const message = L2ToL1Message.fromEvent(this.l1SignerOrProvider, this.l2ToL1TxEvent);
-
     const status = await message.status(this.l2Provider);
 
     switch (status) {

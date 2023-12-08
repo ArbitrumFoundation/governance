@@ -11,6 +11,7 @@ import {
   UnreachableCaseError,
   getProvider,
   BaseGovernorExecuteStage,
+  L2TimelockExecutionSingleStage,
 } from "./proposalStage";
 import { Signer } from "ethers";
 import { Provider, TransactionReceipt } from "@ethersproject/abstract-provider";
@@ -28,6 +29,7 @@ export class StageFactory {
     return [
       ...(await BaseGovernorExecuteStage.extractStages(receipt, this.arbOneSignerOrProvider)),
       ...(await L2TimelockExecutionBatchStage.extractStages(receipt, this.arbOneSignerOrProvider)),
+      ...(await L2TimelockExecutionSingleStage.extractStages(receipt, this.arbOneSignerOrProvider)),
       ...(await L1TimelockExecutionSingleStage.extractStages(receipt, this.l1SignerOrProvider)),
       ...(await L1TimelockExecutionBatchStage.extractStages(receipt, this.l1SignerOrProvider)),
       ...(await RetryableExecutionStage.extractStages(receipt, this.arbOneSignerOrProvider)),
