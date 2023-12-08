@@ -71,6 +71,7 @@ export class ContractVerifier {
     UpdateL1CoreTimelockAction: "src/gov-action-contracts/AIPs/AIP7/UpdateL1CoreTimelockAction.sol:UpdateL1CoreTimelockAction",
     ArbitrumFoundationVestingWalletProxy: this.TUP,
     ArbitrumFoundationVestingWalletLogic: "src/ArbitrumFoundationVestingWallet.sol:ArbitrumFoundationVestingWallet",
+    AddNovaKeysetAction: "src/gov-action-contracts/nonemergency/AddNovaKeysetAction.sol:AddNovaKeysetAction",
   };
 
   constructor(chainId: number, apiKey: string, deployedContracts: DeployProgressCache) {
