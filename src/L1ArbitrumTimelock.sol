@@ -2,8 +2,13 @@
 pragma solidity 0.8.16;
 
 import "@arbitrum/nitro-contracts/src/bridge/IInbox.sol";
+import "@arbitrum/nitro-contracts/src/bridge/IOutbox.sol";
+import "@arbitrum/nitro-contracts/src/bridge/IBridge.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
+
 import "./L1ArbitrumMessenger.sol";
 import "./ArbitrumTimelock.sol";
+import "./GovernedChainsConfirmationTracker.sol";
 
 interface IInboxSubmissionFee {
     function calculateRetryableSubmissionFee(uint256 dataLength, uint256 baseFee)
@@ -11,12 +16,13 @@ interface IInboxSubmissionFee {
         view
         returns (uint256);
 }
-
+// TODO: review / update all comments
 /// @title L1 timelock for executing propsals on L1 or forwarding them back to L2
-/// @dev   Only accepts proposals from a counterparty L2 timelock
+/// @dev   Only accepts proposals from a counterpart L2 timelock or
 ///        If ever upgrading to a later version of TimelockControllerUpgradeable be sure to check that
 ///        no new behaviour has been given to the PROPOSER role, as this is assigned to the bridge
-///        and any new behaviour should be overriden to also include the 'onlyCounterpartTimelock' modifier check
+///        and any new behaviour should be overriden to also include the 'onlyFromCoreProposalSender' modifier check
+
 contract L1ArbitrumTimelock is ArbitrumTimelock, L1ArbitrumMessenger {
     /// @notice The magic address to be used when a retryable ticket is to be created
     /// @dev When the target of an proposal is this magic value then the proposal
@@ -32,6 +38,12 @@ contract L1ArbitrumTimelock is ArbitrumTimelock, L1ArbitrumMessenger {
     /// @notice The timelock of the governance contract on L2
     address public l2Timelock;
 
+    /// @notice Proposal creator router on L2
+    // note: we can alternatively introduce a new SCHEDULER_ROLE for the l2Timelock and the  proposalDataRouter
+    address public proposalDataRouter;
+
+    GovernedChainsConfirmationTracker public governedChainsConfirmationTracker;
+    // TODO: ensure safe storage slots
     constructor() {
         _disableInitializers();
     }
@@ -42,7 +54,7 @@ contract L1ArbitrumTimelock is ArbitrumTimelock, L1ArbitrumMessenger {
     /// @param _governanceChainInbox       The address of the inbox contract, for the L2 chain on which governance is based.
     ///                     For the Arbitrum DAO this the Arb1 inbox
     /// @param _l2Timelock  The address of the timelock on the L2 where governance is based
-    ///                     For the Arbitrum DAO this the Arbitrum DAO timelock on Arb1
+    ///                     For the Arbitrum DAO this the Arbitrum AO timelock on Arb1
     function initialize(
         uint256 minDelay,
         address[] memory executors,
@@ -52,34 +64,60 @@ contract L1ArbitrumTimelock is ArbitrumTimelock, L1ArbitrumMessenger {
         require(_governanceChainInbox != address(0), "L1ArbitrumTimelock: zero inbox");
         require(_l2Timelock != address(0), "L1ArbitrumTimelock: zero l2 timelock");
         // this timelock doesnt accept any proposers since they wont pass the
-        // onlyCounterpartTimelock check
+        // onlyFromCoreProposalSender check
         address[] memory proposers;
         __ArbitrumTimelock_init(minDelay, proposers, executors);
 
         governanceChainInbox = _governanceChainInbox;
         l2Timelock = _l2Timelock;
 
-        // the bridge is allowed to create proposals
+        // the bridge is allowed to create proposals 
+        // TODO ? is this functional? Is comment outdated?
         // and we ensure that the l2 caller is the l2timelock
-        // by using the onlyCounterpartTimelock modifier
+        // by using the onlyFromCoreProposalSender modifier
         address bridge = address(getBridge(_governanceChainInbox));
         grantRole(PROPOSER_ROLE, bridge);
     }
 
-    modifier onlyCounterpartTimelock() {
+    function postUpgradeInit(address _proposalDataRouter) external onlyRole(TIMELOCK_ADMIN_ROLE) {
+        require(
+            proposalDataRouter == address(0), "L1ArbitrumTimelock: proposal data router already set"
+        );
+        require(_proposalDataRouter != address(0), "L1ArbitrumTimelock: zero proposal data router");
+
+        proposalDataRouter = _proposalDataRouter;
+    }
+
+    modifier onlyFromCoreProposalSender() {
+        // TODO: ? comment outdated?
         // this bridge == msg.sender check is redundant in all the places that
         // we currently use this modifier since we call a function on super
         // that also checks the proposer role, which we enforce is in the intializer above
         // so although the msg.sender is being checked against the bridge twice we
         // still leave this check here for consistency of this function and in case
-        // onlyCounterpartTimelock is used on other functions without this proposer check
+        // onlyFromCoreProposalSender is used on other functions without this proposer check
         // in future
         address govChainBridge = address(getBridge(governanceChainInbox));
         require(msg.sender == govChainBridge, "L1ArbitrumTimelock: not from bridge");
 
-        // the outbox reports that the L2 address of the sender is the counterpart gateway
+        // the outbox reports that the L2 address of the sender is one of 2 authorized senders
         address l2ToL1Sender = super.getL2ToL1Sender(governanceChainInbox);
-        require(l2ToL1Sender == l2Timelock, "L1ArbitrumTimelock: not from l2 timelock");
+        require(
+            l2ToL1Sender == l2Timelock || l2ToL1Sender == proposalDataRouter,
+            "L1ArbitrumTimelock: not from l2 timelock or proposalDataRouter"
+        );
+        _;
+    }
+
+    modifier onlyIfGovernedChainConfirmed() {
+        IBridge govChainBridge = IBridge(getBridge(governanceChainInbox));
+        IOutbox activeOutbox = IOutbox(govChainBridge.activeOutbox());
+        uint256 initiatedBlock = activeOutbox.l2ToL1Block();
+        require(initiatedBlock != 0, "L1ArbitrumTimelock: not a child-to-parent message");
+        require(
+            governedChainsConfirmationTracker.allChildChainMessagesConfirmed(initiatedBlock),
+            "L1ArbitrumTimelock: governed chain messages not yet confirmed"
+        );
         _;
     }
 
@@ -98,7 +136,13 @@ contract L1ArbitrumTimelock is ArbitrumTimelock, L1ArbitrumMessenger {
         bytes32 predecessor,
         bytes32 salt,
         uint256 delay
-    ) public virtual override(TimelockControllerUpgradeable) onlyCounterpartTimelock {
+    )
+        public
+        virtual
+        override(TimelockControllerUpgradeable)
+        onlyFromCoreProposalSender
+        onlyIfGovernedChainConfirmed
+    {
         TimelockControllerUpgradeable.scheduleBatch(
             targets, values, payloads, predecessor, salt, delay
         );
@@ -115,7 +159,13 @@ contract L1ArbitrumTimelock is ArbitrumTimelock, L1ArbitrumMessenger {
         bytes32 predecessor,
         bytes32 salt,
         uint256 delay
-    ) public virtual override(TimelockControllerUpgradeable) onlyCounterpartTimelock {
+    )
+        public
+        virtual
+        override(TimelockControllerUpgradeable)
+        onlyFromCoreProposalSender
+        onlyIfGovernedChainConfirmed
+    {
         TimelockControllerUpgradeable.schedule(target, value, data, predecessor, salt, delay);
     }
 
@@ -195,5 +245,12 @@ contract L1ArbitrumTimelock is ArbitrumTimelock, L1ArbitrumMessenger {
             // Not a retryable ticket, so we simply execute
             super._execute(target, value, data);
         }
+    }
+
+    function setGovernedChainConfirmationTracker(
+        GovernedChainsConfirmationTracker _governedChainsConfirmationTracker
+    ) external onlyRole(TIMELOCK_ADMIN_ROLE) {
+        require(Address.isContract(address(_governedChainsConfirmationTracker)), "QQQ");
+        governedChainsConfirmationTracker = _governedChainsConfirmationTracker;
     }
 }
