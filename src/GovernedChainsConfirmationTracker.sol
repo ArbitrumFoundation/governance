@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/utils/Address.sol";
 
 import "./BoldIfaces.sol";
 
-/// @notice Deployed on a parent chain to some number of child chains.
+/// @notice Deployed on a parent chain to track some number of child chains.
 /// Tracks the parent chain block number up through which all messages are guaranteed
 /// to be confirmed (and thus, e.g., child-to-parent message are executable)
 /// for each tracked child chain.
