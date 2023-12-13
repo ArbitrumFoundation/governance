@@ -152,8 +152,8 @@ Both governor contracts have the affordance to cancel proposals scheduled in the
 
 ## Future DAO-Governed Chains
 When a [new L2 chain is authorized by the DAO](https://docs.arbitrum.foundation/new-arb-chains), the following steps should be carried out for the new chain to become DAO-governed:
-1. Deploy a new UpgradeExecutor contract and a new Security Council on the new L2 chain.
-1. Initialize the new L2 UpgradeExectutor with the L1 Timelock's aliased addressed and the new Security Council as its executors.
+1. Deploy a new UpgradeExecutor contract and a new Security Council on the new L2 chain. The Security Council multisig should be deployed with the same signers as all of the other Security Council multisigs. 
+1. Initialize the new L2 UpgradeExecutor with the L1 Timelock's aliased addressed and the new Security Council as its executors.
 1. Ownership transfer: for a chain deployed whose contract deployment mirrors that of Arbitrum One and Arbitrum Nova (i.e, [Nitro](https://github.com/OffchainLabs/nitro) core contracts and [token bridge contracts](https://github.com/OffchainLabs/token-bridge-contracts)), the following ownership transfer should take place:
      - The L1 Upgrade Executor should be granted the following affordances:
         - L1 core contract Proxy Admin owner
@@ -165,3 +165,7 @@ When a [new L2 chain is authorized by the DAO](https://docs.arbitrum.foundation/
         - L2 token bridge Proxy Admin Owner 
         - Chain Owner
         - Standard Arb-ERC20 Beacon Proxy owner
+1. Opt in to Security Council Elections:
+    1. Deploy a new UpgradeExecRouteBuilder with the new full list of Upgrade Executor locations (i.e., all the previous ones plus that of the new chain).
+    1. **Via DAO proposal**: Update all references to the UpgradeExecRouteBuilder to the new address (as of writing, only referenced in `SecurityCouncilManager`).  
+    1. **Via DAO proposal**: Add new Security Council to SecurityCouncilManager.
