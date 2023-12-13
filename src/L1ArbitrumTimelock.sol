@@ -55,7 +55,7 @@ contract L1ArbitrumTimelock is ArbitrumTimelock, L1ArbitrumMessenger {
     /// @param _governanceChainInbox       The address of the inbox contract, for the L2 chain on which governance is based.
     ///                     For the Arbitrum DAO this the Arb1 inbox
     /// @param _l2Timelock  The address of the timelock on the L2 where governance is based
-    ///                     For the Arbitrum DAO this the Arbitrum AO timelock on Arb1
+    ///                     For the Arbitrum DAO this is the Arbitrum DAO timelock on Arb1
     function initialize(
         uint256 minDelay,
         address[] memory executors,
