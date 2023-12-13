@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.16;
 
+// TODO: import from BOLD package
 enum AssertionStatus
 // No assertion at this index
 {

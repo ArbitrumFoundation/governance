@@ -18,7 +18,7 @@ interface IInboxSubmissionFee {
 }
 // TODO: review / update all comments
 /// @title L1 timelock for executing propsals on L1 or forwarding them back to L2
-/// @dev   Only accepts proposals from a counterpart L2 timelock or
+/// @dev   Only accepts proposals from a GOV_CHAIN_SCHEDULER.
 ///        If ever upgrading to a later version of TimelockControllerUpgradeable be sure to check that
 ///        no new behaviour has been given to the PROPOSER role, as this is assigned to the bridge
 ///        and any new behaviour should be overriden to also include the 'onlyFromCoreProposalSender' modifier check
@@ -33,17 +33,18 @@ contract L1ArbitrumTimelock is ArbitrumTimelock, L1ArbitrumMessenger {
     ///      we use the bytes20 of the keccak since just the bytes20 of the string doesnt contain
     ///      many letters which would make EIP-55 checksum checking less useful
     address public constant RETRYABLE_TICKET_MAGIC = 0xa723C008e76E379c55599D2E4d93879BeaFDa79C;
+
+    // Contract on gov chain that can schedule as an L2 to L1 message
+    bytes32 public constant GOV_CHAIN_SCHEDULER = keccak256("GOV_CHAIN_SCHEDULER");
+
     /// @notice The inbox for the L2 where governance is based
     address public governanceChainInbox;
     /// @notice The timelock of the governance contract on L2
     address public l2Timelock;
-
-    /// @notice Proposal creator router on L2
-    // note: we can alternatively introduce a new SCHEDULER_ROLE for the l2Timelock and the  proposalDataRouter
-    address public proposalDataRouter;
-
+    //
     GovernedChainsConfirmationTracker public governedChainsConfirmationTracker;
     // TODO: ensure safe storage slots
+
     constructor() {
         _disableInitializers();
     }
@@ -71,8 +72,7 @@ contract L1ArbitrumTimelock is ArbitrumTimelock, L1ArbitrumMessenger {
         governanceChainInbox = _governanceChainInbox;
         l2Timelock = _l2Timelock;
 
-        // the bridge is allowed to create proposals 
-        // TODO ? is this functional? Is comment outdated?
+        // the bridge is allowed to create proposals
         // and we ensure that the l2 caller is the l2timelock
         // by using the onlyFromCoreProposalSender modifier
         address bridge = address(getBridge(_governanceChainInbox));
@@ -80,16 +80,27 @@ contract L1ArbitrumTimelock is ArbitrumTimelock, L1ArbitrumMessenger {
     }
 
     function postUpgradeInit(address _proposalDataRouter) external onlyRole(TIMELOCK_ADMIN_ROLE) {
-        require(
-            proposalDataRouter == address(0), "L1ArbitrumTimelock: proposal data router already set"
-        );
         require(_proposalDataRouter != address(0), "L1ArbitrumTimelock: zero proposal data router");
+        require(
+            getRoleAdmin(GOV_CHAIN_SCHEDULER) != bytes32(0), "L1ArbitrumTimelock: admin already set"
+        );
+        require(
+            !hasRole(GOV_CHAIN_SCHEDULER, _proposalDataRouter),
+            "L1ArbitrumTimelock: proposal data router role already set"
+        );
+        require(
+            !hasRole(GOV_CHAIN_SCHEDULER, l2Timelock),
+            "L1ArbitrumTimelock: l2Timelock role already set"
+        );
 
-        proposalDataRouter = _proposalDataRouter;
+        //  make Timelock admin the admin of the GOV_CHAIN_SCHEDULER role
+        _setRoleAdmin(GOV_CHAIN_SCHEDULER, TIMELOCK_ADMIN_ROLE);
+        // Allow timelock and proposal data router to call schedule
+        _grantRole(GOV_CHAIN_SCHEDULER, _proposalDataRouter);
+        _grantRole(GOV_CHAIN_SCHEDULER, l2Timelock);
     }
 
     modifier onlyFromCoreProposalSender() {
-        // TODO: ? comment outdated?
         // this bridge == msg.sender check is redundant in all the places that
         // we currently use this modifier since we call a function on super
         // that also checks the proposer role, which we enforce is in the intializer above
@@ -100,11 +111,11 @@ contract L1ArbitrumTimelock is ArbitrumTimelock, L1ArbitrumMessenger {
         address govChainBridge = address(getBridge(governanceChainInbox));
         require(msg.sender == govChainBridge, "L1ArbitrumTimelock: not from bridge");
 
-        // the outbox reports that the L2 address of the sender is one of 2 authorized senders
+        // the outbox reports that the L2 address of the sender is is a GOV_CHAIN_SCHEDULER
         address l2ToL1Sender = super.getL2ToL1Sender(governanceChainInbox);
         require(
-            l2ToL1Sender == l2Timelock || l2ToL1Sender == proposalDataRouter,
-            "L1ArbitrumTimelock: not from l2 timelock or proposalDataRouter"
+            hasRole(GOV_CHAIN_SCHEDULER, l2ToL1Sender),
+            "L1ArbitrumTimelock: not gov chain scheduler"
         );
         _;
     }
@@ -250,7 +261,10 @@ contract L1ArbitrumTimelock is ArbitrumTimelock, L1ArbitrumMessenger {
     function setGovernedChainConfirmationTracker(
         GovernedChainsConfirmationTracker _governedChainsConfirmationTracker
     ) external onlyRole(TIMELOCK_ADMIN_ROLE) {
-        require(Address.isContract(address(_governedChainsConfirmationTracker)), "QQQ");
+        require(
+            Address.isContract(address(_governedChainsConfirmationTracker)),
+            "L1ArbitrumTimelock: _governedChainsConfirmationTracker not a contract"
+        );
         governedChainsConfirmationTracker = _governedChainsConfirmationTracker;
     }
 }
