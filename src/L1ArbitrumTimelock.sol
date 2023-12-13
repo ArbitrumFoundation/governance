@@ -119,7 +119,7 @@ contract L1ArbitrumTimelock is ArbitrumTimelock, L1ArbitrumMessenger {
         );
         _;
     }
-
+    // Requires all governed chain messages initiated before the current child-to-parent message are confirmed.
     modifier onlyIfGovernedChainConfirmed() {
         IBridge govChainBridge = IBridge(getBridge(governanceChainInbox));
         IOutbox activeOutbox = IOutbox(govChainBridge.activeOutbox());
