@@ -548,6 +548,10 @@ export class L2TimelockExecutionBatchStage extends L2TimelockExecutionStage {
   ): Promise<L2TimelockExecutionBatchStage[]> {
     const govInterface = L2ArbitrumGovernor__factory.createInterface();
     const proposalStages: L2TimelockExecutionBatchStage[] = [];
+    const timelockInterface = ArbitrumTimelock__factory.createInterface();
+    // ids of timelock operations for corresponing ProposalQueued operations found
+    const timelockOperationIdsFound = new Set<string>();
+
     for (const log of receipt.logs) {
       if (log.topics.find((t) => t === govInterface.getEventTopic("ProposalQueued"))) {
         const propQueuedObj = govInterface.parseLog(log)
@@ -556,7 +560,6 @@ export class L2TimelockExecutionBatchStage extends L2TimelockExecutionStage {
         // 10m ~ 1 month on arbitrum
         const propCreatedStart = log.blockNumber - 10000000;
         const propCreatedEnd = log.blockNumber;
-
         const propCreatedEvent = await this.getProposalCreatedData(
           log.address,
           propQueuedObj.proposalId.toHexString(),
@@ -577,12 +580,14 @@ export class L2TimelockExecutionBatchStage extends L2TimelockExecutionStage {
           constants.HashZero,
           id(propCreatedEvent.description)
         );
+
         const timelockAddress = this.findTimelockAddress(operationId, receipt.logs);
         if (!timelockAddress) {
           // if we couldnt find the timelock address it's because the operation id was not found on a callscheduled event
           // this could be because it was formed via batch instead of single, or vice versa, and is an expected result
           continue;
         }
+        timelockOperationIdsFound.add(operationId);
         // we know the operation id
         const executeBatch = new L2TimelockExecutionBatchStage(
           propCreatedEvent.targets,
@@ -594,6 +599,63 @@ export class L2TimelockExecutionBatchStage extends L2TimelockExecutionStage {
           arbOneSignerOrProvider
         );
         proposalStages.push(executeBatch);
+      }
+
+      try {
+        // get calls scheduled directly on timelock (not via gov)
+        const callScheduledOnTimelock: CallScheduledEvent["args"][] = [];
+        for (let log of receipt.logs) {
+          const timelockLog = log.topics.find(
+            (t) => t === timelockInterface.getEventTopic("CallScheduled")
+          );
+          if (!timelockLog) {
+            continue;
+          }
+          const callScheduledArgs = timelockInterface.parseLog(log)
+            .args as CallScheduledEvent["args"];
+          // skip calls previously found scheduled via gov
+          if (timelockOperationIdsFound.has(callScheduledArgs.id)) {
+            continue;
+          }
+          callScheduledOnTimelock.push(callScheduledArgs);
+        }
+
+        const uniqueOperationIds = new Set(callScheduledOnTimelock.map((arg) => arg.id)).size;
+
+        if (uniqueOperationIds == 1) {
+          // we expect all operations to have the same id (i.e., part of the same batch)
+          const targets = callScheduledOnTimelock.map((args) => args.target);
+          const values = callScheduledOnTimelock.map((args) => args[3]);
+          const datas = callScheduledOnTimelock.map((args) => args.data);
+          const predecessor = callScheduledOnTimelock[0].predecessor;
+          const { data } = ArbSys__factory.createInterface().decodeFunctionData(
+            "sendTxToL1",
+            datas[0]
+          );
+          const { salt } = this.decodeScheduleBatch(data);
+          const operationId = this.hashOperationBatch(targets, values, datas, predecessor, salt);
+          if (operationId !== callScheduledOnTimelock[0].id) {
+            throw new Error("XXX Invalid operation id");
+          }
+          const timelockAddress = this.findTimelockAddress(operationId, receipt.logs);
+          if (!timelockAddress) throw new Error("timelock address not found");
+          const executeTimelock = new L2TimelockExecutionBatchStage(
+            targets,
+            values,
+            datas,
+            predecessor,
+            salt,
+            timelockAddress,
+            arbOneSignerOrProvider
+          );
+          proposalStages.push(executeTimelock);
+        } else if (uniqueOperationIds > 1) {
+          // Multiple calls to scheduleBatch in a single tx is not supported
+          throw new Error("Multiple batches in single tx");
+        }
+      } catch (err) {
+        // there are expected errors since the calldata may not be of the expected form for decoding
+        continue;
       }
     }
 
