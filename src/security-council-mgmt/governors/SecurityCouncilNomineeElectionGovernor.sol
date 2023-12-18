@@ -80,7 +80,7 @@ contract SecurityCouncilNomineeElectionGovernor is
     error OnlyNomineeVetter();
     error CreateTooEarly(uint256 blockTimestamp, uint256 startTime);
     error AlreadyContender(address contender);
-    error ProposalNotActive(ProposalState state);
+    error ProposalNotPending(ProposalState state);
     error AccountInOtherCohort(Cohort cohort, address account);
     error ProposalNotSucceededState(ProposalState state);
     error ProposalNotInVettingPeriod(uint256 blockNumber, uint256 vettingDeadline);
@@ -213,7 +213,7 @@ contract SecurityCouncilNomineeElectionGovernor is
     ///         recognised by a Gnosis Safe. They need to be able to do this with this same address on each of the
     ///         chains where the Security Council is active. It is expected that the nominee vetter will check this
     ///         during the vetting phase and exclude any contenders which dont meet this criteria.
-    /// @dev    Can be called only while a proposal is active (in voting phase)
+    /// @dev    Can be called only while a proposal is pending (after proposal created but before voting phase)
     ///         A contender cannot be a member of the opposite cohort.
     function addContender(uint256 proposalId) external {
         ElectionInfo storage election = _elections[proposalId];
@@ -223,8 +223,8 @@ contract SecurityCouncilNomineeElectionGovernor is
         }
 
         ProposalState state_ = state(proposalId);
-        if (state_ != ProposalState.Active) {
-            revert ProposalNotActive(state_);
+        if (state_ != ProposalState.Pending) {
+            revert ProposalNotPending(state_);
         }
 
         // check to make sure the contender is not part of the other cohort (the cohort not currently up for election)

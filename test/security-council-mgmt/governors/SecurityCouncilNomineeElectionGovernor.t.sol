@@ -30,6 +30,8 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
         votingPeriod: 1 days
     });
 
+    uint256 votingDelay = 2 days;
+
     address proxyAdmin = address(0x66);
     address proposer = address(0x77);
 
@@ -46,6 +48,15 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
         _mockGetPastVotes({account: 0x00000000000000000000000000000000000A4B86, votes: 0});
         _mockGetPastTotalSupply(1_000_000_000e18);
         _mockCohortSize(cohortSize);
+
+        // AIP-X: update governor to add voting delay
+        vm.prank(initParams.owner);
+        governor.relay(
+            address(governor),
+            0,
+            abi.encodeWithSelector(governor.setVotingDelay.selector, votingDelay)
+        );
+        assertEq(governor.votingDelay(), votingDelay);
     }
 
     function testProperInitialization() public {
@@ -192,21 +203,22 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
         vm.prank(_contender(0));
         governor.addContender(proposalId);
 
-        // should fail if the proposal is not active
+        // should fail if the proposal is not pending
         _mockCohortIncludes(Cohort.SECOND, _contender(0), false);
-        vm.roll(governor.proposalDeadline(proposalId) + 1);
+        vm.roll(governor.proposalSnapshot(proposalId) + 1);
+        assertTrue(governor.state(proposalId) == IGovernorUpgradeable.ProposalState.Active);
         vm.expectRevert(
             abi.encodeWithSelector(
-                SecurityCouncilNomineeElectionGovernor.ProposalNotActive.selector,
-                IGovernorUpgradeable.ProposalState.Succeeded
+                SecurityCouncilNomineeElectionGovernor.ProposalNotPending.selector,
+                IGovernorUpgradeable.ProposalState.Active
             )
         );
         vm.prank(_contender(0));
         governor.addContender(proposalId);
 
-        // should succeed if not in other cohort and proposal is active
-        vm.roll(governor.proposalDeadline(proposalId));
-        assertTrue(governor.state(proposalId) == IGovernorUpgradeable.ProposalState.Active);
+        // should succeed if not in other cohort and proposal is pending
+        vm.roll(governor.proposalSnapshot(proposalId));
+        assertTrue(governor.state(proposalId) == IGovernorUpgradeable.ProposalState.Pending);
         vm.prank(_contender(0));
         governor.addContender(proposalId);
 
@@ -303,8 +315,9 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
 
         // should succeed if called by nominee vetter, proposal is in vetting period, and account is a nominee
         // make sure the account is a nominee
-        vm.roll(governor.proposalDeadline(proposalId));
+        vm.roll(governor.proposalSnapshot(proposalId));
         _addContender(proposalId, _contender(0));
+        vm.roll(governor.proposalDeadline(proposalId));
         _mockGetPastVotes(_voter(0), governor.quorum(proposalId));
         _castVoteForContender(proposalId, _voter(0), _contender(0), governor.quorum(proposalId));
 
@@ -334,8 +347,9 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
         uint256 proposalId = _propose();
 
         // create a nominee
-        vm.roll(governor.proposalDeadline(proposalId));
+        vm.roll(governor.proposalSnapshot(proposalId));
         _addContender(proposalId, _contender(0));
+        vm.roll(governor.proposalDeadline(proposalId));
         _mockGetPastVotes(_voter(0), governor.quorum(proposalId));
         _castVoteForContender(proposalId, _voter(0), _contender(0), governor.quorum(proposalId));
 
@@ -492,6 +506,14 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
         // mock some votes for the whole test here
         _mockGetPastVotes(_voter(0), governor.quorum(proposalId) * 2);
 
+        // add some contenders
+        _addContender(proposalId, _contender(0));
+        _addContender(proposalId, _contender(1));
+        _addContender(proposalId, _contender(2));
+
+        // roll to active state
+        vm.roll(governor.proposalDeadline(proposalId));
+
         // make sure params is 64 bytes long
         vm.expectRevert(
             abi.encodeWithSelector(
@@ -515,13 +537,12 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
                 SecurityCouncilNomineeElectionGovernorCountingUpgradeable
                     .NotEligibleContender
                     .selector,
-                _contender(0)
+                _contender(3)
             )
         );
-        _castVoteForContender(proposalId, _voter(0), _contender(0), 1);
+        _castVoteForContender(proposalId, _voter(0), _contender(3), 1);
 
         // can vote for a contender who has added themself
-        _addContender(proposalId, _contender(0));
         _castVoteForContender(proposalId, _voter(0), _contender(0), 1);
 
         // check state
@@ -551,8 +572,6 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
         _castVoteForContender(proposalId, _voter(0), _contender(0), 1);
 
         // make sure we can't use more votes than we have
-        _addContender(proposalId, _contender(1));
-        _addContender(proposalId, _contender(2));
         _castVoteForContender(proposalId, _voter(0), _contender(1), governor.quorum(proposalId));
         vm.expectRevert(
             abi.encodeWithSelector(

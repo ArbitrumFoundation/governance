@@ -84,16 +84,16 @@ contract TopNomineesGasTest is Test {
         vm.prank(voter);
         proposalId = nomineeGov.createElection();
 
-        // return;
         // vote for N nominees
-        vm.roll(nomineeGov.proposalSnapshot(proposalId) + 1);
         uint256 quorum = nomineeGov.quorum(proposalId);
         for (uint16 i = 0; i < N; i++) {
             _mockCohortIncludes(Cohort.SECOND, _nominee(i), false);
 
+            vm.roll(nomineeGov.proposalSnapshot(proposalId));
             vm.prank(_nominee(i));
             nomineeGov.addContender(proposalId);
 
+            vm.roll(nomineeGov.proposalDeadline(proposalId));
             vm.prank(voter);
             nomineeGov.castVoteWithReasonAndParams(
                 proposalId, 1, "test", abi.encode(_nominee(i), quorum)

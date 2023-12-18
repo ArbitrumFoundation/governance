@@ -447,16 +447,19 @@ contract E2E is Test, DeployGnosisWithModule {
 
         // start the election
         uint256 propId = vars.secDeployedContracts.nomineeElectionGovernor.createElection();
-        vm.roll(block.number + 1);
 
-        // contenders up for election - and vote for them
+        // put contenders up for election
         for (uint256 i = 0; i < newCohort1.length; i++) {
-            address newMember = newCohort1[i];
-            vm.prank(newMember);
+            vm.prank(newCohort1[i]);
             vars.secDeployedContracts.nomineeElectionGovernor.addContender(propId);
+        }
+
+        // vote for them
+        vm.roll(block.number + 1);
+        for (uint256 i = 0; i < newCohort1.length; i++) {
             vm.prank(l2InitialSupplyRecipient);
             vars.secDeployedContracts.nomineeElectionGovernor.castVoteWithReasonAndParams(
-                propId, 1, "vote for a nominee", abi.encode(newMember, 1 ether)
+                propId, 1, "vote for a nominee", abi.encode(newCohort1[i], 1 ether)
             );
         }
 
