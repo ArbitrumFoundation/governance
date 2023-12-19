@@ -9,7 +9,7 @@ contract SetArbOneArbOS11ModuleRootAciton is SetWasmModuleRootAction {
     constructor()
         SetWasmModuleRootAction(
             L1AddressRegistry(0xd514C2b3aaBDBfa10800B9C96dc1eB25427520A0),
-            bytes32(0x92a7978d7ef64fa82a33c9d9af77647d9014c345a24ebf41635bc89e1c45e35b)
+            bytes32(0xf4389b835497a910d7ba3ebfb77aa93da985634f3c052de1290360635be40c4a)
         )
     {}
 }

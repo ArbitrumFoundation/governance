@@ -9,7 +9,7 @@ contract SetNovaArbOS11ModuleRootAction is SetWasmModuleRootAction {
     constructor()
         SetWasmModuleRootAction(
             L1AddressRegistry(0x2F06643fc2CC18585Ae790b546388F0DE4Ec6635),
-            bytes32(0x92a7978d7ef64fa82a33c9d9af77647d9014c345a24ebf41635bc89e1c45e35b)
+            bytes32(0xf4389b835497a910d7ba3ebfb77aa93da985634f3c052de1290360635be40c4a)
         )
     {}
 }
