@@ -12,6 +12,8 @@ contract AIPXActionTest is Test {
     ProxyAdmin proxyAdmin = ProxyAdmin(0xdb216562328215E010F819B5aBe947bad4ca961e);
     UpgradeExecutor arbOneUe = UpgradeExecutor(0xCF57572261c7c2BCF21ffD220ea7d1a27D40A827);
     address council = 0x423552c0F05baCCac5Bfa91C6dCF1dc53a0A1641;
+    IArbitrumDAOConstitution constitution = IArbitrumDAOConstitution(0x1D62fFeB72e4c360CcBbacf7c965153b00260417);
+    bytes32 newConstitutionHash = 0x0101010101010101010101010101010101010101010101010101010101010101;
 
     address newImplementation = address(new SecurityCouncilNomineeElectionGovernor());
     uint256 votingDelay = 7 days;
@@ -19,7 +21,9 @@ contract AIPXActionTest is Test {
         address(proxyAdmin),
         address(gov),
         newImplementation,
-        votingDelay
+        votingDelay,
+        address(constitution),
+        newConstitutionHash
     );
 
     function testAction() external {
@@ -46,6 +50,12 @@ contract AIPXActionTest is Test {
             _getImplementation(),
             newImplementation,
             "implementation not set"
+        );
+
+        assertEq(
+            constitution.constitutionHash(),
+            newConstitutionHash,
+            "constitution hash not set"
         );
     }
 
