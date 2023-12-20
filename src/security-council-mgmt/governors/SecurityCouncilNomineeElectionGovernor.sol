@@ -3,7 +3,6 @@ pragma solidity 0.8.16;
 
 import "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorSettingsUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/cryptography/draft-EIP712Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/ECDSAUpgradeable.sol";
 import "../interfaces/ISecurityCouncilMemberElectionGovernor.sol";
 import "../interfaces/ISecurityCouncilNomineeElectionGovernor.sol";
@@ -17,7 +16,6 @@ import "../SecurityCouncilMgmtUtils.sol";
 /// @notice Governor contract for selecting Security Council Nominees (phase 1 of the Security Council election process).
 contract SecurityCouncilNomineeElectionGovernor is
     Initializable,
-    EIP712Upgradeable,
     GovernorUpgradeable,
     GovernorVotesUpgradeable,
     SecurityCouncilNomineeElectionGovernorCountingUpgradeable,
@@ -491,16 +489,6 @@ contract SecurityCouncilNomineeElectionGovernor is
         return ElectionGovernor.castVoteWithReasonAndParamsBySig(
             proposalId, support, reason, params, v, r, s
         );
-    }
-
-    /// @inheritdoc EIP712Upgradeable
-    function _EIP712NameHash() internal pure override returns (bytes32) {
-        return keccak256("SecurityCouncilNomineeElectionGovernor");
-    }
-    
-    /// @inheritdoc EIP712Upgradeable
-    function _EIP712VersionHash() internal pure override returns (bytes32) {
-        return keccak256("1");
     }
 
     /**
