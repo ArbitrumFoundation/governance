@@ -95,6 +95,7 @@ contract SecurityCouncilNomineeElectionGovernor is
     error CastVoteDisabled();
     error LastMemberElectionNotExecuted(uint256 prevProposalId);
     error InvalidSignature();
+    error Deprecated(string message);
 
     constructor() {
         _disableInitializers();
@@ -488,6 +489,11 @@ contract SecurityCouncilNomineeElectionGovernor is
         return ElectionGovernor.castVoteWithReasonAndParamsBySig(
             proposalId, support, reason, params, v, r, s
         );
+    }
+
+    /// @notice Deprecated, use `addContender(uint256 proposalId, bytes calldata signature)` instead
+    function addContender(uint256) external pure {
+        revert Deprecated("addContender(uint256 proposalId) has been deprecated. Use addContender(uint256 proposalId, bytes calldata signature) instead");
     }
 
     /**
