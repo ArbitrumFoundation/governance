@@ -3,6 +3,8 @@ pragma solidity 0.8.16;
 
 import "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorSettingsUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/cryptography/draft-EIP712Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/cryptography/ECDSAUpgradeable.sol";
 import "../interfaces/ISecurityCouncilMemberElectionGovernor.sol";
 import "../interfaces/ISecurityCouncilNomineeElectionGovernor.sol";
 import "./modules/SecurityCouncilNomineeElectionGovernorCountingUpgradeable.sol";
@@ -15,6 +17,7 @@ import "../SecurityCouncilMgmtUtils.sol";
 /// @notice Governor contract for selecting Security Council Nominees (phase 1 of the Security Council election process).
 contract SecurityCouncilNomineeElectionGovernor is
     Initializable,
+    EIP712Upgradeable,
     GovernorUpgradeable,
     GovernorVotesUpgradeable,
     SecurityCouncilNomineeElectionGovernorCountingUpgradeable,
@@ -94,6 +97,7 @@ contract SecurityCouncilNomineeElectionGovernor is
     error QuorumNumeratorTooLow(uint256 quorumNumeratorValue);
     error CastVoteDisabled();
     error LastMemberElectionNotExecuted(uint256 prevProposalId);
+    error InvalidSignature();
 
     constructor() {
         _disableInitializers();
@@ -215,11 +219,16 @@ contract SecurityCouncilNomineeElectionGovernor is
     ///         during the vetting phase and exclude any contenders which dont meet this criteria.
     /// @dev    Can be called only while a proposal is pending (after proposal created but before voting phase)
     ///         A contender cannot be a member of the opposite cohort.
-    function addContender(uint256 proposalId) external {
+    function addContender(uint256 proposalId, bytes calldata signature) external {
+        address signer = recoverAddContenderMessage(proposalId, signature);
+        if (signer == address(0)) {
+            revert InvalidSignature();
+        }
+
         ElectionInfo storage election = _elections[proposalId];
 
-        if (election.isContender[msg.sender]) {
-            revert AlreadyContender(msg.sender);
+        if (election.isContender[signer]) {
+            revert AlreadyContender(signer);
         }
 
         ProposalState state_ = state(proposalId);
@@ -233,13 +242,13 @@ contract SecurityCouncilNomineeElectionGovernor is
         // this check then is only a relevant check when the elections are running as expected - one at a time,
         // every 6 months. Updates to the sec council manager using methods other than replaceCohort can effect this check
         // and it's expected that the entity making those updates understands this.
-        if (securityCouncilManager.cohortIncludes(otherCohort(), msg.sender)) {
-            revert AccountInOtherCohort(otherCohort(), msg.sender);
+        if (securityCouncilManager.cohortIncludes(otherCohort(), signer)) {
+            revert AccountInOtherCohort(otherCohort(), signer);
         }
 
-        election.isContender[msg.sender] = true;
+        election.isContender[signer] = true;
 
-        emit ContenderAdded(proposalId, msg.sender);
+        emit ContenderAdded(proposalId, signer);
     }
 
     /// @notice Allows the owner to change the nomineeVetter
@@ -423,6 +432,15 @@ contract SecurityCouncilNomineeElectionGovernor is
         return _elections[proposalId].isContender[possibleContender];
     }
 
+    /// @notice Recover EIP712 signature for `AddContenderMessage`
+    function recoverAddContenderMessage(uint256 proposalId, bytes calldata signature) public view returns (address) {
+        bytes32 digest = _hashTypedDataV4(keccak256(abi.encode(
+            keccak256("AddContenderMessage(uint256 proposalId)"),
+            proposalId
+        )));
+        return ECDSAUpgradeable.recover(digest, signature);
+    }
+
     /// @notice Always reverts.
     /// @dev    `GovernorUpgradeable` function to create a proposal overridden to just revert.
     ///         We only want proposals to be created via `createElection`.
@@ -473,6 +491,16 @@ contract SecurityCouncilNomineeElectionGovernor is
         return ElectionGovernor.castVoteWithReasonAndParamsBySig(
             proposalId, support, reason, params, v, r, s
         );
+    }
+
+    /// @inheritdoc EIP712Upgradeable
+    function _EIP712NameHash() internal pure override returns (bytes32) {
+        return keccak256("SecurityCouncilNomineeElectionGovernor");
+    }
+    
+    /// @inheritdoc EIP712Upgradeable
+    function _EIP712VersionHash() internal pure override returns (bytes32) {
+        return keccak256("1");
     }
 
     /**
