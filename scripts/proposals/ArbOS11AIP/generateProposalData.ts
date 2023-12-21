@@ -66,13 +66,13 @@ const datas = actionAddresses.map(() => performEncoded);
 const main = async () => {
   const propCreator = new RoundTripProposalCreator(l1GovConfig, upgradeExecs);
 
-  const propData = await propCreator.createRoundTripCallData(
+  const res = await propCreator.createRoundTripCallDataForArbSysCall(
     actionAddresses,
     values,
     datas,
     description
   );
-  console.log(propData);
+  console.log(res.l1TimelockScheduleCallData);
 
   const proposal: CoreGovPropposal = {
     actionChainID: [1, 1, 42161, 42170],
@@ -80,7 +80,7 @@ const main = async () => {
     description,
     arbSysSendTxToL1Args: {
       l1Timelock: mainnetDeployedContracts.l1Timelock,
-      calldata: propData,
+      calldata: res.l1TimelockScheduleCallData,
     },
   };
 
