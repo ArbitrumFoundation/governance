@@ -13,7 +13,9 @@ contract ProposalDataRouter is Initializable, OwnableUpgradeable {
     uint256 private nonce;
 
     event UpgradeExecRouteBuilderSet(address addr);
-    event ProposalDataSent(uint256[] chainIds, address[] actionsAddressses);
+    event ProposalDataSent(
+        uint256[] chainIds, address[] actionsAddressses, bytes32 parentTimelockSalt
+    );
 
     error ArbSysCallFailed(bytes payload);
 
@@ -79,17 +81,18 @@ contract ProposalDataRouter is Initializable, OwnableUpgradeable {
         bytes[] memory _actionDatas,
         bytes32 _predecessor
     ) external onlyFromCoreTimelock {
+        bytes32 parentTimelockSalt = this.generateSalt(_actionAddresses, nonce);
         (, bytes memory payload) = upgradeExecRouteBuilder.createActionRouteData(
             _chainIds,
             _actionAddresses,
             _actionValues,
             _actionDatas,
             _predecessor,
-            this.generateSalt(_actionAddresses, nonce)
+            parentTimelockSalt
         );
         _sendProposalDataToL1(payload);
 
-        emit ProposalDataSent(_chainIds, _actionAddresses);
+        emit ProposalDataSent(_chainIds, _actionAddresses, parentTimelockSalt);
     }
 
     /// @notice Uses UpgradeExecRouteBuilder to build proposal data and then sends it to parent chain.
@@ -101,11 +104,13 @@ contract ProposalDataRouter is Initializable, OwnableUpgradeable {
         uint256[] memory _chainIds,
         address[] memory _actionAddresses
     ) external onlyFromCoreTimelock {
+        bytes32 parentTimelockSalt = this.generateSalt(_actionAddresses, nonce);
+
         (, bytes memory payload) = upgradeExecRouteBuilder.createActionRouteDataWithDefaults(
-            _chainIds, _actionAddresses, this.generateSalt(_actionAddresses, nonce)
+            _chainIds, _actionAddresses, parentTimelockSalt
         );
         _sendProposalDataToL1(payload);
-        emit ProposalDataSent(_chainIds, _actionAddresses);
+        emit ProposalDataSent(_chainIds, _actionAddresses, parentTimelockSalt);
     }
 
     /// @notice Send calldata to parent chain. Updates parents chain timelock nonce.
