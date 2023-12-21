@@ -82,7 +82,7 @@ contract L1ArbitrumTimelock is ArbitrumTimelock, L1ArbitrumMessenger {
     function postUpgradeInit(address _proposalDataRouter) external onlyRole(TIMELOCK_ADMIN_ROLE) {
         require(_proposalDataRouter != address(0), "L1ArbitrumTimelock: zero proposal data router");
         require(
-            getRoleAdmin(GOV_CHAIN_SCHEDULER_ROLE) != bytes32(0), "L1ArbitrumTimelock: admin already set"
+            getRoleAdmin(GOV_CHAIN_SCHEDULER_ROLE) == bytes32(0), "L1ArbitrumTimelock: admin already set"
         );
         require(
             !hasRole(GOV_CHAIN_SCHEDULER_ROLE, _proposalDataRouter),
