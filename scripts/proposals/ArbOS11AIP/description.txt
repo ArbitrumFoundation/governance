@@ -76,8 +76,8 @@ The Action smart contracts used to execute the on-chain upgrade can be viewed in
 https://github.com/ArbitrumFoundation/governance/pull/170
 
 Action contract addresses:
-[SetArbOneArbOS11ModuleRootAction](https://etherscan.io/address/0xe8e5dc1793d6fe39452ddcb90d12997fa39de1de#code)
-[SetNovaArbOS11ModuleRootAction](https://etherscan.io/address/0x6B125347f3B0790197d5247f32f91fd3e7140eD7#code)
+[SetArbOneArbOS11ModuleRootAction](https://etherscan.io/address/0x3b70f2da6f3b01f9a53dcbcb3e59ad3ad8bed924#code)
+[SetNovaArbOS11ModuleRootAction](https://etherscan.io/address/0x54c2c372943572ac2a8e84d502ebc13f14b62246#code)
 [SetArbOS11VersionAction](https://arbiscan.io/address/0xF6c7Dc6eaE78aBF2f32df899654ca425Dfa99481#code)
 [SetArbOS11VersionAction](https://nova.arbiscan.io/address/0x5357f4d3e8f8250a77bcddd5e58886ad1358220c#code)
 
