@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/utils/Address.sol";
 
 import "./L1ArbitrumMessenger.sol";
 import "./ArbitrumTimelock.sol";
-import "./GovernedChainsConfirmationTracker.sol";
+import "./interfaces/IGovernedChainsConfirmationTracker.sol";
 
 interface IInboxSubmissionFee {
     function calculateRetryableSubmissionFee(uint256 dataLength, uint256 baseFee)
@@ -42,7 +42,7 @@ contract L1ArbitrumTimelock is ArbitrumTimelock, L1ArbitrumMessenger {
     /// @notice The timelock of the governance contract on L2
     address public l2Timelock;
     //
-    GovernedChainsConfirmationTracker public governedChainsConfirmationTracker;
+    IGovernedChainsConfirmationTracker public governedChainsConfirmationTracker;
     // TODO: ensure safe storage slots
 
     constructor() {
@@ -82,7 +82,8 @@ contract L1ArbitrumTimelock is ArbitrumTimelock, L1ArbitrumMessenger {
     function postUpgradeInit(address _proposalDataRouter) external onlyRole(TIMELOCK_ADMIN_ROLE) {
         require(_proposalDataRouter != address(0), "L1ArbitrumTimelock: zero proposal data router");
         require(
-            getRoleAdmin(GOV_CHAIN_SCHEDULER_ROLE) == bytes32(0), "L1ArbitrumTimelock: admin already set"
+            getRoleAdmin(GOV_CHAIN_SCHEDULER_ROLE) == bytes32(0),
+            "L1ArbitrumTimelock: admin already set"
         );
         require(
             !hasRole(GOV_CHAIN_SCHEDULER_ROLE, _proposalDataRouter),
@@ -120,6 +121,7 @@ contract L1ArbitrumTimelock is ArbitrumTimelock, L1ArbitrumMessenger {
         _;
     }
     // Requires all governed chain messages initiated before the current child-to-parent message are confirmed.
+
     modifier onlyIfGovernedChainConfirmed() {
         IBridge govChainBridge = IBridge(getBridge(governanceChainInbox));
         IOutbox activeOutbox = IOutbox(govChainBridge.activeOutbox());
@@ -259,7 +261,7 @@ contract L1ArbitrumTimelock is ArbitrumTimelock, L1ArbitrumMessenger {
     }
 
     function setGovernedChainConfirmationTracker(
-        GovernedChainsConfirmationTracker _governedChainsConfirmationTracker
+        IGovernedChainsConfirmationTracker _governedChainsConfirmationTracker
     ) external onlyRole(TIMELOCK_ADMIN_ROLE) {
         require(
             Address.isContract(address(_governedChainsConfirmationTracker)),

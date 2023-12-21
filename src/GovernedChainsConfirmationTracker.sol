@@ -5,12 +5,13 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 
 import "./BoldIfaces.sol";
+import "./interfaces/IGovernedChainsConfirmationTracker.sol";
 
 /// @notice Deployed on a parent chain to track some number of child chains.
 /// Tracks the parent chain block number up through which all messages are guaranteed
 /// to be confirmed (and thus, e.g., child-to-parent message are executable)
 /// for each tracked child chain.
-contract GovernedChainsConfirmationTracker is Ownable {
+contract GovernedChainsConfirmationTracker is Ownable, IGovernedChainsConfirmationTracker {
     /// @notice Array of all tracked chains
     ChainInfo[] public chains;
     /// @notice length of chains, for ease of client queries
