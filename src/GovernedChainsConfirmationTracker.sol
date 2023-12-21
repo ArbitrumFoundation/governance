@@ -30,6 +30,7 @@ contract GovernedChainsConfirmationTracker is Ownable {
     error NotAdvanced(uint256 currentBlock, uint256 messagesConfirmedParentBlock, uint256 chainId);
     error NotAContract(address addr);
     error AssertionNotConfirmed(bytes32 assertionHash, AssertionStatus assertionStatus);
+    error DuplicateAssertion(bytes32 assertionHash);
 
     /// @param _chains Data for all tracked chains
     /// @param _owner Address with affordance to trigger a force-update
@@ -56,6 +57,10 @@ contract GovernedChainsConfirmationTracker is Ownable {
         uint256 _chainIndex,
         bytes32[2] memory _assertionHashes
     ) public view returns (uint256) {
+        if (_assertionHashes[0] == _assertionHashes[1]) {
+            revert DuplicateAssertion(_assertionHashes[0]);
+        }
+
         ChainInfo memory chainInfo = chains[_chainIndex];
         address rollupAddress = chainInfo.rollupAddress;
         AssertionNode[2] memory assertions;
