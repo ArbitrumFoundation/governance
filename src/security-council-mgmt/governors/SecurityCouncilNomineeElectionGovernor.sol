@@ -493,6 +493,8 @@ contract SecurityCouncilNomineeElectionGovernor is
     }
 
     /// @notice Deprecated, use `addContender(uint256 proposalId, bytes calldata signature)` instead
+    /// @dev    This function is deprecated because contenders should only be EOA's that can produce signatures. 
+    ///         If a security council member's address is not an EOA, then they may be unable to sign on all relevant chains.
     function addContender(uint256) external pure {
         revert Deprecated("addContender(uint256 proposalId) has been deprecated. Use addContender(uint256 proposalId, bytes calldata signature) instead");
     }
