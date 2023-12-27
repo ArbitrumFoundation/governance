@@ -231,6 +231,22 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
     function testAddContender() public {
         bytes memory sig = sigUtils.signAddContenderMessage(0, _contenderPrivKey(0));
 
+        // test invalid signature
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                SecurityCouncilNomineeElectionGovernor.InvalidSignature.selector
+            )
+        );
+        governor.addContender(0, _contender(1), sig);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                SecurityCouncilNomineeElectionGovernor.InvalidSignature.selector
+            )
+        );
+        governor.addContender(1, _contender(0), sig);
+
+
         // test invalid proposal id
         vm.expectRevert("Governor: unknown proposal id");
         governor.addContender(0, _contender(0), sig);
