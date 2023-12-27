@@ -210,11 +210,10 @@ contract SecurityCouncilNomineeElectionGovernor is
         }
     }
 
-    /// @notice Put `msg.sender` up for nomination. Must be called before a contender can receive votes.
-    ///         Contenders are expected to control an address than can create a signature that would be a
-    ///         recognised by a Gnosis Safe. They need to be able to do this with this same address on each of the
-    ///         chains where the Security Council is active. It is expected that the nominee vetter will check this
-    ///         during the vetting phase and exclude any contenders which dont meet this criteria.
+    /// @notice Put `contender` up for nomination. Must be called before a contender can receive votes.
+    /// @param  proposalId The id of the proposal
+    /// @param  contender The address of the contender
+    /// @param  signature EIP712 `AddContenderMessage(uint256 proposalId,address contender)` signed by `contender`
     /// @dev    Can be called only while a proposal is pending (after proposal created but before voting phase)
     ///         A contender cannot be a member of the opposite cohort.
     function addContender(uint256 proposalId, address contender, bytes calldata signature) external {
