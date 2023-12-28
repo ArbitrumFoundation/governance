@@ -10,6 +10,49 @@ import "../../util/TestUtil.sol";
 import "../../../src/security-council-mgmt/governors/SecurityCouncilNomineeElectionGovernor.sol";
 import "../../../src/security-council-mgmt/Common.sol";
 
+contract SigUtils is Test {
+    bytes32 private constant _HASHED_NAME = keccak256("SecurityCouncilNomineeElectionGovernor");
+    bytes32 private constant _HASHED_VERSION = keccak256("1");
+    bytes32 private constant _TYPE_HASH = keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
+    address private immutable _VERIFIER;
+
+    constructor(address verifier) {
+        _VERIFIER = verifier;
+    }
+
+    function signAddContenderMessage(uint256 proposalId, uint256 privKey) public view returns (bytes memory sig) {
+        bytes32 digest = _hashTypedDataV4(keccak256(abi.encode(
+            keccak256("AddContenderMessage(uint256 proposalId,address contender)"),
+            proposalId,
+            vm.addr(privKey)
+        )));
+
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privKey, digest);
+
+        sig = abi.encodePacked(r, s, v);
+    }
+    function _domainSeparatorV4() internal view returns (bytes32) {
+        return _buildDomainSeparator(_TYPE_HASH, _EIP712NameHash(), _EIP712VersionHash());
+    }
+    function _buildDomainSeparator(
+        bytes32 typeHash,
+        bytes32 nameHash,
+        bytes32 versionHash
+    ) private view returns (bytes32) {
+        return keccak256(abi.encode(typeHash, nameHash, versionHash, block.chainid, _VERIFIER));
+    }
+    function _hashTypedDataV4(bytes32 structHash) internal view virtual returns (bytes32) {
+        return ECDSAUpgradeable.toTypedDataHash(_domainSeparatorV4(), structHash);
+    }
+    function _EIP712NameHash() internal virtual view returns (bytes32) {
+        return _HASHED_NAME;
+    }
+    function _EIP712VersionHash() internal virtual view returns (bytes32) {
+        return _HASHED_VERSION;
+    }
+}
+
+
 contract SecurityCouncilNomineeElectionGovernorTest is Test {
     SecurityCouncilNomineeElectionGovernor governor;
 
@@ -35,8 +78,11 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
     address proxyAdmin = address(0x66);
     address proposer = address(0x77);
 
+    SigUtils sigUtils;
+
     function setUp() public {
         governor = _deployGovernor();
+        sigUtils = new SigUtils(address(governor));
 
         vm.etch(address(initParams.securityCouncilManager), "0x23");
         vm.etch(address(initParams.securityCouncilMemberElectionGovernor), "0x34");
@@ -183,13 +229,31 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
     }
 
     function testAddContender() public {
+        bytes memory sig = sigUtils.signAddContenderMessage(0, _contenderPrivKey(0));
+
+        // test invalid signature
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                SecurityCouncilNomineeElectionGovernor.InvalidSignature.selector
+            )
+        );
+        governor.addContender(0, _contender(1), sig);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                SecurityCouncilNomineeElectionGovernor.InvalidSignature.selector
+            )
+        );
+        governor.addContender(1, _contender(0), sig);
+
+
         // test invalid proposal id
-        vm.prank(_contender(0));
         vm.expectRevert("Governor: unknown proposal id");
-        governor.addContender(0);
+        governor.addContender(0, _contender(0), sig);
 
         // make a valid proposal
         uint256 proposalId = _propose();
+        sig = sigUtils.signAddContenderMessage(proposalId, _contenderPrivKey(0));
 
         // test in other cohort
         _mockCohortIncludes(Cohort.SECOND, _contender(0), true);
@@ -200,8 +264,7 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
                 _contender(0)
             )
         );
-        vm.prank(_contender(0));
-        governor.addContender(proposalId);
+        governor.addContender(proposalId, _contender(0), sig);
 
         // should fail if the proposal is not pending
         _mockCohortIncludes(Cohort.SECOND, _contender(0), false);
@@ -213,14 +276,12 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
                 IGovernorUpgradeable.ProposalState.Active
             )
         );
-        vm.prank(_contender(0));
-        governor.addContender(proposalId);
+        governor.addContender(proposalId, _contender(0), sig);
 
         // should succeed if not in other cohort and proposal is pending
         vm.roll(governor.proposalSnapshot(proposalId));
         assertTrue(governor.state(proposalId) == IGovernorUpgradeable.ProposalState.Pending);
-        vm.prank(_contender(0));
-        governor.addContender(proposalId);
+        governor.addContender(proposalId, _contender(0), sig);
 
         // check that it correctly mutated the state
         assertTrue(governor.isContender(proposalId, _contender(0)));
@@ -231,8 +292,7 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
                 SecurityCouncilNomineeElectionGovernor.AlreadyContender.selector, _contender(0)
             )
         );
-        vm.prank(_contender(0));
-        governor.addContender(proposalId);
+        governor.addContender(proposalId, _contender(0), sig);
     }
 
     function testSetNomineeVetter() public {
@@ -316,7 +376,7 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
         // should succeed if called by nominee vetter, proposal is in vetting period, and account is a nominee
         // make sure the account is a nominee
         vm.roll(governor.proposalSnapshot(proposalId));
-        _addContender(proposalId, _contender(0));
+        _addContender(proposalId, 0);
         vm.roll(governor.proposalDeadline(proposalId));
         _mockGetPastVotes(_voter(0), governor.quorum(proposalId));
         _castVoteForContender(proposalId, _voter(0), _contender(0), governor.quorum(proposalId));
@@ -348,7 +408,7 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
 
         // create a nominee
         vm.roll(governor.proposalSnapshot(proposalId));
-        _addContender(proposalId, _contender(0));
+        _addContender(proposalId, 0);
         vm.roll(governor.proposalDeadline(proposalId));
         _mockGetPastVotes(_voter(0), governor.quorum(proposalId));
         _castVoteForContender(proposalId, _voter(0), _contender(0), governor.quorum(proposalId));
@@ -507,9 +567,9 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
         _mockGetPastVotes(_voter(0), governor.quorum(proposalId) * 2);
 
         // add some contenders
-        _addContender(proposalId, _contender(0));
-        _addContender(proposalId, _contender(1));
-        _addContender(proposalId, _contender(2));
+        _addContender(proposalId, 0);
+        _addContender(proposalId, 1);
+        _addContender(proposalId, 2);
 
         // roll to active state
         vm.roll(governor.proposalDeadline(proposalId));
@@ -632,7 +692,7 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
         uint256 voterPrivKey = 0x4173fa62f15e8a9363d4dc11b951722b264fa38fbec64c0f6f14fc1e63f7edd4;
         address voterAddress = vm.addr(voterPrivKey);
 
-        _addContender(proposalId, _contender(0));
+        _addContender(proposalId, 0);
 
         // make sure the voter has enough votes
         _mockGetPastVotes({
@@ -678,7 +738,7 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
         uint256 voterPrivKey = 0x4173fa62f15e8a9363d4dc11b951722b264fa38fbec64c0f6f14fc1e63f7edd3;
         address voterAddress = vm.addr(voterPrivKey);
 
-        _addContender(proposalId, _contender(0));
+        _addContender(proposalId, 0);
 
         // make sure the voter has enough votes
         _mockGetPastVotes({
@@ -744,7 +804,7 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
     function testForceSupport() public {
         uint256 proposalId = _propose();
 
-        _addContender(proposalId, _contender(0));
+        _addContender(proposalId, 0);
 
         _mockGetPastVotes({
             account: _voter(0),
@@ -774,7 +834,11 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
     }
 
     function _contender(uint8 i) internal pure returns (address) {
-        return address(uint160(0x2200 + i));
+        return vm.addr(_contenderPrivKey(i));
+    }
+
+    function _contenderPrivKey(uint8 i) internal pure returns (uint256) {
+        return 0x2200 + i;
     }
 
     function _datePlusMonthsToTimestamp(Date memory date, uint256 months)
@@ -858,11 +922,12 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
         governor.execute(targets, values, calldatas, keccak256(bytes(description)));
     }
 
-    function _addContender(uint256 proposalId, address contender) internal {
-        _mockCohortIncludes(Cohort.SECOND, contender, false);
-
-        vm.prank(contender);
-        governor.addContender(proposalId);
+    function _addContender(uint256 proposalId, uint8 contender) internal {
+        uint256 privKey = _contenderPrivKey(contender);
+        address addr = _contender(contender);
+        _mockCohortIncludes(Cohort.SECOND, addr, false);
+        bytes memory sig = sigUtils.signAddContenderMessage(proposalId, privKey);
+        governor.addContender(proposalId, addr, sig);
     }
 
     function _castVoteForContender(

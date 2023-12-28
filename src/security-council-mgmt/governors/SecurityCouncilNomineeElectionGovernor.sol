@@ -94,6 +94,8 @@ contract SecurityCouncilNomineeElectionGovernor is
     error QuorumNumeratorTooLow(uint256 quorumNumeratorValue);
     error CastVoteDisabled();
     error LastMemberElectionNotExecuted(uint256 prevProposalId);
+    error InvalidSignature();
+    error Deprecated(string message);
 
     constructor() {
         _disableInitializers();
@@ -208,18 +210,22 @@ contract SecurityCouncilNomineeElectionGovernor is
         }
     }
 
-    /// @notice Put `msg.sender` up for nomination. Must be called before a contender can receive votes.
-    ///         Contenders are expected to control an address than can create a signature that would be a
-    ///         recognised by a Gnosis Safe. They need to be able to do this with this same address on each of the
-    ///         chains where the Security Council is active. It is expected that the nominee vetter will check this
-    ///         during the vetting phase and exclude any contenders which dont meet this criteria.
+    /// @notice Put `contender` up for nomination. Must be called before a contender can receive votes.
+    /// @param  proposalId The id of the proposal
+    /// @param  contender The address of the contender
+    /// @param  signature EIP712 `AddContenderMessage(uint256 proposalId,address contender)` signed by `contender`
     /// @dev    Can be called only while a proposal is pending (after proposal created but before voting phase)
     ///         A contender cannot be a member of the opposite cohort.
-    function addContender(uint256 proposalId) external {
+    function addContender(uint256 proposalId, address contender, bytes calldata signature) external {
+        address signer = recoverAddContenderMessage(proposalId, contender, signature);
+        if (signer == address(0) || signer != contender) {
+            revert InvalidSignature();
+        }
+
         ElectionInfo storage election = _elections[proposalId];
 
-        if (election.isContender[msg.sender]) {
-            revert AlreadyContender(msg.sender);
+        if (election.isContender[signer]) {
+            revert AlreadyContender(signer);
         }
 
         ProposalState state_ = state(proposalId);
@@ -233,13 +239,13 @@ contract SecurityCouncilNomineeElectionGovernor is
         // this check then is only a relevant check when the elections are running as expected - one at a time,
         // every 6 months. Updates to the sec council manager using methods other than replaceCohort can effect this check
         // and it's expected that the entity making those updates understands this.
-        if (securityCouncilManager.cohortIncludes(otherCohort(), msg.sender)) {
-            revert AccountInOtherCohort(otherCohort(), msg.sender);
+        if (securityCouncilManager.cohortIncludes(otherCohort(), signer)) {
+            revert AccountInOtherCohort(otherCohort(), signer);
         }
 
-        election.isContender[msg.sender] = true;
+        election.isContender[signer] = true;
 
-        emit ContenderAdded(proposalId, msg.sender);
+        emit ContenderAdded(proposalId, signer);
     }
 
     /// @notice Allows the owner to change the nomineeVetter
@@ -423,6 +429,16 @@ contract SecurityCouncilNomineeElectionGovernor is
         return _elections[proposalId].isContender[possibleContender];
     }
 
+    /// @notice Recover EIP712 signature for `AddContenderMessage`
+    function recoverAddContenderMessage(uint256 proposalId, address contender, bytes calldata signature) public view returns (address) {
+        bytes32 digest = _hashTypedDataV4(keccak256(abi.encode(
+            keccak256("AddContenderMessage(uint256 proposalId,address contender)"),
+            proposalId,
+            contender
+        )));
+        return ECDSAUpgradeable.recover(digest, signature);
+    }
+
     /// @notice Always reverts.
     /// @dev    `GovernorUpgradeable` function to create a proposal overridden to just revert.
     ///         We only want proposals to be created via `createElection`.
@@ -473,6 +489,13 @@ contract SecurityCouncilNomineeElectionGovernor is
         return ElectionGovernor.castVoteWithReasonAndParamsBySig(
             proposalId, support, reason, params, v, r, s
         );
+    }
+
+    /// @notice Deprecated, use `addContender(uint256 proposalId, bytes calldata signature)` instead
+    /// @dev    This function is deprecated because contenders should only be EOA's that can produce signatures. 
+    ///         If a security council member's address is not an EOA, then they may be unable to sign on all relevant chains.
+    function addContender(uint256) external pure {
+        revert Deprecated("addContender(uint256 proposalId) has been deprecated. Use addContender(uint256 proposalId, bytes calldata signature) instead");
     }
 
     /**

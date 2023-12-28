@@ -4,6 +4,7 @@ pragma solidity 0.8.16;
 import "forge-std/Test.sol";
 import "../../../src/security-council-mgmt/governors/SecurityCouncilMemberElectionGovernor.sol";
 import "../../../src/security-council-mgmt/governors/SecurityCouncilNomineeElectionGovernor.sol";
+import "./SecurityCouncilNomineeElectionGovernor.t.sol";
 
 import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 
@@ -11,6 +12,7 @@ import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.so
 contract TopNomineesGasTest is Test {
     SecurityCouncilMemberElectionGovernor memberGov;
     SecurityCouncilNomineeElectionGovernor nomineeGov;
+    SigUtils sigUtils;
 
     SecurityCouncilNomineeElectionGovernor.InitParams nomineeInitParams =
     SecurityCouncilNomineeElectionGovernor.InitParams({
@@ -72,6 +74,8 @@ contract TopNomineesGasTest is Test {
         nomineeInitParams.securityCouncilMemberElectionGovernor = memberGov;
         nomineeGov.initialize(nomineeInitParams);
 
+        sigUtils = new SigUtils(address(nomineeGov));
+
         // mock stuff
         _mockGetPastVotes(voter, 1_000_000_000e18);
         _mockGetPastVotes({account: 0x00000000000000000000000000000000000A4B86, votes: 0});
@@ -90,8 +94,7 @@ contract TopNomineesGasTest is Test {
             _mockCohortIncludes(Cohort.SECOND, _nominee(i), false);
 
             vm.roll(nomineeGov.proposalSnapshot(proposalId));
-            vm.prank(_nominee(i));
-            nomineeGov.addContender(proposalId);
+            _addContender(i);
 
             vm.roll(nomineeGov.proposalDeadline(proposalId));
             vm.prank(voter);
@@ -133,12 +136,21 @@ contract TopNomineesGasTest is Test {
         assertLt(g, uint256(N) * 10_000);
     }
 
+    function _nomineePrivKey(uint16 i) internal pure returns (uint256) {
+        return uint256(0x3300) + i;
+    }
+
     function _nominee(uint16 i) internal pure returns (address) {
-        return address(uint160(uint256(0x3300) + i));
+        return vm.addr(_nomineePrivKey(i));
     }
 
     function _dummyEtch(address x) internal {
         vm.etch(x, hex"1234");
+    }
+
+    function _addContender(uint16 i) internal {
+        bytes memory sig = sigUtils.signAddContenderMessage(proposalId, _nomineePrivKey(i));
+        nomineeGov.addContender(proposalId, _nominee(i), sig);
     }
 
     function _deployProxy(address impl) internal returns (address) {

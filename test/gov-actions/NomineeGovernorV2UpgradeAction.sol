@@ -3,10 +3,10 @@ pragma solidity 0.8.16;
 
 import "forge-std/Test.sol";
 
-import "../../src/gov-action-contracts/AIPs/AIPXAction.sol";
+import "../../src/gov-action-contracts/AIPs/NomineeGovernorV2UpgradeAction.sol";
 import "../../src/security-council-mgmt/governors/SecurityCouncilNomineeElectionGovernor.sol";
 
-contract AIPXActionTest is Test {
+contract NomineeGovernorV2UpgradeActionTest is Test {
     address oldImplementation = 0x8436A1bc9f9f9EB0cF1B51942C5657b60A40CCDD;
     SecurityCouncilNomineeElectionGovernor gov = SecurityCouncilNomineeElectionGovernor(payable(0x8a1cDA8dee421cD06023470608605934c16A05a0));
     ProxyAdmin proxyAdmin = ProxyAdmin(0xdb216562328215E010F819B5aBe947bad4ca961e);
@@ -17,7 +17,7 @@ contract AIPXActionTest is Test {
 
     address newImplementation = address(new SecurityCouncilNomineeElectionGovernor());
     uint256 votingDelay = 7 days;
-    AIPXAction action = new AIPXAction(
+    NomineeGovernorV2UpgradeActionTemplate action = new NomineeGovernorV2UpgradeActionTemplate(
         address(proxyAdmin),
         address(gov),
         newImplementation,
@@ -28,12 +28,12 @@ contract AIPXActionTest is Test {
 
     function testAction() external {
         if (!_isForkTest()) {
-            console.log("not fork test, skipping AIPXActionTest");
+            console.log("not fork test, skipping NomineeGovernorV2UpgradeActionTest");
             return;
         }
 
         if (_getImplementation() != oldImplementation) {
-            console.log("implementation not set to old implementation, skipping AIPXActionTest");
+            console.log("implementation not set to old implementation, skipping NomineeGovernorV2UpgradeActionTest");
             return;
         }
 

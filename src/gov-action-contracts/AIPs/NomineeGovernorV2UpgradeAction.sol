@@ -11,7 +11,7 @@ import {
 } from "../../security-council-mgmt/governors/SecurityCouncilNomineeElectionGovernor.sol";
 import {IArbitrumDAOConstitution} from "../../interfaces/IArbitrumDAOConstitution.sol";
 
-contract AIPXAction {
+contract NomineeGovernorV2UpgradeActionTemplate {
     address public immutable proxyAdmin;
     address public immutable nomineeElectionGovernorProxy;
     address public immutable newNomineeElectionGovernorImplementation;
@@ -53,4 +53,15 @@ contract AIPXAction {
         // set the new constitution hash
         IArbitrumDAOConstitution(constitution).setConstitutionHash(newConstitutionHash);
     }
+}
+
+contract NomineeGovernorV2UpgradeAction is NomineeGovernorV2UpgradeActionTemplate {
+    constructor() NomineeGovernorV2UpgradeActionTemplate(
+        0xdb216562328215E010F819B5aBe947bad4ca961e,
+        0x8a1cDA8dee421cD06023470608605934c16A05a0,
+        address(0), // todo: new implementation
+        50400,
+        0x1D62fFeB72e4c360CcBbacf7c965153b00260417,
+        0x0101010101010101010101010101010101010101010101010101010101010101 // todo: new constitution hash
+    ) {}
 }
