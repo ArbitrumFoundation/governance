@@ -3,7 +3,7 @@ pragma solidity 0.8.16;
 
 import "forge-std/Test.sol";
 
-import "../../src/gov-action-contracts/AIPs/AIPXAction.sol";
+import "../../src/gov-action-contracts/AIPs/NomineeGovernorV2UpgradeAction.sol";
 import "../../src/security-council-mgmt/governors/SecurityCouncilNomineeElectionGovernor.sol";
 
 contract AIPXActionTest is Test {
@@ -17,7 +17,7 @@ contract AIPXActionTest is Test {
 
     address newImplementation = address(new SecurityCouncilNomineeElectionGovernor());
     uint256 votingDelay = 7 days;
-    AIPXAction action = new AIPXAction(
+    NomineeGovernorV2UpgradeActionTemplate action = new NomineeGovernorV2UpgradeActionTemplate(
         address(proxyAdmin),
         address(gov),
         newImplementation,
