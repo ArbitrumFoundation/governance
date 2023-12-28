@@ -10,7 +10,7 @@ contract AIPSetSequencerInboxMaxTimeVariationArbOneAction is
     // TODO: confirm / finalize values
     constructor()
         SetSequencerInboxMaxTimeVariationAction(
-            0xd514C2b3aaBDBfa10800B9C96dc1eB25427520A0,
+            ISequencerInboxGetter(0xd514C2b3aaBDBfa10800B9C96dc1eB25427520A0),
             5760,
             64,
             86_400,
