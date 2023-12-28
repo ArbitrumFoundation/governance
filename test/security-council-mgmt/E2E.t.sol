@@ -19,6 +19,7 @@ import "@gnosis.pm/safe-contracts/contracts/proxies/GnosisSafeProxyFactory.sol";
 import "../../src/gov-action-contracts/address-registries/L2AddressRegistry.sol";
 import "../util/DeployGnosisWithModule.sol";
 import "../../src/security-council-mgmt/Common.sol";
+import "./governors/SecurityCouncilNomineeElectionGovernor.t.sol";
 
 contract ArbSysMock {
     event ArbSysL2ToL1Tx(address from, address to, uint256 value, bytes data);
@@ -94,24 +95,26 @@ contract E2E is Test, DeployGnosisWithModule {
     L2ArbitrumToken l2TokenLogic = new L2ArbitrumToken();
 
     // owners
-    address member1 = address(637);
-    address member2 = address(638);
-    address member3 = address(639);
-    address member4 = address(640);
-    address member5 = address(641);
-    address member6 = address(642);
-    address member7 = address(643);
-    address member8 = address(644);
-    address member9 = address(645);
-    address member10 = address(646);
-    address member11 = address(647);
-    address member12 = address(648);
-    address member13 = address(649);
-    address member14 = address(650);
-    address member15 = address(651);
-    address member16 = address(652);
-    address member17 = address(653);
-    address member18 = address(654);
+    address member1 = vm.addr(637);
+    address member2 = vm.addr(638);
+    address member3 = vm.addr(639);
+    address member4 = vm.addr(640);
+    address member5 = vm.addr(641);
+    address member6 = vm.addr(642);
+    address member7 = vm.addr(643);
+    address member8 = vm.addr(644);
+    address member9 = vm.addr(645);
+    address member10 = vm.addr(646);
+    address member11 = vm.addr(647);
+    address member12 = vm.addr(648);
+    address member13 = vm.addr(649);
+    address member14 = vm.addr(650);
+    address member15 = vm.addr(651);
+    address member16 = vm.addr(652);
+    address member17 = vm.addr(653);
+    address member18 = vm.addr(654);
+
+    
 
     address[] members = [
         member1,
@@ -449,9 +452,10 @@ contract E2E is Test, DeployGnosisWithModule {
         uint256 propId = vars.secDeployedContracts.nomineeElectionGovernor.createElection();
 
         // put contenders up for election
+        SigUtils sigUtils = new SigUtils(address(vars.secDeployedContracts.nomineeElectionGovernor));
         for (uint256 i = 0; i < newCohort1.length; i++) {
-            vm.prank(newCohort1[i]);
-            vars.secDeployedContracts.nomineeElectionGovernor.addContender(propId);
+            uint256 pk = 649 + i; // member 13 - 18 priv keys
+            vars.secDeployedContracts.nomineeElectionGovernor.addContender(propId, vm.addr(pk), sigUtils.signAddContenderMessage(propId, pk));
         }
 
         // vote for them
