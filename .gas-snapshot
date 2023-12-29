@@ -1,5 +1,4 @@
 AIP1Point2ActionTest:testAction() (gas: 629328)
-AIPXActionTest:testAction() (gas: 8153)
 ArbitrumDAOConstitutionTest:testConstructor() (gas: 259383)
 ArbitrumDAOConstitutionTest:testMonOwnerCannotSetHash() (gas: 262836)
 ArbitrumDAOConstitutionTest:testOwnerCanSetHash() (gas: 261148)
@@ -99,6 +98,7 @@ L2SecurityCouncilMgmtFactoryTest:testNomineeElectionGovDeployment() (gas: 305390
 L2SecurityCouncilMgmtFactoryTest:testOnlyOwnerCanDeploy() (gas: 25670482)
 L2SecurityCouncilMgmtFactoryTest:testRemovalGovDeployment() (gas: 30537069)
 L2SecurityCouncilMgmtFactoryTest:testSecurityCouncilManagerDeployment() (gas: 30556162)
+NomineeGovernorV2UpgradeActionTest:testAction() (gas: 8153)
 OutboxActionsTest:testAddOutbxesAction() (gas: 651591)
 OutboxActionsTest:testCantAddEOA() (gas: 969161)
 OutboxActionsTest:testCantReAddOutbox() (gas: 974559)
