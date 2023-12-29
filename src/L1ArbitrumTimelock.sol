@@ -83,6 +83,20 @@ contract L1ArbitrumTimelock is ArbitrumTimelock, L1ArbitrumMessenger {
         address _proposalDataRouter,
         address _governedChainsConfirmationTracker
     ) external onlyRole(TIMELOCK_ADMIN_ROLE) reinitializer(2) {
+        require(
+            address(governedChainsConfirmationTracker) == address(0),
+            "L1ArbitrumTimelock: governedChainsConfirmationTracker already set"
+        );
+        _setConfTrackerAndTimelockandRouterRoles(
+            _proposalDataRouter, _governedChainsConfirmationTracker
+        );
+    }
+
+    // TODO: call this in initialize as well?
+    function _setConfTrackerAndTimelockandRouterRoles(
+        address _proposalDataRouter,
+        address _governedChainsConfirmationTracker
+    ) internal {
         require(_proposalDataRouter != address(0), "L1ArbitrumTimelock: zero proposal data router");
 
         //  make Timelock admin the admin of the GOV_CHAIN_SCHEDULER_ROLE role
