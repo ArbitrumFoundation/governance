@@ -47,7 +47,7 @@ contract NomineeGovernorV2UpgradeActionTemplate {
         SecurityCouncilNomineeElectionGovernor(payable(nomineeElectionGovernorProxy)).relay(
             nomineeElectionGovernorProxy,
             0,
-            abi.encodeWithSelector(GovernorSettingsUpgradeable.setVotingDelay.selector, votingDelay)
+            abi.encodeCall(GovernorSettingsUpgradeable.setVotingDelay, (votingDelay))
         );
 
         // set the new constitution hash
