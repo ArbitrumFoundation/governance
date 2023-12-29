@@ -25,6 +25,8 @@ contract L1ArbitrumTimelockTest is Test {
     address l1Council = address(141);
     address l2ProposalDataRouter = address(142);
     address timelockAdmin = address(143);
+    address confirmationTracker;
+    
 
     function deploy() internal returns (L1ArbitrumTimelock) {
         L1ArbitrumTimelock timelock =
@@ -41,10 +43,10 @@ contract L1ArbitrumTimelockTest is Test {
 
         l1Timelock.initialize(minDelay, executors, address(inbox), l2Timelock);
         l1Timelock.grantRole(l1Timelock.TIMELOCK_ADMIN_ROLE(), timelockAdmin);
-        address confTracker = address(new GovernedChainsConfirmationTrackerMock());
+        confirmationTracker = address(new GovernedChainsConfirmationTrackerMock());
 
         vm.prank(timelockAdmin);
-        l1Timelock.postUpgradeInit(l2ProposalDataRouter, confTracker);
+        l1Timelock.postUpgradeInit(l2ProposalDataRouter, confirmationTracker);
 
         return (l1Timelock, inbox);
     }
@@ -54,8 +56,10 @@ contract L1ArbitrumTimelockTest is Test {
         return l1Timelock;
     }
 
-    function testDeployAndInit() external returns (L1ArbitrumTimelock) {
+    function testCantPostUpgradeInitTwice() external returns (L1ArbitrumTimelock) {
         (L1ArbitrumTimelock l1Timelock,) = deployAndInitInbox();
+        vm.expectRevert("Initializable: contract is already initialized");
+        l1Timelock.postUpgradeInit(l2ProposalDataRouter, confirmationTracker);
     }
 
     function testDoesDeploy() external {
