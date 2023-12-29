@@ -129,4 +129,8 @@ contract InboxMock is IInboxSubmissionFee {
     function l2ToL1Sender() external view returns (address) {
         return l2ToL1SenderMock;
     }
+
+    function l2ToL1Block() external view returns (uint256) {
+        return 100_000;
+    }
 }

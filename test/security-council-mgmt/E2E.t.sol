@@ -19,6 +19,7 @@ import "@gnosis.pm/safe-contracts/contracts/proxies/GnosisSafeProxyFactory.sol";
 import "../../src/gov-action-contracts/address-registries/L2AddressRegistry.sol";
 import "../util/DeployGnosisWithModule.sol";
 import "../../src/security-council-mgmt/Common.sol";
+import "../util/GovernedChainsConfirmationTrackerMock.sol";
 
 contract ArbSysMock {
     event ArbSysL2ToL1Tx(address from, address to, uint256 value, bytes data);
@@ -250,11 +251,7 @@ contract E2E is Test, DeployGnosisWithModule {
         UpgradeExecutor novaExecutorLogic = new UpgradeExecutor();
         UpgradeExecutor novaExecutor = UpgradeExecutor(
             address(
-                new TransparentUpgradeableProxy(
-                address(novaExecutorLogic),
-                address(novaAdmin),
-                ""
-                )
+                new TransparentUpgradeableProxy(address(novaExecutorLogic), address(novaAdmin), "")
             )
         );
         address[] memory executors = new address[](2);
@@ -300,6 +297,9 @@ contract E2E is Test, DeployGnosisWithModule {
             );
             vars.l1Timelock = l1Timelock;
             vars.l1Executor = l1Executor;
+            address confTracker = address(new GovernedChainsConfirmationTrackerMock());
+            vm.prank(address(l1Executor));
+            l1Timelock.postUpgradeInit(address(1111), confTracker);
         }
 
         vars.l2GovFac.deployStep3(applyL1ToL2Alias(address(vars.l1Timelock)));

@@ -79,26 +79,21 @@ contract L1ArbitrumTimelock is ArbitrumTimelock, L1ArbitrumMessenger {
         grantRole(PROPOSER_ROLE, bridge);
     }
 
-    function postUpgradeInit(address _proposalDataRouter) external onlyRole(TIMELOCK_ADMIN_ROLE) {
+    function postUpgradeInit(
+        address _proposalDataRouter,
+        address _governedChainsConfirmationTracker
+    ) external onlyRole(TIMELOCK_ADMIN_ROLE) reinitializer(2) {
         require(_proposalDataRouter != address(0), "L1ArbitrumTimelock: zero proposal data router");
-        require(
-            getRoleAdmin(GOV_CHAIN_SCHEDULER_ROLE) == bytes32(0),
-            "L1ArbitrumTimelock: admin already set"
-        );
-        require(
-            !hasRole(GOV_CHAIN_SCHEDULER_ROLE, _proposalDataRouter),
-            "L1ArbitrumTimelock: proposal data router role already set"
-        );
-        require(
-            !hasRole(GOV_CHAIN_SCHEDULER_ROLE, l2Timelock),
-            "L1ArbitrumTimelock: l2Timelock role already set"
-        );
 
         //  make Timelock admin the admin of the GOV_CHAIN_SCHEDULER_ROLE role
         _setRoleAdmin(GOV_CHAIN_SCHEDULER_ROLE, TIMELOCK_ADMIN_ROLE);
         // Allow timelock and proposal data router to call schedule
         _grantRole(GOV_CHAIN_SCHEDULER_ROLE, _proposalDataRouter);
         _grantRole(GOV_CHAIN_SCHEDULER_ROLE, l2Timelock);
+
+        setGovernedChainConfirmationTracker(
+            IGovernedChainsConfirmationTracker(_governedChainsConfirmationTracker)
+        );
     }
 
     modifier onlyFromCoreProposalSender() {
@@ -262,7 +257,7 @@ contract L1ArbitrumTimelock is ArbitrumTimelock, L1ArbitrumMessenger {
 
     function setGovernedChainConfirmationTracker(
         IGovernedChainsConfirmationTracker _governedChainsConfirmationTracker
-    ) external onlyRole(TIMELOCK_ADMIN_ROLE) {
+    ) public onlyRole(TIMELOCK_ADMIN_ROLE) {
         require(
             Address.isContract(address(_governedChainsConfirmationTracker)),
             "L1ArbitrumTimelock: _governedChainsConfirmationTracker not a contract"

@@ -4,6 +4,7 @@ pragma solidity 0.8.16;
 import "../src/L1ArbitrumTimelock.sol";
 import "./util/TestUtil.sol";
 import "./util/InboxMock.sol";
+import "./util/GovernedChainsConfirmationTrackerMock.sol";
 import "@openzeppelin/contracts-upgradeable/utils/StringsUpgradeable.sol";
 
 import "forge-std/Test.sol";
@@ -22,6 +23,8 @@ contract L1ArbitrumTimelockTest is Test {
     address l2Timelock = address(139);
     address outbox = address(140);
     address l1Council = address(141);
+    address l2ProposalDataRouter = address(142);
+    address timelockAdmin = address(143);
 
     function deploy() internal returns (L1ArbitrumTimelock) {
         L1ArbitrumTimelock timelock =
@@ -37,6 +40,11 @@ contract L1ArbitrumTimelockTest is Test {
         executors[0] = address(0);
 
         l1Timelock.initialize(minDelay, executors, address(inbox), l2Timelock);
+        l1Timelock.grantRole(l1Timelock.TIMELOCK_ADMIN_ROLE(), timelockAdmin);
+        address confTracker = address(new GovernedChainsConfirmationTrackerMock());
+
+        vm.prank(timelockAdmin);
+        l1Timelock.postUpgradeInit(l2ProposalDataRouter, confTracker);
 
         return (l1Timelock, inbox);
     }
@@ -44,6 +52,10 @@ contract L1ArbitrumTimelockTest is Test {
     function deployAndInit() internal returns (L1ArbitrumTimelock) {
         (L1ArbitrumTimelock l1Timelock,) = deployAndInitInbox();
         return l1Timelock;
+    }
+
+    function testDeployAndInit() external returns (L1ArbitrumTimelock) {
+        (L1ArbitrumTimelock l1Timelock,) = deployAndInitInbox();
     }
 
     function testDoesDeploy() external {
@@ -63,6 +75,10 @@ contract L1ArbitrumTimelockTest is Test {
             activeOutbox,
             bytes.concat(IOutbox(outbox).l2ToL1Sender.selector),
             abi.encode(l2ToL1Sender)
+        );
+
+        vm.mockCall(
+            activeOutbox, bytes.concat(IOutbox(outbox).l2ToL1Block.selector), abi.encode(100_000)
         );
     }
 
@@ -443,13 +459,13 @@ contract L1ArbitrumTimelockTest is Test {
 
         address wrongL2Timelock = address(1245);
         mockActiveOutbox(outbox, wrongL2Timelock);
-        vm.expectRevert("L1ArbitrumTimelock: not from l2 timelock");
+        vm.expectRevert("L1ArbitrumTimelock: not gov chain scheduler");
         vm.prank(bridge);
         l1Timelock.schedule(
             sarg.target, sarg.value, sarg.payload, sarg.predecessor, sarg.salt, minDelay
         );
 
-        vm.expectRevert("L1ArbitrumTimelock: not from l2 timelock");
+        vm.expectRevert("L1ArbitrumTimelock: not gov chain scheduler");
         vm.prank(bridge);
         l1Timelock.scheduleBatch(
             sarg.targets,
