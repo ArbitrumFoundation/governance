@@ -210,15 +210,14 @@ contract SecurityCouncilNomineeElectionGovernor is
         }
     }
 
-    /// @notice Put `contender` up for nomination. Must be called before a contender can receive votes.
+    /// @notice Put a contender up for nomination. Must be called before a contender can receive votes.
     /// @param  proposalId The id of the proposal
-    /// @param  contender The address of the contender
-    /// @param  signature EIP712 `AddContenderMessage(uint256 proposalId,address contender)` signed by `contender`
+    /// @param  signature EIP712 `AddContenderMessage(uint256 proposalId)` signed by the contender
     /// @dev    Can be called only while a proposal is pending (after proposal created but before voting phase)
     ///         A contender cannot be a member of the opposite cohort.
-    function addContender(uint256 proposalId, address contender, bytes calldata signature) external {
-        address signer = recoverAddContenderMessage(proposalId, contender, signature);
-        if (signer == address(0) || signer != contender) {
+    function addContender(uint256 proposalId, bytes calldata signature) external {
+        address signer = recoverAddContenderMessage(proposalId, signature);
+        if (signer == address(0)) {
             revert InvalidSignature();
         }
 
@@ -430,11 +429,10 @@ contract SecurityCouncilNomineeElectionGovernor is
     }
 
     /// @notice Recover EIP712 signature for `AddContenderMessage`
-    function recoverAddContenderMessage(uint256 proposalId, address contender, bytes calldata signature) public view returns (address) {
+    function recoverAddContenderMessage(uint256 proposalId, bytes calldata signature) public view returns (address) {
         bytes32 digest = _hashTypedDataV4(keccak256(abi.encode(
-            keccak256("AddContenderMessage(uint256 proposalId,address contender)"),
-            proposalId,
-            contender
+            keccak256("AddContenderMessage(uint256 proposalId)"),
+            proposalId
         )));
         return ECDSAUpgradeable.recover(digest, signature);
     }

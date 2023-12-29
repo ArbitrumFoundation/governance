@@ -150,7 +150,7 @@ contract TopNomineesGasTest is Test {
 
     function _addContender(uint16 i) internal {
         bytes memory sig = sigUtils.signAddContenderMessage(proposalId, _nomineePrivKey(i));
-        nomineeGov.addContender(proposalId, _nominee(i), sig);
+        nomineeGov.addContender(proposalId, sig);
     }
 
     function _deployProxy(address impl) internal returns (address) {

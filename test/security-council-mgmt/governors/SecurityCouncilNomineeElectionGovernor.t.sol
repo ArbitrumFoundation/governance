@@ -22,9 +22,8 @@ contract SigUtils is Test {
 
     function signAddContenderMessage(uint256 proposalId, uint256 privKey) public view returns (bytes memory sig) {
         bytes32 digest = _hashTypedDataV4(keccak256(abi.encode(
-            keccak256("AddContenderMessage(uint256 proposalId,address contender)"),
-            proposalId,
-            vm.addr(privKey)
+            keccak256("AddContenderMessage(uint256 proposalId)"),
+            proposalId
         )));
 
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(privKey, digest);
@@ -231,25 +230,9 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
     function testAddContender() public {
         bytes memory sig = sigUtils.signAddContenderMessage(0, _contenderPrivKey(0));
 
-        // test invalid signature
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                SecurityCouncilNomineeElectionGovernor.InvalidSignature.selector
-            )
-        );
-        governor.addContender(0, _contender(1), sig);
-
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                SecurityCouncilNomineeElectionGovernor.InvalidSignature.selector
-            )
-        );
-        governor.addContender(1, _contender(0), sig);
-
-
         // test invalid proposal id
         vm.expectRevert("Governor: unknown proposal id");
-        governor.addContender(0, _contender(0), sig);
+        governor.addContender(0, sig);
 
         // make a valid proposal
         uint256 proposalId = _propose();
@@ -264,7 +247,7 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
                 _contender(0)
             )
         );
-        governor.addContender(proposalId, _contender(0), sig);
+        governor.addContender(proposalId, sig);
 
         // should fail if the proposal is not pending
         _mockCohortIncludes(Cohort.SECOND, _contender(0), false);
@@ -276,12 +259,12 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
                 IGovernorUpgradeable.ProposalState.Active
             )
         );
-        governor.addContender(proposalId, _contender(0), sig);
+        governor.addContender(proposalId, sig);
 
         // should succeed if not in other cohort and proposal is pending
         vm.roll(governor.proposalSnapshot(proposalId));
         assertTrue(governor.state(proposalId) == IGovernorUpgradeable.ProposalState.Pending);
-        governor.addContender(proposalId, _contender(0), sig);
+        governor.addContender(proposalId, sig);
 
         // check that it correctly mutated the state
         assertTrue(governor.isContender(proposalId, _contender(0)));
@@ -292,7 +275,7 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
                 SecurityCouncilNomineeElectionGovernor.AlreadyContender.selector, _contender(0)
             )
         );
-        governor.addContender(proposalId, _contender(0), sig);
+        governor.addContender(proposalId, sig);
     }
 
     function testSetNomineeVetter() public {
@@ -927,7 +910,7 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
         address addr = _contender(contender);
         _mockCohortIncludes(Cohort.SECOND, addr, false);
         bytes memory sig = sigUtils.signAddContenderMessage(proposalId, privKey);
-        governor.addContender(proposalId, addr, sig);
+        governor.addContender(proposalId, sig);
     }
 
     function _castVoteForContender(

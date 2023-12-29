@@ -49,7 +49,7 @@ A new proposal is created each election cycle by calling `SecurityCouncilNominee
 
 Voting is not allowed while the proposal is pending.
 
-During the 7 day pending window, contenders register themselves by signing an EIP712 message of type `AddContenderMessage(uint256 proposalId,address contender)` and calling `SecurityCouncilNomineeElectionGovernor.addContender`. The message must be signed by the `contender` specified in the message.
+During the 7 day pending window, contenders register themselves by signing an EIP712 message of type `AddContenderMessage(uint256 proposalId)` and calling `SecurityCouncilNomineeElectionGovernor.addContender`.
 
 ## 2. Nominee selection (7 days)
 

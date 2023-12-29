@@ -455,7 +455,7 @@ contract E2E is Test, DeployGnosisWithModule {
         SigUtils sigUtils = new SigUtils(address(vars.secDeployedContracts.nomineeElectionGovernor));
         for (uint256 i = 0; i < newCohort1.length; i++) {
             uint256 pk = 649 + i; // member 13 - 18 priv keys
-            vars.secDeployedContracts.nomineeElectionGovernor.addContender(propId, vm.addr(pk), sigUtils.signAddContenderMessage(propId, pk));
+            vars.secDeployedContracts.nomineeElectionGovernor.addContender(propId, sigUtils.signAddContenderMessage(propId, pk));
         }
 
         // vote for them
