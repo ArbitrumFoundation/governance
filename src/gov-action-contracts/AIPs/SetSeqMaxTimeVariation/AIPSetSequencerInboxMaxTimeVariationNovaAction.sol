@@ -15,7 +15,7 @@ contract AIPSetSequencerInboxMaxTimeVariationNovaAction is
             5760, // Delay blocks (same as current value)
             64, // New future blocks value
             86_400, //  Delay seconds (same as current value)
-            768 // Delay seconds (delay blocks * 12)
+            768 // New future seconds value (delay blocks * 12)
         )
     {}
 }
