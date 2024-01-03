@@ -144,4 +144,8 @@ contract GovernedChainsConfirmationTracker is Ownable, IGovernedChainsConfirmati
         }
         return true;
     }
+
+    function getChainInfo(uint256 index) external view returns (ChainInfo memory) {
+        return chains[index];
+    }
 }
