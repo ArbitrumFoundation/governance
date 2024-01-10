@@ -8,7 +8,6 @@ import "../../sequencer/SetSequencerInboxMaxTimeVariationAction.sol";
 contract AIPSetSequencerInboxMaxTimeVariationNovaAction is
     SetSequencerInboxMaxTimeVariationAction
 {
-    // TODO: confirm / finalize values
     constructor()
         SetSequencerInboxMaxTimeVariationAction(
             ISequencerInboxGetter(0x2F06643fc2CC18585Ae790b546388F0DE4Ec6635), // Nova Address Registry

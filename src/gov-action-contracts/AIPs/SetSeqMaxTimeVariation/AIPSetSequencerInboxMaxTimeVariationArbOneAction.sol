@@ -8,7 +8,6 @@ import "../../sequencer/SetSequencerInboxMaxTimeVariationAction.sol";
 contract AIPSetSequencerInboxMaxTimeVariationArbOneAction is
     SetSequencerInboxMaxTimeVariationAction
 {
-    // TODO: confirm / finalize values
     constructor()
         SetSequencerInboxMaxTimeVariationAction(
             ISequencerInboxGetter(0xd514C2b3aaBDBfa10800B9C96dc1eB25427520A0), // Arb One Address Registry
