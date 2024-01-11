@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.16;
 
-interface IGnosisSafe {
-    function getThreshold() external view returns (uint256);
+import "../../security-council-mgmt/interfaces/IGnosisSafe.sol";
+
+interface _IGnosisSafe {
     function changeThreshold(uint256 _threshold) external;
 }
 
@@ -24,7 +25,12 @@ contract SetSCThresholdAction {
             gnosisSafe.getThreshold() == oldThreshold, "SecSCThresholdAction: WRONG_OLD_THRESHOLD"
         );
 
-        gnosisSafe.changeThreshold(newThreshold);
+        gnosisSafe.execTransactionFromModule({
+            to: address(gnosisSafe),
+            value: 0,
+            data: abi.encodeWithSelector(_IGnosisSafe.changeThreshold.selector, newThreshold),
+            operation: OpEnum.Operation.Call
+        });
         // sanity check new threshold was set
         require(
             gnosisSafe.getThreshold() == newThreshold, "SecSCThresholdAction: NEW_THRESHOLD_NOT_SET"
