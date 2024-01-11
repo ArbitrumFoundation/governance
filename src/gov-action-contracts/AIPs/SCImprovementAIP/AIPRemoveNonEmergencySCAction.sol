@@ -5,6 +5,7 @@ import "../../../security-council-mgmt/interfaces/ISecurityCouncilManager.sol";
 import "../../../interfaces/ICoreTimelock.sol";
 
 ///@notice Effectively "remove" the non emergency security council; prevent it from proposing in the timelock and don't update it in security council elections
+/// For discussion / rationale, see https://forum.arbitrum.foundation/t/rfc-constitutional-aip-security-council-improvement-proposal/20541
 contract AIPRemoveNonEmergencySCAction {
     ISecurityCouncilManager public constant securityCouncilManager =
         ISecurityCouncilManager(0xD509E5f5aEe2A205F554f36E8a7d56094494eDFC);
