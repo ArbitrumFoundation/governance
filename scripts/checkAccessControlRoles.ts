@@ -12,7 +12,7 @@ interface RolesToAccounts {
   [key: string]: Set<string>;
 }
 
-const rolesPrimages = [
+const rolesPreimages = [
   "TIMELOCK_ADMIN_ROLE",
   "PROPOSER_ROLE",
   "EXECUTOR_ROLE",
@@ -25,19 +25,20 @@ const rolesPrimages = [
   "MEMBER_REMOVER",
 ];
 const rolesToRolePreimages: RolesToRolePreimages = {};
-rolesPrimages.forEach((roleStr: string) => {
+rolesPreimages.forEach((roleStr: string) => {
   rolesToRolePreimages[keccak256(toUtf8Bytes(roleStr))] = roleStr;
 });
 
 export const getCurrentRoles = async (
   rpcProvider: Provider,
   contractAddr: string,
+  displayName: string,
   fromBlock = 0,
   verbose = true
 ) => {
   const network = await rpcProvider.getNetwork();
   if (verbose) {
-    console.log(`Checking roles for ${contractAddr} on chain ${network.chainId}`);
+    console.log(`Checking roles for ${contractAddr} "${displayName}" on chain ${network.chainId}`);
   }
 
   const accessControlContract = IAccessControlUpgradeable__factory.connect(
@@ -48,7 +49,6 @@ export const getCurrentRoles = async (
 
   const roleGrantedLogsRaw = await rpcProvider.getLogs({
     fromBlock,
-    // toBlock,
     topics: filterTopics,
     address: contractAddr,
   });
