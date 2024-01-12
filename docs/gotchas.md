@@ -16,7 +16,7 @@ An operation queued in the core-governor-timelock or the treasury-governor-timel
 There are two L1 proxy admins - one for the governance contracts, once for the governed core Nitro contracts. Note that both proxy admins have the same owner (the DAO), and thus this has no material effect on the DAO's affordances.
 
 - **Non-excluded L2 Timelock**
-ARB in the both treasury timelock and the DAO treasury can be transferred via treasury gov DAO vote; however, only ARB in the DAO treasury is excluded from the quorum numerator calculation. Thus, the DAO’s ARB should ideally all be stored in the DAO Treasury. 
+ARB in both the treasury timelock and the DAO treasury can be transferred via treasury gov DAO vote; however, only ARB in the DAO treasury is excluded from the quorum numerator calculation. Thus, the DAO’s ARB should ideally all be stored in the DAO Treasury. 
 
 - **L2ArbitrumGovernoer onlyGovernance behavior**
 Typically, for a timelocked OZ governror, the `onlyGovernance` modifier ensures a call is made from the timelock; in L2ArbitrumGoverner, the _executor() method is overriden such that `onlyGovernance` enforces a call from the governor contract itself. This ensures calls guarded by `onlyGovernance` go through the full core proposal path, as calls from the governor could only be sent via `relay`. See the code comment on `relay` in [L2ArbitrumGoveror](../src/L2ArbitrumGovernor.sol) for more.
