@@ -103,7 +103,7 @@ contract AIP4844Action {
         govProxyAdmin.upgradeAndCall(
             challengeManager,
             newChallengeManagerImpl,
-            abi.encodePacked(IChallengeManagerUpgradeInit.postUpgradeInit.selector, newOsp)
+            abi.encodeWithSelector(IChallengeManagerUpgradeInit.postUpgradeInit.selector, newOsp)
         );
 
         require(
