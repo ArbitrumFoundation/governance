@@ -81,7 +81,7 @@ contract AIP4844Action {
         govProxyAdmin.upgradeAndCall(
             sequencerInbox,
             newSequencerInboxImpl,
-            abi.encodePacked(ISeqInboxPostUpgradeInit.postUpgradeInit.selector)
+            abi.encodeWithSelector(ISeqInboxPostUpgradeInit.postUpgradeInit.selector)
         );
 
         // verify
