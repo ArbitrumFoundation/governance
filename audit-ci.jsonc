@@ -51,6 +51,8 @@
         // get-func-name - only used in chai, not used in prod
         "GHSA-4q6p-r6v2-jvc5",
         // axios used only in sol2uml
-        "GHSA-wf5p-g6vw-rhxx"
+        "GHSA-wf5p-g6vw-rhxx",
+        // follow-redirects url.parse bug. Not used in prod
+        "GHSA-jchw-25xp-jwwc"
     ]
   }
