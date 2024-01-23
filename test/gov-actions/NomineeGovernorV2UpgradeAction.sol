@@ -13,7 +13,8 @@ contract NomineeGovernorV2UpgradeActionTest is Test {
     UpgradeExecutor arbOneUe = UpgradeExecutor(0xCF57572261c7c2BCF21ffD220ea7d1a27D40A827);
     address council = 0x423552c0F05baCCac5Bfa91C6dCF1dc53a0A1641;
     IArbitrumDAOConstitution constitution = IArbitrumDAOConstitution(0x1D62fFeB72e4c360CcBbacf7c965153b00260417);
-    bytes32 newConstitutionHash = 0x0101010101010101010101010101010101010101010101010101010101010101;
+    // see https://github.com/ArbitrumFoundation/docs/pull/731/commits/0837520dccc12e56a25f62de90ff9e3869196d05
+    bytes32 newConstitutionHash = 0xe794b7d0466ffd4a33321ea14c307b2de987c3229cf858727052a6f4b8a19cc1;
 
     address newImplementation = address(new SecurityCouncilNomineeElectionGovernor());
     uint256 votingDelay = 7 days;
