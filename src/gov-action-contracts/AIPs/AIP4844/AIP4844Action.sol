@@ -36,7 +36,7 @@ contract AIP4844Action {
     ) {
         require(
             Address.isContract(address(_l1AddressRegistry)),
-            "AIP4844Action: _11AddressRegistry is not a contract"
+            "AIP4844Action: _l1AddressRegistry is not a contract"
         );
         l1AddressRegistry = _l1AddressRegistry;
 
@@ -81,7 +81,7 @@ contract AIP4844Action {
         govProxyAdmin.upgradeAndCall(
             sequencerInbox,
             newSequencerInboxImpl,
-            abi.encodeWithSelector(ISeqInboxPostUpgradeInit.postUpgradeInit.selector)
+            abi.encodeCall(ISeqInboxPostUpgradeInit.postUpgradeInit, ())
         );
 
         // verify
@@ -103,7 +103,7 @@ contract AIP4844Action {
         govProxyAdmin.upgradeAndCall(
             challengeManager,
             newChallengeManagerImpl,
-            abi.encodeWithSelector(IChallengeManagerUpgradeInit.postUpgradeInit.selector, newOsp)
+            abi.encodeCall(IChallengeManagerUpgradeInit.postUpgradeInit, (newOsp))
         );
 
         require(
