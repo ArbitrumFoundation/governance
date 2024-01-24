@@ -62,6 +62,6 @@ contract NomineeGovernorV2UpgradeAction is NomineeGovernorV2UpgradeActionTemplat
         address(new SecurityCouncilNomineeElectionGovernor()),
         50400,
         0x1D62fFeB72e4c360CcBbacf7c965153b00260417,
-        0xefe6dbc1dbe4b921c3ba5828a2c8e9b965af5363df8d70e9ff88ae5fceca3159
+        0xe794b7d0466ffd4a33321ea14c307b2de987c3229cf858727052a6f4b8a19cc1
     ) {}
 }
