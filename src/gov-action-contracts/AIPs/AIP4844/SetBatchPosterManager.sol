@@ -17,10 +17,7 @@ contract SetBatchPosterManager {
     L1AddressRegistry public immutable l1AddressRegistry;
     address public immutable batchPosterManager;
 
-    constructor(
-        L1AddressRegistry _l1AddressRegistry,
-        address _batchPosterManager
-    ) {
+    constructor(L1AddressRegistry _l1AddressRegistry, address _batchPosterManager) {
         require(
             Address.isContract(address(_l1AddressRegistry)),
             "SetBatchPosterManager: _l1AddressRegistry is not a contract"
@@ -33,6 +30,9 @@ contract SetBatchPosterManager {
         ISeqInbox seqInbox = ISeqInbox(address(l1AddressRegistry.sequencerInbox()));
         seqInbox.setBatchPosterManager(batchPosterManager);
 
-        require(seqInbox.batchPosterManager() == batchPosterManager, "SetBatchPosterManager: Failed to set batch poster manager");
+        require(
+            seqInbox.batchPosterManager() == batchPosterManager,
+            "SetBatchPosterManager: Failed to set batch poster manager"
+        );
     }
 }
