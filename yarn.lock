@@ -7,14 +7,13 @@
   resolved "https://registry.npmjs.org/@aduh95/viz.js/-/viz.js-3.7.0.tgz"
   integrity sha512-20Pk2Z98fbPLkECcrZSJszKos/OgtvJJR3NcbVfgCJ6EQjDNzW2P1BKqImOz3tJ952dvO2DWEhcLhQ1Wz1e9ng==
 
-"@arbitrum/nitro-contracts@1.0.1":
-  version "1.0.1"
-  resolved "https://registry.npmjs.org/@arbitrum/nitro-contracts/-/nitro-contracts-1.0.1.tgz"
-  integrity sha512-gNbtcWM1QkLPYs4nxvC1RnoHqcg+uk6acs11C4XRcp77vC72izpQ1+4GqMVXV6viHCNquz8posG9rButW8nHFw==
+"@arbitrum/nitro-contracts@1.0.3-beta.0":
+  version "1.0.3-beta.0"
+  resolved "https://registry.yarnpkg.com/@arbitrum/nitro-contracts/-/nitro-contracts-1.0.3-beta.0.tgz#ab6bb7bd2cef453b0d7748a7b13d1d04e62fd286"
+  integrity sha512-AjUSGSSL9V5cgxHFGVEfRugNnjJ1aCeJOHsedjWt25carFk9bf2eOQhclH92VcZticj7+NZM9aWVCI6fzfipvg==
   dependencies:
     "@openzeppelin/contracts" "4.5.0"
     "@openzeppelin/contracts-upgradeable" "4.5.2"
-    hardhat "^2.6.6"
     patch-package "^6.4.7"
   optionalDependencies:
     sol2uml "2.2.0"

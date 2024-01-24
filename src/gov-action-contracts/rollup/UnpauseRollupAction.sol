@@ -11,6 +11,6 @@ contract UnpauseRollupAction {
     }
 
     function perform() external {
-        addressRegistry.rollup().resume();
+        IRollupAdmin(address(addressRegistry.rollup())).resume();
     }
 }
