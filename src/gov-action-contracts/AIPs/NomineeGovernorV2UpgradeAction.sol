@@ -59,9 +59,9 @@ contract NomineeGovernorV2UpgradeAction is NomineeGovernorV2UpgradeActionTemplat
     constructor() NomineeGovernorV2UpgradeActionTemplate(
         0xdb216562328215E010F819B5aBe947bad4ca961e,
         0x8a1cDA8dee421cD06023470608605934c16A05a0,
-        address(0), // todo: new implementation
+        address(new SecurityCouncilNomineeElectionGovernor()),
         50400,
         0x1D62fFeB72e4c360CcBbacf7c965153b00260417,
-        0x0101010101010101010101010101010101010101010101010101010101010101 // todo: new constitution hash
+        0xefe6dbc1dbe4b921c3ba5828a2c8e9b965af5363df8d70e9ff88ae5fceca3159
     ) {}
 }
