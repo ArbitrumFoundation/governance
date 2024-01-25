@@ -14,8 +14,6 @@ interface IChallengeManagerUpgradeInit {
     function osp() external returns (address);
 }
 
-// CHRIS: TODO: rename with AIP number
-
 /// @notice Upgrades the an arbitrum chain in preparation for 4844
 /// @dev    Identical copies of this contract to be deployed for Arb One and Nova on Ethereum for the 4844 upgrade
 contract AIP4844Action {
