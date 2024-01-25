@@ -2,7 +2,7 @@ import { BigNumber, Wallet } from "ethers";
 import { JsonRpcProvider } from "@ethersproject/providers";
 import { ProposalStageStatus, getProvider } from "./proposalStage";
 import { StageFactory, TrackerEventName } from "./proposalPipeline";
-import { SecurityCouncilElectionCreator } from "./securityCouncilElectionCreator";
+import { SecurityCouncilElectionTracker } from "./securityCouncilElectionTracker";
 
 import * as dotenv from "dotenv";
 import * as fs from "fs";
@@ -291,15 +291,13 @@ const main = async () => {
     );
     electionGov = startMonitor("Election", electionMonitor, jsonLogger, options.proposalId);
 
-    if (options.writeMode) {
-      const electionCreator = new SecurityCouncilElectionCreator(
-        govChainSignerOrProvider as Wallet,
-        govChainProvider,
-        l1Provider,
-        options.nomineeElectionGovernorAddress
-      );
-      electionCreator.run();
-    }
+    const electionCreator = new SecurityCouncilElectionTracker(
+      govChainProvider,
+      l1Provider,
+      options.nomineeElectionGovernorAddress,
+      options.writeMode ? govChainSignerOrProvider as Wallet : undefined
+    );
+    electionCreator.run();
   }
 
   await Promise.all([roundTrip, treasury, sevTwelve, electionGov]);
