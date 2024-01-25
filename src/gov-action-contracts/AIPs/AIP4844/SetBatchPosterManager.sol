@@ -12,7 +12,6 @@ interface ISeqInbox {
 /// @notice Sets the batch poster manager role
 /// @dev    This contract is dependent on AIP4844Action having run already, since that action upgrades
 ///         the sequencer inbox to the have the batch poster manager role
-///         Identical copies of this contract to be deployed for Arb One and Nova on Ethereum
 contract SetBatchPosterManager {
     L1AddressRegistry public immutable l1AddressRegistry;
     address public immutable batchPosterManager;
