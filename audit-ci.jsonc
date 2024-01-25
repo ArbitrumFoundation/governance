@@ -53,6 +53,8 @@
         // axios used only in sol2uml
         "GHSA-wf5p-g6vw-rhxx",
         // follow-redirects url.parse bug. Not used in prod
-        "GHSA-jchw-25xp-jwwc"
+        "GHSA-jchw-25xp-jwwc",
+        // lodash vulnerable to Prototype Pollution. Not used in the contracts, only in build or prop mon which is run in trusted environments
+        "GHSA-p6mc-m468-83gw"
     ]
   }
