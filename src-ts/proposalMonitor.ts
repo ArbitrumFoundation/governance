@@ -78,19 +78,23 @@ export abstract class ProposalMonitor extends EventEmitter {
     await wait(this.pollingIntervalMs);
 
     while (this.polling) {
-      const blockNow = Math.max(
-        (await this.originProvider.getBlockNumber()) - this.blockLag,
-        blockThen
-      );
+      try {
+        const blockNow = Math.max(
+          (await this.originProvider.getBlockNumber()) - this.blockLag,
+          blockThen
+        );
 
-      const receipts = await this.getOriginReceipts(blockThen, blockNow);
+        const receipts = await this.getOriginReceipts(blockThen, blockNow);
 
-      for (const r of receipts) {
-        await this.monitorSingleProposal(r);
+        for (const r of receipts) {
+          await this.monitorSingleProposal(r);
+        }
+        blockThen = blockNow;
+      } catch (err) {
+        console.log("Proposal monitor Error:", err);
       }
 
       await wait(this.pollingIntervalMs);
-      blockThen = blockNow;
     }
   }
 

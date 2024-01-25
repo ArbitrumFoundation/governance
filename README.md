@@ -302,3 +302,25 @@ Deployment steps:
 - run `yarn build`
 - run deployer: `yarn deploy:vested-wallets`
 - run verifier: `yarn verify:vested-wallets`
+
+### Proposal Data Generator
+
+`yarn gen:proposalData` can used to generate the data necessary to submit a proposal after a proposal's action contracts have been deployed.
+
+ For descriptions of all command line options run 
+ ```yarn gen:proposalData --help```
+
+Example usage (for ArbOS11 upgrade AIP):
+
+
+```
+ yarn gen:proposalData 
+ --govChainProviderRPC https://arb1.arbitrum.io/rpc 
+ --actionChainIds 1 1 42161 42170 
+ --actionAddresses 0x3b70f2da6f3b01f9a53dcbcb3e59ad3ad8bed924 0x54c2c372943572ac2a8e84d502ebc13f14b62246 0xF6c7Dc6eaE78aBF2f32df899654ca425Dfa99481 0x5357f4d3e8f8250a77bcddd5e58886ad1358220c 
+ --pathToDescription ./scripts/proposals/ArbOS11AIP/description.txt 
+ --writeToJsonPath ./scripts/proposals/ArbOS11AIP/data/ArbOS-11-AIP-data.json
+ ```
+
+
+
