@@ -14,7 +14,7 @@ interface IChallengeManagerUpgradeInit {
     function osp() external returns (address);
 }
 
-/// @notice Upgrades the an arbitrum chain in preparation for 4844
+/// @notice Upgrades an arbitrum chain in preparation for 4844
 /// @dev    Identical copies of this contract to be deployed for Arb One and Nova on Ethereum for the 4844 upgrade
 contract AIP4844Action {
     ProxyAdmin public immutable govProxyAdmin;
@@ -104,6 +104,10 @@ contract AIP4844Action {
             abi.encodeCall(IChallengeManagerUpgradeInit.postUpgradeInit, (newOsp))
         );
 
+        require(
+            govProxyAdmin.getProxyImplementation(challengeManager) == newChallengeManagerImpl,
+            "AIP4844Action: new challenge manager implementation set"
+        );
         require(
             IChallengeManagerUpgradeInit(address(challengeManager)).osp() == newOsp,
             "AIP4844Action: new OSP not set"
