@@ -1,7 +1,8 @@
 import { HardhatUserConfig } from "hardhat/config";
 import "@nomicfoundation/hardhat-toolbox";
 import "@nomicfoundation/hardhat-foundry";
-
+import dotenv from "dotenv";
+dotenv.config();
 // when changing optimizer settings, make sure to also change settings in foundry.toml
 const solidityProfiles = {
   default: {
@@ -24,8 +25,12 @@ const solidityProfiles = {
   }
 }
 
+const solidity = solidityProfiles[process.env.FOUNDRY_PROFILE || "default"] || solidityProfiles.default
+console.log("Compiling with soldity profile:", solidity);
+
+
 const config: HardhatUserConfig = {
-  solidity: solidityProfiles[process.env.FOUNDRY_PROFILE || "default"] || solidityProfiles.default,
+  solidity,
   paths: {
     sources: "./src",
     tests: "./test-ts",
