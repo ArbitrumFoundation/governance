@@ -139,7 +139,7 @@ abstract contract L1ArbitrumMessenger {
     }
 
     /// @dev the l2ToL1Sender behaves as the tx.origin, the msg.sender should be validated to protect against reentrancies
-    function getL2ToL1Sender(address _inbox) internal returns (address) {
+    function getL2ToL1Sender(address _inbox) internal view returns (address) {
         IOutbox outbox = IOutbox(getBridge(_inbox).activeOutbox());
         address l2ToL1Sender = outbox.l2ToL1Sender();
 

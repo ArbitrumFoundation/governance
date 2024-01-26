@@ -11,6 +11,6 @@ contract ForceResolveChallengeAction {
     }
 
     function perform(address[] calldata stakerA, address[] calldata stakerB) external {
-        addressRegistry.rollup().forceResolveChallenge(stakerA, stakerB);
+        IRollupAdmin(address(addressRegistry.rollup())).forceResolveChallenge(stakerA, stakerB);
     }
 }
