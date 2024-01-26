@@ -8,14 +8,13 @@ import "../../sequencer/SetSequencerInboxMaxTimeVariationAction.sol";
 contract AIPSetSequencerInboxMaxTimeVariationArbOneAction is
     SetSequencerInboxMaxTimeVariationAction
 {
-    // TODO: confirm / finalize values
     constructor()
         SetSequencerInboxMaxTimeVariationAction(
             ISequencerInboxGetter(0xd514C2b3aaBDBfa10800B9C96dc1eB25427520A0), // Arb One Address Registry
             5760, // Delay blocks (same as current value)
             64, // New future blocks value
             86_400, //  Delay seconds (same as current value)
-            768 // New future seconds value (delay blocks * 12)
+            768 // New future seconds value (future blocks * 12)
         )
     {}
 }
