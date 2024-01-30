@@ -48,7 +48,15 @@ export const executeOwnershipTransfer = async () => {
   console.log("Transfer Arb protocol ownership on L1");
   for (let i = 0; i < l1ArbProtocolTxs.length; i++) {
     console.log("Execute ", l1ArbProtocolTxs[i].data, l1ArbProtocolTxs[i].to);
-    await (await l1ProtocolOwner.sendTransaction(l1ArbProtocolTxs[i])).wait();
+
+    if (existingUpgradeExecutor) {
+      await (await l1ProtocolOwner.sendTransaction({
+        to: existingUpgradeExecutor,
+        data: upgradeExecutorIface.encodeFunctionData("executeCall", [l1ArbProtocolTxs[i].to, l1ArbProtocolTxs[i].data])
+      })).wait();
+    } else {
+      await (await l1ProtocolOwner.sendTransaction(l1ArbProtocolTxs[i])).wait();
+    }
   }
 
   const l1ArbTokenBridgeTxs = buildTXs(envVars.l1ArbTokenBridgeTransferTXsLocation);
