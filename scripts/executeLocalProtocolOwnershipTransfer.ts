@@ -20,6 +20,11 @@ import { GnosisBatch } from "./prepareProtocolOwnershipTransfer";
 
 export const ARB_OWNER_PRECOMPILE = "0x0000000000000000000000000000000000000070";
 
+// This is v1.1 imported from the new repo and used by rollup creator
+// TODO: remove the v1.0 upgrade executor in this repo
+import { abi as upgradeExecutorAbi } from "@offchainlabs/upgrade-executor/build/contracts/src/UpgradeExecutor.sol/UpgradeExecutor.json"
+const upgradeExecutorIface = new ethers.utils.Interface(upgradeExecutorAbi)
+
 /**
  * Load and execute all prepared TXs to transfer ownership of Arb and Nova assets.
  * To be used in local env only.
@@ -29,16 +34,30 @@ export const executeOwnershipTransfer = async () => {
   const { ethProvider } = await getProviders();
 
   // fetch protocol owner wallet from local test env
-  const l1ProtocolOwner = (await getProtocolOwnerWallet(arbNetwork, ethProvider)).connect(
+  const { wallet: l1ProtocolOwnerWallet, 
+          existingUpgradeExecutor } = (await getProtocolOwnerWallet(arbNetwork, ethProvider));
+  const l1ProtocolOwner = l1ProtocolOwnerWallet.connect(
     ethProvider
   );
+
+  if (existingUpgradeExecutor !== undefined) {
+    console.log("Existing upgrade executor found, using it to execute txs")
+  }
 
   //// Arb
   const l1ArbProtocolTxs = buildTXs(envVars.l1ArbProtocolTransferTXsLocation);
   console.log("Transfer Arb protocol ownership on L1");
   for (let i = 0; i < l1ArbProtocolTxs.length; i++) {
     console.log("Execute ", l1ArbProtocolTxs[i].data, l1ArbProtocolTxs[i].to);
-    await (await l1ProtocolOwner.sendTransaction(l1ArbProtocolTxs[i])).wait();
+
+    if (existingUpgradeExecutor) {
+      await (await l1ProtocolOwner.sendTransaction({
+        to: existingUpgradeExecutor,
+        data: upgradeExecutorIface.encodeFunctionData("executeCall", [l1ArbProtocolTxs[i].to, l1ArbProtocolTxs[i].data])
+      })).wait();
+    } else {
+      await (await l1ProtocolOwner.sendTransaction(l1ArbProtocolTxs[i])).wait();
+    }
   }
 
   const l1ArbTokenBridgeTxs = buildTXs(envVars.l1ArbTokenBridgeTransferTXsLocation);
@@ -123,25 +142,48 @@ function buildTXs(fileName: string): { data: string; to: string }[] {
  * @param l1ProtocolOwnerAddress
  * @returns
  */
-async function getProtocolOwnerWallet(l2Network: L2Network, provider: Provider): Promise<Wallet> {
+async function getProtocolOwnerWallet(l2Network: L2Network, provider: Provider): Promise<{ wallet: Wallet, existingUpgradeExecutor: string | undefined }> {
   // get protocol owner address
-  const l1ProtocolOwnerAddress = await ProxyAdmin__factory.connect(
+  let l1ProtocolOwnerAddress = await ProxyAdmin__factory.connect(
     await getProxyOwner(l2Network.ethBridge.bridge, provider),
     provider
   ).owner();
 
+  let existingUpgradeExecutor: string | undefined = undefined;
+  // assume is upgrade executor if code is not empty
+  const isUE = (await provider.getCode(l1ProtocolOwnerAddress)) !== "0x";
+  if (isUE) {
+    existingUpgradeExecutor = l1ProtocolOwnerAddress;
+    const execRole = await (new ethers.Contract(existingUpgradeExecutor, upgradeExecutorAbi, provider)).EXECUTOR_ROLE()
+    const logs = await provider.getLogs({
+      address: existingUpgradeExecutor,
+      topics: [upgradeExecutorIface.getEventTopic("RoleGranted"), execRole],
+      fromBlock: 0,
+      toBlock: "latest"
+    })
+    if (logs.length === 0) {
+      throw new Error("No executor role granted to upgrade executor")
+    }
+    // parse last log
+    const parsedLog = upgradeExecutorIface.parseLog(logs[logs.length - 1])
+    l1ProtocolOwnerAddress = parsedLog.args.account
+  }
+
   let encryptedJsonFile = "/home/user/l1keystore/" + l1ProtocolOwnerAddress + ".key";
-  let dockerCommand = "docker exec nitro-testnode_poster_1 cat " + encryptedJsonFile;
+  let dockerCommand = "docker exec nitro-testnode_sequencer_1 cat " + encryptedJsonFile;
   let encryptedJson: string;
   try {
     encryptedJson = execSync(dockerCommand).toString();
   } catch (e) {
-    // nitro-testnode_poster_1 -> nitro-testnode-poster-1
+    // nitro-testnode_sequencer_1 -> nitro-testnode-sequencer-1
     dockerCommand = dockerCommand.split("_").join("-");
     encryptedJson = execSync(dockerCommand).toString();
   }
 
-  return await Wallet.fromEncryptedJson(encryptedJson, "passphrase");
+  return {
+    wallet: await Wallet.fromEncryptedJson(encryptedJson, "passphrase"),
+    existingUpgradeExecutor
+  };
 }
 
 /**
