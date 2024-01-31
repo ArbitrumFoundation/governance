@@ -80,6 +80,7 @@ jobs:
 
       - name: Check gas snapshot
         run: make gas-check
+        
 
   test-action-storage:
     name: Test action storage
