@@ -937,6 +937,14 @@
     table "^6.8.0"
     undici "^5.4.0"
 
+"@offchainlabs/upgrade-executor@1.1.0-beta.0":
+  version "1.1.0-beta.0"
+  resolved "https://registry.yarnpkg.com/@offchainlabs/upgrade-executor/-/upgrade-executor-1.1.0-beta.0.tgz#c4b1375176546a18aaef01a43956abfb58250e0a"
+  integrity sha512-mpn6PHjH/KDDjNX0pXHEKdyv8m6DVGQiI2nGzQn0JbM1nOSHJpWx6fvfjtH7YxHJ6zBZTcsKkqGkFKDtCfoSLw==
+  dependencies:
+    "@openzeppelin/contracts" "4.7.3"
+    "@openzeppelin/contracts-upgradeable" "4.7.3"
+
 "@openzeppelin/contracts-upgradeable@3.4.2":
   version "3.4.2"
   resolved "https://registry.npmjs.org/@openzeppelin/contracts-upgradeable/-/contracts-upgradeable-3.4.2.tgz"
