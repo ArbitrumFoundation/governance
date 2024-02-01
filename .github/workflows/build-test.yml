@@ -130,6 +130,8 @@ jobs:
         with:
           submodules: recursive
       - uses: OffchainLabs/actions/run-nitro-test-node@output-logging
+        with:
+          nitro-testnode-ref: old-release-v2.1.1
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
@@ -200,6 +202,8 @@ jobs:
         with:
           submodules: recursive
       - uses: OffchainLabs/actions/run-nitro-test-node@output-logging
+        with:
+          nitro-testnode-ref: old-release-v2.1.1
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
