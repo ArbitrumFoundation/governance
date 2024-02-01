@@ -129,7 +129,7 @@ jobs:
       - uses: actions/checkout@v3
         with:
           submodules: recursive
-      - uses: OffchainLabs/actions/run-nitro-test-node@output-logging
+      - uses: OffchainLabs/actions/run-nitro-test-node@temp-1
         with:
           nitro-testnode-ref: old-release-v2.1.1
 
@@ -201,7 +201,7 @@ jobs:
       - uses: actions/checkout@v3
         with:
           submodules: recursive
-      - uses: OffchainLabs/actions/run-nitro-test-node@output-logging
+      - uses: OffchainLabs/actions/run-nitro-test-node@temp-1
         with:
           nitro-testnode-ref: old-release-v2.1.1
 
