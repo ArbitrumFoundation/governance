@@ -44,12 +44,18 @@ contract SetSCThresholdAndConditionallyUpdateConstitutionAction {
     }
 
     function perform() external {
+        bytes32[] memory oldConstitutionHashes = new bytes32[](2);
+        oldConstitutionHashes[0] = oldConstitutionHash1;
+        oldConstitutionHashes[1] = oldConstitutionHash2;
+
+        bytes32[] memory newConstitutionHashes = new bytes32[](2);
+        newConstitutionHashes[0] = newConstitutionHash1;
+        newConstitutionHashes[1] = newConstitutionHash2;
+
         ConstitutionActionLib.conditonallyUpdateConstitutionHash({
             _constitution: constitution,
-            _oldConstitutionHash1: oldConstitutionHash1,
-            _newConstitutionHash1: newConstitutionHash1,
-            _oldConstitutionHash2: oldConstitutionHash2,
-            _newConstitutionHash2: newConstitutionHash2
+            _oldConstitutionHashes: oldConstitutionHashes,
+            _newConstitutionHashes: newConstitutionHashes
         });
 
         // sanity check old threshold

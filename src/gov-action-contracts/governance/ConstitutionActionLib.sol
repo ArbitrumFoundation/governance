@@ -6,6 +6,7 @@ import "../../interfaces/IArbitrumDAOConstitution.sol";
 library ConstitutionActionLib {
     error ConstitutionHashNotSet();
     error UnhandledConstitutionHash();
+    error ConstitutionHashLengthMismatch();
 
     /// @notice Update dao constitution hash
     /// @param constitution DAO constitution contract
@@ -20,26 +21,27 @@ library ConstitutionActionLib {
         }
     }
 
-    /// @notice sets the consitution hash to  _newConstitutionHash1 if it's currently _oldConstitutionHash1 and sets it to _newConstitutionHash2 if it's currently _oldConstitutionHash2
+    /// @notice checks actual constitution hash for presence in _oldConstitutionHashes and sets constitution hash to the hash in the corresponding index in _newConstitutionHashes if found
     /// @param _constitution DAO constitution contract
-    /// @param _oldConstitutionHash1 potential constitution hash to be changed
-    /// @param _newConstitutionHash1 potential new constitution hash
-    /// @param _oldConstitutionHash2 potential constitution hash to be changed
-    /// @param _newConstitutionHash2 potential new constitution hash
+    /// @param _oldConstitutionHashes hashes to check against the current constitution
+    /// @param _newConstitutionHashes  hashes to set at corresponding index if hash in oldConstitutionHashes is found
     function conditonallyUpdateConstitutionHash(
         IArbitrumDAOConstitution _constitution,
-        bytes32 _oldConstitutionHash1,
-        bytes32 _newConstitutionHash1,
-        bytes32 _oldConstitutionHash2,
-        bytes32 _newConstitutionHash2
-    ) internal {
+        bytes32[] memory _oldConstitutionHashes,
+        bytes32[] memory _newConstitutionHashes
+    ) internal returns (bytes32) {
         bytes32 constitutionHash = _constitution.constitutionHash();
-        if (constitutionHash == _oldConstitutionHash1) {
-            updateConstitutionHash(_constitution, _newConstitutionHash1);
-        } else if (constitutionHash == _oldConstitutionHash2) {
-            updateConstitutionHash(_constitution, _newConstitutionHash2);
-        } else {
-            revert UnhandledConstitutionHash();
+        if (_oldConstitutionHashes.length != _newConstitutionHashes.length) {
+            revert ConstitutionHashLengthMismatch();
         }
+
+        for (uint256 i = 0; i < _oldConstitutionHashes.length; i++) {
+            if (_oldConstitutionHashes[i] == constitutionHash) {
+                bytes32 newConstitutionHash = _newConstitutionHashes[i];
+                updateConstitutionHash(_constitution, newConstitutionHash);
+                return newConstitutionHash;
+            }
+        }
+        revert UnhandledConstitutionHash();
     }
 }
