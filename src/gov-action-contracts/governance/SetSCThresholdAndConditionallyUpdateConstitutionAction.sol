@@ -15,11 +15,11 @@ contract SetSCThresholdAndConditionallyUpdateConstitutionAction {
     IGnosisSafe public immutable gnosisSafe;
     uint256 public immutable oldThreshold;
     uint256 public immutable newThreshold;
-    IArbitrumDAOConstitution constitution;
-    bytes32 oldConstitutionHash1;
-    bytes32 newConstitutionHash1;
-    bytes32 oldConstitutionHash2;
-    bytes32 newConstitutionHash2;
+    IArbitrumDAOConstitution public immutable constitution;
+    bytes32 public immutable oldConstitutionHash1;
+    bytes32 public immutable newConstitutionHash1;
+    bytes32 public immutable oldConstitutionHash2;
+    bytes32 public immutable newConstitutionHash2;
 
     event ActionPerformed(uint256 newThreshold, bytes32 newConstitutionHash);
 
