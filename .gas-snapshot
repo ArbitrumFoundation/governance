@@ -1,4 +1,7 @@
 AIP1Point2ActionTest:testAction() (gas: 629328)
+AIPIncreaseNonEmergencySCThresholdAction:testUnfoundConstitutionHash() (gas: 4825091)
+AIPIncreaseNonEmergencySCThresholdAction:testUpdateInitialHashIsOldHash1() (gas: 4843318)
+AIPIncreaseNonEmergencySCThresholdAction:testUpdateInitialHashIsOldHash2() (gas: 4843363)
 ArbitrumDAOConstitutionTest:testConstructor() (gas: 259383)
 ArbitrumDAOConstitutionTest:testMonOwnerCannotSetHash() (gas: 262836)
 ArbitrumDAOConstitutionTest:testOwnerCanSetHash() (gas: 261148)
