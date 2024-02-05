@@ -37,8 +37,8 @@ contract SetSCThresholdAndConditionallyUpdateConstitutionAction {
         oldThreshold = _oldThreshold;
         newThreshold = _newThreshold;
         constitution = _constitution;
-        oldConstitutionHash1 = _oldConstitutionHash;
-        newConstitutionHash1 = _newConstitutionHash;
+        oldConstitutionHash1 = _oldConstitutionHash1;
+        newConstitutionHash1 = _newConstitutionHash2;
         oldConstitutionHash2 = oldConstitutionHash2;
         newConstitutionHash2 = newConstitutionHash2;
     }
