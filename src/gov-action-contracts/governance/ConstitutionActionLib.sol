@@ -24,7 +24,7 @@ library ConstitutionActionLib {
     /// @notice checks actual constitution hash for presence in _oldConstitutionHashes and sets constitution hash to the hash in the corresponding index in _newConstitutionHashes if found
     /// @param _constitution DAO constitution contract
     /// @param _oldConstitutionHashes hashes to check against the current constitution
-    /// @param _newConstitutionHashes  hashes to set at corresponding index if hash in oldConstitutionHashes is found
+    /// @param _newConstitutionHashes hashes to set at corresponding index if hash in oldConstitutionHashes is found (on the first match)
     function conditonallyUpdateConstitutionHash(
         IArbitrumDAOConstitution _constitution,
         bytes32[] memory _oldConstitutionHashes,
