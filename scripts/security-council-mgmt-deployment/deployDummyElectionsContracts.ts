@@ -69,6 +69,10 @@ async function deployBytecode(signer: Wallet, bytecode: string) {
   return contract;
 }
 
+function deployCallRelayer(signer: Wallet) {
+  return deployBytecode(signer, "0x608060405234801561001057600080fd5b506102ac806100206000396000f3fe60806040526004361061001e5760003560e01c80631b8b921d14610042575b60408051600160208083019190915282518083038201815291830190925280519101f35b610055610050366004610133565b610057565b005b600080836001600160a01b031634846040516100739190610227565b60006040518083038185875af1925050503d80600081146100b0576040519150601f19603f3d011682016040523d82523d6000602084013e6100b5565b606091505b50915091508181516000146100ca57816100ef565b6040518060400160405280600b81526020016a10d85b1b0819985a5b195960aa1b8152505b906101165760405162461bcd60e51b815260040161010d9190610243565b60405180910390fd5b5050505050565b634e487b7160e01b600052604160045260246000fd5b6000806040838503121561014657600080fd5b82356001600160a01b038116811461015d57600080fd5b9150602083013567ffffffffffffffff8082111561017a57600080fd5b818501915085601f83011261018e57600080fd5b8135818111156101a0576101a061011d565b604051601f8201601f19908116603f011681019083821181831017156101c8576101c861011d565b816040528281528860208487010111156101e157600080fd5b8260208601602083013760006020848301015280955050505050509250929050565b60005b8381101561021e578181015183820152602001610206565b50506000910152565b60008251610239818460208701610203565b9190910192915050565b6020815260008251806020840152610262816040850160208701610203565b601f01601f1916919091016040019291505056fea2646970667358221220dca9e5ce7ee1c6ca348560fef97282b3e924eb88b7133b67eafbb59349cda2bb64736f6c63430008150033");
+}
+
 function deployNoopContract(signer: Wallet) {
   return deployBytecode(signer, "60088060093d393df360015f5260205ff3");
 }
@@ -101,6 +105,7 @@ function makeStartDateStruct(startDate: Date) {
 }
 
 async function makeFullDeployParams(partialDeployParams: DeployParamsPartial, signer: Wallet): Promise<DeployParamsStruct> {
+  const callRelayer = await deployCallRelayer(signer);
   const noop = await deployNoopContract(signer);
   const gnosisSafe = await deployDummyGnosisSafe(signer);
 
@@ -113,7 +118,7 @@ async function makeFullDeployParams(partialDeployParams: DeployParamsPartial, si
     govChainProxyAdmin: noop.address,
     arbToken: (await deployToken(signer)).address,
     l1ArbitrumTimelock: noop.address,
-    l2UpgradeExecutor: noop.address,
+    l2UpgradeExecutor: callRelayer.address,
     firstNominationStartDate: makeStartDateStruct(date),
     securityCouncils: [],
     upgradeExecutors: [],
@@ -168,8 +173,20 @@ async function main() {
   // get ContractsDeployed event
   const event = deployReceipt.events?.find((e) => e.event === "ContractsDeployed");
 
-  const namedItems = getNamedObjectItems(event?.args?.deployedContracts);
+  const namedItems = getNamedObjectItems(event?.args?.deployedContracts) as any;
+  
+  // set the votingDelay
+  const govIface = SecurityCouncilNomineeElectionGovernor__factory.createInterface();
+  const relayCalldata = govIface.encodeFunctionData('relay', [
+    namedItems.nomineeElectionGovernor,
+    0,
+    govIface.encodeFunctionData("setVotingDelay", [fullDeployParams.nomineeVotingPeriod]),
+  ])
+  // 0x1b8b921d is the selector for callRelayer.call(address, bytes)
+  const callRelayerCalldata = ethers.utils.concat(['0x1b8b921d', new ethers.utils.AbiCoder().encode(['address', 'bytes'], [namedItems.nomineeElectionGovernor, relayCalldata])])
+  await (await signer.sendTransaction({ to: fullDeployParams.l2UpgradeExecutor, data: callRelayerCalldata })).wait();
 
+  
   console.log({
     ...namedItems,
     arbToken: fullDeployParams.arbToken,
