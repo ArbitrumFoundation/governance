@@ -11,7 +11,7 @@ contract NovaAIP4844Action is AIP4844Action {
             bytes32(""), // wasm module root  TODO
             0x31DA64D19Cd31A19CD09F4070366Fe2144792cf7, // new sequencer inbox impl
             0xE129b8Aa61dF65cBDbAE4345eE3fb40168DfD566, // new challenge manager impl
-            ProxyAdmin(0x71d78dc7ccc0e037e12de1e50f5470903ce37148), // l1 gov proxy admin
+            ProxyAdmin(0x71D78dC7cCC0e037e12de1E50f5470903ce37148), // l1 gov proxy admin
             0xC6E1E6dB03c3F475bC760FE20ed93401EC5c4F7e // new one step proof
         )
     {}
