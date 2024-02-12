@@ -72,6 +72,7 @@ export class ContractVerifier {
     ArbitrumFoundationVestingWalletProxy: this.TUP,
     ArbitrumFoundationVestingWalletLogic: "src/ArbitrumFoundationVestingWallet.sol:ArbitrumFoundationVestingWallet",
     AddNovaKeysetAction: "src/gov-action-contracts/nonemergency/AddNovaKeysetAction.sol:AddNovaKeysetAction",
+    ArbOS20Action: "src/gov-action-contracts/AIPs/ArbOS20/ArbOS20Action.sol:ArbOS20Action"
   };
 
   constructor(chainId: number, apiKey: string, deployedContracts: DeployProgressCache) {
