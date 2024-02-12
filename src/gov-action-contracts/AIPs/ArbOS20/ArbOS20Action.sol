@@ -16,7 +16,7 @@ interface IChallengeManagerUpgradeInit {
 
 /// @notice Upgrades an arbitrum chain in preparation for 4844
 /// @dev    Identical copies of this contract to be deployed for Arb One and Nova on Ethereum for the 4844 upgrade
-contract AIP4844Action {
+contract ArbOS20Action {
     ProxyAdmin public immutable govProxyAdmin;
     L1AddressRegistry public immutable l1AddressRegistry;
     address public immutable newSequencerInboxImpl;
@@ -34,32 +34,32 @@ contract AIP4844Action {
     ) {
         require(
             Address.isContract(address(_l1AddressRegistry)),
-            "AIP4844Action: _l1AddressRegistry is not a contract"
+            "ArbOS20Action: _l1AddressRegistry is not a contract"
         );
         l1AddressRegistry = _l1AddressRegistry;
 
-        require(_newWasmModuleRoot != bytes32(0), "AIP4844Action: _newWasmModuleRoot is empty");
+        require(_newWasmModuleRoot != bytes32(0), "ArbOS20Action: _newWasmModuleRoot is empty");
         newWasmModuleRoot = _newWasmModuleRoot;
 
         require(
             Address.isContract(_newSequencerInboxImpl),
-            "AIP4844Action: _newSequencerInboxImpl is not a contract"
+            "ArbOS20Action: _newSequencerInboxImpl is not a contract"
         );
         newSequencerInboxImpl = _newSequencerInboxImpl;
 
         require(
             Address.isContract(_newChallengeMangerImpl),
-            "AIP4844Action: _newChallengeMangerImpl is not a contract"
+            "ArbOS20Action: _newChallengeMangerImpl is not a contract"
         );
         newChallengeManagerImpl = _newChallengeMangerImpl;
 
         require(
             Address.isContract(address(_govProxyAdmin)),
-            "AIP4844Action: _govProxyAdmin is not a contract"
+            "ArbOS20Action: _govProxyAdmin is not a contract"
         );
         govProxyAdmin = _govProxyAdmin;
 
-        require(Address.isContract(address(_newOsp)), "AIP4844Action: _newOsp is not a contract");
+        require(Address.isContract(address(_newOsp)), "ArbOS20Action: _newOsp is not a contract");
         newOsp = _newOsp;
     }
 
@@ -69,7 +69,7 @@ contract AIP4844Action {
 
         // verify:
         require(
-            rollup.wasmModuleRoot() == newWasmModuleRoot, "AIP4844Action: wasm module root not set"
+            rollup.wasmModuleRoot() == newWasmModuleRoot, "ArbOS20Action: wasm module root not set"
         );
 
         TransparentUpgradeableProxy sequencerInbox =
@@ -85,13 +85,13 @@ contract AIP4844Action {
         // verify
         require(
             govProxyAdmin.getProxyImplementation(sequencerInbox) == newSequencerInboxImpl,
-            "AIP4844Action: new seq inbox implementation set"
+            "ArbOS20Action: new seq inbox implementation set"
         );
         (, uint256 futureBlocksAfter,,) =
             ISequencerInbox(address(sequencerInbox)).maxTimeVariation();
         require(
             futureBlocksBefore != 0 && futureBlocksBefore == futureBlocksAfter,
-            "AIP4844Action: maxTimeVariation not set"
+            "ArbOS20Action: maxTimeVariation not set"
         );
 
         // set the new challenge manager impl
@@ -106,11 +106,11 @@ contract AIP4844Action {
 
         require(
             govProxyAdmin.getProxyImplementation(challengeManager) == newChallengeManagerImpl,
-            "AIP4844Action: new challenge manager implementation set"
+            "ArbOS20Action: new challenge manager implementation set"
         );
         require(
             IChallengeManagerUpgradeInit(address(challengeManager)).osp() == newOsp,
-            "AIP4844Action: new OSP not set"
+            "ArbOS20Action: new OSP not set"
         );
     }
 }
