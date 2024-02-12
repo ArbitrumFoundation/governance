@@ -12,8 +12,8 @@ The core, treasury, and security-council-member-removal governors all have a min
 - **Timelock vs Governor Execution** 
 An operation queued in the core-governor-timelock or the treasury-governor-timelock can be executed permissionlessly on either its associated governor (typical) or on the timelock itself (atypical). The execution will be the same in either case, but in the later case, the governor’s `ProposalExecuted` event will not be emitted.
 
-- **Two L1 Proxy Admins** 
-There are two L1 proxy admins - one for the governance contracts, once for the governed core Nitro contracts. Note that both proxy admins have the same owner (the DAO), and thus this has no material effect on the DAO's affordances.
+- **Multiple L1 Proxy Admins** 
+There are 3 L1 proxy admins - one for the governance contracts, one for the governed core Nitro contracts of Arb1, and one for the governed core Nitro contracts of Nova. Note that all proxy admins have the same owner (the DAO), and thus this has no material effect on the DAO's affordances.
 
 - **Non-excluded L2 Timelock**
 ARB in both the treasury timelock and the DAO treasury can be transferred via treasury gov DAO vote; however, only ARB in the DAO treasury is excluded from the quorum numerator calculation. Thus, the DAO’s ARB should ideally all be stored in the DAO Treasury. 
