@@ -9,10 +9,10 @@ contract NovaAIP4844Action is AIP4844Action {
         AIP4844Action(
             L1AddressRegistry(0x2F06643fc2CC18585Ae790b546388F0DE4Ec6635), // L1 address registry for Nova,
             bytes32(""), // wasm module root  TODO
-            address(0), // new sequencer inbox impl TODO
-            address(0), // new challenge manager imp TODO
+            0x31DA64D19Cd31A19CD09F4070366Fe2144792cf7, // new sequencer inbox impl
+            0xE129b8Aa61dF65cBDbAE4345eE3fb40168DfD566, // new challenge manager impl
             ProxyAdmin(0x5613AF0474EB9c528A34701A5b1662E3C8FA0678), // l1 gov proxy admin
-            address(0) // new one step proof  TODO
+            0xC6E1E6dB03c3F475bC760FE20ed93401EC5c4F7e // new one step proof
         )
     {}
 }
