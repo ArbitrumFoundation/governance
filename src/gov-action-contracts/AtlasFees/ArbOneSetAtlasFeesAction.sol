@@ -13,10 +13,14 @@ contract ArbOneSetAtlasFeesAction {
     uint64 public constant NEW_MIN_BASE_FEE = 0.01 gwei;
     uint64 public constant NEW_L1_REWARD_RATE = 0;
 
-    address public constant actionCanExecuteAddr = address(0); // TODO
+    ActionCanExecute public immutable actionCanExecute;
+
+    constructor() {
+        actionCanExecute = new ActionCanExecute(true, 0xADd68bCb0f66878aB9D37a447C7b9067C5dfa941); // non-emergency Security Council can prevent execution
+    }
 
     function perform() external {
-        if (ActionCanExecute(actionCanExecuteAddr).canExecute()) {
+        if (actionCanExecute.canExecute()) {
             ArbPrecompilesLib.arbOwner.setMinimumL2BaseFee(NEW_MIN_BASE_FEE);
             ArbPrecompilesLib.arbOwner.setL1PricingRewardRate(NEW_L1_REWARD_RATE);
 
