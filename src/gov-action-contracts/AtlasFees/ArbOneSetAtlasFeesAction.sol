@@ -2,7 +2,11 @@
 pragma solidity 0.8.16;
 
 import "../arb-precompiles/ArbPrecompilesLib.sol";
-import "@arbitrum/nitro-contracts/src/precompiles/ArbGasInfo.sol";
+
+interface IArbGasInfo {
+    function getMinimumGasPrice() external view returns (uint256);
+    function getL1RewardRate() external view returns (uint64);
+}
 
 contract ArbOneSetAtlasFeesAction {
     uint64 public constant NEW_MIN_BASE_FEE = 0.01 gwei;
@@ -13,7 +17,7 @@ contract ArbOneSetAtlasFeesAction {
         ArbPrecompilesLib.arbOwner.setL1PricingRewardRate(NEW_L1_REWARD_RATE);
 
         // verify:
-        ArbGasInfo arbGasInfo = ArbGasInfo(0x000000000000000000000000000000000000006C);
+        IArbGasInfo arbGasInfo = IArbGasInfo(0x000000000000000000000000000000000000006C);
         require(
             arbGasInfo.getMinimumGasPrice() == NEW_MIN_BASE_FEE,
             "ArbOneSetAtlasFeesAction: min L2 gas price"
