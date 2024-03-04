@@ -2,6 +2,7 @@ import { Provider } from "@ethersproject/providers";
 import { CoreGovProposal, NonEmergencySCProposal } from "./coreGovProposalInterface";
 import { ArbSys__factory, UpgradeExecRouteBuilder__factory } from "../../typechain-types";
 import { BigNumberish, BytesLike } from "ethers";
+import { ARB_SYS_ADDRESS } from "@arbitrum/sdk/dist/lib/dataEntities/constants";
 
 async function _getCallDataFromRouteBuilder(
   provider: Provider,
@@ -24,7 +25,7 @@ async function _getCallDataFromRouteBuilder(
         predecessor,
         timelockSalt
       )
-    )[1];
+    )[1]; // returns [ArbSysAddress, Proposal Data]
   } else if (actionValues || actionDatas || predecessor) {
     throw new Error(
       "Custom actionValues, actionDatas and predecessor must all be provided if any are"
@@ -134,6 +135,7 @@ export async function buildNonEmergencySecurityCouncilProposal(
   actionDatas?: BytesLike[],
   predecessor?: BytesLike
 ): Promise<NonEmergencySCProposal> {
+  // get data; unlike CoreProposal path, we keep the encoded sendTxToL1 call
   let calldata = await _getCallDataFromRouteBuilder(
     provider,
     routeBuilderAddress,
@@ -150,7 +152,7 @@ export async function buildNonEmergencySecurityCouncilProposal(
     actionAddresses,
     description,
     l2TimelockScheduleArgs: {
-      target: "0x0000000000000000000000000000000000000064", // arb sys address
+      target: ARB_SYS_ADDRESS, // arb sys address
       calldata,
     },
   };
