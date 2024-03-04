@@ -2,7 +2,11 @@ import yargs from "yargs";
 import { JsonRpcProvider } from "@ethersproject/providers";
 import { utils, constants } from "ethers";
 import * as fs from "fs";
-import { buildProposal, buildProposalCustom } from "./proposals/buildProposal";
+import {
+  buildProposal,
+  buildProposalCustom,
+  buildNonEmergencySecurityCouncilProposal,
+} from "./proposals/buildProposal";
 import { keccak256 } from "ethers/lib/utils";
 import { defaultAbiCoder } from "@ethersproject/abi";
 
@@ -57,6 +61,12 @@ const options = yargs(process.argv.slice(2))
       description:
         "RouteBuilder contract address. If not provided, will attempt to find in deployment config",
     },
+    nonEmergencySCproposal: {
+      type: "boolean",
+      demandOption: false,
+      description: "Create proposal data for a non-emergency security council proposal if set true",
+      defaultValue: false,
+    },
     upgradeValues: {
       type: "array",
       number: true,
@@ -85,6 +95,7 @@ const options = yargs(process.argv.slice(2))
   routeBuilderAddress: string;
   upgradeValues?: number[];
   upgradeDatas?: string[];
+  nonEmergencySCproposal: boolean;
   predecessor: string;
 };
 
@@ -106,6 +117,31 @@ const main = async () => {
   if (!description) throw new Error("Need to provide a description or path to description");
 
   const timelockSalt = keccak256(defaultAbiCoder.encode(["string"], [description]));
+
+  if (options.nonEmergencySCproposal) {
+    console.log("Creating non-emergency securiyy council proposal:");
+    const proposalData = await buildNonEmergencySecurityCouncilProposal(
+      description,
+      govChainProvider,
+      routeBuilderAddress,
+      options.actionChainIds,
+      options.actionAddresses,
+      timelockSalt,
+      options.upgradeValues,
+      options.upgradeDatas,
+      options.predecessor
+    );
+    console.log("Proposal data:");
+    console.log(proposalData);
+    if (options.writeToJsonPath) {
+      console.log("Writng to file:", options.writeToJsonPath);
+      fs.writeFileSync(options.writeToJsonPath, JSON.stringify(proposalData, null, 2));
+      console.log("done");
+    }
+    return;
+  } else {
+    console.log("Creating core gov proposal");
+  }
 
   const proposalData = await (() => {
     if (!options.upgradeValues && !options.upgradeDatas && !options.predecessor) {
@@ -131,10 +167,10 @@ const main = async () => {
       routeBuilderAddress,
       options.actionChainIds,
       options.actionAddresses,
+      timelockSalt,
       upgradeValues,
       upgradeDatas,
-      predecessor,
-      timelockSalt
+      predecessor
     );
   })();
   console.log("Proposal data:");
@@ -143,7 +179,6 @@ const main = async () => {
     console.log("Writng to file:", options.writeToJsonPath);
     fs.writeFileSync(options.writeToJsonPath, JSON.stringify(proposalData, null, 2));
     console.log("done");
-    
   }
 };
 main();
