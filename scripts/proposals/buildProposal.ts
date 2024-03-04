@@ -3,17 +3,25 @@ import { CoreGovProposal, NonEmergencySCProposal } from "./coreGovProposalInterf
 import { ArbSys__factory, UpgradeExecRouteBuilder__factory } from "../../typechain-types";
 import { BigNumberish, BytesLike } from "ethers";
 import { ARB_SYS_ADDRESS } from "@arbitrum/sdk/dist/lib/dataEntities/constants";
+import { keccak256 } from "ethers/lib/utils";
+import { defaultAbiCoder } from "@ethersproject/abi";
+
+function _generateL1TimelockSalt(actionChainIds: number[], actionAddresses: string[]) {
+  return keccak256(
+    defaultAbiCoder.encode(["uint256[]", "string[]"], [actionChainIds, actionAddresses])
+  );
+}
 
 async function _getCallDataFromRouteBuilder(
   provider: Provider,
   routeBuilderAddress: string,
   actionChainIds: number[],
   actionAddresses: string[],
-  timelockSalt: BytesLike,
   actionValues: BigNumberish[] | undefined,
   actionDatas: BytesLike[] | undefined,
   predecessor: BytesLike | undefined
 ) {
+  const timelockSalt = _generateL1TimelockSalt(actionChainIds, actionAddresses);
   const routeBuilder = UpgradeExecRouteBuilder__factory.connect(routeBuilderAddress, provider);
   if (actionValues && actionDatas && predecessor) {
     return (
@@ -42,12 +50,10 @@ async function _getCallDataFromRouteBuilder(
 }
 
 async function _buildProposal(
-  description: string,
   provider: Provider,
   routeBuilderAddress: string,
   actionChainIds: number[],
   actionAddresses: string[],
-  timelockSalt: BytesLike,
   actionValues: BigNumberish[] | undefined,
   actionDatas: BytesLike[] | undefined,
   predecessor: BytesLike | undefined
@@ -57,7 +63,6 @@ async function _buildProposal(
     routeBuilderAddress,
     actionChainIds,
     actionAddresses,
-    timelockSalt,
     actionValues,
     actionDatas,
     predecessor
@@ -71,7 +76,6 @@ async function _buildProposal(
   return {
     actionChainIds,
     actionAddresses,
-    description,
     arbSysSendTxToL1Args: {
       l1Timelock: decoded[0],
       calldata: decoded[1],
@@ -80,23 +84,19 @@ async function _buildProposal(
 }
 
 export function buildProposalCustom(
-  description: string,
   provider: Provider,
   routeBuilderAddress: string,
   actionChainIds: number[],
   actionAddresses: string[],
-  timelockSalt: BytesLike,
   actionValues: BigNumberish[],
   actionDatas: BytesLike[],
   predecessor: BytesLike
 ): Promise<CoreGovProposal> {
   return _buildProposal(
-    description,
     provider,
     routeBuilderAddress,
     actionChainIds,
     actionAddresses,
-    timelockSalt,
     actionValues,
     actionDatas,
     predecessor
@@ -104,20 +104,16 @@ export function buildProposalCustom(
 }
 
 export function buildProposal(
-  description: string,
   provider: Provider,
   routeBuilderAddress: string,
   actionChainIds: number[],
-  actionAddresses: string[],
-  timelockSalt: BytesLike
+  actionAddresses: string[]
 ): Promise<CoreGovProposal> {
   return _buildProposal(
-    description,
     provider,
     routeBuilderAddress,
     actionChainIds,
     actionAddresses,
-    timelockSalt,
     undefined,
     undefined,
     undefined
@@ -125,12 +121,10 @@ export function buildProposal(
 }
 
 export async function buildNonEmergencySecurityCouncilProposal(
-  description: string,
   provider: Provider,
   routeBuilderAddress: string,
   actionChainIds: number[],
   actionAddresses: string[],
-  timelockSalt: BytesLike,
   actionValues?: BigNumberish[],
   actionDatas?: BytesLike[],
   predecessor?: BytesLike
@@ -141,7 +135,6 @@ export async function buildNonEmergencySecurityCouncilProposal(
     routeBuilderAddress,
     actionChainIds,
     actionAddresses,
-    timelockSalt,
     actionValues,
     actionDatas,
     predecessor
@@ -150,7 +143,6 @@ export async function buildNonEmergencySecurityCouncilProposal(
   return {
     actionChainIds,
     actionAddresses,
-    description,
     l2TimelockScheduleArgs: {
       target: ARB_SYS_ADDRESS, // arb sys address
       calldata,
