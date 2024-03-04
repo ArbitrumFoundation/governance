@@ -199,7 +199,7 @@ async function main() {
   const actionAddresses = chainIds.map((chainId) => actions[chainId]);
 
   const proposal = await buildProposal(
-    description,
+    // description,
     provider,
     scmDeployment.upgradeExecRouteBuilder,
     chainIds,
