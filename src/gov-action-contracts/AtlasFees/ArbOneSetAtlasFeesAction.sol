@@ -13,7 +13,7 @@ contract ArbOneSetAtlasFeesAction {
     uint64 public constant NEW_MIN_BASE_FEE = 0.01 gwei;
     uint64 public constant NEW_L1_REWARD_RATE = 0;
 
-    address public actionCanExecuteAddr = address(0); // TODO
+    address public constant actionCanExecuteAddr = address(0); // TODO
 
     function perform() external {
         if (ActionCanExecute(actionCanExecuteAddr).canExecute()) {
