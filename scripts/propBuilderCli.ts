@@ -7,8 +7,6 @@ import {
   buildProposalCustom,
   buildNonEmergencySecurityCouncilProposal,
 } from "./proposals/buildProposal";
-import { keccak256 } from "ethers/lib/utils";
-import { defaultAbiCoder } from "@ethersproject/abi";
 
 const scmMainnetContracts = JSON.parse(
   fs.readFileSync("./files/mainnet/scmDeployment.json").toString()
@@ -38,17 +36,6 @@ const options = yargs(process.argv.slice(2))
       demandOption: true,
       description:
         "Addresses for action contracts in proposal; indices should correspond to indices in actionChainIds",
-    },
-
-    description: {
-      type: "string",
-      demandOption: false,
-      description: "Either proposalDescription or pathToProposalDescription are required",
-    },
-    pathToDescription: {
-      type: "string",
-      demandOption: false,
-      description: "Either proposalDescription or pathToProposalDescription are required",
     },
     writeToJsonPath: {
       type: "string",
@@ -89,8 +76,6 @@ const options = yargs(process.argv.slice(2))
   govChainProviderRPC: string;
   actionChainIds: number[];
   actionAddresses: string[];
-  description?: string;
-  pathToDescription?: string;
   writeToJsonPath?: string;
   routeBuilderAddress: string;
   upgradeValues?: number[];
@@ -111,22 +96,16 @@ const main = async () => {
     throw new Error(`Need to provide an upgradeExecRouteBuilder for chain ${chainId}`);
   })();
 
-  const description =
-    options.description ||
-    (options.pathToDescription && fs.readFileSync(options.pathToDescription).toString());
-  if (!description) throw new Error("Need to provide a description or path to description");
 
-  const timelockSalt = keccak256(defaultAbiCoder.encode(["string"], [description]));
+
 
   if (options.nonEmergencySCproposal) {
     console.log("Creating non-emergency securiyy council proposal:");
     const proposalData = await buildNonEmergencySecurityCouncilProposal(
-      description,
       govChainProvider,
       routeBuilderAddress,
       options.actionChainIds,
       options.actionAddresses,
-      timelockSalt,
       options.upgradeValues,
       options.upgradeDatas,
       options.predecessor
@@ -147,12 +126,10 @@ const main = async () => {
     if (!options.upgradeValues && !options.upgradeDatas && !options.predecessor) {
       console.log("Using defaults for upgradeValues, upgradeDatas, and predecessor");
       return buildProposal(
-        description,
         govChainProvider,
         routeBuilderAddress,
         options.actionChainIds,
         options.actionAddresses,
-        timelockSalt
       );
     }
 
@@ -162,12 +139,10 @@ const main = async () => {
       options.upgradeDatas || options.actionChainIds.map(() => defaultUpgradeData);
     let predecessor = options.predecessor;
     return buildProposalCustom(
-      description,
       govChainProvider,
       routeBuilderAddress,
       options.actionChainIds,
       options.actionAddresses,
-      timelockSalt,
       upgradeValues,
       upgradeDatas,
       predecessor
