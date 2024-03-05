@@ -202,7 +202,6 @@
 
                             if(stage.quorum){
                                 const quorumDiv = document.createElement('div');
-                                quorumDiv.className = "x";
                                 quorumDiv.innerHTML = `<h4>Quorum: ${numberWithCommas(+stage.quorum * 10e-19)}</h4>`
                                 proposalDiv.appendChild(quorumDiv)
                             }
