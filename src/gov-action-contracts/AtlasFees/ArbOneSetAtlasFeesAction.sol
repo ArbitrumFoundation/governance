@@ -17,7 +17,7 @@ contract ArbOneSetAtlasL1PricingRewardAction {
         actionCanExecute = new ActionCanExecute(true, 0xADd68bCb0f66878aB9D37a447C7b9067C5dfa941); // non-emergency Security Council can prevent execution
     }
 
-    function perform() internal {
+    function perform() external {
         if (actionCanExecute.canExecute()) {
             ArbPrecompilesLib.arbOwner.setL1PricingRewardRate(NEW_L1_REWARD_RATE);
             // verify:
@@ -38,7 +38,7 @@ contract ArbOneSetAtlasMinBaseFeeAction {
         actionCanExecute = new ActionCanExecute(true, 0xADd68bCb0f66878aB9D37a447C7b9067C5dfa941); // non-emergency Security Council can prevent execution
     }
 
-    function perform() internal {
+    function perform() external {
         if (actionCanExecute.canExecute()) {
             ArbPrecompilesLib.arbOwner.setMinimumL2BaseFee(NEW_MIN_BASE_FEE);
             // verify:
