@@ -148,7 +148,7 @@ export class BaseGovernorExecuteStage implements ProposalStage {
     public readonly values: BigNumber[],
     public readonly callDatas: string[],
     public readonly description: string,
-
+    public readonly quorum: BigNumber,
     public readonly governorAddress: string,
     public readonly signerOrProvider: Signer | providers.Provider
   ) {
@@ -181,7 +181,8 @@ export class BaseGovernorExecuteStage implements ProposalStage {
       if (log.topics.find((t) => t === govInterface.getEventTopic("ProposalCreated"))) {
         const propCreatedEvent = govInterface.parseLog(log)
           .args as unknown as ProposalCreatedEventObject;
-
+          const quorum = await  L2ArbitrumGovernor__factory.connect(log.address, arbOneSignerOrProvider).quorum(propCreatedEvent.startBlock)
+        
         if (await hasTimelock(log.address, getProvider(arbOneSignerOrProvider)!)) {
           proposalStages.push(
             new GovernorQueueStage(
@@ -189,6 +190,7 @@ export class BaseGovernorExecuteStage implements ProposalStage {
               (propCreatedEvent as any)[3], // ethers is parsing an array with a single 0 big number as undefined, so we lookup by index
               propCreatedEvent.calldatas,
               propCreatedEvent.description,
+              quorum,
               log.address,
               arbOneSignerOrProvider
             )
@@ -200,6 +202,7 @@ export class BaseGovernorExecuteStage implements ProposalStage {
               (propCreatedEvent as any)[3], // ethers is parsing an array with a single 0 big number as undefined, so we lookup by index
               propCreatedEvent.calldatas,
               propCreatedEvent.description,
+              quorum,
               log.address,
               arbOneSignerOrProvider
             )
@@ -211,6 +214,7 @@ export class BaseGovernorExecuteStage implements ProposalStage {
               (propCreatedEvent as any)[3], // ethers is parsing an array with a single 0 big number as undefined, so we lookup by index
               propCreatedEvent.calldatas,
               propCreatedEvent.description,
+              quorum,
               log.address,
               arbOneSignerOrProvider
             )
