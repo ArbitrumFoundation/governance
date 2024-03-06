@@ -109,7 +109,7 @@ export class StageTracker extends EventEmitter {
                 : undefined,
             proposalDescription:
               this.stage instanceof GovernorQueueStage ? this.stage.description : undefined,
-              quorum: this.stage instanceof BaseGovernorExecuteStage ? this.stage.quorum : undefined
+              quorum: this.stage instanceof BaseGovernorExecuteStage && status != ProposalStageStatus.PENDING  ? await this.stage.quorum() : undefined
           });
           currentStatus = status;
         }
@@ -152,6 +152,7 @@ export class StageTracker extends EventEmitter {
 
             break;
           case ProposalStageStatus.PENDING:
+          case ProposalStageStatus.ACTIVE:
             // keep checking status
             await wait(this.pollingIntervalMs);
             break;
