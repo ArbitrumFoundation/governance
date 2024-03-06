@@ -124,6 +124,12 @@ export enum ProposalStageStatus {
    */
   PENDING = 1,
 
+  /**
+   * Proposal stage is still not ready to be executed, but has transitioned to a new state;
+   * e.g, for a Governor, ACTIVE signifies that users can vote. For other proposals, there is no
+   * ACTIVE stage, and the proposal will go directly from PENDING to READY
+   */
+
   ACTIVE = 2,
 
   /**
