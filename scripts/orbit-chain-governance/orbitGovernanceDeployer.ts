@@ -8,10 +8,11 @@ import {
 } from "../../typechain-types";
 import { Filter, JsonRpcProvider, Provider } from "@ethersproject/providers";
 import { execSync } from "child_process";
-
 import dotenv from "dotenv";
 import { Interface } from "@ethersproject/abi";
 import { RollupCore__factory } from "@arbitrum/sdk/dist/lib/abi/factories/RollupCore__factory";
+import { IOwnable__factory } from "../../token-bridge-contracts/build/types";
+
 dotenv.config();
 
 export const deployGovernance = async () => {
@@ -20,9 +21,20 @@ export const deployGovernance = async () => {
   const parentChainDeployKey = process.env["PARENT_CHAIN_DEPLOY_KEY"] as string;
   const childChainRpc = process.env["CHILD_CHAIN_RPC"] as string;
   const childChainDeployKey = process.env["CHILD_CHAIN_DEPLOY_KEY"] as string;
-  if (![parentChainRpc, parentChainDeployKey, childChainRpc, childChainDeployKey].every(Boolean)) {
+  const inboxAddress = process.env["INBOX_ADDRESS"] as string;
+  const tokenBridgeCreatorAddress = process.env["TOKEN_BRIDGE_CREATOR_ADDRESS"] as string;
+  if (
+    ![
+      parentChainRpc,
+      parentChainDeployKey,
+      childChainRpc,
+      childChainDeployKey,
+      inboxAddress,
+      tokenBridgeCreatorAddress,
+    ].every(Boolean)
+  ) {
     throw new Error(
-      "Following env vars have to be set: PARENT_CHAIN_RPC, PARENT_CHAIN_DEPLOY_KEY, CHILD_CHAIN_RPC, CHILD_CHAIN_DEPLOY_KEY"
+      "Following env vars have to be set: PARENT_CHAIN_RPC, PARENT_CHAIN_DEPLOY_KEY, CHILD_CHAIN_RPC, CHILD_CHAIN_DEPLOY_KEY, INBOX_ADDRESS, TOKEN_BRIDGE_CREATOR_ADDRESS"
     );
   }
 
@@ -53,14 +65,19 @@ export const deployGovernance = async () => {
   const governanceToken = await governanceTokenFac.deployed();
 
   // get deployment data
-  const rollupData = await getDeploymentData(parentChainDeployerWallet.provider!);
+  const { childChainUpExec, childChainProxyAdmin, parentChainUpExec, parentChainProxyAdmin } =
+    await getDeploymentData(
+      parentChainDeployerWallet.provider!,
+      inboxAddress,
+      tokenBridgeCreatorAddress
+    );
 
   /// step1
   const deploymentReceipt = await (
     await childChainFactory.deployStep1({
       _governanceToken: governanceToken.address,
-      _govChainUpExec: rollupData.childChainUpgradeExecutor,
-      _govChainProxyAdmin: rollupData.childChainUpgradeExecutor,
+      _govChainUpExec: childChainUpExec,
+      _govChainProxyAdmin: childChainProxyAdmin,
       _proposalThreshold: 100,
       _votingPeriod: 10,
       _votingDelay: 10,
@@ -72,18 +89,15 @@ export const deployGovernance = async () => {
   console.log("Step1 finished");
 
   //// step 2
-  const _parentChainUpExec = rollupData["upgrade-executor"];
-  const _parentChainProxyAdmin = rollupData.parentChainProxyAdmin;
-  const _inbox = rollupData.inbox;
   const { coreTimelock: _childChainCoreTimelock, coreGoverner: _childChainCoreGov } =
     _getParsedLogs(deploymentReceipt.logs, childChainFactory.interface, "Deployed")[0].args;
   const _minTimelockDelay = 7;
 
   await (
     await parentChainFactory.deployStep2(
-      _parentChainUpExec,
-      _parentChainProxyAdmin,
-      _inbox,
+      parentChainUpExec,
+      parentChainProxyAdmin,
+      inboxAddress,
       _childChainCoreTimelock,
       _minTimelockDelay
     )
@@ -91,70 +105,36 @@ export const deployGovernance = async () => {
   console.log("Step2 finished");
 };
 
-async function getDeploymentData(parentChainProvider: Provider) {
-  /// get rollup data from config file
-  let sequencerContainer = execSync('docker ps --filter "name=l3node" --format "{{.Names}}"')
-    .toString()
-    .trim();
-  const deploymentData = execSync(
-    `docker exec ${sequencerContainer} cat /config/l3deployment.json`
-  ).toString();
-  const parsedDeploymentData = JSON.parse(deploymentData) as {
-    bridge: string;
-    inbox: string;
-    ["sequencer-inbox"]: string;
-    rollup: string;
-    ["native-token"]: string;
-    ["upgrade-executor"]: string;
-  };
-
-  //// get parent chain deployment data
-  const filter: Filter = {
-    topics: [
-      ethers.utils.id(
-        "OrbitTokenBridgeCreated(address,address,address,address,address,address,address,address)"
-      ),
-      ethers.utils.hexZeroPad(parsedDeploymentData.inbox, 32),
-    ],
-  };
-  const logs = await parentChainProvider.getLogs({
-    ...filter,
-    fromBlock: 0,
-    toBlock: "latest",
-  });
-  if (logs.length === 0) {
-    throw new Error("Couldn't find any OrbitTokenBridgeCreated events in block range[0,latest]");
-  }
-  const eventIface = new Interface(eventABI);
-  const parentChainDeploymentData = eventIface.parseLog(logs[0]);
-
-  ///// get child chain deployment data
-  const rollup = await IBridge__factory.connect(
-    await IInbox__factory.connect(parsedDeploymentData.inbox, parentChainProvider).bridge(),
-    parentChainProvider
-  ).rollup();
-  const chainId = await RollupCore__factory.connect(rollup, parentChainProvider).chainId();
-
-  const tokenBridgeCreatorAddress = logs[0].address;
+async function getDeploymentData(
+  parentChainProvider: Provider,
+  inboxAddress: string,
+  tokenBridgeCreatorAddress: string
+) {
+  /// get child chain deployment data
   const tokenBridgeCreator = new ethers.Contract(
     tokenBridgeCreatorAddress,
     tokenBridgeCreatorABI,
     parentChainProvider
   );
-  const childChainUpgradeExecutor = await tokenBridgeCreator.getCanonicalL2UpgradeExecutorAddress(
-    chainId
+  const [, , , , , childChainProxyAdmin, , childChainUpExec, ,] =
+    tokenBridgeCreator.inboxToL2Deployment(inboxAddress);
+
+  /// get parent chain info
+  const bridge = await IInbox__factory.connect(inboxAddress, parentChainProvider).bridge();
+  const rollup = await IBridge__factory.connect(bridge, parentChainProvider).rollup();
+  const parentChainUpExec = await IOwnable__factory.connect(rollup, parentChainProvider).owner();
+  const iinboxProxyAdmin = new ethers.Contract(
+    inboxAddress,
+    iinboxProxyAdminABI,
+    parentChainProvider
   );
-  const childChainProxyAdmin = await tokenBridgeCreator.getCanonicalL2ProxyAdminAddress(chainId);
+  const parentChainProxyAdmin = await iinboxProxyAdmin.getProxyAdmin();
 
   let data = {
-    ...parsedDeploymentData,
-    parentChainInbox: parsedDeploymentData.inbox,
-    parentChainProxyAdmin: parentChainDeploymentData.args.proxyAdmin,
-    parentChainRouter: parentChainDeploymentData.args.router,
-    parentChainStandardGateway: parentChainDeploymentData.args.standardGateway,
-    parentChainCustomGateway: parentChainDeploymentData.args.customGateway,
-    childChainUpgradeExecutor: childChainUpgradeExecutor,
-    childChainProxyAdmin: childChainProxyAdmin,
+    childChainProxyAdmin,
+    childChainUpExec,
+    parentChainUpExec,
+    parentChainProxyAdmin,
   };
 
   return data;
@@ -172,80 +152,41 @@ export const _getParsedLogs = (
   return parsedLogs;
 };
 
-//// OrbitTokenBridgeCreated event ABI
-const eventABI = [
-  {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: true,
-        internalType: "address",
-        name: "inbox",
-        type: "address",
-      },
-      {
-        indexed: true,
-        internalType: "address",
-        name: "owner",
-        type: "address",
-      },
-      {
-        indexed: false,
-        internalType: "address",
-        name: "router",
-        type: "address",
-      },
-      {
-        indexed: false,
-        internalType: "address",
-        name: "standardGateway",
-        type: "address",
-      },
-      {
-        indexed: false,
-        internalType: "address",
-        name: "customGateway",
-        type: "address",
-      },
-      {
-        indexed: false,
-        internalType: "address",
-        name: "wethGateway",
-        type: "address",
-      },
-      {
-        indexed: false,
-        internalType: "address",
-        name: "proxyAdmin",
-        type: "address",
-      },
-      {
-        indexed: false,
-        internalType: "address",
-        name: "upgradeExecutor",
-        type: "address",
-      },
-    ],
-    name: "OrbitTokenBridgeCreated",
-    type: "event",
-  },
-];
-
 //// subset of token bridge creator ABI
 const tokenBridgeCreatorABI = [
   {
     inputs: [
       {
-        internalType: "uint256",
-        name: "chainId",
-        type: "uint256",
+        internalType: "address",
+        name: "",
+        type: "address",
       },
     ],
-    name: "getCanonicalL2UpgradeExecutorAddress",
+    name: "inboxToL1Deployment",
     outputs: [
       {
         internalType: "address",
-        name: "",
+        name: "router",
+        type: "address",
+      },
+      {
+        internalType: "address",
+        name: "standardGateway",
+        type: "address",
+      },
+      {
+        internalType: "address",
+        name: "customGateway",
+        type: "address",
+      },
+      {
+        internalType: "address",
+        name: "wethGateway",
+        type: "address",
+      },
+      {
+        internalType: "address",
+        name: "weth",
         type: "address",
       },
     ],
@@ -255,12 +196,68 @@ const tokenBridgeCreatorABI = [
   {
     inputs: [
       {
-        internalType: "uint256",
-        name: "chainId",
-        type: "uint256",
+        internalType: "address",
+        name: "",
+        type: "address",
       },
     ],
-    name: "getCanonicalL2ProxyAdminAddress",
+    name: "inboxToL2Deployment",
+    outputs: [
+      {
+        internalType: "address",
+        name: "router",
+        type: "address",
+      },
+      {
+        internalType: "address",
+        name: "standardGateway",
+        type: "address",
+      },
+      {
+        internalType: "address",
+        name: "customGateway",
+        type: "address",
+      },
+      {
+        internalType: "address",
+        name: "wethGateway",
+        type: "address",
+      },
+      {
+        internalType: "address",
+        name: "weth",
+        type: "address",
+      },
+      {
+        internalType: "address",
+        name: "proxyAdmin",
+        type: "address",
+      },
+      {
+        internalType: "address",
+        name: "beaconProxyFactory",
+        type: "address",
+      },
+      {
+        internalType: "address",
+        name: "upgradeExecutor",
+        type: "address",
+      },
+      {
+        internalType: "address",
+        name: "multicall",
+        type: "address",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+];
+
+const iinboxProxyAdminABI = [
+  {
+    inputs: [],
+    name: "getProxyAdmin",
     outputs: [
       {
         internalType: "address",
