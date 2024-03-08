@@ -75,7 +75,7 @@
   },
   "dependencies": {
     "@arbitrum/nitro-contracts": "1.0.1",
-    "@arbitrum/token-bridge-contracts": "1.0.0-beta.0",
+    "@arbitrum/token-bridge-contracts": "1.2.1",
     "@gnosis.pm/safe-contracts": "1.3.0",
     "@openzeppelin/contracts": "4.7.3",
     "@openzeppelin/contracts-upgradeable": "4.7.3",
