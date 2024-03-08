@@ -117,7 +117,7 @@ async function getDeploymentData(
     parentChainProvider
   );
   const [, , , , , childChainProxyAdmin, , childChainUpExec, ,] =
-    tokenBridgeCreator.inboxToL2Deployment(inboxAddress);
+    await tokenBridgeCreator.inboxToL2Deployment(inboxAddress);
 
   /// get parent chain info
   const bridge = await IInbox__factory.connect(inboxAddress, parentChainProvider).bridge();
