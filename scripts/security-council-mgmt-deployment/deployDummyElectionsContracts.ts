@@ -25,6 +25,11 @@ type DeployParamsPartial = Omit<
 
 const zxDead = "0x000000000000000000000000000000000000dead";
 
+const START_DATE = new Date(new Date().getTime() + 60 * 60 * 1000); // 1 hour from now, there must be at least an hour delay or deployment will fail
+
+// i.e. votingDelay
+const addContenderDuration = minutes(5 * 60)
+
 const partialDeployParams: DeployParamsPartial = {
   secondCohort: [
     "0x0000000000000000000000000000000000000001",
@@ -109,8 +114,6 @@ async function makeFullDeployParams(partialDeployParams: DeployParamsPartial, si
   const noop = await deployNoopContract(signer);
   const gnosisSafe = await deployDummyGnosisSafe(signer);
 
-  const date = new Date(new Date().getTime() + 60 * 60 * 1000); // add 1 hour to the current time
-
   return {
     ...partialDeployParams,
     govChainEmergencySecurityCouncil: gnosisSafe.address,
@@ -119,7 +122,7 @@ async function makeFullDeployParams(partialDeployParams: DeployParamsPartial, si
     arbToken: (await deployToken(signer)).address,
     l1ArbitrumTimelock: noop.address,
     l2UpgradeExecutor: callRelayer.address,
-    firstNominationStartDate: makeStartDateStruct(date),
+    firstNominationStartDate: makeStartDateStruct(START_DATE),
     securityCouncils: [],
     upgradeExecutors: [],
   }
@@ -180,7 +183,7 @@ async function main() {
   const relayCalldata = govIface.encodeFunctionData('relay', [
     namedItems.nomineeElectionGovernor,
     0,
-    govIface.encodeFunctionData("setVotingDelay", [fullDeployParams.nomineeVotingPeriod]),
+    govIface.encodeFunctionData("setVotingDelay", [addContenderDuration]),
   ])
   // 0x1b8b921d is the selector for callRelayer.call(address, bytes)
   const callRelayerCalldata = ethers.utils.concat(['0x1b8b921d', new ethers.utils.AbiCoder().encode(['address', 'bytes'], [namedItems.nomineeElectionGovernor, relayCalldata])])
