@@ -46,6 +46,10 @@ export function getProvider(signerOrProvider: Signer | Provider): Provider | und
   return isSigner(signerOrProvider) ? signerOrProvider.provider : signerOrProvider;
 }
 
+interface HashesToSalt {
+  [key: string]: string;
+}
+
 /**
  * An execution stage of a proposal. Each stage can be executed, and results in a transaction receipt.
  * Proposal stages should be named by what happens during execution
@@ -470,6 +474,22 @@ abstract class L2TimelockExecutionStage implements ProposalStage {
     };
   }
 
+  public static getL2SaltForProposalSubmittedOnTimelock(txHash: string, sendTxToL1Calldata: string) {
+    // The off-chain standard for updates submitted directly on the timelock (i.e., non-emergency security council proposals)
+    // is for the l2 timelock salt to be equal to the l1 timelock salt. 
+    // Updates that did not follow this standard can be whitelistedd here:
+
+    const whitelistedTxHashesToSalt: HashesToSalt = {
+      "0xc61639a47f41bfc649739f7ce7c2c37f24647e578bb8cf1d95696e872db149cf":
+        "0x0000000000000000000000000000000000000000000000000000000000000000",
+    };
+    if (whitelistedTxHashesToSalt[txHash]) {
+      return whitelistedTxHashesToSalt[txHash];
+    }
+    // Retrieve and return L1 timelock salt
+    return L2TimelockExecutionStage.decodeScheduleBatch(sendTxToL1Calldata).salt;
+  }
+
   public async status(): Promise<ProposalStageStatus> {
     const timelock = ArbitrumTimelock__factory.connect(this.timelockAddress, this.signerOrProvider);
 
@@ -632,7 +652,7 @@ export class L2TimelockExecutionBatchStage extends L2TimelockExecutionStage {
             "sendTxToL1",
             datas[0]
           );
-          const { salt } = this.decodeScheduleBatch(data);
+          const salt = this.getL2SaltForProposalSubmittedOnTimelock(receipt.transactionHash, data);
           const operationId = this.hashOperationBatch(targets, values, datas, predecessor, salt);
           if (operationId !== callScheduledOnTimelock[0].id) {
             throw new Error("XXX Invalid operation id");
@@ -721,7 +741,7 @@ export class L2TimelockExecutionSingleStage extends L2TimelockExecutionStage {
             callScheduledArgs.data
           );
 
-          const { salt } = this.decodeScheduleBatch(data);
+          const salt = this.getL2SaltForProposalSubmittedOnTimelock(receipt.transactionHash, data);
 
           // calculate the id and check if that operation exists
           const operationId = this.hashOperation(

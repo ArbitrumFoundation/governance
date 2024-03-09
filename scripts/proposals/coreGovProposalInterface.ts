@@ -24,6 +24,8 @@ export interface NonEmergencySCProposal {
   description?: string;
   l2TimelockScheduleArgs: {
     target: "0x0000000000000000000000000000000000000064"; // arb sys address
-    calldata: string;
+    data: string;
+    predecessor: string;
+    salt: string;
   };
 }

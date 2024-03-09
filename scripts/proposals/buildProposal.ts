@@ -1,7 +1,7 @@
 import { Provider } from "@ethersproject/providers";
 import { CoreGovProposal, NonEmergencySCProposal } from "./coreGovProposalInterface";
 import { ArbSys__factory, UpgradeExecRouteBuilder__factory } from "../../typechain-types";
-import { BigNumberish, BytesLike } from "ethers";
+import { BigNumberish, BytesLike, constants } from "ethers";
 import { ARB_SYS_ADDRESS } from "@arbitrum/sdk/dist/lib/dataEntities/constants";
 import { keccak256 } from "ethers/lib/utils";
 import { defaultAbiCoder } from "@ethersproject/abi";
@@ -17,11 +17,11 @@ async function _getCallDataFromRouteBuilder(
   routeBuilderAddress: string,
   actionChainIds: number[],
   actionAddresses: string[],
+  timelockSalt: string,
   actionValues: BigNumberish[] | undefined,
   actionDatas: BytesLike[] | undefined,
   predecessor: BytesLike | undefined
 ) {
-  const timelockSalt = _generateL1TimelockSalt(actionChainIds, actionAddresses);
   const routeBuilder = UpgradeExecRouteBuilder__factory.connect(routeBuilderAddress, provider);
   if (actionValues && actionDatas && predecessor) {
     return (
@@ -58,11 +58,14 @@ async function _buildProposal(
   actionDatas: BytesLike[] | undefined,
   predecessor: BytesLike | undefined
 ): Promise<CoreGovProposal> {
+  const timelockSalt = _generateL1TimelockSalt(actionChainIds, actionAddresses);
+
   let calldata = await _getCallDataFromRouteBuilder(
     provider,
     routeBuilderAddress,
     actionChainIds,
     actionAddresses,
+    timelockSalt,
     actionValues,
     actionDatas,
     predecessor
@@ -129,12 +132,15 @@ export async function buildNonEmergencySecurityCouncilProposal(
   actionDatas?: BytesLike[],
   predecessor?: BytesLike
 ): Promise<NonEmergencySCProposal> {
+  const timelockSalt = _generateL1TimelockSalt(actionChainIds, actionAddresses);
+
   // get data; unlike CoreProposal path, we keep the encoded sendTxToL1 call
   let calldata = await _getCallDataFromRouteBuilder(
     provider,
     routeBuilderAddress,
     actionChainIds,
     actionAddresses,
+    timelockSalt,
     actionValues,
     actionDatas,
     predecessor
@@ -145,7 +151,9 @@ export async function buildNonEmergencySecurityCouncilProposal(
     actionAddresses,
     l2TimelockScheduleArgs: {
       target: ARB_SYS_ADDRESS, // arb sys address
-      calldata,
+      data: calldata,
+      predecessor: predecessor?.toString() || constants.HashZero,
+      salt: timelockSalt,
     },
   };
 }
