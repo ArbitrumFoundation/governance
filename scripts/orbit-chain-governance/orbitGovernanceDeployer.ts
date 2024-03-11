@@ -86,7 +86,6 @@ export const deployGovernance = async () => {
       _coreQuorumThreshold: 500,
     })
   ).wait();
-  console.log("Step1 finished");
 
   //// step 2
   const { coreTimelock: _childChainCoreTimelock, coreGoverner: _childChainCoreGov } =
@@ -131,8 +130,8 @@ async function getDeploymentData(
   const parentChainProxyAdmin = await iinboxProxyAdmin.getProxyAdmin();
 
   let data = {
-    childChainProxyAdmin,
     childChainUpExec,
+    childChainProxyAdmin,
     parentChainUpExec,
     parentChainProxyAdmin,
   };
