@@ -36,6 +36,7 @@ import {
 } from "../typechain-types/src/L2ArbitrumGovernor";
 import { hasTimelock, hasVettingPeriod, getL1BlockNumberFromL2 } from "./utils";
 import { CallScheduledEvent } from "../typechain-types/src/ArbitrumTimelock";
+import { GnosisSafeL2__factory } from "../types/ethers-contracts/factories/GnosisSafeL2__factory";
 
 type Provider = providers.Provider;
 
@@ -470,6 +471,21 @@ abstract class L2TimelockExecutionStage implements ProposalStage {
     };
   }
 
+  public static async getL2SaltForProposalSubmittedOnTimelock(txHash: string, provider: Provider) {
+    // We assume a proposal submitted directly on the timelock was fro a Gnosis safe and attempt to
+    // decode and extract the salt accordingly
+    const txRes = await provider.getTransaction(txHash);
+    const { data: execTxData } = GnosisSafeL2__factory.createInterface().decodeFunctionData(
+      "execTransaction",
+      txRes.data
+    );
+    try {
+      return (await this.decodeScheduleBatch(execTxData)).salt;
+    } catch (e) {
+      return (await this.decodeSchedule(execTxData)).salt;
+    }
+  }
+
   public async status(): Promise<ProposalStageStatus> {
     const timelock = ArbitrumTimelock__factory.connect(this.timelockAddress, this.signerOrProvider);
 
@@ -628,11 +644,10 @@ export class L2TimelockExecutionBatchStage extends L2TimelockExecutionStage {
           const values = callScheduledOnTimelock.map((args) => args[3]);
           const datas = callScheduledOnTimelock.map((args) => args.data);
           const predecessor = callScheduledOnTimelock[0].predecessor;
-          const { data } = ArbSys__factory.createInterface().decodeFunctionData(
-            "sendTxToL1",
-            datas[0]
+          const salt = await this.getL2SaltForProposalSubmittedOnTimelock(
+            receipt.transactionHash,
+            await getProvider(arbOneSignerOrProvider)!
           );
-          const { salt } = this.decodeScheduleBatch(data);
           const operationId = this.hashOperationBatch(targets, values, datas, predecessor, salt);
           if (operationId !== callScheduledOnTimelock[0].id) {
             throw new Error("XXX Invalid operation id");
@@ -716,12 +731,10 @@ export class L2TimelockExecutionSingleStage extends L2TimelockExecutionStage {
           const callScheduledArgs = timelockInterface.parseLog(log)
             .args as CallScheduledEvent["args"];
 
-          const { data } = ArbSys__factory.createInterface().decodeFunctionData(
-            "sendTxToL1",
-            callScheduledArgs.data
+          const salt = await this.getL2SaltForProposalSubmittedOnTimelock(
+            receipt.transactionHash,
+            await getProvider(arbOneSignerOrProvider)!
           );
-
-          const { salt } = this.decodeScheduleBatch(data);
 
           // calculate the id and check if that operation exists
           const operationId = this.hashOperation(
