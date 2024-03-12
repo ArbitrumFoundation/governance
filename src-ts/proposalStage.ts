@@ -472,7 +472,7 @@ abstract class L2TimelockExecutionStage implements ProposalStage {
   }
 
   public static async getL2SaltForProposalSubmittedOnTimelock(txHash: string, provider: Provider) {
-    // We assume a proposal submitted directly on the timelock was fro a Gnosis safe and attempt to
+    // We assume a proposal submitted directly on the timelock was from a Gnosis safe and attempt to
     // decode and extract the salt accordingly
     const txRes = await provider.getTransaction(txHash);
     const { data: execTxData } = GnosisSafeL2__factory.createInterface().decodeFunctionData(
