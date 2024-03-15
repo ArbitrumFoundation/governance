@@ -42,7 +42,7 @@ contract SetSCThresholdAndUpdateConstitutionAction {
             constitution.constitutionHash() == oldConstitutionHash, "WRONG_OLD_CONSTITUTION_HASH"
         );
         constitution.setConstitutionHash(newConstitutionHash);
-        require(constitution.constitutionHash() == newConstitutionHash, "NEW_CONSTUTION_HASH_SET");
+        require(constitution.constitutionHash() == newConstitutionHash, "NEW_CONSTITUTION_HASH_SET");
         // sanity check old threshold
         require(
             gnosisSafe.getThreshold() == oldThreshold, "SecSCThresholdAction: WRONG_OLD_THRESHOLD"
