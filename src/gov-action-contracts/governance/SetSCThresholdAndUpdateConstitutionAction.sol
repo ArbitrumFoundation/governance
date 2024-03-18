@@ -45,7 +45,7 @@ contract SetSCThresholdAndUpdateConstitutionAction {
         require(constitution.constitutionHash() == newConstitutionHash, "NEW_CONSTITUTION_HASH_SET");
         // sanity check old threshold
         require(
-            gnosisSafe.getThreshold() == oldThreshold, "SecSCThresholdAction: WRONG_OLD_THRESHOLD"
+            gnosisSafe.getThreshold() == oldThreshold, "SetSCThresholdAction: WRONG_OLD_THRESHOLD"
         );
 
         gnosisSafe.execTransactionFromModule({
@@ -56,7 +56,7 @@ contract SetSCThresholdAndUpdateConstitutionAction {
         });
         // sanity check new threshold was set
         require(
-            gnosisSafe.getThreshold() == newThreshold, "SecSCThresholdAction: NEW_THRESHOLD_NOT_SET"
+            gnosisSafe.getThreshold() == newThreshold, "SetSCThresholdAction: NEW_THRESHOLD_NOT_SET"
         );
         emit ActionPerformed(newThreshold, constitution.constitutionHash());
     }
