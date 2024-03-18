@@ -23,7 +23,8 @@ export abstract class ProposalMonitor extends EventEmitter {
     public readonly blockLag: number,
     public readonly startBlockNumber: number,
     public readonly stageFactory: StageFactory,
-    public readonly writeMode: boolean
+    public readonly writeMode: boolean,
+    public readonly healthCheckUrl?: string
   ) {
     super();
   }
@@ -37,6 +38,13 @@ export abstract class ProposalMonitor extends EventEmitter {
   }
 
   private polling = false;
+
+  public async waitAndPing(){    
+    await wait(this.pollingIntervalMs);
+    if(this.healthCheckUrl){
+      fetch(this.healthCheckUrl)
+    }
+  }
 
   public async monitorSingleProposal(receipt: TransactionReceipt) {
     const nextStages = await this.stageFactory.extractStages(receipt);
@@ -75,7 +83,7 @@ export abstract class ProposalMonitor extends EventEmitter {
     this.polling = true;
 
     let blockThen = this.startBlockNumber;
-    await wait(this.pollingIntervalMs);
+    await this.waitAndPing();
 
     while (this.polling) {
       try {
@@ -94,7 +102,7 @@ export abstract class ProposalMonitor extends EventEmitter {
         console.log("Proposal monitor Error:", err);
       }
 
-      await wait(this.pollingIntervalMs);
+      await this.waitAndPing();
     }
   }
 
