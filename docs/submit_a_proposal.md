@@ -1,6 +1,6 @@
 # Submit a Core Proposal Via Tally
 
-Before a proposal can be submitted, its action contrats must be deployed, its JSON data must be prepared, and the it must  pass the simulation tests. See [here](../src/gov-action-contracts/README.md) for details on those steps. 
+Before a proposal can be submitted, its action contrats must be deployed, its JSON data must be prepared, and the it must  pass the simulation tests. See [here](./creating-a-proposal.md) for details on those steps. 
 
 Proposals can be submitted via any means of accessing the DAO governance smart contracts; the Tally UI is recommended. 
 
