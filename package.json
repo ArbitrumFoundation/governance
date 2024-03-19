@@ -80,6 +80,7 @@
     "@openzeppelin/contracts": "4.7.3",
     "@openzeppelin/contracts-upgradeable": "4.7.3",
     "@types/yargs": "^17.0.17",
+    "axios": "^1.6.8",
     "yargs": "^17.6.2"
   }
 }
