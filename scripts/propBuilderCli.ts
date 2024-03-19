@@ -2,9 +2,11 @@ import yargs from "yargs";
 import { JsonRpcProvider } from "@ethersproject/providers";
 import { utils, constants } from "ethers";
 import * as fs from "fs";
-import { buildProposal, buildProposalCustom } from "./proposals/buildProposal";
-import { keccak256 } from "ethers/lib/utils";
-import { defaultAbiCoder } from "@ethersproject/abi";
+import {
+  buildProposal,
+  buildProposalCustom,
+  buildNonEmergencySecurityCouncilProposal,
+} from "./proposals/buildProposal";
 
 const scmMainnetContracts = JSON.parse(
   fs.readFileSync("./files/mainnet/scmDeployment.json").toString()
@@ -35,17 +37,6 @@ const options = yargs(process.argv.slice(2))
       description:
         "Addresses for action contracts in proposal; indices should correspond to indices in actionChainIds",
     },
-
-    description: {
-      type: "string",
-      demandOption: false,
-      description: "Either proposalDescription or pathToProposalDescription are required",
-    },
-    pathToDescription: {
-      type: "string",
-      demandOption: false,
-      description: "Either proposalDescription or pathToProposalDescription are required",
-    },
     writeToJsonPath: {
       type: "string",
       demandOption: false,
@@ -56,6 +47,12 @@ const options = yargs(process.argv.slice(2))
       demandOption: false,
       description:
         "RouteBuilder contract address. If not provided, will attempt to find in deployment config",
+    },
+    nonEmergencySCproposal: {
+      type: "boolean",
+      demandOption: false,
+      description: "Create proposal data for a non-emergency security council proposal if set true",
+      defaultValue: false,
     },
     upgradeValues: {
       type: "array",
@@ -79,12 +76,11 @@ const options = yargs(process.argv.slice(2))
   govChainProviderRPC: string;
   actionChainIds: number[];
   actionAddresses: string[];
-  description?: string;
-  pathToDescription?: string;
   writeToJsonPath?: string;
   routeBuilderAddress: string;
   upgradeValues?: number[];
   upgradeDatas?: string[];
+  nonEmergencySCproposal: boolean;
   predecessor: string;
 };
 
@@ -100,23 +96,40 @@ const main = async () => {
     throw new Error(`Need to provide an upgradeExecRouteBuilder for chain ${chainId}`);
   })();
 
-  const description =
-    options.description ||
-    (options.pathToDescription && fs.readFileSync(options.pathToDescription).toString());
-  if (!description) throw new Error("Need to provide a description or path to description");
 
-  const timelockSalt = keccak256(defaultAbiCoder.encode(["string"], [description]));
+
+
+  if (options.nonEmergencySCproposal) {
+    console.log("Creating non-emergency securiyy council proposal:");
+    const proposalData = await buildNonEmergencySecurityCouncilProposal(
+      govChainProvider,
+      routeBuilderAddress,
+      options.actionChainIds,
+      options.actionAddresses,
+      options.upgradeValues,
+      options.upgradeDatas,
+      options.predecessor
+    );
+    console.log("Proposal data:");
+    console.log(proposalData);
+    if (options.writeToJsonPath) {
+      console.log("Writng to file:", options.writeToJsonPath);
+      fs.writeFileSync(options.writeToJsonPath, JSON.stringify(proposalData, null, 2));
+      console.log("done");
+    }
+    return;
+  } else {
+    console.log("Creating core gov proposal");
+  }
 
   const proposalData = await (() => {
     if (!options.upgradeValues && !options.upgradeDatas && !options.predecessor) {
       console.log("Using defaults for upgradeValues, upgradeDatas, and predecessor");
       return buildProposal(
-        description,
         govChainProvider,
         routeBuilderAddress,
         options.actionChainIds,
         options.actionAddresses,
-        timelockSalt
       );
     }
 
@@ -126,15 +139,13 @@ const main = async () => {
       options.upgradeDatas || options.actionChainIds.map(() => defaultUpgradeData);
     let predecessor = options.predecessor;
     return buildProposalCustom(
-      description,
       govChainProvider,
       routeBuilderAddress,
       options.actionChainIds,
       options.actionAddresses,
       upgradeValues,
       upgradeDatas,
-      predecessor,
-      timelockSalt
+      predecessor
     );
   })();
   console.log("Proposal data:");
@@ -143,7 +154,6 @@ const main = async () => {
     console.log("Writng to file:", options.writeToJsonPath);
     fs.writeFileSync(options.writeToJsonPath, JSON.stringify(proposalData, null, 2));
     console.log("done");
-    
   }
 };
 main();
