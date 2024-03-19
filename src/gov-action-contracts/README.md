@@ -33,7 +33,7 @@ In following example, we show an action contract for setting the address 0xa4b17
 
 
 
-```sol 
+```solidity
 // General version of contract, with values set in constructor params, for testing and potential re-use in future proposals.
 // Detailed contract name, suffixed with "Action"
 contract SetIsBatchPosterAction {
