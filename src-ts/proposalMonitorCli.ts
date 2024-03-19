@@ -15,6 +15,7 @@ import {
   GovernorProposalMonitor,
   ProposalMonitor,
 } from "./proposalMonitor";
+import axios from "axios";
 
 const ETH_KEY = process.env.ETH_KEY || "";
 const ARB_KEY = process.env.ARB_KEY || "";
@@ -226,8 +227,7 @@ const main = async () => {
 
   if (PROPMON_HEALTHCHECK_URL) {
     // ping health check url;
-    fetch(PROPMON_HEALTHCHECK_URL)
-      .then((response) => response.json())
+    axios.get(PROPMON_HEALTHCHECK_URL)
       .then(() => {
         console.log("Using provided health check url");
       })

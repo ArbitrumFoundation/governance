@@ -12,6 +12,7 @@ import {
 import { EventEmitter } from "events";
 import { Interface } from "@ethersproject/abi";
 import { BigNumber } from "ethers";
+import axios from "axios";
 
 export type GPMEvent = TrackerEvent & { originAddress: string };
 
@@ -42,7 +43,7 @@ export abstract class ProposalMonitor extends EventEmitter {
   public async waitAndPing(){    
     await wait(this.pollingIntervalMs);
     if(this.healthCheckUrl){
-      fetch(this.healthCheckUrl)
+      axios.get(this.healthCheckUrl)
     }
   }
 
