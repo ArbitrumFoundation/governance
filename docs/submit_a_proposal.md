@@ -17,7 +17,7 @@ Proposals can be submitted via any means of accessing the DAO governance smart c
     1. In the `Contract method` dropdown, select `sendTxToL1`.
     1. For the `destination` address field, use the [l1ArbitrumTimelock](https://etherscan.io/address/0xE6841D92B0C345144506576eC13ECf5103aC7f49#readProxyContract) address (`0xE6841D92B0C345144506576eC13ECf5103aC7f49`) as provided in the proposal JSON data.
     1. For the `data` bytes field, use the `calldata` bytes in the proposal JSON data. 
-    1. Unless the proposals requires value to send (which is unusual) set 0 in the `value` field.
+    1. Unless the proposal requires value to send (which is unusual) set 0 in the `value` field.
 - **Publishing**    
     - Double check all values. When ready, select "publish" or "save draft" to send to a delegate to publish; note that a mimimum of 1,000,000 voting power is required to publish a proposal. 
     
