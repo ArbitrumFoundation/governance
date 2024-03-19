@@ -19,6 +19,8 @@ import {
 const ETH_KEY = process.env.ETH_KEY || "";
 const ARB_KEY = process.env.ARB_KEY || "";
 
+const PROPMON_HEALTHCHECK_URL = process.env.PROPMON_HEALTHCHECK_URL || "";
+
 const options = yargs(process.argv.slice(2))
   .options({
     l1RpcUrl: { type: "string", demandOption: true },
@@ -172,7 +174,7 @@ class JsonLogger {
           proposalLink,
           children: [],
           proposalDescription: e.proposalDescription,
-          quorum: e.quorum?.toString()
+          quorum: e.quorum?.toString(),
         };
 
         if (prevKey === originKey && !emittedStages.has(key)) {
@@ -222,6 +224,21 @@ const main = async () => {
     console.log(`Starting monitor in read-only mode`);
   }
 
+  if (PROPMON_HEALTHCHECK_URL) {
+    // ping health check url;
+    fetch(PROPMON_HEALTHCHECK_URL)
+      .then((response) => response.json())
+      .then(() => {
+        console.log("Using provided health check url");
+      })
+      .catch((error) => {
+        console.log("Provided health check url failed:", error);
+        process.exit(1);
+      });
+  } else {
+    console.log("No healthcheck url provided");
+  }
+
   let jsonLogger;
   if (options.jsonOutputLocation) {
     jsonLogger = new JsonLogger(options.jsonOutputLocation, 1000);
@@ -244,7 +261,8 @@ const main = async () => {
       options.blockLag,
       options.startBlock,
       stageFactory,
-      options.writeMode
+      options.writeMode,
+      PROPMON_HEALTHCHECK_URL
     );
     roundTrip = startMonitor("RoundTrip", coreGovMonitor, jsonLogger, options.proposalId);
   }
@@ -259,7 +277,8 @@ const main = async () => {
       options.blockLag,
       options.startBlock,
       stageFactory,
-      options.writeMode
+      options.writeMode,
+      PROPMON_HEALTHCHECK_URL
     );
     treasury = startMonitor("Treasury", treasuryMonitor, jsonLogger, options.proposalId);
   }
@@ -274,7 +293,8 @@ const main = async () => {
       options.blockLag,
       options.startBlock,
       stageFactory,
-      options.writeMode
+      options.writeMode,
+      PROPMON_HEALTHCHECK_URL
     );
     sevTwelve = startMonitor("7-12 Council", sevenTwelveMonitor, jsonLogger, options.proposalId);
   }
@@ -289,7 +309,8 @@ const main = async () => {
       options.blockLag,
       options.startBlock,
       stageFactory,
-      options.writeMode
+      options.writeMode,
+      PROPMON_HEALTHCHECK_URL
     );
     electionGov = startMonitor("Election", electionMonitor, jsonLogger, options.proposalId);
 
@@ -297,7 +318,7 @@ const main = async () => {
       govChainProvider,
       l1Provider,
       options.nomineeElectionGovernorAddress,
-      options.writeMode ? govChainSignerOrProvider as Wallet : undefined
+      options.writeMode ? (govChainSignerOrProvider as Wallet) : undefined
     );
     electionCreator.run();
   }
