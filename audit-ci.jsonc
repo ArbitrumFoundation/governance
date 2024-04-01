@@ -53,6 +53,16 @@
         // axios used only in sol2uml
         "GHSA-wf5p-g6vw-rhxx",
         // follow-redirects url.parse bug. Not used in prod
-        "GHSA-jchw-25xp-jwwc"
+        "GHSA-jchw-25xp-jwwc",
+        // OpenZeppelin Contracts base64 encoding may read from potentially dirty memory
+        "GHSA-9vx6-7xxf-x967",
+        // Undici proxy-authorization header not cleared on cross-origin redirect in fetch
+        "GHSA-3787-6prv-h9w3",
+        // follow-redirects' Proxy-Authorization header kept across hosts
+        "GHSA-cxjh-pqwp-8mfp",
+        // es5-ext vulnerable to Regular Expression Denial of Service in `function#copy` and `function#toStringTokens`
+        "GHSA-4gmj-3p3h-gm8h",
+        // Express.js Open Redirect in malformed URLs
+        "GHSA-rv95-896h-c2vc"
     ]
   }
