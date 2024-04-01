@@ -37,7 +37,7 @@ export class SecurityCouncilElectionTracker {
         const res = await govWriter.createElection();
         await res.wait();
       }
-      setTimeout(this.run, this.retryTime);
+      setTimeout(this.run.bind(this), this.retryTime);
     } else {
       console.log(`Next election can  be initiated at timestamp ${electionTimestamp}; that's in ${secondsToString(timeToElectionSeconds)}`);
       setTimeout(
@@ -55,7 +55,7 @@ export class SecurityCouncilElectionTracker {
       this.checkAndCreateElection();
     } catch (e) {
       console.log("SecurityCouncilElectionCreator error:", e);
-      setTimeout(this.run, this.retryTime);
+      setTimeout(this.run.bind(this), this.retryTime);
     }
   }
 }

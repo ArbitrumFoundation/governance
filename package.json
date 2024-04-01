@@ -7,7 +7,7 @@
   "license": "Apache 2.0",
   "scripts": {
     "audit:ci": "audit-ci --config ./audit-ci.jsonc",
-    "build": "yarn build:governance && yarn build:token-bridge-types",
+    "build": "yarn build:governance && yarn build:token-bridge-types && yarn build:gnosis-safe-types",
     "build:governance": "hardhat compile",
     "build:token-bridge-types": "cd token-bridge-contracts && yarn && yarn build",
     "build:sc-mgmt": "FOUNDRY_PROFILE=sec_council_mgmt hardhat compile",
@@ -80,6 +80,7 @@
     "@openzeppelin/contracts": "4.7.3",
     "@openzeppelin/contracts-upgradeable": "4.7.3",
     "@types/yargs": "^17.0.17",
+    "axios": "^1.6.8",
     "yargs": "^17.6.2"
   }
 }
