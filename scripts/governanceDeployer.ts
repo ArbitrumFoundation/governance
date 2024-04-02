@@ -46,6 +46,8 @@ import {
   getDeployersAndConfig as getDeployersAndConfig,
   isDeployingToNova,
   loadDeployedContracts,
+  skipRegisterTokenOnArbOne,
+  skipRegisterTokenOnNova,
   updateDeployedContracts,
 } from "./providerSetup";
 import { StringProps, TypeChainContractFactoryStatic } from "./testUtils";
@@ -241,17 +243,19 @@ export const deployGovernance = async () => {
     );
   }
 
-  console.log("Register token on ArbOne");
-  await registerTokenOnArbOne(
-    l1Token,
-    l2DeployResult.token,
-    l1ReverseGateway,
-    l1DeployResult.executor,
-    ethDeployer,
-    arbDeployer
-  );
+  if (!skipRegisterTokenOnArbOne()) {
+    console.log("Register token on ArbOne");
+    await registerTokenOnArbOne(
+      l1Token,
+      l2DeployResult.token,
+      l1ReverseGateway,
+      l1DeployResult.executor,
+      ethDeployer,
+      arbDeployer
+      );
+  }
 
-  if (isDeployingToNova()) {
+  if (isDeployingToNova() && !skipRegisterTokenOnNova()) {
     console.log("Register token on Nova");
     await registerTokenOnNova(l1Token, _novaToken!.address, ethDeployer, novaDeployer!);
   }
@@ -725,7 +729,7 @@ async function registerTokenOnArbOne(
   const arbGatewaySubmissionFee = (
     await arbInbox.callStatic.calculateRetryableSubmissionFee(
       ethers.utils.hexDataLength(arbGatewayRegistrationData),
-      0
+      await ethDeployer.getGasPrice()
     )
   ).mul(2);
   const valueForArbGateway = arbGatewaySubmissionFee.add(arbMaxGas.mul(arbGasPrice));
