@@ -15,7 +15,7 @@ contract GovernedChainsConfirmationTracker is Ownable, IGovernedChainsConfirmati
     /// @notice Array of all tracked chains
     ChainInfo[] public chains;
     /// @notice length of chains, for ease of client queries
-    uint256 immutable chainsLength;
+    uint256 public immutable chainsLength;
 
     /// @notice Data stored for each tracked chain
     struct ChainInfo {

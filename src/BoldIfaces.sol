@@ -34,5 +34,6 @@ struct AssertionNode {
 }
 
 interface IRollup {
+    event AssertionConfirmed(bytes32 indexed assertionHash, bytes32 blockHash, bytes32 sendRoot);
     function getAssertion(bytes32 assertionHash) external view returns (AssertionNode memory);
 }

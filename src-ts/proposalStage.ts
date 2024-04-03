@@ -22,6 +22,8 @@ import {
   GovernorUpgradeable__factory,
   SecurityCouncilNomineeElectionGovernor__factory,
   ArbSys__factory,
+  GovernedChainsConfirmationTracker__factory,
+  IRollup__factory,
 } from "../typechain-types";
 import { Inbox__factory } from "@arbitrum/sdk/dist/lib/abi/factories/Inbox__factory";
 import { EventArgs } from "@arbitrum/sdk/dist/lib/dataEntities/event";
@@ -34,6 +36,7 @@ import {
   ProposalExecutedEventObject,
   ProposalQueuedEventObject,
 } from "../typechain-types/src/L2ArbitrumGovernor";
+import { AssertionConfirmedEventObject } from "../typechain-types/src/BoldIfaces.sol/IRollup";
 import { hasTimelock, hasVettingPeriod, getL1BlockNumberFromL2 } from "./utils";
 import { CallScheduledEvent } from "../typechain-types/src/ArbitrumTimelock";
 
@@ -760,6 +763,113 @@ export class L2TimelockExecutionSingleStage extends L2TimelockExecutionStage {
   }
 }
 
+export class ConfirmationTrackerStage implements ProposalStage {
+  public readonly identifier: string;
+
+  constructor(
+    public readonly initiatedAtL1BlockNumber: BigNumber,
+    public readonly l1SignerOrProvider: Signer | Provider,
+    public readonly governedChainsConfirmationTracker: string
+  ) {
+    this.identifier = initiatedAtL1BlockNumber.toString();
+  }
+
+  public get name() {
+    return "ConfirmationTrackerStage";
+  }
+
+  // gets all assertionConfirmed Events after initiatedAtL1BlockNumber
+  public async getAssertionConfirmedEvents(rollupAddr: string) {
+    const rollup = IRollup__factory.connect(rollupAddr, this.l1SignerOrProvider);
+    rollup.filters.AssertionConfirmed;
+    const provider = getProvider(this.l1SignerOrProvider);
+    const rollupInterface = IRollup__factory.createInterface();
+
+    return (
+      await provider!.getLogs({
+        fromBlock: this.initiatedAtL1BlockNumber.toNumber(),
+        toBlock: "latest",
+        ...rollup.filters.AssertionConfirmed,
+      })
+    ).map((e) => rollupInterface.parseLog(e).args as unknown as AssertionConfirmedEventObject);
+  }
+
+  public async status() {
+    const confTracker = GovernedChainsConfirmationTracker__factory.connect(
+      this.governedChainsConfirmationTracker,
+      this.l1SignerOrProvider
+    );
+
+    const isConfirmed = await confTracker.allChildChainMessagesConfirmed(
+      this.initiatedAtL1BlockNumber
+    );
+    if (isConfirmed) {
+      return ProposalStageStatus.EXECUTED;
+    }
+
+    const chainsLen = (await confTracker.chainsLength()).toNumber();
+    for (let i = 0; i < chainsLen; i++) {
+      const chainData = await confTracker.chains(i);
+
+      if (chainData.messagesConfirmedParentBlock.gt(this.initiatedAtL1BlockNumber)) {
+        continue;
+      }
+      const assertionConfirmedEvents = await this.getAssertionConfirmedEvents(
+        chainData.rollupAddress
+      );
+      // once two assertion are confirmed after initiatedAtL1BlockNumber, it's ready to execute
+      if (assertionConfirmedEvents.length < 2) {
+        return ProposalStageStatus.PENDING;
+      }
+    }
+    return ProposalStageStatus.READY;
+  }
+
+  public async execute() {
+    const confTracker = GovernedChainsConfirmationTracker__factory.connect(
+      this.governedChainsConfirmationTracker,
+      this.l1SignerOrProvider
+    );
+    const chainsLen = (await confTracker.chainsLength()).toNumber();
+
+    for (let i = 0; i < chainsLen; i++) {
+      const chainData = await confTracker.chains(i);
+      const assertionConfirmedEvents = await this.getAssertionConfirmedEvents(
+        chainData.rollupAddress
+      );
+
+      const res = await confTracker.updateMessagesConfirmedParentChainBlock(i, [
+        assertionConfirmedEvents[0].assertionHash, // TODO: are the latest the first two or last two?
+        assertionConfirmedEvents[1].assertionHash,
+      ]);
+      res.wait();
+    }
+  }
+  public async getExecuteReceipt() {
+    // TODO unsure what receipt makes sense to return here; going latest tx that updated the tracker
+    const confTracker = GovernedChainsConfirmationTracker__factory.connect(
+      this.governedChainsConfirmationTracker,
+      this.l1SignerOrProvider
+    );
+
+    const txFilter = confTracker.filters.MessagesConfirmedBlockUpdated;
+    const provider = getProvider(this.l1SignerOrProvider);
+    const allEvents = await provider!.getLogs({
+      fromBlock: this.initiatedAtL1BlockNumber.toNumber(),
+      toBlock: "latest",
+      ...txFilter,
+    });
+    const rec = await provider?.getTransactionReceipt(allEvents[0].transactionHash);
+    if (!rec) throw new Error("No tx rec found");
+    return rec;
+  }
+
+  public async getExecutionUrl(): Promise<string> {
+    const execReceipt = await this.getExecuteReceipt();
+    return `https://etherscan.io/tx/${execReceipt.transactionHash}`;
+  }
+}
+
 /**
  * When a outbox entry is ready for execution, execute it
  */
@@ -770,7 +880,9 @@ export class L1OutboxStage implements ProposalStage {
   public constructor(
     public readonly l2ToL1TxEvent: EventArgs<NitroL2ToL1TransactionEvent>,
     public readonly l1SignerOrProvider: Signer | Provider,
-    public readonly l2Provider: ethers.providers.Provider
+    public readonly l2Provider: ethers.providers.Provider,
+    // L1OutboxStage references a "potential" confirmationTrackerStage, since confirmationTrackerStage gets updated asyncronously with the other stages
+    public readonly confirmationTrackerStage: ConfirmationTrackerStage
   ) {
     this.identifier = keccak256(
       defaultAbiCoder.encode(
@@ -784,12 +896,31 @@ export class L1OutboxStage implements ProposalStage {
     receipt: TransactionReceipt,
     l1SignerOrProvider: Signer | Provider,
     arbOneProvider: ethers.providers.Provider
-  ): Promise<L1OutboxStage[]> {
+  ): Promise<(L1OutboxStage | ConfirmationTrackerStage)[]> {
     const l2Receipt = new L2TransactionReceipt(receipt);
     const l2ToL1Events =
       (await l2Receipt.getL2ToL1Events()) as EventArgs<NitroL2ToL1TransactionEvent>[];
-
-    return l2ToL1Events.map((e) => new L1OutboxStage(e, l1SignerOrProvider, arbOneProvider));
+    const stages: (L1OutboxStage | ConfirmationTrackerStage)[] = [];
+    for (let l2ToL1Event of l2ToL1Events) {
+      const confTrackerAddress = await L1ArbitrumTimelock__factory.connect(
+        l2ToL1Event.destination,
+        l1SignerOrProvider
+      ).governedChainsConfirmationTracker();
+      const trackerStage = new ConfirmationTrackerStage(
+        l2ToL1Event.ethBlockNum,
+        l1SignerOrProvider,
+        confTrackerAddress
+      );
+      stages.push(trackerStage);
+      const outboxStage = new L1OutboxStage(
+        l2ToL1Event,
+        l1SignerOrProvider,
+        arbOneProvider,
+        trackerStage
+      );
+      stages.push(outboxStage);
+    }
+    return stages;
   }
 
   public async status(): Promise<ProposalStageStatus> {
@@ -799,8 +930,13 @@ export class L1OutboxStage implements ProposalStage {
     switch (status) {
       case L2ToL1MessageStatus.UNCONFIRMED:
         return ProposalStageStatus.PENDING;
-      case L2ToL1MessageStatus.CONFIRMED:
-        return ProposalStageStatus.READY;
+      case L2ToL1MessageStatus.CONFIRMED: {
+        // if the message has been confirmed, the stage is only ready to execute if the confirmation tracker is ready, otherwise it's still pending
+        const trackerStatus = await this.confirmationTrackerStage.status();
+        return trackerStatus == ProposalStageStatus.EXECUTED
+          ? ProposalStageStatus.READY
+          : ProposalStageStatus.PENDING;
+      }
       case L2ToL1MessageStatus.EXECUTED:
         return ProposalStageStatus.EXECUTED;
       default:
