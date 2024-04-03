@@ -83,6 +83,7 @@ contract L1ArbitrumTimelock is ArbitrumTimelock, L1ArbitrumMessenger {
         address _proposalDataRouter,
         address _governedChainsConfirmationTracker
     ) external onlyRole(TIMELOCK_ADMIN_ROLE) reinitializer(2) {
+        // TODO ^ this should check for proxy admin, not upgrade exec
         require(
             address(governedChainsConfirmationTracker) == address(0),
             "L1ArbitrumTimelock: governedChainsConfirmationTracker already set"
