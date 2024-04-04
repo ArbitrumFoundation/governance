@@ -419,6 +419,7 @@ async function deployAndInitL1Token(
         await l1GovernanceFactory.proxyAdminAddress(),
         "0x"
       );
+      await proxy.deployed();
       const token = L1ArbitrumToken__factory.connect(proxy.address, ethDeployer);
       await (
         await token.initialize(
@@ -433,6 +434,8 @@ async function deployAndInitL1Token(
       return token;
     }
   );
+
+  await l1Token.deployed();
 
   return { l1Token };
 }
