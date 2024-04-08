@@ -43,7 +43,9 @@ export abstract class ProposalMonitor extends EventEmitter {
   public async waitAndPing(){    
     await wait(this.pollingIntervalMs);
     if(this.healthCheckUrl){
-      axios.get(this.healthCheckUrl)
+      axios.get(this.healthCheckUrl).catch((err)=>{
+        console.log("healthcheck ping error", err);
+      })
     }
   }
 
