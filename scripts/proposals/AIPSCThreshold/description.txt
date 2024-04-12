@@ -1,0 +1,67 @@
+
+### **Abstract**
+
+This AIP seeks to propose changes to the structure of the security council so Arbitrum can maintain the “Stage 1” designation as per L2BEAT and not fall back to “Stage 0” designation.
+
+### **Motivation**
+
+On December 7, [L2BEAT published an update](https://medium.com/l2beat/stages-update-security-council-requirements-4c79cea8ef52) to the security council requirements for the [Stages Framework](https://medium.com/l2beat/introducing-stages-a-framework-to-evaluate-rollups-maturity-d290bb22befe). The requirements were updated after a lot of research and feedback to make Stages more formal and precise. 
+
+### **Rationale**
+
+Upgrading the security council as per the Stage 1 requirements set by L2BEAT, will help ensure Arbitrum remains decentralized, but properly secured. See ‘Specifications’ for more details.
+
+### **Key Terms**
+
+**Stages:** A framework, inspired by [Vitalik’s proposed milestones](https://ethereum-magicians.org/t/proposed-milestones-for-rollups-taking-off-training-wheels/11571), that categorises rollups into three distinct stages based on their reliance on these training wheels. You can learn [more about the Stages framework here](https://medium.com/l2beat/introducing-stages-a-framework-to-evaluate-rollups-maturity-d290bb22befe).
+
+**Security Council:** A group of 12 individuals who are responsible for addressing risks to the Arbitrum ecosystem through the selective application of **e**mergency actions and non-emergency actions. Learn more in [the ArbitrumDAO Docs](https://docs.arbitrum.foundation/concepts/security-council).
+
+**Timelock:** Smart contracts which implement a delay between an upgrade confirmation and execution.
+
+**Exit Window:** The actual time users have to exit the system in case of an unwanted upgrade.
+
+### **Specifications**
+
+Arbitrum currently has two multisigs and they both contain the same set of members:
+
+a) A 9/12 multisig with instant upgrade power 
+
+b) A 7/12 multisig that can upgrade with a 3+7+3 days delay 
+
+While the higher threshold multisig can be classified as a Security Council, the lower one is below the minimum threshold and it’s considered a simple multisig according to the Stages framework introduced above.
+
+For normal multisigs, L2BEAT requires at least a 7 days exit window for users. The current exit window for Arbitrum is 2 days (see [this thread](https://x.com/stonecoldpat0/status/1737840485967032739?s=20) for a quick explanation).
+
+Moreover, the higher threshold multisig is supposed to stop malicious upgrades attempted by the lower threshold multisig. However, since the member set is the same, if the lower threshold agrees on something there are not enough members in the higher threshold to stop them, which means that the actual security of the upgradeability mechanism boils down to the 7/12 threshold.
+
+For the above reason, technically, with the updated requirements for Stages, Arbitrum falls back to the Stage 0 designation. Since we know that it takes time to upgrade Arbitrum, we decided to leave the Stage 1 designation with the promise of addressing the above issues in a timely manner. This proposal is about addressing the issues and moving them to be voted on by the DAO.
+
+**Proposed Solutions**
+
+1) The **first solution** would be to remove the lower threshold (7/12) multisig entirely. This can be done in two ways:
+* The contract is removed which requires an on-chain upgrade, or,
+* The lower threshold multisig increases its threshold from 7/12 to 9/12 which requires no upgrade.
+&nbsp;
+Increasing the threshold gives us the flexibility to restore a lower threshold in the future should the need arise, and it’s also a very quick and easy fix since it doesn’t require an on-chain upgrade.
+&nbsp;
+On the other hand, removing the dependency on the lower threshold mutlisig for all the contracts in Arbitrum is a broad and potentially risky change. Therefore we suggest raising the threshold for the time being and revisiting the removal of all the dependencies at a later date if needed.
+
+2) The **second solution** would be to leave the lower threshold multisig as it is, but to increase the exit window to 7 days. In practice, this involves increasing the L2 timelock delay from 3 days to 8 days, since there is a 1 day max delay to force transactions on Arbitrum via L1 using the ‘DelayedInbox’. Increasing the L1 Timelock would not be very beneficial due to delay attacks on the fraud proof systems, since, even with BoLD,  the challenge period would end up being up to [16 days](https://x.com/DZack23/status/1737864854059335905?s=20).
+
+3) The ****************************third solution****************************, which is not strictly required by the Stages Framework for the Stage 1 designation, is to both remove the lower threshold multisig entirely and increase the L2 Timelock delay so users have more time to exit in case of unwanted upgrades, increasing the security of the system even more.
+
+### Steps to Implement
+
+Following a week of discussion of this RFC, the proposal will go for a vote on Snapshot with the following 4 options (as they are or slightly adjusted), and/or any additional ones, should they arise from the discussion during the RFC phase:
+
+1. Increase the threshold from 7/12 to 9/12.
+2. Increase the L2 timelock delay from 3 days to 8 days.
+3. Increase the threshold and the L2 timelock delay.
+4. Make no changes.
+
+Following the temp-check, if any of the aforementioned options apart from No.4 is the most popular, the proposal will move to on-chain vote to execute the proposal.
+
+### **Overall Cost**
+
+There’s no overhead to the DAO for the implementation of this proposal.
