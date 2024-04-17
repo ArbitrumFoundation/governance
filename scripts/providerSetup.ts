@@ -40,6 +40,10 @@ const ARBITRUM_NOVA_CHAIN_ID = 42170;
 const GOERLI_CHAIN_ID = 5;
 const ARBITRUM_GOERLI_CHAIN_ID = 421613;
 
+// sepolia
+const SEPOLIA_CHAIN_ID = 11155111;
+const ARBITRUM_SEPOLIA_CHAIN_ID = 421614;
+
 // dotenv config used in case of deploying to production
 // in case of local env testing, config is extracted in `testSetup()`
 export const envVars = {
@@ -344,11 +348,11 @@ export const getDeployersAndConfig = async (): Promise<{
 
     // check that production chain IDs are used in production mode
     const ethChainId = (await ethProvider.getNetwork()).chainId;
-    if (ethChainId != ETH_CHAIN_ID && ethChainId != GOERLI_CHAIN_ID) {
+    if (ethChainId != ETH_CHAIN_ID && ethChainId != GOERLI_CHAIN_ID && ethChainId != SEPOLIA_CHAIN_ID) {
       throw new Error("Production chain ID should be used in production mode for L1");
     }
     const arbChainId = (await arbProvider.getNetwork()).chainId;
-    if (arbChainId != ARBITRUM_ONE_CHAIN_ID && arbChainId != ARBITRUM_GOERLI_CHAIN_ID) {
+    if (arbChainId != ARBITRUM_ONE_CHAIN_ID && arbChainId != ARBITRUM_GOERLI_CHAIN_ID && arbChainId != ARBITRUM_SEPOLIA_CHAIN_ID) {
       throw new Error("Production chain ID should be used in production mode for L2");
     }
     const novaChainId = (await novaProvider.getNetwork()).chainId;

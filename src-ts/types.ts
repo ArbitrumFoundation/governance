@@ -27,4 +27,5 @@ export interface DeployedContracts {
   l1Timelock: string;
   l1AddressRegistry: string;
   l2AddressRegistry: string;
+  novaUpgradeExecutorProxy?: string
 }

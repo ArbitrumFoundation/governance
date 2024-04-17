@@ -21,7 +21,7 @@
   },
   "nonEmergencyGnosisSafe": "0xADd68bCb0f66878aB9D37a447C7b9067C5dfa941",
   "nomineeElectionGovernor": "0x8a1cDA8dee421cD06023470608605934c16A05a0",
-  "nomineeElectionGovernorLogic": "0x8436A1bc9f9f9EB0cF1B51942C5657b60A40CCDD",
+  "nomineeElectionGovernorLogic": "0xd3Ae921B220bedC2f94a5968E25535a476A9518C",
   "memberElectionGovernor": "0x467923B9AE90BDB36BA88eCA11604D45F13b712C",
   "memberElectionGovernorLogic": "0xbD5016a7946a82b938242573ED63ccB8962A4acB",
   "securityCouncilManager": "0xD509E5f5aEe2A205F554f36E8a7d56094494eDFC",

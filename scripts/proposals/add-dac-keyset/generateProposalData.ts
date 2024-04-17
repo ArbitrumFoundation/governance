@@ -32,7 +32,6 @@ async function main() {
   const actionAddresses = [addNovaKeysetAction];
 
   const proposal = await buildProposal(
-    description,
     provider,
     scmDeployment.upgradeExecRouteBuilder,
     chainIds,
