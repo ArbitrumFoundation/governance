@@ -39,6 +39,7 @@ import {
 import { AssertionConfirmedEventObject } from "../typechain-types/src/BoldIfaces.sol/IRollup";
 import { hasTimelock, hasVettingPeriod, getL1BlockNumberFromL2 } from "./utils";
 import { CallScheduledEvent } from "../typechain-types/src/ArbitrumTimelock";
+import { GnosisSafeL2__factory } from "../types/ethers-contracts/factories/GnosisSafeL2__factory";
 
 type Provider = providers.Provider;
 
@@ -126,18 +127,28 @@ export enum ProposalStageStatus {
    * The proposal stage has not been executed, and is not yet ready to be executed
    */
   PENDING = 1,
+
+  /**
+   * Proposal stage is still not ready to be executed, but has transitioned to a new state;
+   * e.g, for a Governor, ACTIVE signifies that users can vote. For other proposals, there is no
+   * ACTIVE stage, and the proposal will go directly from PENDING to READY
+   */
+
+  ACTIVE = 2,
+
   /**
    * Ready for execution
    */
-  READY = 2,
+
+  READY = 3,
   /**
    * The stage has already been executed
    */
-  EXECUTED = 3,
+  EXECUTED = 4,
   /**
    * The stage was terminated without execution
    */
-  TERMINATED = 4,
+  TERMINATED = 5,
 }
 
 /**
@@ -151,7 +162,7 @@ export class BaseGovernorExecuteStage implements ProposalStage {
     public readonly values: BigNumber[],
     public readonly callDatas: string[],
     public readonly description: string,
-
+    public readonly startBlock: BigNumber,
     public readonly governorAddress: string,
     public readonly signerOrProvider: Signer | providers.Provider
   ) {
@@ -171,6 +182,17 @@ export class BaseGovernorExecuteStage implements ProposalStage {
     return GovernorUpgradeable__factory.connect(this.governorAddress, this.signerOrProvider);
   }
 
+  public quorum() {
+    try {
+      return L2ArbitrumGovernor__factory.connect(
+        this.governorAddress,
+        this.signerOrProvider
+      ).quorum(this.startBlock);
+    } catch (err) {
+      console.log("Error: could not get quorum", err);
+    }
+  }
+
   /**
    * Extract and instantiate appropriate governor proposal stage
    */
@@ -184,7 +206,6 @@ export class BaseGovernorExecuteStage implements ProposalStage {
       if (log.topics.find((t) => t === govInterface.getEventTopic("ProposalCreated"))) {
         const propCreatedEvent = govInterface.parseLog(log)
           .args as unknown as ProposalCreatedEventObject;
-
         if (await hasTimelock(log.address, getProvider(arbOneSignerOrProvider)!)) {
           proposalStages.push(
             new GovernorQueueStage(
@@ -192,6 +213,7 @@ export class BaseGovernorExecuteStage implements ProposalStage {
               (propCreatedEvent as any)[3], // ethers is parsing an array with a single 0 big number as undefined, so we lookup by index
               propCreatedEvent.calldatas,
               propCreatedEvent.description,
+              propCreatedEvent.startBlock,
               log.address,
               arbOneSignerOrProvider
             )
@@ -203,6 +225,7 @@ export class BaseGovernorExecuteStage implements ProposalStage {
               (propCreatedEvent as any)[3], // ethers is parsing an array with a single 0 big number as undefined, so we lookup by index
               propCreatedEvent.calldatas,
               propCreatedEvent.description,
+              propCreatedEvent.startBlock,
               log.address,
               arbOneSignerOrProvider
             )
@@ -214,6 +237,7 @@ export class BaseGovernorExecuteStage implements ProposalStage {
               (propCreatedEvent as any)[3], // ethers is parsing an array with a single 0 big number as undefined, so we lookup by index
               propCreatedEvent.calldatas,
               propCreatedEvent.description,
+              propCreatedEvent.startBlock,
               log.address,
               arbOneSignerOrProvider
             )
@@ -229,8 +253,9 @@ export class BaseGovernorExecuteStage implements ProposalStage {
     const state = (await this.governor.state(this.identifier)) as ProposalState;
     switch (state) {
       case ProposalState.Pending:
-      case ProposalState.Active:
         return ProposalStageStatus.PENDING;
+      case ProposalState.Active:
+        return ProposalStageStatus.ACTIVE;
       case ProposalState.Succeeded:
         return ProposalStageStatus.READY;
       case ProposalState.Queued:
@@ -473,6 +498,21 @@ abstract class L2TimelockExecutionStage implements ProposalStage {
     };
   }
 
+  public static async getL2SaltForProposalSubmittedOnTimelock(txHash: string, provider: Provider) {
+    // We assume a proposal submitted directly on the timelock was from a Gnosis safe and attempt to
+    // decode and extract the salt accordingly
+    const txRes = await provider.getTransaction(txHash);
+    const { data: execTxData } = GnosisSafeL2__factory.createInterface().decodeFunctionData(
+      "execTransaction",
+      txRes.data
+    );
+    try {
+      return (await this.decodeScheduleBatch(execTxData)).salt;
+    } catch (e) {
+      return (await this.decodeSchedule(execTxData)).salt;
+    }
+  }
+
   public async status(): Promise<ProposalStageStatus> {
     const timelock = ArbitrumTimelock__factory.connect(this.timelockAddress, this.signerOrProvider);
 
@@ -551,6 +591,10 @@ export class L2TimelockExecutionBatchStage extends L2TimelockExecutionStage {
   ): Promise<L2TimelockExecutionBatchStage[]> {
     const govInterface = L2ArbitrumGovernor__factory.createInterface();
     const proposalStages: L2TimelockExecutionBatchStage[] = [];
+    const timelockInterface = ArbitrumTimelock__factory.createInterface();
+    // ids of timelock operations for corresponing ProposalQueued operations found
+    const timelockOperationIdsFound = new Set<string>();
+
     for (const log of receipt.logs) {
       if (log.topics.find((t) => t === govInterface.getEventTopic("ProposalQueued"))) {
         const propQueuedObj = govInterface.parseLog(log)
@@ -559,7 +603,6 @@ export class L2TimelockExecutionBatchStage extends L2TimelockExecutionStage {
         // 10m ~ 1 month on arbitrum
         const propCreatedStart = log.blockNumber - 10000000;
         const propCreatedEnd = log.blockNumber;
-
         const propCreatedEvent = await this.getProposalCreatedData(
           log.address,
           propQueuedObj.proposalId.toHexString(),
@@ -580,12 +623,14 @@ export class L2TimelockExecutionBatchStage extends L2TimelockExecutionStage {
           constants.HashZero,
           id(propCreatedEvent.description)
         );
+
         const timelockAddress = this.findTimelockAddress(operationId, receipt.logs);
         if (!timelockAddress) {
           // if we couldnt find the timelock address it's because the operation id was not found on a callscheduled event
           // this could be because it was formed via batch instead of single, or vice versa, and is an expected result
           continue;
         }
+        timelockOperationIdsFound.add(operationId);
         // we know the operation id
         const executeBatch = new L2TimelockExecutionBatchStage(
           propCreatedEvent.targets,
@@ -597,6 +642,62 @@ export class L2TimelockExecutionBatchStage extends L2TimelockExecutionStage {
           arbOneSignerOrProvider
         );
         proposalStages.push(executeBatch);
+      }
+
+      try {
+        // get calls scheduled directly on timelock (not via gov)
+        const callScheduledOnTimelock: CallScheduledEvent["args"][] = [];
+        for (let log of receipt.logs) {
+          const timelockLog = log.topics.find(
+            (t) => t === timelockInterface.getEventTopic("CallScheduled")
+          );
+          if (!timelockLog) {
+            continue;
+          }
+          const callScheduledArgs = timelockInterface.parseLog(log)
+            .args as CallScheduledEvent["args"];
+          // skip calls previously found scheduled via gov
+          if (timelockOperationIdsFound.has(callScheduledArgs.id)) {
+            continue;
+          }
+          callScheduledOnTimelock.push(callScheduledArgs);
+        }
+
+        const uniqueOperationIds = new Set(callScheduledOnTimelock.map((arg) => arg.id)).size;
+
+        if (uniqueOperationIds == 1) {
+          // we expect all operations to have the same id (i.e., part of the same batch)
+          const targets = callScheduledOnTimelock.map((args) => args.target);
+          const values = callScheduledOnTimelock.map((args) => args[3]);
+          const datas = callScheduledOnTimelock.map((args) => args.data);
+          const predecessor = callScheduledOnTimelock[0].predecessor;
+          const salt = await this.getL2SaltForProposalSubmittedOnTimelock(
+            receipt.transactionHash,
+            await getProvider(arbOneSignerOrProvider)!
+          );
+          const operationId = this.hashOperationBatch(targets, values, datas, predecessor, salt);
+          if (operationId !== callScheduledOnTimelock[0].id) {
+            throw new Error("XXX Invalid operation id");
+          }
+          const timelockAddress = this.findTimelockAddress(operationId, receipt.logs);
+          if (!timelockAddress) throw new Error("timelock address not found");
+          const executeTimelock = new L2TimelockExecutionBatchStage(
+            targets,
+            values,
+            datas,
+            predecessor,
+            salt,
+            timelockAddress,
+            arbOneSignerOrProvider
+          );
+          proposalStages.push(executeTimelock);
+        } else if (uniqueOperationIds > 1) {
+          // Multiple calls to scheduleBatch in a single tx is not supported
+          throw new Error("Multiple batches in single tx");
+        }
+      } catch (err) {
+        // there are expected errors since the calldata may not be of the expected form for decoding
+        continue;
       }
     }
 
@@ -657,12 +758,10 @@ export class L2TimelockExecutionSingleStage extends L2TimelockExecutionStage {
           const callScheduledArgs = timelockInterface.parseLog(log)
             .args as CallScheduledEvent["args"];
 
-          const { data } = ArbSys__factory.createInterface().decodeFunctionData(
-            "sendTxToL1",
-            callScheduledArgs.data
+          const salt = await this.getL2SaltForProposalSubmittedOnTimelock(
+            receipt.transactionHash,
+            await getProvider(arbOneSignerOrProvider)!
           );
-
-          const { salt } = this.decodeScheduleBatch(data);
 
           // calculate the id and check if that operation exists
           const operationId = this.hashOperation(
