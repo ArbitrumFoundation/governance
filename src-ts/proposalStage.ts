@@ -763,6 +763,8 @@ export class L2TimelockExecutionSingleStage extends L2TimelockExecutionStage {
   }
 }
 
+// WIP: this is different than the other stages, since it runs async with them. 
+// The L1OutboxStage stage includes a reference to this stage, and the former's status is dependant on it.
 export class ConfirmationTrackerStage implements ProposalStage {
   public readonly identifier: string;
 
