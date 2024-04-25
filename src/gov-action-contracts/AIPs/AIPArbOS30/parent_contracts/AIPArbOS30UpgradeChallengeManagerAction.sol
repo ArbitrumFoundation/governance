@@ -65,16 +65,6 @@ contract AIPArbOS30UpgradeChallengeManagerAction {
     }
 
     function peform() external {
-        // set new wasm module root
-        IRollupCore rollup = l1AddressRegistry.rollup();
-        IRollupAdmin(address(rollup)).setWasmModuleRoot(newWasmModuleRoot);
-
-        // verify:
-        require(
-            rollup.wasmModuleRoot() == newWasmModuleRoot,
-            "AIPArbOS30UpgradeChallengeManagerAction: wasm module root not set"
-        );
-
         // set the new challenge manager impl
         TransparentUpgradeableProxy challengeManager = TransparentUpgradeableProxy(
             payable(address(l1AddressRegistry.rollup().challengeManager()))
@@ -93,6 +83,16 @@ contract AIPArbOS30UpgradeChallengeManagerAction {
         require(
             IChallengeManagerUpgradeInit(address(challengeManager)).osp() == address(osp),
             "AIPArbOS30UpgradeChallengeManagerAction: new OSP not set"
+        );
+
+        // set new wasm module root
+        IRollupCore rollup = l1AddressRegistry.rollup();
+        IRollupAdmin(address(rollup)).setWasmModuleRoot(newWasmModuleRoot);
+
+        // verify:
+        require(
+            rollup.wasmModuleRoot() == newWasmModuleRoot,
+            "AIPArbOS30UpgradeChallengeManagerAction: wasm module root not set"
         );
     }
 }

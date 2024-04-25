@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: Apache-2.0
+    // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.16;
 
 import "@arbitrum/nitro-contracts/src/precompiles/ArbSys.sol";
@@ -6,6 +6,12 @@ import "@arbitrum/nitro-contracts/src/precompiles/ArbSys.sol";
 // ArbOwner interface will include addWasmCacheManager as of stylus upgrade
 interface IUpdatedArbOwner {
     function addWasmCacheManager(address manager) external;
+}
+
+// ArbWasmCache precompile interface
+interface IArbWasmCache {
+    /// @notice See if the user is a cache manager.
+    function isCacheManager(address manager) external view returns (bool);
 }
 
 // @notice For deployment on an Arbitrum chain;
@@ -37,6 +43,14 @@ contract AIPArbOS30AddWasmCacheManagerAction {
 
         IUpdatedArbOwner(0x0000000000000000000000000000000000000070).addWasmCacheManager(
             wasmCachemanager
+        );
+
+        // verify:
+        require(
+            IArbWasmCache(0x0000000000000000000000000000000000000072).isCacheManager(
+                wasmCachemanager
+            ),
+            "AIPArbOS30AddWasmCacheManagerAction: is cache manager"
         );
     }
 }
