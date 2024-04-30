@@ -34,7 +34,7 @@ const main = async (
   const inbox = IInbox__factory.connect(targetChainInboxAddr, l1Provider);
   const timelockL2Alias = new Address(l1TimelockAddr).applyAlias().value;
   //  send the full balance:
-  // NOTE  is there any way the value here could decrease, since this is the timelock alias
+  // NOTE: is there any way the value here could decrease, since this is the timelock alias
   // (e.g., funds in this address get used for a governance action retryable execution?)
   // Should we leave some buffer just in case?
   // Or perhaps better: simply ensure there ends up being at  timelockL2AliasBalance ETH by manually topping it off
