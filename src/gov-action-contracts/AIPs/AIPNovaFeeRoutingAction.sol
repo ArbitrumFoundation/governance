@@ -10,6 +10,9 @@ interface IRewardDistributor {
         address[] memory newRecipients,
         uint256[] memory newWeights
     ) external;
+
+    function currentRecipientGroup() external view returns (bytes32);
+    function currentRecipientWeights() external view returns (bytes32);
 }
 
 /// @notice Governance action to be deployed on Nova. Updates all l1 timelock alias recipients in all fee distribution
@@ -52,14 +55,22 @@ contract AIPNovaFeeRoutingAction {
     }
 
     function perform() external {
+        // upgrade executor should have at least 3 * fullWeight ETH to fund the distributors
+        // we need each of the reward distributors to have at least fullWeight in balance
+        // otherwise we may get NoFundsToDistribute() errors
+        require(address(this).balance >= 3 * fullWeight, "AIPNovaFeeRoutingAction: insufficient balance");
+        _fundDistributor(novaL1SurplusFeeDistr);
+        _fundDistributor(novaL2SurplusFeeDistr);
+        _fundDistributor(novaL2BaseFeeDistr);
+
         // L1 surplus: replace only recipient (timelock alias) with the router
-        address[] memory currentNovaL1SurplusRecipients;
+        address[] memory currentNovaL1SurplusRecipients = new address[](1);
         currentNovaL1SurplusRecipients[0] = l1GovTimelockAlias;
 
-        uint256[] memory currentNovaL1SurplusWeights;
+        uint256[] memory currentNovaL1SurplusWeights = new uint256[](1);
         currentNovaL1SurplusWeights[0] = fullWeight;
 
-        address[] memory newL1SurplusRecipients;
+        address[] memory newL1SurplusRecipients = new address[](1);
         newL1SurplusRecipients[0] = novaToL1Router;
 
         // preserve current weights, update recipients
@@ -71,13 +82,13 @@ contract AIPNovaFeeRoutingAction {
         });
 
         // L2 surplus: replace only recipient (timelock alias) with the router
-        address[] memory currentNovaL2SurplusRecipients;
+        address[] memory currentNovaL2SurplusRecipients = new address[](1);
         currentNovaL2SurplusRecipients[0] = l1GovTimelockAlias;
 
-        uint256[] memory novaL2SurplusWeights;
+        uint256[] memory novaL2SurplusWeights = new uint256[](1);
         novaL2SurplusWeights[0] = fullWeight;
 
-        address[] memory newL2SurplusRecipients;
+        address[] memory newL2SurplusRecipients = new address[](1);
         newL2SurplusRecipients[0] = novaToL1Router;
 
         // preserve current weights, update recipients
@@ -89,7 +100,7 @@ contract AIPNovaFeeRoutingAction {
         });
 
         // L2 base: replace first recipient (timelock alias) with router; keep other recipients the same.
-        address[] memory currentNovaL2BaseRecipients;
+        address[] memory currentNovaL2BaseRecipients = new address[](7);
         currentNovaL2BaseRecipients[0] = l1GovTimelockAlias;
         currentNovaL2BaseRecipients[1] = novaL2BaseRecipient1;
         currentNovaL2BaseRecipients[2] = novaL2BaseRecipient2;
@@ -98,13 +109,13 @@ contract AIPNovaFeeRoutingAction {
         currentNovaL2BaseRecipients[5] = novaL2BaseRecipient5;
         currentNovaL2BaseRecipients[6] = novaL2BaseRecipient6;
 
-        address[] memory newNovaL2BaseRecipients;
+        address[] memory newNovaL2BaseRecipients = new address[](7);
         newNovaL2BaseRecipients[0] = novaToL1Router;
         for (uint256 i = 1; i < currentNovaL2BaseRecipients.length; i++) {
             newNovaL2BaseRecipients[i] = currentNovaL2BaseRecipients[i];
         }
 
-        uint256[] memory currentNovaL2BaseWeights;
+        uint256[] memory currentNovaL2BaseWeights = new uint256[](7);
         currentNovaL2BaseWeights[0] = novaL2BaseWeight0;
         currentNovaL2BaseWeights[1] = novaL2BaseWeight1;
         currentNovaL2BaseWeights[2] = novaL2BaseWeight2;
@@ -120,5 +131,10 @@ contract AIPNovaFeeRoutingAction {
             newRecipients: newNovaL2BaseRecipients,
             newWeights: currentNovaL2BaseWeights
         });
+    }
+
+    function _fundDistributor(address recipient) internal {
+        (bool b, ) = recipient.call{value: fullWeight}("");
+        require(b, "AIPNovaFeeRoutingAction: funding failed");
     }
 }
