@@ -86,9 +86,6 @@ contract E2E is Test, DeployGnosisWithModule {
     uint160 constant offset = uint160(0x1111000000000000000000000000000000001111);
 
     function applyL1ToL2Alias(address l1Address) internal pure returns (address) {
-        // unchecked {
-        //     return address(uint160(l1Address) + offset);
-        // }
         return AddressAliasHelper.applyL1ToL2Alias(l1Address);
     }
 
