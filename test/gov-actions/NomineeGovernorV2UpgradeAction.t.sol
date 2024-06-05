@@ -28,7 +28,10 @@ contract NomineeGovernorV2UpgradeActionTest is Test {
     );
 
     function testAction() external {
-        vm.skip(!isFork());
+        if (!_isForkTest()) {
+            console.log("not fork test, skipping NomineeGovernorV2UpgradeActionTest");
+            return;
+        }
 
         if (_getImplementation() != oldImplementation) {
             console.log("implementation not set to old implementation, skipping NomineeGovernorV2UpgradeActionTest");
@@ -59,5 +62,14 @@ contract NomineeGovernorV2UpgradeActionTest is Test {
 
     function _getImplementation() internal view returns (address) {
         return proxyAdmin.getProxyImplementation(TransparentUpgradeableProxy(payable(gov)));
+    }
+
+    function _isForkTest() internal view returns (bool) {
+        bool isForkTest;
+        address _gov = address(gov);
+        assembly {
+            isForkTest := gt(extcodesize(_gov), 0)
+        }
+        return isForkTest;
     }
 }
