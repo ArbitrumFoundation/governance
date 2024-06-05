@@ -5,7 +5,7 @@ import "forge-std/Test.sol";
 
 import "../../src/gov-action-contracts/nonemergency/GrantRotatorRoleToNonEmergencyCouncilAction.sol";
 
-contract GrantRotatorRoleToNonEmergencyCouncilActionTest is Test {
+contract SwitchManagerRolesActionTest is Test {
     UpgradeExecutor arbOneUe = UpgradeExecutor(0xCF57572261c7c2BCF21ffD220ea7d1a27D40A827);
 
     function testAction() external {

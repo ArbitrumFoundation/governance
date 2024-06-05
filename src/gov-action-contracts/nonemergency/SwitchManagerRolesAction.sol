@@ -5,7 +5,7 @@ import "../../security-council-mgmt/SecurityCouncilManager.sol";
 
 /// @notice Grant the non emergency council the MEMBER_ADDER_ROLE, MEMBER_REPLACER_ROLE, MEMBER_ROTATOR_ROLE and MEMBER_REMOVER_ROLE on the SecurityCouncilManager.
 ///         Revoke those same roles from the emergency council.
-contract GrantRotatorRoleToNonEmergencyCouncilAction {
+contract SwitchManagerRolesAction {
     SecurityCouncilManager public constant securityCouncilManager =
         SecurityCouncilManager(0xD509E5f5aEe2A205F554f36E8a7d56094494eDFC);
 
