@@ -17,7 +17,7 @@ contract GrantRotatorRoleToNonEmergencyCouncilTest is Test {
         address nonEmergencyCouncil = gac.nonEmergencyCouncil();
         SecurityCouncilManager manager = gac.securityCouncilManager();
 
-        vm.prank(emergencyCouncil);
+        vm.prank(0xf7951D92B0C345144506576eC13Ecf5103aC905a); // L1 Timelock Alias
         arbOneUe.execute(address(gac), abi.encodeWithSignature("perform()"));
 
         assertTrue(manager.hasRole(gac.MEMBER_ROTATOR_ROLE(), nonEmergencyCouncil));
