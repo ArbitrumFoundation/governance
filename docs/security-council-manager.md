@@ -20,27 +20,27 @@ Can only be called by the Member Election Governor. It is used to replace a whol
 
 ### Remove member
 
-Can be called by the Emergency Security Council and the Removal Governor. Is used to remove a member. The Constitution allows members to be removed if 9 of 12 members wish them to be, or if the DAO votes to remove a member and 10% of votable tokens cast a vote, with 5/6 of voted tokens are in favour of removal.
+Can be called by the Non-Emergency Security Council and the Removal Governor. Is used to remove a member. The Constitution allows members to be removed if 9 of 12 members wish them to be, or if the DAO votes to remove a member and 10% of votable tokens cast a vote, with 5/6 of voted tokens are in favour of removal.
 
 ### Add member
 
-Can only be called by the Emergency Security Council. Can only be called if the there are less than 12 members in the Security Council because at least one has been removed.
+Can only be called by the Non-Emergency Security Council. Can only be called if the there are less than 12 members in the Security Council because at least one has been removed.
 
 ### Replace member
 
-Can only be called by the Emergency Security Council. This is a utility function to allow the council to call Remove and Add in the same transaction. Semantically this means that an entity has been removed from the council, and a different one has been added.
+Can only be called by the Non-Emergency Security Council. This is a utility function to allow the council to call Remove and Add in the same transaction. Semantically this means that an entity has been removed from the council, and a different one has been added.
 
 ### Rotate member
 
-Can only be called by the Emergency Security Council. Functionally this is the same as Replace, however semantically it infers different intent. Rotate should be called when a entity wish to replace their address, but it is the same entity that controls the newly added address.
+Can only be called by the Non-Emergency Security Council. Functionally this is the same as Replace, however semantically it infers different intent. Rotate should be called when a entity wish to replace their address, but it is the same entity that controls the newly added address.
 
 ### Add Security Council
 
-Can be called by DAO and the emergency security council. Adds an additional security council whose members will be updated by the election system. 
+Can be called by DAO and the Non-Emergency Security Council. Adds an additional security council whose members will be updated by the election system. 
 
 ### Remove Security Council
 
-Can be called by DAO and the emergency security council. Removes a security council from being updated by the election system.
+Can be called by DAO and the Non-Emergency Security Council. Removes a security council from being updated by the election system.
 
 
 ## Race conditions
