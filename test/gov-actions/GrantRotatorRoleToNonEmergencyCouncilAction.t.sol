@@ -3,15 +3,15 @@ pragma solidity 0.8.16;
 
 import "forge-std/Test.sol";
 
-import "../../src/gov-action-contracts/nonemergency/GrantRotatorRoleToNonEmergencyCouncil.sol";
+import "../../src/gov-action-contracts/nonemergency/GrantRotatorRoleToNonEmergencyCouncilAction.sol";
 
-contract GrantRotatorRoleToNonEmergencyCouncilTest is Test {
+contract GrantRotatorRoleToNonEmergencyCouncilActionTest is Test {
     UpgradeExecutor arbOneUe = UpgradeExecutor(0xCF57572261c7c2BCF21ffD220ea7d1a27D40A827);
 
     function testAction() external {
         vm.skip(!isFork());
 
-        GrantRotatorRoleToNonEmergencyCouncil gac = new GrantRotatorRoleToNonEmergencyCouncil();
+        GrantRotatorRoleToNonEmergencyCouncilAction gac = new GrantRotatorRoleToNonEmergencyCouncilAction();
 
         address emergencyCouncil = gac.emergencyCouncil();
         address nonEmergencyCouncil = gac.nonEmergencyCouncil();
