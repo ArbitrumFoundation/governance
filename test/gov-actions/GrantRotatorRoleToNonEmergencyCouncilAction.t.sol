@@ -20,10 +20,14 @@ contract GrantRotatorRoleToNonEmergencyCouncilActionTest is Test {
         vm.prank(0xf7951D92B0C345144506576eC13Ecf5103aC905a); // L1 Timelock Alias
         arbOneUe.execute(address(gac), abi.encodeWithSignature("perform()"));
 
-        assertTrue(manager.hasRole(gac.MEMBER_ROTATOR_ROLE(), nonEmergencyCouncil));
-        assertTrue(manager.hasRole(gac.MEMBER_REPLACER_ROLE(), nonEmergencyCouncil));
+        assertTrue(manager.hasRole(manager.MEMBER_ADDER_ROLE(), nonEmergencyCouncil));
+        assertTrue(manager.hasRole(manager.MEMBER_REPLACER_ROLE(), nonEmergencyCouncil));
+        assertTrue(manager.hasRole(manager.MEMBER_ROTATOR_ROLE(), nonEmergencyCouncil));
+        assertTrue(manager.hasRole(manager.MEMBER_REMOVER_ROLE(), nonEmergencyCouncil));
 
-        assertFalse(manager.hasRole(gac.MEMBER_ROTATOR_ROLE(), emergencyCouncil));
-        assertFalse(manager.hasRole(gac.MEMBER_REPLACER_ROLE(), emergencyCouncil));
+        assertFalse(manager.hasRole(manager.MEMBER_ADDER_ROLE(), emergencyCouncil));
+        assertFalse(manager.hasRole(manager.MEMBER_REPLACER_ROLE(), emergencyCouncil));
+        assertFalse(manager.hasRole(manager.MEMBER_ROTATOR_ROLE(), emergencyCouncil));
+        assertFalse(manager.hasRole(manager.MEMBER_REMOVER_ROLE(), emergencyCouncil));
     }
 }
