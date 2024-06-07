@@ -180,7 +180,9 @@ Voting and proposing can occur using the standard governance UIs.
 
 The Security Council can remove a member prior to the end of their term, if 9 of 12 members agree. The non-emergency council has the right to call `removeMember` on the `SecurityCouncilManager`.
 
-The Security Council can also add a member if there are less than 12 members currently on the council. The non-emergency council has the right to call `addMember` on the `SecurityCouncilManager`.
+The Security Council can add a member if there are less than 12 members currently on the council. The non-emergency council has the right to call `addMember` on the `SecurityCouncilManager`.
+
+The Security Council can replace members or rotate keys at any time. The non-emergency council has the right to call `replaceMember` and `rotateMember` on the `SecurityCouncilManager`. These 2 functions are functionally identical, although they imply different intent/purpose
 
 ### Overall diagram
 Below is a diagram showing the interaction between the different components described above:

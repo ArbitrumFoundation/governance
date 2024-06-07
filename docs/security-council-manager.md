@@ -36,11 +36,11 @@ Can only be called by the Non-Emergency Security Council. Functionally this is t
 
 ### Add Security Council
 
-Can be called by DAO and the Non-Emergency Security Council. Adds an additional security council whose members will be updated by the election system. 
+Can be called by DAO and the Emergency Security Council. Adds an additional security council whose members will be updated by the election system. 
 
 ### Remove Security Council
 
-Can be called by DAO and the Non-Emergency Security Council. Removes a security council from being updated by the election system.
+Can be called by DAO and the Emergency Security Council. Removes a security council from being updated by the election system.
 
 
 ## Race conditions
