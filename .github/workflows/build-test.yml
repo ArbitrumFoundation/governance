@@ -182,12 +182,6 @@ jobs:
       - name: Proposal tests
         run: yarn test:proposals
 
-      - name: Prepare asset ownership transfer
-        run: yarn prepare:ownership:transfer
-
-      - name: Execute asset ownership transfer
-        run: yarn execute:ownership:transfer
-
       - name: Verify protocol ownership
         run: yarn verify:ownership:transfer
   
