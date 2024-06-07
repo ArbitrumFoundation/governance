@@ -1,23 +1,32 @@
-import { ethers } from "ethers";
-import { setupNetworks, config, getSigner } from "../test-ts/testSetup";
-import * as fs from "fs";
+import { execSync } from 'child_process'
 
-async function main() {
-  const ethProvider = new ethers.providers.JsonRpcProvider(config.ethUrl);
-  const arbProvider = new ethers.providers.JsonRpcProvider(config.arbUrl);
+import * as fs from 'fs'
 
-  const ethDeployer = getSigner(ethProvider, config.ethKey);
-  const arbDeployer = getSigner(arbProvider, config.arbKey);
-
-  const { l1Network, l2Network } = await setupNetworks(
-    ethDeployer,
-    arbDeployer,
-    config.ethUrl,
-    config.arbUrl
-  );
-
-  fs.writeFileSync("./files/local/network.json", JSON.stringify({ l1Network, l2Network }, null, 2));
-  console.log("network.json updated");
+function getLocalNetworksFromContainer(): any {
+  const dockerNames = [
+    'nitro_sequencer_1',
+    'nitro-sequencer-1',
+    'nitro-testnode-sequencer-1',
+    'nitro-testnode_sequencer_1',
+  ]
+  for (const dockerName of dockerNames) {
+    try {
+      return JSON.parse(
+        execSync(
+          `docker exec ${dockerName} cat /tokenbridge-data/l1l2_network.json`
+        ).toString()
+      )
+    } catch {
+      // empty on purpose
+    }
+  }
+  throw new Error('nitro-testnode sequencer not found')
 }
 
-main().then(() => console.log("Done."));
+async function main() {
+  const data = getLocalNetworksFromContainer()
+  fs.writeFileSync('./files/local/network.json', JSON.stringify(data, null, 2))
+  console.log('network.json updated')
+}
+
+main().then(() => console.log('Done.'))
