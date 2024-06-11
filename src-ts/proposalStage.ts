@@ -375,8 +375,8 @@ export class GovernorQueueStage extends BaseGovernorExecuteStage {
       toBlock: "latest",
       ...callScheduledFilter,
     });
-    if (logs.length !== 1) {
-      throw new ProposalStageError("Log length not 1", this.identifier, this.name);
+    if (logs.length < 1) {
+      throw new ProposalStageError("Log length < 1", this.identifier, this.name);
     }
 
     return await provider!.getTransactionReceipt(logs[0].transactionHash);
@@ -543,8 +543,8 @@ abstract class L2TimelockExecutionStage implements ProposalStage {
       ...callExecutedFilter,
     });
 
-    if (logs.length !== 1) {
-      throw new ProposalStageError(`Logs length not 1: ${logs.length}`, this.identifier, this.name);
+    if (logs.length < 1) {
+      throw new ProposalStageError(`Logs length < 1: ${logs.length}`, this.identifier, this.name);
     }
 
     return await provider!.getTransactionReceipt(logs[0].transactionHash);
