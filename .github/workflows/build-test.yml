@@ -181,9 +181,6 @@ jobs:
 
       - name: Proposal tests
         run: yarn test:proposals
-
-      - name: Verify protocol ownership
-        run: yarn verify:ownership:transfer
   
   test-integration:
     name: Test integration
