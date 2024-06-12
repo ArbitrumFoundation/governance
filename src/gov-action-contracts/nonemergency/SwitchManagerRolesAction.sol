@@ -29,5 +29,16 @@ contract SwitchManagerRolesAction {
         securityCouncilManager.revokeRole(MEMBER_REPLACER_ROLE, emergencyCouncil);
         securityCouncilManager.revokeRole(MEMBER_ROTATOR_ROLE, emergencyCouncil);
         securityCouncilManager.revokeRole(MEMBER_REMOVER_ROLE, emergencyCouncil);
+
+        // ensure roles were changed
+        require(securityCouncilManager.hasRole(MEMBER_ADDER_ROLE, nonEmergencyCouncil), "Adder role not granted");
+        require(securityCouncilManager.hasRole(MEMBER_REPLACER_ROLE, nonEmergencyCouncil), "Replacer role not granted");
+        require(securityCouncilManager.hasRole(MEMBER_ROTATOR_ROLE, nonEmergencyCouncil), "Rotator role not granted");
+        require(securityCouncilManager.hasRole(MEMBER_REMOVER_ROLE, nonEmergencyCouncil), "Remover role not granted");
+
+        require(!securityCouncilManager.hasRole(MEMBER_ADDER_ROLE, emergencyCouncil), "Adder role not revoked");
+        require(!securityCouncilManager.hasRole(MEMBER_REPLACER_ROLE, emergencyCouncil), "Replacer role not revoked");
+        require(!securityCouncilManager.hasRole(MEMBER_ROTATOR_ROLE, emergencyCouncil), "Rotator role not revoked");
+        require(!securityCouncilManager.hasRole(MEMBER_REMOVER_ROLE, emergencyCouncil), "Remover role not revoked");
     }
 }
