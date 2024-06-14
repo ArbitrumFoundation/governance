@@ -49,6 +49,8 @@ const ARBITRUM_SEPOLIA_CHAIN_ID = 421614;
 export const envVars = {
   isLocalDeployment: process.env["DEPLOY_TO_LOCAL_ENVIRONMENT"] as string,
   isDeployingToNova: process.env["DEPLOY_GOVERNANCE_TO_NOVA"] as string,
+  skipRegisterTokenOnArbOne: process.env["SKIP_REGISTER_TOKEN_ON_ARB"] as string | undefined,
+  skipRegisterTokenOnNova: process.env["SKIP_REGISTER_TOKEN_ON_NOVA"] as string | undefined,
   ethRpc: process.env["ETH_URL"] as string,
   arbRpc: process.env["ARB_URL"] as string,
   novaRpc: process.env["NOVA_URL"] as string,
@@ -355,9 +357,11 @@ export const getDeployersAndConfig = async (): Promise<{
     if (arbChainId != ARBITRUM_ONE_CHAIN_ID && arbChainId != ARBITRUM_GOERLI_CHAIN_ID && arbChainId != ARBITRUM_SEPOLIA_CHAIN_ID) {
       throw new Error("Production chain ID should be used in production mode for L2");
     }
-    const novaChainId = (await novaProvider.getNetwork()).chainId;
-    if (isDeployingToNova() && novaChainId != ARBITRUM_NOVA_CHAIN_ID) {
-      throw new Error("Production chain ID should be used in production mode for Nova");
+    if (isDeployingToNova()) {
+      const novaChainId = (await novaProvider.getNetwork()).chainId;
+      if (novaChainId != ARBITRUM_NOVA_CHAIN_ID) {
+        throw new Error("Production chain ID should be used in production mode for Nova");
+      }
     }
 
     const ethDeployer = getSigner(ethProvider, envVars.ethDeployerKey);
@@ -435,6 +439,20 @@ export const getDeployerAddresses = async (): Promise<{
     novaDeployerAddress,
   };
 };
+
+/**
+ * If `SKIP_REGISTER_TOKEN_ON_ARB` is set to 'true', then token registration on ArbitrumOne is skipped. 
+ */
+export function skipRegisterTokenOnArbOne(): boolean {
+  return envVars.skipRegisterTokenOnArbOne === "true";
+}
+
+/**
+ * If `SKIP_REGISTER_TOKEN_ON_NOVA` is set to 'true', then token registration on Nova is skipped.
+ */
+export function skipRegisterTokenOnNova(): boolean {
+  return envVars.skipRegisterTokenOnNova === "true";
+}
 
 /**
  * Governance will be deployed to Nova only if env var 'DEPLOY_GOVERNANCE_TO_NOVA' is set to 'true'.
