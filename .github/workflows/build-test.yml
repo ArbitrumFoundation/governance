@@ -81,6 +81,7 @@ jobs:
       - name: Check gas snapshot
         run: make gas-check
 
+
   test-action-storage:
     name: Test action storage
     runs-on: ubuntu-latest
@@ -128,7 +129,7 @@ jobs:
       - uses: actions/checkout@v3
         with:
           submodules: recursive
-      - uses: OffchainLabs/actions/run-nitro-test-node@output-logging
+      - uses: OffchainLabs/actions/run-nitro-test-node@test-2
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
@@ -189,7 +190,7 @@ jobs:
       - uses: actions/checkout@v3
         with:
           submodules: recursive
-      - uses: OffchainLabs/actions/run-nitro-test-node@output-logging
+      - uses: OffchainLabs/actions/run-nitro-test-node@test-2
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
