@@ -21,7 +21,7 @@ contract AIPArbOS30UpgradeChallengeManagerAction {
     ProxyAdmin public immutable govProxyAdmin;
     address public immutable newChallengeManagerImpl;
     IOneStepProofEntry public immutable osp;
-    bytes32 immutable condRoot;
+    bytes32 public immutable condRoot;
     IOneStepProofEntry public immutable condOsp;
 
     constructor(
@@ -64,7 +64,7 @@ contract AIPArbOS30UpgradeChallengeManagerAction {
         condOsp = _condOsp;
     }
 
-    function peform() external {
+    function perform() external {
         // set the new challenge manager impl
         TransparentUpgradeableProxy challengeManager = TransparentUpgradeableProxy(
             payable(address(l1AddressRegistry.rollup().challengeManager()))
