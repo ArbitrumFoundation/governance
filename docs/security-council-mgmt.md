@@ -163,7 +163,7 @@ The old cohort of members will be removed, and the new cohort will replace them.
 
 ### Implementation details
 
-To do this the existing [Upgrade Executor contracts](https://github.com/ArbitrumFoundation/governance/blob/main/docs/overview.md#l1-upgrade-executor) on each chain will be installed as Gnosis Safe modules into the Security Council safes. A custom [Governance Action Contract](https://github.com/ArbitrumFoundation/governance/blob/main/src/gov-action-contracts/README.md) will be used to call the specific `OwnerManager` `addOwnerWithThreshold` and `removeOwner` methods on the Gnosis safes.
+To do this the existing [Upgrade Executor contracts](https://github.com/ArbitrumFoundation/governance/blob/main/docs/overview.md#l1-upgrade-executor) on each chain will be installed as Gnosis Safe modules into the Security Council Safes. A custom [Governance Action Contract](https://github.com/ArbitrumFoundation/governance/blob/main/src/gov-action-contracts/README.md) will be used to call the specific `OwnerManager` `addOwnerWithThreshold` and `removeOwner` methods on the Gnosis Safes.
 
 ## Additional affordances
 
@@ -176,15 +176,17 @@ It accepts proposals in the same format that normal governors do, however it ove
 
 Voting and proposing can occur using the standard governance UIs.
 
-### 9/12 Security Council
+### Non-Emergency Security Council
 
-The Security Council can remove a member prior to the end of their term, if 9 of 12 members agree. The 9 of 12 council has the rights to call `removeMember` on the `SecurityCouncilManager`.
+The Security Council can remove a member prior to the end of their term, if 9 of 12 members agree. The non-emergency council has the right to call `removeMember` on the `SecurityCouncilManager`.
 
-The Security Council can also add a member once one has been removed if 9 of 12 members agree and if there are less than 12 members currently on the council. The 9 of 12 council is be given the rights to call `addMember` on the `SecurityCouncilManager`.
+The Security Council can add a member if there are less than 12 members currently on the council. The non-emergency council has the right to call `addMember` on the `SecurityCouncilManager`.
+
+The Security Council can replace members or rotate keys at any time. The non-emergency council has the right to call `replaceMember` and `rotateMember` on the `SecurityCouncilManager`. These 2 functions are functionally identical, although they imply different intent/purpose
 
 ### Overall diagram
 Below is a diagram showing the interaction between the different components described above:
-![](./security-council-colors.png)
+![](./security-council-mgmt-flow.png)
 
 ### Block periods
 The constitution specifies time periods in days and weeks, however in the implementation block numbers are used as a proxy for this. In the event of an L1 block time change the contracts here, and in general governance, would need to be updated to reflect the time periods again.
