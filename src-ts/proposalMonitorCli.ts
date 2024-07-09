@@ -1,5 +1,4 @@
 import { BigNumber, Wallet } from "ethers";
-import { JsonRpcProvider } from "@ethersproject/providers";
 import { ProposalStageStatus, getProvider } from "./proposalStage";
 import { StageFactory, TrackerEventName } from "./proposalPipeline";
 import { SecurityCouncilElectionTracker } from "./securityCouncilElectionTracker";
@@ -16,6 +15,7 @@ import {
   ProposalMonitor,
 } from "./proposalMonitor";
 import axios from "axios";
+import { RetryJsonRpcProvider } from "./retryJsonRpcProvider";
 
 const ETH_KEY = process.env.ETH_KEY || "";
 const ARB_KEY = process.env.ARB_KEY || "";
@@ -207,13 +207,13 @@ const main = async () => {
   if (options.writeMode && !ARB_KEY) throw new Error("env var ARB_KEY required");
   if (options.writeMode && !ETH_KEY) throw new Error("env var ETH_KEY required");
 
-  const l1Provider = new JsonRpcProvider(options.l1RpcUrl);
+  const l1Provider = new RetryJsonRpcProvider(options.l1RpcUrl);
   const l1SignerOrProvider = options.writeMode ? new Wallet(ETH_KEY, l1Provider) : l1Provider;
-  const govChainProvider = new JsonRpcProvider(options.govChainRpcUrl);
+  const govChainProvider = new RetryJsonRpcProvider(options.govChainRpcUrl);
   const govChainSignerOrProvider = options.writeMode
     ? new Wallet(ARB_KEY, govChainProvider)
     : govChainProvider;
-  const novaProvider = new JsonRpcProvider(options.novaRpcUrl);
+  const novaProvider = new RetryJsonRpcProvider(options.novaRpcUrl);
   const novaSignerOrProvider = options.writeMode ? new Wallet(ARB_KEY, novaProvider) : novaProvider;
 
   if (options.writeMode) {
