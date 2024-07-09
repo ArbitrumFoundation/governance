@@ -43,7 +43,7 @@ contract AIPNovaFeeRoutingAction {
     address public immutable novaL2BaseRecipient5 = 0x0fB1f1a31429F1A90a19Ab5486a6DFb384179641;
     address public immutable novaL2BaseRecipient6 = 0xb814441ed86e98e8B83d31eEC095e4a5A36Fc3c2;
 
-    address public immutable novaToL1Router = 0x47a85C0a118127F3968A6A1A61e2a326517540D4;
+    address public immutable novaToL1Router = 0xd9a2e0E5d7509F0BF1B2d33884F8C1b4D4490879;
 
     error NotAContract(address addr);
 

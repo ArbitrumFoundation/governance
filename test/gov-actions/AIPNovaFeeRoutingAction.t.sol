@@ -26,7 +26,7 @@ contract AIPNovaFeeRoutingActionTest is Test {
 
         // make sure the new recipients are set
 
-        address[1] memory expectedL1SurplusRecipients = [0x47a85C0a118127F3968A6A1A61e2a326517540D4];
+        address[1] memory expectedL1SurplusRecipients = [0xd9a2e0E5d7509F0BF1B2d33884F8C1b4D4490879];
         uint256[1] memory expectedL1SurplusWeights = [uint(10_000)];
 
         assertEq(IRewardDistributor(action.novaL1SurplusFeeDistr()).currentRecipientGroup(), keccak256(abi.encodePacked(expectedL1SurplusRecipients)));
@@ -36,7 +36,7 @@ contract AIPNovaFeeRoutingActionTest is Test {
 
 
         address[7] memory expectedBaseFeeRecipients = [
-            0x47a85C0a118127F3968A6A1A61e2a326517540D4, // nova to l1 router
+            0xd9a2e0E5d7509F0BF1B2d33884F8C1b4D4490879, // nova to l1 router
             0xD0749b3e537Ed52DE4e6a3Ae1eB6fc26059d0895, // rest are same as current
             0x41C327d5fc9e29680CcD45e5E52446E0DB3DAdFd,
             0x02C2599aa929e2509741b44F3a13029745aB1AB2,
