@@ -15,7 +15,7 @@ interface IChallengeManagerUpgradeInit {
 }
 
 // @notice set wasm module root and upgrade challenge manager for stylus ArbOS upgrade
-contract AIPArbOS30UpgradeChallengeManagerAction {
+contract AIPArbOS31UpgradeChallengeManagerAction {
     L1AddressRegistry public immutable l1AddressRegistry;
     bytes32 public immutable newWasmModuleRoot;
     ProxyAdmin public immutable govProxyAdmin;
@@ -35,25 +35,25 @@ contract AIPArbOS30UpgradeChallengeManagerAction {
     ) {
         require(
             Address.isContract(address(_l1AddressRegistry)),
-            "AIPArbOS30UpgradeChallengeManagerAction: l1AddressRegistry is not a contract"
+            "AIPArbOS31UpgradeChallengeManagerAction: l1AddressRegistry is not a contract"
         );
         require(
             Address.isContract(address(_govProxyAdmin)),
-            "AIPArbOS30UpgradeChallengeManagerAction: _govProxyAdmin is not a contract"
+            "AIPArbOS31UpgradeChallengeManagerAction: _govProxyAdmin is not a contract"
         );
         require(
             Address.isContract(_newChallengeManagerImpl),
-            "AIPArbOS30UpgradeChallengeManagerAction: _newChallengeManagerImpl is not a contract"
+            "AIPArbOS31UpgradeChallengeManagerAction: _newChallengeManagerImpl is not a contract"
         );
 
         require(
             Address.isContract(address(_osp)),
-            "AIPArbOS30UpgradeChallengeManagerAction: _osp is not a contract"
+            "AIPArbOS31UpgradeChallengeManagerAction: _osp is not a contract"
         );
 
         require(
             Address.isContract(address(_condOsp)),
-            "AIPArbOS30UpgradeChallengeManagerAction: _condOsp is not a contract"
+            "AIPArbOS31UpgradeChallengeManagerAction: _condOsp is not a contract"
         );
         l1AddressRegistry = _l1AddressRegistry;
         newWasmModuleRoot = _newWasmModuleRoot;
@@ -78,11 +78,11 @@ contract AIPArbOS30UpgradeChallengeManagerAction {
         // verify
         require(
             govProxyAdmin.getProxyImplementation(challengeManager) == newChallengeManagerImpl,
-            "AIPArbOS30UpgradeChallengeManagerAction: new challenge manager implementation set"
+            "AIPArbOS31UpgradeChallengeManagerAction: new challenge manager implementation set"
         );
         require(
             IChallengeManagerUpgradeInit(address(challengeManager)).osp() == address(osp),
-            "AIPArbOS30UpgradeChallengeManagerAction: new OSP not set"
+            "AIPArbOS31UpgradeChallengeManagerAction: new OSP not set"
         );
 
         // set new wasm module root
@@ -92,7 +92,7 @@ contract AIPArbOS30UpgradeChallengeManagerAction {
         // verify:
         require(
             rollup.wasmModuleRoot() == newWasmModuleRoot,
-            "AIPArbOS30UpgradeChallengeManagerAction: wasm module root not set"
+            "AIPArbOS31UpgradeChallengeManagerAction: wasm module root not set"
         );
     }
 }

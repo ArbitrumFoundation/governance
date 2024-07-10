@@ -18,12 +18,12 @@ interface IArbWasmCache {
 // adds wasm cache manager only when the stylus ArbOS upgrade activates.
 // Should be called via retryable ticket so that if executed before the ArbOS upgrade,
 // it reverts can be retried until the target ArbOS version number is active.
-contract AIPArbOS30AddWasmCacheManagerAction {
+contract AIPArbOS31AddWasmCacheManagerAction {
     // wasm cache manager to add
     address public immutable wasmCachemanager;
 
     // ArbOS version; use value as it's set and commonly used, NOT the value returned by
-    // ArbSys, which adds 55. E.g., the value here should be 30, not 85
+    // ArbSys, which adds 55. E.g., the value here should be 31, not 85
     uint256 public immutable targetArbOSVersion;
 
     constructor(address _wasmCachemanager, uint256 _targetArbOSVersion) {
@@ -38,7 +38,7 @@ contract AIPArbOS30AddWasmCacheManagerAction {
         // revert if target arbos version not reached; since this is executed by a retryable, can be re-executed until target version is reached
         require(
             targetArbOSVersion == currentArbOsVersion,
-            "AIPArbOS30AddWasmCacheManagerAction: ArbOS version"
+            "AIPArbOS31AddWasmCacheManagerAction: ArbOS version"
         );
 
         IUpdatedArbOwner(0x0000000000000000000000000000000000000070).addWasmCacheManager(
@@ -50,7 +50,7 @@ contract AIPArbOS30AddWasmCacheManagerAction {
             IArbWasmCache(0x0000000000000000000000000000000000000072).isCacheManager(
                 wasmCachemanager
             ),
-            "AIPArbOS30AddWasmCacheManagerAction: is cache manager"
+            "AIPArbOS31AddWasmCacheManagerAction: is cache manager"
         );
     }
 }
