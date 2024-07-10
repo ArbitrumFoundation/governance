@@ -7,7 +7,7 @@ import "./parent_contracts/AIPArbOS30AddWasmCacheManagerAction.sol";
 contract ArbOneAIPArbOS30AddWasmCacheManagerAction is AIPArbOS30AddWasmCacheManagerAction {
     constructor()
         AIPArbOS30AddWasmCacheManagerAction(
-            address(0), // wasm cache manager TODO
+            0x51dEDBD2f190E0696AFbEE5E60bFdE96d86464ec, // wasm cache manager
             30 // target arb os version
         )
     {}
