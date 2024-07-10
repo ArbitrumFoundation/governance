@@ -15,7 +15,7 @@ contract NovaAIPArbOS31UpgradeChallengeManagerAction is AIPArbOS31UpgradeChallen
             ProxyAdmin(0x71D78dC7cCC0e037e12de1E50f5470903ce37148), // l1 core proxy admin
             address(0), // challenge manager impl TODO
             IOneStepProofEntry(address(0)), // new osp TODO)
-            bytes32(0), // cond root TODO
+            0x8b104a2e80ac6165dc58b9048de12f301d70b02a0ab51396c22b4b4b802a16a4, // cond root
             IOneStepProofEntry(address(0)) // cond osp TODO
         )
     {}
