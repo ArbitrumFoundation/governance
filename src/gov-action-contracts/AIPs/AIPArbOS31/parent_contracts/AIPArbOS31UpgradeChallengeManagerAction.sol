@@ -8,7 +8,6 @@ import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 import "../../../address-registries/L1AddressRegistry.sol";
 
 interface IChallengeManagerUpgradeInit {
-    // TODO
     function postUpgradeInit(IOneStepProofEntry osp_, bytes32 condRoot, IOneStepProofEntry condOsp)
         external;
     function osp() external returns (address);
