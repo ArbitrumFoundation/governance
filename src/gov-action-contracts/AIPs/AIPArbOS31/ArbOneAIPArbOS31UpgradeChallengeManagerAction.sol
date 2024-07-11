@@ -15,7 +15,7 @@ contract ArbOneAIPArbOS31UpgradeChallengeManagerAction is
             L1AddressRegistry(0xd514C2b3aaBDBfa10800B9C96dc1eB25427520A0), // l1 address registry
             bytes32(0), // wasm module root TODO
             ProxyAdmin(0x554723262467F125Ac9e1cDFa9Ce15cc53822dbD), // l1 core proxy admin
-            address(0), // challenge manager impl TODO
+            0x914B7b3053B35B84A24df08D7c9ceBCaEA4E2948, // challenge manager impl
             IOneStepProofEntry(0xa328BAF257A937b7934429a5d8458d98693C6FC7), // new osp
             0x8b104a2e80ac6165dc58b9048de12f301d70b02a0ab51396c22b4b4b802a16a4, // cond root
             IOneStepProofEntry(0x83fA8eD860514370fbcC5f04eA7969475F48CfEb) // cond osp
