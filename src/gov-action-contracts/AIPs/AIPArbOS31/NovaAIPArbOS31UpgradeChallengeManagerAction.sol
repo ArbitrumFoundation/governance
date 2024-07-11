@@ -11,7 +11,7 @@ contract NovaAIPArbOS31UpgradeChallengeManagerAction is AIPArbOS31UpgradeChallen
     constructor()
         AIPArbOS31UpgradeChallengeManagerAction(
             L1AddressRegistry(0x2F06643fc2CC18585Ae790b546388F0DE4Ec6635), // l1 address registry
-            bytes32(0), // wasm module root TODO
+            0x260f5fa5c3176a856893642e149cf128b5a8de9f828afec8d11184415dd8dc69, // wasm module root
             ProxyAdmin(0x71D78dC7cCC0e037e12de1E50f5470903ce37148), // l1 core proxy admin
             0x914B7b3053B35B84A24df08D7c9ceBCaEA4E2948, // challenge manager impl
             IOneStepProofEntry(0xa328BAF257A937b7934429a5d8458d98693C6FC7), // new osp

@@ -13,7 +13,7 @@ contract ArbOneAIPArbOS31UpgradeChallengeManagerAction is
     constructor()
         AIPArbOS31UpgradeChallengeManagerAction(
             L1AddressRegistry(0xd514C2b3aaBDBfa10800B9C96dc1eB25427520A0), // l1 address registry
-            bytes32(0), // wasm module root TODO
+            0x260f5fa5c3176a856893642e149cf128b5a8de9f828afec8d11184415dd8dc69, // wasm module root
             ProxyAdmin(0x554723262467F125Ac9e1cDFa9Ce15cc53822dbD), // l1 core proxy admin
             0x914B7b3053B35B84A24df08D7c9ceBCaEA4E2948, // challenge manager impl
             IOneStepProofEntry(0xa328BAF257A937b7934429a5d8458d98693C6FC7), // new osp
