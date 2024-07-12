@@ -1,0 +1,24 @@
+#!/bin/bash
+
+# SetArbOS31VersionAction contracts may be redeployed with nonzero delay
+
+# ArbOneAIPArbOS31UpgradeChallengeManagerAction: 0x19b715cF310C28C9020e53AAA11Ce9dF42E718b5 @ 1
+# NovaAIPArbOS31UpgradeChallengeManagerAction: 0x658AFc9d5Ec4476Fa6bb7033eA465F9901FBfF27 @ 1
+
+# SetArbOS31VersionAction: 0x7ed9C3A779BE8b742AbFC17a2F15353ecBcE3e00 @ 42161
+# ArbOneAIPArbOS31AddWasmCacheManagerAction: 0xb040b105A4a0C7a9CC290164AcCBC32855368322 @ 42161
+
+# SetArbOS31VersionAction: 0x75C5a4532102DDFa44527B382990C384Ec1dD57D @ 42170
+# NovaAIPArbOS31AddWasmCacheManagerAction: 0x61703Bf337341f2e09d96Dd6488c2907718A8E26 @ 42170
+# AIPNovaFeeRoutingAction: 0xe99f07f5277Ee01f7f31D051927F5133878c61f4 @ 42170
+
+yarn gen:proposalData --govChainProviderRPC https://arb1.arbitrum.io/rpc \
+    --actionChainIds \
+        1 1 \
+        42161 42161 \
+        42170 42170 42170 \
+    --actionAddresses \
+        0x19b715cF310C28C9020e53AAA11Ce9dF42E718b5 0x658AFc9d5Ec4476Fa6bb7033eA465F9901FBfF27 \
+        0x7ed9C3A779BE8b742AbFC17a2F15353ecBcE3e00 0xb040b105A4a0C7a9CC290164AcCBC32855368322 \
+        0x75C5a4532102DDFa44527B382990C384Ec1dD57D 0x61703Bf337341f2e09d96Dd6488c2907718A8E26 0xe99f07f5277Ee01f7f31D051927F5133878c61f4 \
+    --writeToJsonPath ./scripts/proposals/ArbOS31AIP/ArbOS31AIP.json
