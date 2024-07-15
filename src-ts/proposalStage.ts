@@ -880,6 +880,8 @@ export class SecurityCouncilManagerTimelockStage extends L2TimelockExecutionSing
 
     const logs = receipt.logs.filter(log => log.topics[0] === timelockInterface.getEventTopic("CallScheduled"));
 
+    if (logs.length === 0) return [];
+
     // we take the last log since it has the highest updateNonce
     const lastLog = logs[logs.length - 1];
 
