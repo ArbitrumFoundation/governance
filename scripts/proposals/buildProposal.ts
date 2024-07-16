@@ -8,7 +8,7 @@ import { defaultAbiCoder } from "@ethersproject/abi";
 
 function _generateL1TimelockSalt(actionChainIds: number[], actionAddresses: string[]) {
   return keccak256(
-    defaultAbiCoder.encode(["uint256[]", "string[]"], [actionChainIds, actionAddresses])
+    defaultAbiCoder.encode(["uint256[]", "address[]"], [actionChainIds, actionAddresses])
   );
 }
 

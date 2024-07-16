@@ -20,6 +20,7 @@ import "../../src/gov-action-contracts/address-registries/L2AddressRegistry.sol"
 import "../util/DeployGnosisWithModule.sol";
 import "../../src/security-council-mgmt/Common.sol";
 import "./governors/SecurityCouncilNomineeElectionGovernor.t.sol";
+import "@arbitrum/nitro-contracts/src/libraries/AddressAliasHelper.sol";
 
 contract ArbSysMock {
     event ArbSysL2ToL1Tx(address from, address to, uint256 value, bytes data);
@@ -82,10 +83,8 @@ library Parser {
 }
 
 contract E2E is Test, DeployGnosisWithModule {
-    uint160 constant offset = uint160(0x1111000000000000000000000000000000001111);
-
     function applyL1ToL2Alias(address l1Address) internal pure returns (address) {
-        return address(uint160(l1Address) + offset);
+        return AddressAliasHelper.applyL1ToL2Alias(l1Address);
     }
 
     UpgradeExecutor upExecLogic = new UpgradeExecutor();
