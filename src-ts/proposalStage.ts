@@ -895,8 +895,6 @@ export class SecurityCouncilManagerTimelockStage extends L2TimelockExecutionSing
     const newMembers = parsedPerform[1]
     const updateNonce = parsedPerform[2]
 
-    console.log(updateNonce)
-
     const scheduleSalt = await SecurityCouncilManager__factory.connect(this.managerAddress, arbOneSignerOrProvider).generateSalt(newMembers, updateNonce)
 
     return [
