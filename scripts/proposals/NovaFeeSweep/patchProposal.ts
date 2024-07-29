@@ -1,7 +1,7 @@
 // takes proposal data as input and adds a transaction to sweep ETH from the L1 Timelock alias on Nova
 // context: https://www.tally.xyz/gov/arbitrum/proposal/108288822474129076868455956066667369439381709547570289793612729242368710728616
 
-import { ethers } from 'ethers'
+import { BigNumber, ethers } from 'ethers'
 import {
   IInbox__factory,
   L1ArbitrumTimelock__factory,
@@ -17,11 +17,13 @@ import { JsonRpcProvider } from '@ethersproject/providers'
   const l1TimelockAlias = '0xf7951d92b0c345144506576ec13ecf5103ac905a'
   const novaInbox = '0xc4448b71118c9071Bcb9734A0EAc55D18A153949'
   const novaToParentRouter = '0x36D0170D92F66e8949eB276C3AC4FEA64f83704d'
-  const maxSubmissionCost = ethers.utils.parseEther('0.01')
+  const maxL1GasPrice = ethers.utils.parseUnits('1000', 'gwei') // used to calculate maxSubmissionCost
   const callValue = await new JsonRpcProvider('https://nova.arbitrum.io/rpc').getBalance(l1TimelockAlias)
 
   const timelockIface = L1ArbitrumTimelock__factory.createInterface()
   const inboxIface = IInbox__factory.createInterface()
+
+  const maxSubmissionCost = calcSubmissionCost(maxL1GasPrice)
 
   const unsafeCreateRetryableCalldata = inboxIface.encodeFunctionData(
     'unsafeCreateRetryableTicket',
@@ -56,3 +58,9 @@ import { JsonRpcProvider } from '@ethersproject/providers'
 
   console.log(patchedScheduleBatchCalldata)
 })()
+
+function calcSubmissionCost(baseFee: BigNumber) {
+  // data length is zero
+  // from the contract: return (1400 + 6 * dataLength) * (baseFee == 0 ? block.basefee : baseFee);
+  return baseFee.mul(1400)
+}
