@@ -18,7 +18,7 @@ import { JsonRpcProvider } from '@ethersproject/providers'
   const novaInbox = '0xc4448b71118c9071Bcb9734A0EAc55D18A153949'
   const novaToParentRouter = '0x36D0170D92F66e8949eB276C3AC4FEA64f83704d'
   const maxL1GasPrice = ethers.utils.parseUnits('1000', 'gwei') // used to calculate maxSubmissionCost
-  const callValue = await new JsonRpcProvider('https://nova.arbitrum.io/rpc').getBalance(l1TimelockAlias)
+  const aliasBalance = await new JsonRpcProvider('https://nova.arbitrum.io/rpc').getBalance(l1TimelockAlias)
 
   const timelockIface = L1ArbitrumTimelock__factory.createInterface()
   const inboxIface = IInbox__factory.createInterface()
@@ -29,7 +29,7 @@ import { JsonRpcProvider } from '@ethersproject/providers'
     'unsafeCreateRetryableTicket',
     [
       novaToParentRouter, // to
-      callValue, // l2CallValue
+      aliasBalance.sub(maxSubmissionCost), // l2CallValue
       maxSubmissionCost, // maxSubmissionCost
       novaToParentRouter, // excessFeeRefundAddress
       novaToParentRouter, // callValueRefundAddress
@@ -48,7 +48,7 @@ import { JsonRpcProvider } from '@ethersproject/providers'
     'scheduleBatch',
     [
       [...decodedScheduleBatch[0], novaInbox],
-      [...decodedScheduleBatch[1], maxSubmissionCost],
+      [...decodedScheduleBatch[1], 0],
       [...decodedScheduleBatch[2], unsafeCreateRetryableCalldata],
       decodedScheduleBatch[3],
       decodedScheduleBatch[4],
