@@ -186,8 +186,6 @@ class JsonLogger {
             throw new Error(`Could not find prev stage ${prevKey} for ${key}`);
           }
           prevStage.children.push(pipelineStage);
-        } else {
-          throw new Error(`Could not find prev stage ${prevKey} for ${key}`);
         }
 
         // set the stage

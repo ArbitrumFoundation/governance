@@ -22,6 +22,9 @@ import {
   GovernorUpgradeable__factory,
   SecurityCouncilNomineeElectionGovernor__factory,
   ArbSys__factory,
+  UpgradeExecutor__factory,
+  SecurityCouncilMemberSyncAction__factory,
+  SecurityCouncilManager__factory,
 } from "../typechain-types";
 import { Inbox__factory } from "@arbitrum/sdk/dist/lib/abi/factories/Inbox__factory";
 import { EventArgs } from "@arbitrum/sdk/dist/lib/dataEntities/event";
@@ -856,6 +859,55 @@ export class L2TimelockExecutionSingleStage extends L2TimelockExecutionStage {
     );
 
     await tx.wait();
+  }
+}
+
+export class SecurityCouncilManagerTimelockStage extends L2TimelockExecutionSingleStage {
+  public static readonly managerAddress = "0xD509E5f5aEe2A205F554f36E8a7d56094494eDFC";
+
+  public static async extractStages(
+    receipt: TransactionReceipt,
+    arbOneSignerOrProvider: Provider | Signer
+  ): Promise<L2TimelockExecutionSingleStage[]> {
+    const hasManagerEvent = receipt.logs.find(log => log.address === this.managerAddress);
+
+    if (!hasManagerEvent) return [];
+
+    const timelockInterface = ArbitrumTimelock__factory.createInterface();
+    const arbSysInterface = ArbSys__factory.createInterface();
+    const upExecInterface = UpgradeExecutor__factory.createInterface();
+    const actionInterface = SecurityCouncilMemberSyncAction__factory.createInterface();
+
+    const logs = receipt.logs.filter(log => log.topics[0] === timelockInterface.getEventTopic("CallScheduled"));
+
+    if (logs.length === 0) return [];
+
+    // we take the last log since it has the highest updateNonce
+    const lastLog = logs[logs.length - 1];
+
+    const callScheduledArgs = timelockInterface.parseLog(lastLog).args as CallScheduledEvent["args"];
+    const parsedSendTxToL1 = arbSysInterface.decodeFunctionData("sendTxToL1", callScheduledArgs.data);
+    const parsedL1ScheduleBatch = L2TimelockExecutionStage.decodeScheduleBatch(parsedSendTxToL1[1]);
+
+    const parsedExecute = upExecInterface.decodeFunctionData("execute", parsedL1ScheduleBatch.callDatas[0]);
+    const parsedPerform = actionInterface.decodeFunctionData("perform", parsedExecute[1])
+
+    const newMembers = parsedPerform[1]
+    const updateNonce = parsedPerform[2]
+
+    const scheduleSalt = await SecurityCouncilManager__factory.connect(this.managerAddress, arbOneSignerOrProvider).generateSalt(newMembers, updateNonce)
+
+    return [
+      new L2TimelockExecutionSingleStage(
+        callScheduledArgs.target,
+        BigNumber.from(0),
+        callScheduledArgs.data,
+        callScheduledArgs.predecessor,
+        scheduleSalt,
+        lastLog.address,
+        arbOneSignerOrProvider
+      )
+    ]
   }
 }
 
