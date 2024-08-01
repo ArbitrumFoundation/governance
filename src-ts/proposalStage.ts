@@ -37,7 +37,7 @@ import {
   ProposalExecutedEventObject,
   ProposalQueuedEventObject,
 } from "../typechain-types/src/L2ArbitrumGovernor";
-import { hasTimelock, hasVettingPeriod, getL1BlockNumberFromL2 } from "./utils";
+import { hasTimelock, hasVettingPeriod, getL1BlockNumberFromL2, getLogsWithCache } from "./utils";
 import { CallScheduledEvent } from "../typechain-types/src/ArbitrumTimelock";
 import { GnosisSafeL2__factory } from "../types/ethers-contracts/factories/GnosisSafeL2__factory";
 
@@ -287,11 +287,7 @@ export class BaseGovernorExecuteStage implements ProposalStage {
     const proposalExecutedFilter = this.governor.filters.ProposalExecuted();
     const provider = getProvider(this.signerOrProvider);
 
-    const logs = await provider!.getLogs({
-      fromBlock: 0,
-      toBlock: "latest",
-      ...proposalExecutedFilter,
-    });
+    const logs = await getLogsWithCache(provider!, proposalExecutedFilter);
     for (let log of logs) {
       const eventObject = govInterface.parseLog(log).args as unknown as ProposalExecutedEventObject;
       if (eventObject.proposalId.toHexString() == this.identifier) {
@@ -373,11 +369,7 @@ export class GovernorQueueStage extends BaseGovernorExecuteStage {
     const callScheduledFilter = timelock.filters.CallScheduled(opId);
     const provider = getProvider(this.signerOrProvider);
 
-    const logs = await provider!.getLogs({
-      fromBlock: 0,
-      toBlock: "latest",
-      ...callScheduledFilter,
-    });
+    const logs = await getLogsWithCache(provider!, callScheduledFilter);
     if (logs.length < 1) {
       throw new ProposalStageError("Log length < 1", this.identifier, this.name);
     }
@@ -408,7 +400,7 @@ abstract class L2TimelockExecutionStage implements ProposalStage {
     const govInterface = L2ArbitrumGovernor__factory.createInterface();
     const filterTopics = govInterface.encodeFilterTopics("ProposalCreated", []);
 
-    const logs = await provider.getLogs({
+    const logs = await getLogsWithCache(provider, {
       fromBlock: startBlock,
       toBlock: endBlock,
       address: governor,
@@ -540,11 +532,7 @@ abstract class L2TimelockExecutionStage implements ProposalStage {
     const timelock = ArbitrumTimelock__factory.connect(this.timelockAddress, this.signerOrProvider);
     const provider = getProvider(this.signerOrProvider);
     const callExecutedFilter = timelock.filters.CallExecuted(this.operationId);
-    const logs = await provider!.getLogs({
-      fromBlock: 0,
-      toBlock: "latest",
-      ...callExecutedFilter,
-    });
+    const logs = await getLogsWithCache(provider!, callExecutedFilter);
 
     if (logs.length < 1) {
       throw new ProposalStageError(`Logs length < 1: ${logs.length}`, this.identifier, this.name);
@@ -976,11 +964,7 @@ export class L1OutboxStage implements ProposalStage {
       event.caller
     );
 
-    const allEvents = await provider!.getLogs({
-      fromBlock: 0,
-      toBlock: "latest",
-      ...outboxTxFilter,
-    });
+    const allEvents = await getLogsWithCache(provider!,outboxTxFilter);
 
     const outboxEvents = allEvents.filter((e) =>
       (
@@ -1078,11 +1062,7 @@ abstract class L1TimelockExecutionStage {
     const provider = getProvider(this.l1SignerOrProvider);
     const callExecutedFilter = timelock.filters.CallExecuted(this.identifier);
 
-    const logs = await provider!.getLogs({
-      fromBlock: 0,
-      toBlock: "latest",
-      ...callExecutedFilter,
-    });
+    const logs = await getLogsWithCache(provider!, callExecutedFilter);
 
     if (logs.length < 1) {
       throw new ProposalStageError(

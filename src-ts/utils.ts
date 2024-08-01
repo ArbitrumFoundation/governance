@@ -5,7 +5,8 @@ import {
   SecurityCouncilNomineeElectionGovernor__factory,
 } from "../typechain-types";
 import { Contract } from "ethers";
-import { Provider } from "@ethersproject/providers";
+import { Provider, Filter } from "@ethersproject/providers";
+import { LogCache } from "fetch-logs-with-cache"
 
 export const wait = async (ms: number) => new Promise((res) => setTimeout(res, ms));
 
@@ -61,3 +62,28 @@ export const getL1BlockNumberFromL2 = async (provider: Provider) => {
   );
   return multicall.getL1BlockNumber();
 };
+
+export const getLogsWithCache = async (provider: Provider, filter: Filter) => {
+  const logCache = new LogCache('.propmon-logs.db');
+  if (!filter.address) {
+    throw new Error("Address must be provided in filter");
+  }
+  if (!filter.topics) {
+    throw new Error("Topics must be provided in filter");
+  }
+  const chainId = (await provider.getNetwork()).chainId;
+  const pageSize = chainId === 1 ? 100_000 : 10_000_000;
+  return logCache.getLogs(
+    provider,
+    {
+      address: filter.address,
+      topics: filter.topics,
+      fromBlock: filter.fromBlock,
+      toBlock: filter.toBlock
+    },
+    pageSize,
+    (...args) => {
+      console.log(`Scanned blocks ${args[2]} to ${args[3]} logs:\n${JSON.stringify(filter)}`);
+    }
+  );
+}

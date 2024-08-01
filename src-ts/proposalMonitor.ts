@@ -1,7 +1,7 @@
 import { BlockTag, Provider, TransactionReceipt } from "@ethersproject/providers";
 import { L2ArbitrumGovernor__factory } from "../typechain-types";
 import { ProposalCreatedEventObject } from "../typechain-types/src/L2ArbitrumGovernor";
-import { wait } from "./utils";
+import { getLogsWithCache, wait } from "./utils";
 import {
   StageFactory,
   StageTracker,
@@ -128,7 +128,7 @@ export class GovernorProposalMonitor extends ProposalMonitor {
     proposalId?: string
   ) {
     const governor = L2ArbitrumGovernor__factory.connect(this.originAddress, this.originProvider);
-    const logs = await this.originProvider.getLogs({
+    const logs = await getLogsWithCache(this.originProvider, {
       fromBlock,
       toBlock,
       ...governor.filters.ProposalCreated(),
@@ -156,7 +156,7 @@ export class GnosisSafeProposalMonitor extends ProposalMonitor {
       "event ExecutionSuccess(bytes32 indexed txHash, uint256 payment)",
     ]);
     const executionSuccessEvent = gnosisSafeInterface.encodeFilterTopics("ExecutionSuccess", []);
-    const logs = await this.originProvider.getLogs({
+    const logs = await getLogsWithCache(this.originProvider, {
       fromBlock,
       toBlock,
       topics: executionSuccessEvent,
