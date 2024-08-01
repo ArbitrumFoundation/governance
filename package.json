@@ -81,6 +81,7 @@
     "@openzeppelin/contracts-upgradeable": "4.7.3",
     "@types/yargs": "^17.0.17",
     "axios": "^1.6.8",
+    "fetch-logs-with-cache": "^0.0.9",
     "yargs": "^17.6.2"
   }
 }
