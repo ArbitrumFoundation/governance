@@ -69,6 +69,7 @@ const attachConsole = (proposalMonitor: ProposalMonitor, monitorName: string) =>
         e.stage
       } Status:${ProposalStageStatus[e.status]} Error: ${e.error}`
     );
+    process.exit(1);
   });
   proposalMonitor.on(TrackerEventName.TRACKER_STATUS, (e: GPMEvent) => {
     console.log(
