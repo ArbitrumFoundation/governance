@@ -21,7 +21,6 @@ export abstract class ProposalMonitor extends EventEmitter {
     public readonly originAddress: string,
     public readonly originProvider: Provider,
     public readonly pollingIntervalMs: number,
-    public readonly blockLag: number,
     public readonly startBlockNumber: number,
     public readonly stageFactory: StageFactory,
     public readonly writeMode: boolean,
@@ -73,11 +72,10 @@ export abstract class ProposalMonitor extends EventEmitter {
     }
   }
 
-  public abstract getOriginReceipts(
+  public abstract getOriginTxHashes(
     fromBlock: BlockTag,
-    toBlock: BlockTag,
     originId?: string
-  ): Promise<TransactionReceipt[]>;
+  ): Promise<string[]>;
 
   public async start() {
     if (this.polling === true) {
@@ -85,22 +83,21 @@ export abstract class ProposalMonitor extends EventEmitter {
     }
     this.polling = true;
 
-    let blockThen = this.startBlockNumber;
     await this.waitAndPing();
+
+    const seenTransactions = new Set<string>();
 
     while (this.polling) {
       try {
-        const blockNow = Math.max(
-          (await this.originProvider.getBlockNumber()) - this.blockLag,
-          blockThen
-        );
+        const txHashes = await this.getOriginTxHashes(this.startBlockNumber);
 
-        const receipts = await this.getOriginReceipts(blockThen, blockNow);
-
-        for (const r of receipts) {
-          await this.monitorSingleProposal(r);
+        for (const hash of txHashes) {
+          if (seenTransactions.has(hash)) {
+            continue;
+          }
+          await this.monitorSingleProposal(await this.originProvider.getTransactionReceipt(hash));
+          seenTransactions.add(hash);
         }
-        blockThen = blockNow;
       } catch (err) {
         console.log("Proposal monitor Error:", err);
       }
@@ -122,15 +119,14 @@ export abstract class ProposalMonitor extends EventEmitter {
  * a proposal is created.
  */
 export class GovernorProposalMonitor extends ProposalMonitor {
-  public override async getOriginReceipts(
+  public override async getOriginTxHashes(
     fromBlock: BlockTag,
-    toBlock: BlockTag,
     proposalId?: string
   ) {
     const governor = L2ArbitrumGovernor__factory.connect(this.originAddress, this.originProvider);
     const logs = await getLogsWithCache(this.originProvider, {
       fromBlock,
-      toBlock,
+      toBlock: 'finalized',
       ...governor.filters.ProposalCreated(),
     });
 
@@ -144,21 +140,19 @@ export class GovernorProposalMonitor extends ProposalMonitor {
       )
       .map((l) => l.transactionHash);
 
-    return await Promise.all(
-      Array.from(new Set(filteredTxHashes)).map((t) => this.originProvider.getTransactionReceipt(t))
-    );
+    return Array.from(new Set(filteredTxHashes))
   }
 }
 
 export class GnosisSafeProposalMonitor extends ProposalMonitor {
-  public override async getOriginReceipts(fromBlock: BlockTag, toBlock: BlockTag, txHash?: string) {
+  public override async getOriginTxHashes(fromBlock: BlockTag, txHash?: string) {
     const gnosisSafeInterface = new Interface([
       "event ExecutionSuccess(bytes32 indexed txHash, uint256 payment)",
     ]);
     const executionSuccessEvent = gnosisSafeInterface.encodeFilterTopics("ExecutionSuccess", []);
     const logs = await getLogsWithCache(this.originProvider, {
       fromBlock,
-      toBlock,
+      toBlock: 'finalized',
       topics: executionSuccessEvent,
       address: this.originAddress,
     });
@@ -176,8 +170,6 @@ export class GnosisSafeProposalMonitor extends ProposalMonitor {
       )
       .map((l) => l.transactionHash);
 
-    return await Promise.all(
-      Array.from(new Set(filteredTxHashes)).map((t) => this.originProvider.getTransactionReceipt(t))
-    );
+    return Array.from(new Set(filteredTxHashes))
   }
 }

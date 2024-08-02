@@ -33,7 +33,6 @@ const options = yargs(process.argv.slice(2))
     sevenTwelveCouncilAddress: { type: "string", demandOption: false },
     startBlock: { type: "number", demandOption: false, default: 72559827 },
     pollingIntervalSeconds: { type: "number", demandOption: false, default: 300 },
-    blockLag: { type: "number", demandOption: false, default: 5 },
     writeMode: { type: "boolean", demandOption: false, default: false },
     jsonOutputLocation: { type: "string", demandOption: false },
     proposalId: { type: "string", demandOption: false },
@@ -48,7 +47,6 @@ const options = yargs(process.argv.slice(2))
   nomineeElectionGovernorAddress?: string;
   startBlock: number;
   pollingIntervalSeconds: number;
-  blockLag: number;
   writeMode: boolean;
   proposalId?: string;
   jsonOutputLocation?: string;
@@ -92,11 +90,11 @@ const startMonitor = async (
     jsonLogger.subscribeToMonitor(monitor);
   }
   if (proposalId) {
-    const receipts = await monitor.getOriginReceipts(options.startBlock, "latest", proposalId);
-    if (receipts.length !== 1) {
+    const txHashes = await monitor.getOriginTxHashes(options.startBlock, proposalId);
+    if (txHashes.length !== 1) {
       throw new Error(`Proposal not found: ${proposalId}`);
     }
-    await monitor.monitorSingleProposal(receipts[0]);
+    await monitor.monitorSingleProposal(await monitor.originProvider.getTransactionReceipt(txHashes[0]));
   } else {
     await monitor.start();
   }
@@ -257,7 +255,6 @@ const main = async () => {
       options.coreGovernorAddress,
       getProvider(govChainSignerOrProvider)!,
       options.pollingIntervalSeconds * 1000,
-      options.blockLag,
       options.startBlock,
       stageFactory,
       options.writeMode,
@@ -273,7 +270,6 @@ const main = async () => {
       options.treasuryGovernorAddress,
       getProvider(govChainSignerOrProvider)!,
       options.pollingIntervalSeconds * 1000,
-      options.blockLag,
       options.startBlock,
       stageFactory,
       options.writeMode,
@@ -289,7 +285,6 @@ const main = async () => {
       options.sevenTwelveCouncilAddress,
       getProvider(govChainSignerOrProvider)!,
       options.pollingIntervalSeconds * 1000,
-      options.blockLag,
       options.startBlock,
       stageFactory,
       options.writeMode,
@@ -305,7 +300,6 @@ const main = async () => {
       options.nomineeElectionGovernorAddress,
       getProvider(govChainSignerOrProvider)!,
       options.pollingIntervalSeconds * 1000,
-      options.blockLag,
       options.startBlock,
       stageFactory,
       options.writeMode,
