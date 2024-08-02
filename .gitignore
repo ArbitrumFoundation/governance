@@ -25,3 +25,4 @@ lcov.info
 lcov.info.pruned
 types/
 proposalState.json
+.propmon-logs.db
