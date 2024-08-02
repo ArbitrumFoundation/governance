@@ -964,7 +964,7 @@ export class L1OutboxStage implements ProposalStage {
       event.caller
     );
 
-    const allEvents = await getLogsWithCache(provider!,outboxTxFilter);
+    const allEvents = await getLogsWithCache(provider!,outboxTxFilter, 100_000);
 
     const outboxEvents = allEvents.filter((e) =>
       (
@@ -1062,7 +1062,7 @@ abstract class L1TimelockExecutionStage {
     const provider = getProvider(this.l1SignerOrProvider);
     const callExecutedFilter = timelock.filters.CallExecuted(this.identifier);
 
-    const logs = await getLogsWithCache(provider!, callExecutedFilter);
+    const logs = await getLogsWithCache(provider!, callExecutedFilter, 100_000);
 
     if (logs.length < 1) {
       throw new ProposalStageError(

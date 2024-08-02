@@ -63,7 +63,7 @@ export const getL1BlockNumberFromL2 = async (provider: Provider) => {
   return multicall.getL1BlockNumber();
 };
 
-export const getLogsWithCache = async (provider: Provider, filter: Filter) => {
+export const getLogsWithCache = async (provider: Provider, filter: Filter, pageSize = 10_000_000) => {
   const logCache = new LogCache('.propmon-logs.db');
   if (!filter.address) {
     throw new Error("Address must be provided in filter");
@@ -72,7 +72,6 @@ export const getLogsWithCache = async (provider: Provider, filter: Filter) => {
     throw new Error("Topics must be provided in filter");
   }
   const chainId = (await provider.getNetwork()).chainId;
-  const pageSize = chainId === 1 ? 100_000 : 10_000_000;
   return logCache.getLogs(
     provider,
     {
