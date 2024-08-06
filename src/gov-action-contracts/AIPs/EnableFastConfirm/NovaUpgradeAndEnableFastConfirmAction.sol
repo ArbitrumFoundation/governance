@@ -1,0 +1,17 @@
+// SPDX-License-Identifier: Apache-2.0
+pragma solidity 0.8.16;
+
+import "./UpgradeAndEnableFastConfirmAction.sol";
+import "../../address-registries/L1AddressRegistry.sol";
+
+contract NovaUpgradeAndEnableFastConfirmAction is UpgradeAndEnableFastConfirmAction {
+    constructor()
+        UpgradeAndEnableFastConfirmAction(
+            L1AddressRegistry(0x2F06643fc2CC18585Ae790b546388F0DE4Ec6635),
+            0x0000000000000000000000000000000000000000, // TODO: v2.1.0 RollupAdminLogic
+            0x0000000000000000000000000000000000000000, // TODO: v2.1.0 RollupUserLogic
+            0x0000000000000000000000000000000000000000, // TODO: anyTrustFastConfirmer
+            1 // TODO: newMinimumAssertionPeriod in blocks
+        )
+    {}
+}
