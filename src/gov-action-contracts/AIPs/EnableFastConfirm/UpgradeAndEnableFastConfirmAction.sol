@@ -35,6 +35,7 @@ contract UpgradeAndEnableFastConfirmAction {
     function perform() external {
         address rollupAddress = address(addressRegistry.rollup());
 
+        // Upgrade rollup logics
         DoubleLogicUUPSUpgradeable(rollupAddress).upgradeTo(newPrimaryLogic);
         DoubleLogicUUPSUpgradeable(rollupAddress).upgradeSecondaryTo(newSecondaryLogic);
 
