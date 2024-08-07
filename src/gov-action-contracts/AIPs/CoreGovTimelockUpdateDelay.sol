@@ -3,10 +3,10 @@ pragma solidity 0.8.16;
 
 import "../address-registries/L2AddressRegistryInterfaces.sol";
  
-/// @notice Updates the delay of the core gov timelock
-contract CoreGovTimelockUpdateDelayAction {
+/// @notice Updates the delay of the core gov timelock to 8 days
+contract CoreGovTimelockUpdateDelayEightDayAction {
     ICoreGovTimelockGetter public immutable govAddressRegistry;
-    uint256 public constant delay = 86400 * 1; // TODO: change 1 to the result of the snapshot
+    uint256 public constant delay = 86400 * 8;
 
     constructor(ICoreGovTimelockGetter _govAddressRegistry) {
         govAddressRegistry = _govAddressRegistry;
