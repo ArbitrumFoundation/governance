@@ -5,12 +5,8 @@ import "../address-registries/L2AddressRegistryInterfaces.sol";
  
 /// @notice Updates the delay of the core gov timelock to 8 days
 contract CoreGovTimelockUpdateDelayEightDayAction {
-    ICoreGovTimelockGetter public immutable govAddressRegistry;
+    ICoreGovTimelockGetter public constant govAddressRegistry = ICoreGovTimelockGetter(0x56C4E9Eb6c63aCDD19AeC2b1a00e4f0d7aBda9d3);
     uint256 public constant delay = 86400 * 8;
-
-    constructor(ICoreGovTimelockGetter _govAddressRegistry) {
-        govAddressRegistry = _govAddressRegistry;
-    }
 
     function perform() external {
         govAddressRegistry.coreGovTimelock().updateDelay(delay);
