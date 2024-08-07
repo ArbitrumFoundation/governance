@@ -41,14 +41,14 @@ contract UpgradeAndEnableFastConfirmAction {
 
         // Setup AnyTrustFastConfirmer
         require(
-            IRollupAdminFC(address(addressRegistry.rollup())).anyTrustFastConfirmer() == address(0),
+            IRollupAdminFC(rollupAddress).anyTrustFastConfirmer() == address(0),
             "UpgradeAndEnableFastConfirmAction: Fast confirm already enabled"
         );
-        IRollupAdminFC(address(addressRegistry.rollup())).setAnyTrustFastConfirmer(
+        IRollupAdminFC(rollupAddress).setAnyTrustFastConfirmer(
             anyTrustFastConfirmer
         );
         require(
-            IRollupAdminFC(address(addressRegistry.rollup())).anyTrustFastConfirmer()
+            IRollupAdminFC(rollupAddress).anyTrustFastConfirmer()
                 == anyTrustFastConfirmer,
             "UpgradeAndEnableFastConfirmAction: Unexpected anyTrustFastConfirmer"
         );
@@ -58,18 +58,18 @@ contract UpgradeAndEnableFastConfirmAction {
         validators[0] = anyTrustFastConfirmer;
         bool[] memory values = new bool[](1);
         values[0] = true;
-        IRollupAdmin(address(addressRegistry.rollup())).setValidator(validators, values);
+        IRollupAdmin(rollupAddress).setValidator(validators, values);
         require(
-            IRollupCore(address(addressRegistry.rollup())).isValidator(anyTrustFastConfirmer),
+            IRollupCore(rollupAddress).isValidator(anyTrustFastConfirmer),
             "UpgradeAndEnableFastConfirmAction: Failed to set validator"
         );
 
         // Set minimum assertion period
-        IRollupAdmin(address(addressRegistry.rollup())).setMinimumAssertionPeriod(
+        IRollupAdmin(rollupAddress).setMinimumAssertionPeriod(
             newMinimumAssertionPeriod
         );
         require(
-            IRollupCore(address(addressRegistry.rollup())).minimumAssertionPeriod()
+            IRollupCore(rollupAddress).minimumAssertionPeriod()
                 == newMinimumAssertionPeriod,
             "UpgradeAndEnableFastConfirmAction: Failed to set minimum assertion period"
         );
