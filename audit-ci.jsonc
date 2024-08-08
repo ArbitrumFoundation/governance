@@ -73,6 +73,15 @@
         // undici fetch with integrity action is too lax - again we only use undici in dev so not an issue
         "GHSA-9qxr-qj54-h672",
         // memory exhaustion possible in lib/parse, but we only use node in dev so not an issue for us
-        "GHSA-grv7-fg5c-xmjg"
+        "GHSA-grv7-fg5c-xmjg",
+        // ws dos too many http - we only use in dev
+        "GHSA-3h5v-q93c-6h6q",
+        // BER sig malleability vuln - only used in dev
+        "GHSA-49q7-c7j4-3p7m",
+        // ECDSA missing leading bit r and s check - only used in dev
+        "GHSA-977x-g7h5-7qgw",
+        // EDDSA missing sig length check - package only used in dev
+        "GHSA-f7q4-pwc6-w24p"
+
     ]
   }
