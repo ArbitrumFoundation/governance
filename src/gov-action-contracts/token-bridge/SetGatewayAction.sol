@@ -21,8 +21,8 @@ contract SetGatewayAction {
         TokenBridgeActionLib.ensureAllContracts(_tokens);
         TokenBridgeActionLib.ensureAllContracts(_gateways);
 
-        addressRegistry.gatewayRouter().setGateways(
-            _tokens, _gateways, _maxGas, _gasPriceBid, _maxSubmissionCost
-        );
+        addressRegistry.gatewayRouter().setGateways{
+            value: _maxGas * _gasPriceBid + _maxSubmissionCost
+        }(_tokens, _gateways, _maxGas, _gasPriceBid, _maxSubmissionCost);
     }
 }
