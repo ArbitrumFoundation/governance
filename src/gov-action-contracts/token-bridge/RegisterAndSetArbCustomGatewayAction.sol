@@ -20,7 +20,7 @@ contract RegisterAndSetArbCustomGatewayAction {
         uint256 _maxGasForSetGateway,
         uint256 _gasPriceBidForSetGateway,
         uint256 _maxSubmissionCostForSetGateway
-    ) external {
+    ) external payable {
         TokenBridgeActionLib.ensureAllContracts(_l1Tokens);
 
         IL1CustomGateway customGateway = addressRegistry.customGateway();

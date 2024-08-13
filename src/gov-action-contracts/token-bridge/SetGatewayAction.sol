@@ -17,7 +17,7 @@ contract SetGatewayAction {
         uint256 _maxGas,
         uint256 _gasPriceBid,
         uint256 _maxSubmissionCost
-    ) external {
+    ) external payable {
         TokenBridgeActionLib.ensureAllContracts(_tokens);
         TokenBridgeActionLib.ensureAllContracts(_gateways);
 
