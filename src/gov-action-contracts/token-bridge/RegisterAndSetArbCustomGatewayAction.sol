@@ -4,7 +4,7 @@ pragma solidity 0.8.16;
 import "../address-registries/interfaces.sol";
 import "./TokenBridgeActionLib.sol";
 
-contract RegisterAndSetGatewayAction {
+contract RegisterAndSetArbCustomGatewayAction {
     IL1AddressRegistry public immutable addressRegistry;
 
     constructor(IL1AddressRegistry _addressRegistry) {
