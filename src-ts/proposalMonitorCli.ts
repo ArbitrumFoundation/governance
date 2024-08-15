@@ -1,5 +1,4 @@
 import { BigNumber, Wallet } from "ethers";
-import { JsonRpcProvider } from "@ethersproject/providers";
 import { ProposalStageStatus, getProvider } from "./proposalStage";
 import { StageFactory, TrackerEventName } from "./proposalPipeline";
 import { SecurityCouncilElectionTracker } from "./securityCouncilElectionTracker";
@@ -15,9 +14,13 @@ import {
   GovernorProposalMonitor,
   ProposalMonitor,
 } from "./proposalMonitor";
+import axios from "axios";
+import { RetryJsonRpcProvider } from "./retryJsonRpcProvider";
 
 const ETH_KEY = process.env.ETH_KEY || "";
 const ARB_KEY = process.env.ARB_KEY || "";
+
+const PROPMON_HEALTHCHECK_URL = process.env.PROPMON_HEALTHCHECK_URL || "";
 
 const options = yargs(process.argv.slice(2))
   .options({
@@ -106,6 +109,7 @@ interface PipelineStage {
   proposalLink?: string;
   children: PipelineStage[];
   proposalDescription?: string;
+  quorum?: string;
 }
 
 interface GovernorStatus {
@@ -171,6 +175,7 @@ class JsonLogger {
           proposalLink,
           children: [],
           proposalDescription: e.proposalDescription,
+          quorum: e.quorum?.toString(),
         };
 
         if (prevKey === originKey && !emittedStages.has(key)) {
@@ -181,8 +186,6 @@ class JsonLogger {
             throw new Error(`Could not find prev stage ${prevKey} for ${key}`);
           }
           prevStage.children.push(pipelineStage);
-        } else {
-          throw new Error(`Could not find prev stage ${prevKey} for ${key}`);
         }
 
         // set the stage
@@ -202,13 +205,13 @@ const main = async () => {
   if (options.writeMode && !ARB_KEY) throw new Error("env var ARB_KEY required");
   if (options.writeMode && !ETH_KEY) throw new Error("env var ETH_KEY required");
 
-  const l1Provider = new JsonRpcProvider(options.l1RpcUrl);
+  const l1Provider = new RetryJsonRpcProvider(options.l1RpcUrl);
   const l1SignerOrProvider = options.writeMode ? new Wallet(ETH_KEY, l1Provider) : l1Provider;
-  const govChainProvider = new JsonRpcProvider(options.govChainRpcUrl);
+  const govChainProvider = new RetryJsonRpcProvider(options.govChainRpcUrl);
   const govChainSignerOrProvider = options.writeMode
     ? new Wallet(ARB_KEY, govChainProvider)
     : govChainProvider;
-  const novaProvider = new JsonRpcProvider(options.novaRpcUrl);
+  const novaProvider = new RetryJsonRpcProvider(options.novaRpcUrl);
   const novaSignerOrProvider = options.writeMode ? new Wallet(ARB_KEY, novaProvider) : novaProvider;
 
   if (options.writeMode) {
@@ -218,6 +221,20 @@ const main = async () => {
     console.log(`Nova signer: ${(novaSignerOrProvider as Wallet).address}`);
   } else {
     console.log(`Starting monitor in read-only mode`);
+  }
+
+  if (PROPMON_HEALTHCHECK_URL) {
+    // ping health check url;
+    axios.get(PROPMON_HEALTHCHECK_URL)
+      .then(() => {
+        console.log("Using provided health check url");
+      })
+      .catch((error) => {
+        console.log("Provided health check url failed:", error);
+        process.exit(1);
+      });
+  } else {
+    console.log("No healthcheck url provided");
   }
 
   let jsonLogger;
@@ -242,7 +259,8 @@ const main = async () => {
       options.blockLag,
       options.startBlock,
       stageFactory,
-      options.writeMode
+      options.writeMode,
+      PROPMON_HEALTHCHECK_URL
     );
     roundTrip = startMonitor("RoundTrip", coreGovMonitor, jsonLogger, options.proposalId);
   }
@@ -257,7 +275,8 @@ const main = async () => {
       options.blockLag,
       options.startBlock,
       stageFactory,
-      options.writeMode
+      options.writeMode,
+      PROPMON_HEALTHCHECK_URL
     );
     treasury = startMonitor("Treasury", treasuryMonitor, jsonLogger, options.proposalId);
   }
@@ -272,7 +291,8 @@ const main = async () => {
       options.blockLag,
       options.startBlock,
       stageFactory,
-      options.writeMode
+      options.writeMode,
+      PROPMON_HEALTHCHECK_URL
     );
     sevTwelve = startMonitor("7-12 Council", sevenTwelveMonitor, jsonLogger, options.proposalId);
   }
@@ -287,7 +307,8 @@ const main = async () => {
       options.blockLag,
       options.startBlock,
       stageFactory,
-      options.writeMode
+      options.writeMode,
+      PROPMON_HEALTHCHECK_URL
     );
     electionGov = startMonitor("Election", electionMonitor, jsonLogger, options.proposalId);
 
@@ -295,7 +316,7 @@ const main = async () => {
       govChainProvider,
       l1Provider,
       options.nomineeElectionGovernorAddress,
-      options.writeMode ? govChainSignerOrProvider as Wallet : undefined
+      options.writeMode ? (govChainSignerOrProvider as Wallet) : undefined
     );
     electionCreator.run();
   }

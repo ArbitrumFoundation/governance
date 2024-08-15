@@ -107,6 +107,9 @@
     <h1>Proposal States</h1>
     <div id="data-container"></div>
     <script>
+        function numberWithCommas(x) {
+            return x.toString().replace(/\B(?<!\.\d*)(?=(\d{3})+(?!\d))/g, ",");
+        }
         function fetchData() {
             fetch(`./proposalState.json?${Date.now()}`)
                 .then(response => response.json())
@@ -196,6 +199,13 @@
                             } else {
                                 proposalDiv.innerHTML = `<h3>Proposal ID: ${stage.identifier}</h3>`;
                             }
+
+                            if(stage.quorum){
+                                const quorumDiv = document.createElement('div');
+                                quorumDiv.innerHTML = `<h4>Quorum: ${numberWithCommas(+stage.quorum * 10e-19)}</h4>`
+                                proposalDiv.appendChild(quorumDiv)
+                            }
+
                             if (stage.proposalDescription){
                                 const descDiv = document.createElement('div');
                                 descDiv.className = "desc";

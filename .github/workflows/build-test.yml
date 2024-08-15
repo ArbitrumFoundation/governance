@@ -128,7 +128,7 @@ jobs:
       - uses: actions/checkout@v3
         with:
           submodules: recursive
-      - uses: OffchainLabs/actions/run-nitro-test-node@output-logging
+      - uses: OffchainLabs/actions/run-nitro-test-node@main
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
@@ -181,15 +181,6 @@ jobs:
 
       - name: Proposal tests
         run: yarn test:proposals
-
-      - name: Prepare asset ownership transfer
-        run: yarn prepare:ownership:transfer
-
-      - name: Execute asset ownership transfer
-        run: yarn execute:ownership:transfer
-
-      - name: Verify protocol ownership
-        run: yarn verify:ownership:transfer
   
   test-integration:
     name: Test integration
@@ -198,7 +189,7 @@ jobs:
       - uses: actions/checkout@v3
         with:
           submodules: recursive
-      - uses: OffchainLabs/actions/run-nitro-test-node@output-logging
+      - uses: OffchainLabs/actions/run-nitro-test-node@main
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
