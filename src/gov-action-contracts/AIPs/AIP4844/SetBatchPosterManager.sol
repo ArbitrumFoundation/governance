@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.16;
+pragma solidity 0.8.26;
 
 import "../../address-registries/L1AddressRegistry.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
