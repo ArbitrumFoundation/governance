@@ -6,7 +6,7 @@ dotenv.config();
 // when changing optimizer settings, make sure to also change settings in foundry.toml
 const solidityProfiles = {
   default: {
-    version: "0.8.16",
+    version: "0.8.26",
     settings: {
       optimizer: {
         enabled: true,
@@ -15,7 +15,7 @@ const solidityProfiles = {
     }
   },
   sec_council_mgmt: {
-    version: "0.8.16",
+    version: "0.8.26",
     settings: {
       optimizer: {
         enabled: true,
