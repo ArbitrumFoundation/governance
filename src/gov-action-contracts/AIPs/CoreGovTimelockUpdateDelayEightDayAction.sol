@@ -9,7 +9,7 @@ contract CoreGovTimelockUpdateDelayEightDayAction {
     IL2AddressRegistry public constant govAddressRegistry = IL2AddressRegistry(0x56C4E9Eb6c63aCDD19AeC2b1a00e4f0d7aBda9d3);
     uint256 public constant delay = 86400 * 8;
     bytes32 public constant newConstitutionHash =
-        0x2498ca4a737c2d06c43799b5ddf5183b6e169359f68bea4b34775751528a2ee1;
+        0x28faf2acba9b3ff80ec484e3d5646931eeef40568b1b7c38dbe52b890bfd7938;
 
     function perform() external {
         govAddressRegistry.coreGovTimelock().updateDelay(delay);
