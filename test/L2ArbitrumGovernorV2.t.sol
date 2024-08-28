@@ -112,8 +112,8 @@ abstract contract L2ArbitrumGovernorV2Test is SetupNewGovernors {
 
     function _skipToPostUpgrade() internal {
         if (
-            UPGRADE_PROPOSAL_PASSED_ONCHAIN && L2_CORE_GOVERNOR_ONCHAIN != address(0)
-                && L2_TREASURY_GOVERNOR_ONCHAIN != address(0)
+            UPGRADE_PROPOSAL_PASSED_ONCHAIN && L2_CORE_GOVERNOR_NEW_DEPLOY != address(0)
+                && L2_TREASURY_GOVERNOR_NEW_DEPLOY != address(0)
         ) {
             return;
         }
@@ -171,9 +171,9 @@ abstract contract CoreGovernorBase is L2ArbitrumGovernorV2Test {
     function setUp() public virtual override {
         super.setUp();
         // If no deployed governor address is set, we use the locally deployed governor
-        governor = L2_CORE_GOVERNOR_ONCHAIN == address(0)
+        governor = L2_CORE_GOVERNOR_NEW_DEPLOY == address(0)
             ? newCoreGovernor
-            : L2ArbitrumGovernorV2(payable(L2_CORE_GOVERNOR_ONCHAIN));
+            : L2ArbitrumGovernorV2(payable(L2_CORE_GOVERNOR_NEW_DEPLOY));
         _oldGovernor = currentCoreGovernor;
         timelock = currentCoreTimelock;
         proxyDeployer = proxyCoreGovernorDeployer;
@@ -208,9 +208,9 @@ abstract contract TreasuryGovernorBase is L2ArbitrumGovernorV2Test {
     function setUp() public virtual override {
         super.setUp();
         // If no deployed governor address is set, we use the locally deployed governor
-        governor = L2_TREASURY_GOVERNOR_ONCHAIN == address(0)
+        governor = L2_TREASURY_GOVERNOR_NEW_DEPLOY == address(0)
             ? newTreasuryGovernor
-            : L2ArbitrumGovernorV2(payable(L2_TREASURY_GOVERNOR_ONCHAIN));
+            : L2ArbitrumGovernorV2(payable(L2_TREASURY_GOVERNOR_NEW_DEPLOY));
         _oldGovernor = currentTreasuryGovernor;
         timelock = currentTreasuryTimelock;
         proxyDeployer = proxyTreasuryGovernorDeployer;

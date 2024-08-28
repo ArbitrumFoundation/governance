@@ -23,11 +23,11 @@ contract SharedGovernorConstants {
     address public constant L2_SECURITY_COUNCIL_9 = 0x423552c0F05baCCac5Bfa91C6dCF1dc53a0A1641;
 
     address public constant L1_TIMELOCK = 0xE6841D92B0C345144506576eC13ECf5103aC7f49;
-    uint256 public constant L1_TIMELOCK_MIN_DELAY = 259_200; // TODO: Make sure this is up to date.
+    uint256 public constant L1_TIMELOCK_MIN_DELAY = 259_200;
     address public constant L1_ARB_ONE_DELAYED_INBOX = 0x4Dbd4fc535Ac27206064B68FfCf827b0A60BAB3f;
 
-    address public constant L2_CORE_GOVERNOR_ONCHAIN = 0x7796F378B3c56ceD57350B938561D8c52256456b;
-    address public constant L2_TREASURY_GOVERNOR_ONCHAIN =
+    address public constant L2_CORE_GOVERNOR_NEW_DEPLOY = 0x7796F378B3c56ceD57350B938561D8c52256456b;
+    address public constant L2_TREASURY_GOVERNOR_NEW_DEPLOY =
         0x4fd1216c8b5E72b22785169Ae5C1e8f3b30C19E4;
     bool public constant UPGRADE_PROPOSAL_PASSED_ONCHAIN = false; // TODO: Update after the upgrade proposal is passed.
 

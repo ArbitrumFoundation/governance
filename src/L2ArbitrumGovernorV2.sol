@@ -6,7 +6,7 @@ import {GovernorUpgradeable} from "openzeppelin-upgradeable-v5/governance/Govern
 import {GovernorSettingsUpgradeable} from
     "openzeppelin-upgradeable-v5/governance/extensions/GovernorSettingsUpgradeable.sol";
 import {GovernorCountingFractionalUpgradeable} from
-    "./lib/GovernorCountingFractionalUpgradeable.sol";
+    "src/lib/GovernorCountingFractionalUpgradeable.sol";
 import {GovernorTimelockControlUpgradeable} from
     "openzeppelin-upgradeable-v5/governance/extensions/GovernorTimelockControlUpgradeable.sol";
 import {GovernorVotesQuorumFractionUpgradeable} from

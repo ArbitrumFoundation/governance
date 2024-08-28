@@ -52,12 +52,12 @@ abstract contract SetupNewGovernors is SharedGovernorConstants, Test {
         proxyTreasuryGovernorDeployer.setUp();
 
         // Deploy Governor proxy contracts
-        newCoreGovernor = L2_CORE_GOVERNOR_ONCHAIN == address(0)
+        newCoreGovernor = L2_CORE_GOVERNOR_NEW_DEPLOY == address(0)
             ? proxyCoreGovernorDeployer.run(_implementation)
-            : L2ArbitrumGovernorV2(payable(L2_CORE_GOVERNOR_ONCHAIN));
-        newTreasuryGovernor = L2_TREASURY_GOVERNOR_ONCHAIN == address(0)
+            : L2ArbitrumGovernorV2(payable(L2_CORE_GOVERNOR_NEW_DEPLOY));
+        newTreasuryGovernor = L2_TREASURY_GOVERNOR_NEW_DEPLOY == address(0)
             ? proxyTreasuryGovernorDeployer.run(_implementation)
-            : L2ArbitrumGovernorV2(payable(L2_TREASURY_GOVERNOR_ONCHAIN));
+            : L2ArbitrumGovernorV2(payable(L2_TREASURY_GOVERNOR_NEW_DEPLOY));
 
         // Current governors and timelocks
         currentCoreGovernor = GovernorUpgradeable(payable(L2_CORE_GOVERNOR));

@@ -35,7 +35,6 @@ contract SubmitUpgradeProposalScript is Script, SharedGovernorConstants, CreateL
             uint256 _proposalId
         )
     {
-        // TODO: Before deployment update `_description` with the new governor contract addresses.
         _description =
             "# Proposal to Upgrade Governor Contracts \
   \
@@ -55,8 +54,8 @@ contract SubmitUpgradeProposalScript is Script, SharedGovernorConstants, CreateL
   \
   ### **Technical Details** \
   - The new Governor contracts have been deployed on Arbitrum One at the following addresses: \
-    TODO: [Insert new Core Governor address] \
-    TODO: [Insert new Treasury Governor address] \
+    Core Governor: 0x7796F378B3c56ceD57350B938561D8c52256456b \
+    Treasury Governor: 0x4fd1216c8b5E72b22785169Ae5C1e8f3b30C19E4 \
   \
   - These new contracts include the following enhancements: \
     1. Proposal Cancellation: Allows the delegate who submitted a proposal to cancel it during the delay phase, before voting begins. \

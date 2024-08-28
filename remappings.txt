@@ -8,5 +8,4 @@ solady/=lib/solady/src/
 @gnosis.pm/safe-contracts/=node_modules/@gnosis.pm/safe-contracts/
 ds-test/=lib/forge-std/lib/ds-test/src/
 openzeppelin-v5/=lib/openzeppelin-contracts-v5/contracts
-openzeppelin-v4/=lib/openzeppelin-contracts-v4/contracts
 openzeppelin-upgradeable-v5/=lib/openzeppelin-contracts-upgradeable-v5/contracts
