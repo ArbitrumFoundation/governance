@@ -1,3 +1,4 @@
+lib/openzeppelin-contracts-upgradeable-v5/:@openzeppelin/contracts=lib/openzeppelin-contracts-v5/contracts
 forge-std/=lib/forge-std/src/
 solady/=lib/solady/src/
 @arbitrum/token-bridge-contracts/=node_modules/@arbitrum/token-bridge-contracts/
@@ -6,6 +7,6 @@ solady/=lib/solady/src/
 @openzeppelin/contracts/=node_modules/@openzeppelin/contracts/
 @gnosis.pm/safe-contracts/=node_modules/@gnosis.pm/safe-contracts/
 ds-test/=lib/forge-std/lib/ds-test/src/
-openzeppelin/=lib/openzeppelin-contracts/contracts
+openzeppelin-v5/=lib/openzeppelin-contracts-v5/contracts
 openzeppelin-v4/=lib/openzeppelin-contracts-v4/contracts
-openzeppelin-upgradeable/=lib/openzeppelin-contracts-upgradeable/contracts
+openzeppelin-upgradeable-v5/=lib/openzeppelin-contracts-upgradeable-v5/contracts
