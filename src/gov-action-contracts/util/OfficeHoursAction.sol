@@ -25,7 +25,7 @@ contract OfficeHoursAction {
         uint256 weekday = ((block.timestamp / 86400 + 3) % 7) + 1;
         require(weekday <= 5, "Cannot execute on the weekend");
 
-        // https://github.com/Vectorized/solady/blob/7175c21f95255dc7711ce84cc32080a41864abd6/src/utils/DateTimeLib.sol#L164-L165
+        // from https://github.com/Vectorized/solady/blob/7175c21f95255dc7711ce84cc32080a41864abd6/src/utils/DateTimeLib.sol#L164-L165
         uint256 secs = block.timestamp % 86400;
         uint256 hour = secs / 3600;
 
