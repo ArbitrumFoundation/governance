@@ -123,7 +123,7 @@ abstract contract L2ArbitrumGovernorV2Test is SetupNewGovernors {
             bytes[] memory _calldatas,
             string memory _description,
             uint256 _proposalId
-        ) = submitUpgradeProposalScript.run(address(timelockRolesUpgrader));
+        ) = submitUpgradeProposalScript.run(address(timelockRolesUpgrader), L1_TIMELOCK_MIN_DELAY);
 
         vm.roll(vm.getBlockNumber() + currentCoreGovernor.votingDelay() + 1);
         assertEq(
@@ -1091,7 +1091,7 @@ abstract contract Queue is L2ArbitrumGovernorV2Test {
             /*string memory _description*/
             ,
             uint256 _proposalId
-        ) = submitUpgradeProposalScript.run(address(timelockRolesUpgrader));
+        ) = submitUpgradeProposalScript.run(address(timelockRolesUpgrader), L1_TIMELOCK_MIN_DELAY);
 
         vm.roll(vm.getBlockNumber() + currentCoreGovernor.votingDelay() + 1);
         assertEq(
