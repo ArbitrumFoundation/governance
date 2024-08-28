@@ -75,8 +75,7 @@ abstract contract SetupNewGovernors is SharedGovernorConstants, Test {
         // Prepare the script to submit upgrade proposal
         submitUpgradeProposalScript = new SubmitUpgradeProposalScript();
         DeployTimelockRolesUpgrader deployTimelockRolesUpgrader = new DeployTimelockRolesUpgrader();
-        timelockRolesUpgrader =
-            deployTimelockRolesUpgrader.run(address(newCoreGovernor), address(newTreasuryGovernor));
+        timelockRolesUpgrader = deployTimelockRolesUpgrader.run();
     }
 }
 

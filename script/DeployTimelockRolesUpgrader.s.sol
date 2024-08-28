@@ -9,18 +9,15 @@ import {TimelockRolesUpgrader} from
 import {SharedGovernorConstants} from "script/SharedGovernorConstants.sol";
 
 contract DeployTimelockRolesUpgrader is BaseDeployer, SharedGovernorConstants {
-    function run(address _newCoreGovernor, address _newTreasuryGovernor)
-        public
-        returns (TimelockRolesUpgrader timelockRolesUpgrader)
-    {
+    function run() public returns (TimelockRolesUpgrader timelockRolesUpgrader) {
         vm.startBroadcast();
         timelockRolesUpgrader = new TimelockRolesUpgrader(
             L2_CORE_GOVERNOR_TIMELOCK,
             L2_CORE_GOVERNOR,
-            _newCoreGovernor,
+            L2_CORE_GOVERNOR_ONCHAIN,
             L2_TREASURY_GOVERNOR_TIMELOCK,
             L2_TREASURY_GOVERNOR,
-            _newTreasuryGovernor
+            L2_TREASURY_GOVERNOR_ONCHAIN
         );
         vm.stopBroadcast();
     }
