@@ -1,6 +1,7 @@
 # when changing optimizer settings, make sure to also change settings in hardhat.config.ts
 [profile.default]
 src = 'src'
+script = 'script'
 out = 'out'
 libs = ['lib']
 optimizer = true
