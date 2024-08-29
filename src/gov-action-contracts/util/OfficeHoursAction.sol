@@ -63,7 +63,7 @@ contract OfficeHoursAction {
         if (block.timestamp < minimumTimestamp) revert MinimumTimestampNotMet();
 
         // Convert timestamp to weekday (1 = Monday, 7 = Sunday)
-        // Addiding 3 because Unix epoch (January 1, 1970) was a Thursday
+        // Addiding 4 because Unix epoch (January 1, 1970) was a Thursday
         uint256 weekday = ((block.timestamp / 86_400 + 4) % 7);
         if (weekday < minDayOfWeek || weekday > maxDayOfWeek) revert OutsideOfficeDays();
 
