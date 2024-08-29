@@ -725,9 +725,9 @@ async function registerTokenOnArbOne(
   const arbGatewaySubmissionFee = (
     await arbInbox.callStatic.calculateRetryableSubmissionFee(
       ethers.utils.hexDataLength(arbGatewayRegistrationData),
-      (await ethDeployer.getGasPrice()).mul(2)
+      await ethDeployer.getGasPrice()
     )
-  );
+  ).mul(2)
   const valueForArbGateway = arbGatewaySubmissionFee.add(arbMaxGas.mul(arbGasPrice));
 
   const extraValue = 1000;
@@ -772,9 +772,9 @@ async function registerTokenOnArbOne(
   const arbRouterSubmissionFee = (
     await arbInbox.callStatic.calculateRetryableSubmissionFee(
       ethers.utils.hexDataLength(arbRouterRegistrationData),
-      (await ethDeployer.getGasPrice()).mul(2)
+      await ethDeployer.getGasPrice()
     )
-  );
+  ).mul(2)
   const valueForArbRouter = arbRouterSubmissionFee.add(arbMaxGas.mul(arbGasPrice));
 
   if (!deployedContracts.registerTokenArbOne2) {
@@ -834,9 +834,9 @@ async function registerTokenOnNova(
   const novaGatewaySubmissionFee = (
     await novaInbox.callStatic.calculateRetryableSubmissionFee(
       ethers.utils.hexDataLength(novaGatewayRegistrationData),
-      (await ethDeployer.getGasPrice()).mul(2)
+      await ethDeployer.getGasPrice()
     )
-  );
+  ).mul(2)
   const valueForNovaGateway = novaGatewaySubmissionFee.add(maxGas.mul(novaGasPrice));
 
   // calcs for novaRouter
@@ -847,9 +847,9 @@ async function registerTokenOnNova(
   const novaRouterSubmissionFee = (
     await novaInbox.callStatic.calculateRetryableSubmissionFee(
       ethers.utils.hexDataLength(novaRouterRegistrationData),
-      (await ethDeployer.getGasPrice()).mul(2)
+      await ethDeployer.getGasPrice()
     )
-  );
+  ).mul(2)
   const valueForNovaRouter = novaRouterSubmissionFee.add(maxGas.mul(novaGasPrice));
 
   // do the registration
