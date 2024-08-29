@@ -727,7 +727,7 @@ async function registerTokenOnArbOne(
       ethers.utils.hexDataLength(arbGatewayRegistrationData),
       0
     )
-  ).mul(2);
+  ).mul(10); // 10x this to address potential gas spike due to deployment
   const valueForArbGateway = arbGatewaySubmissionFee.add(arbMaxGas.mul(arbGasPrice));
 
   const extraValue = 1000;
