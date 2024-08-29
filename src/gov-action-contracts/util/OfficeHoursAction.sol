@@ -2,33 +2,78 @@
 pragma solidity 0.8.16;
 
 /// @notice Action that requires the current time to be within office hours. Should be included as an L1 action in proposal data.
-/// @dev    Time is kept in UTC
 contract OfficeHoursAction {
-    uint256 public immutable minUtcHour;
-    uint256 public immutable maxUtcHour;
+    /// @notice The minimum hour (inclusive) to execute the action on. 0 = midnight, 23 = 11pm
+    /// @dev We enforce the range would not cross local midnight
+    uint256 public immutable minLocalHour;
+    /// @notice The maximum hour (exclusive) to execute the action on. 0 = midnight, 23 = 11pm
+    /// @dev We enforce the range would not cross local midnight
+    uint256 public immutable maxLocalHour;
+
+    /// @notice The offset from UTC to local time. e.g. -5 for EST, -4 for EDT
+    int256 public immutable localHourOffset;
+
+    /// @notice The minimum day of week (inclusive) to execute the action on. 1 = Monday, 7 = Sunday
+    /// @dev We enforce the range would not cross weekends
+    uint256 public immutable minDayOfWeek;
+    /// @notice The maximum day of week (inclusive) to execute the action on. 1 = Monday, 7 = Sunday
+    /// @dev We enforce the range would not cross weekends
+    uint256 public immutable maxDayOfWeek;
+
+    /// @notice The minimum timestamp to execute the action on
     uint256 public immutable minimumTimestamp;
 
-    constructor(uint256 _minUtcHour, uint256 _maxUtcHour, uint256 _minimumTimestamp) {
-        require(_minUtcHour < _maxUtcHour, "Invalid office hours");
-        require(_minUtcHour < 24 && _maxUtcHour < 24, "Invalid office hours");
+    error InvalidHourRange();
+    error InvalidHourStart();
+    error InvalidHourEnd();
+    error InvalidLocalHourOffset();
+    error InvalidDayOfWeekRange();
+    error InvalidDayOfWeekStart();
+    error InvalidDayOfWeekEnd();
+    error MinimumTimestampNotMet();
+    error OutsideOfficeDays();
+    error OutsideOfficeHours();
 
-        minUtcHour = _minUtcHour;
-        maxUtcHour = _maxUtcHour;
+    constructor(
+        uint256 _minLocalHour,
+        uint256 _maxLocalHour,
+        int256 _localHourOffset,
+        uint256 _minDayOfWeek,
+        uint256 _maxDayOfWeek,
+        uint256 _minimumTimestamp
+    ) {
+        if (_maxLocalHour <= _minLocalHour) revert InvalidHourRange();
+        if (_minLocalHour > 24) revert InvalidHourStart();
+        if (_maxLocalHour == 0 || _maxLocalHour > 24) revert InvalidHourEnd();
+        // UTC is between -12 and +14 https://en.wikipedia.org/wiki/UTC
+        if (_localHourOffset < -12 || _localHourOffset > 14) revert InvalidLocalHourOffset();
+        if (_minDayOfWeek > _maxDayOfWeek) revert InvalidDayOfWeekRange();
+        if (_minDayOfWeek == 0 || _minDayOfWeek > 7) revert InvalidDayOfWeekStart();
+        if (_maxDayOfWeek == 0 || _maxDayOfWeek > 7) revert InvalidDayOfWeekEnd();
+
+        minLocalHour = _minLocalHour;
+        maxLocalHour = _maxLocalHour;
+        localHourOffset = _localHourOffset;
+        minDayOfWeek = _minDayOfWeek;
+        maxDayOfWeek = _maxDayOfWeek;
         minimumTimestamp = _minimumTimestamp;
     }
 
-    /// @notice Revert if the current time is outside of office hours, on the weekend, or if the minimum timestamp is not met.
+    /// @notice Revert if the current time is outside of office hours, or if the minimum timestamp is not met.
     function perform() external view {
-        require(block.timestamp >= minimumTimestamp, "Cannot execute before minimum timestamp");
+        if (block.timestamp < minimumTimestamp) revert MinimumTimestampNotMet();
 
+        // Convert timestamp to weekday (1 = Monday, 7 = Sunday)
+        // Adding 3 because Unix epoch (January 1, 1970) was a Thursday
         // from https://github.com/Vectorized/solady/blob/7175c21f95255dc7711ce84cc32080a41864abd6/src/utils/DateTimeLib.sol#L196
-        uint256 weekday = ((block.timestamp / 86400 + 3) % 7) + 1;
-        require(weekday <= 5, "Cannot execute on the weekend");
+        uint256 weekday = ((block.timestamp / 86_400 + 3) % 7 + 1);
+        if (weekday < minDayOfWeek || weekday > maxDayOfWeek) revert OutsideOfficeDays();
 
-        // from https://github.com/Vectorized/solady/blob/7175c21f95255dc7711ce84cc32080a41864abd6/src/utils/DateTimeLib.sol#L164-L165
-        uint256 secs = block.timestamp % 86400;
-        uint256 hour = secs / 3600;
+        // This is UTC time, leap seconds are not accounted for
+        int256 hoursSinceMidnight = int256((block.timestamp % 86_400) / 3600);
+        // Apply offset to convert to local time, also wrap if needed
+        uint256 localHour = uint256(hoursSinceMidnight + localHourOffset + 24) % 24;
 
-        require(hour >= minUtcHour && hour < maxUtcHour, "Cannot execute outside of office hours");
+        if (localHour < minLocalHour || localHour >= maxLocalHour) revert OutsideOfficeHours();
     }
 }
