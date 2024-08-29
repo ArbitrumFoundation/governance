@@ -22,21 +22,21 @@ contract OfficeHoursActionTest is Test {
     }
 
     function testPerformDuringOfficeHours() public {
-        // Set time to Wednesday (3) at 2 PM EST (19:00 UTC)
-        vm.warp(1_672_848_000); // Wednesday, January 4, 2023 19:00:00 UTC
+        // Set time to Wednesday (3) at 11 AM EST (16:00 UTC)
+        vm.warp(1_672_848_000); // Wednesday, January 4, 2023 16:00:00 UTC
         officeHours.perform(); // Should not revert
     }
 
     function testPerformOutsideOfficeHours() public {
-        // Set time to Wednesday (3) at 8 PM EST (01:00 UTC next day)
-        vm.warp(1_672_876_800); // Thursday, January 5, 2023 01:00:00 UTC
+        // Set time to Thursday (4) at 8 PM EST (00:00 UTC next day)
+        vm.warp(1_672_876_800); // Thursday, January 5, 2023 00:00:00 UTC
         vm.expectRevert(OfficeHoursAction.OutsideOfficeHours.selector);
         officeHours.perform();
     }
 
     function testPerformOnWeekend() public {
-        // Set time to Saturday (6) at 2 PM EST (19:00 UTC)
-        vm.warp(1_673_107_200); // Saturday, January 7, 2023 19:00:00 UTC
+        // Set time to Saturday (6) at 11 AM EST (16:00 UTC)
+        vm.warp(1_673_107_200); // Saturday, January 7, 2023 16:00:00 UTC
         vm.expectRevert(OfficeHoursAction.OutsideOfficeDays.selector);
         officeHours.perform();
     }
@@ -110,5 +110,29 @@ contract OfficeHoursActionTest is Test {
         assertEq(newOfficeHours.minDayOfWeek(), _minDayOfWeek);
         assertEq(newOfficeHours.maxDayOfWeek(), _maxDayOfWeek);
         assertEq(newOfficeHours.minimumTimestamp(), _minimumTimestamp);
+    }
+
+    function testPerformFridayUTCSaturdayLocal() public {
+        // Create a new OfficeHoursAction for UTC+9 with office hours on weekdays all day
+        OfficeHoursAction jstOfficeHours = new OfficeHoursAction(0, 24, 9, 1, 5, block.timestamp);
+
+        // Set time to Friday 11:00 PM UTC (08:00 AM JST)
+        // This is 2023-01-06 23:00:00 UTC, which is 2023-01-07 08:00:00 PST (Saturday)
+        vm.warp(1673046000);
+
+        vm.expectRevert(OfficeHoursAction.OutsideOfficeDays.selector);
+        jstOfficeHours.perform();
+    }
+
+    function testPerformMondayUTCSundayLocal() public {
+        // Create a new OfficeHoursAction for UTC-5 with office hours on weekdays all day
+        OfficeHoursAction estOfficeHours = new OfficeHoursAction(0, 24, -5, 1, 5, block.timestamp);
+
+        // Set time to Monday 12:30 AM UTC (2:30 PM Monday LIT)
+        // This is 2023-01-09 00:30:00 UTC, which is 2023-01-08 19:30:00 EST (Sunday)
+        vm.warp(1673224200);
+
+        vm.expectRevert(OfficeHoursAction.OutsideOfficeDays.selector);
+        estOfficeHours.perform();
     }
 }
