@@ -719,7 +719,7 @@ const execL1Component = async (
     const inbox = Inbox__factory.connect(l2Network.ethBridge.inbox, l1Deployer.provider!);
     const submissionFee = await inbox.callStatic.calculateRetryableSubmissionFee(
       propFormNonEmpty.l1Gov.retryableDataLength,
-      0
+      await inbox.provider!.getGasPrice()
     );
     value = submissionFee.mul(2);
   }
