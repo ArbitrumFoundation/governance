@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.16;
+pragma solidity 0.8.26;
 
 import "../src/ArbitrumVestingWallet.sol";
 import "../src/L2ArbitrumToken.sol";

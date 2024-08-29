@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.16;
+pragma solidity 0.8.26;
 
 interface IArbitrumDAOConstitution {
     function constitutionHash() external view returns (bytes32);

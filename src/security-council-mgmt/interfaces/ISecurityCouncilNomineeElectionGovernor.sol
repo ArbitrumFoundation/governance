@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.16;
+pragma solidity 0.8.26;
 
 /// @notice Minimal interface of nominee election governor required by other contracts
 interface ISecurityCouncilNomineeElectionGovernor {
