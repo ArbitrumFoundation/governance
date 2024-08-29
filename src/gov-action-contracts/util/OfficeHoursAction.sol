@@ -45,6 +45,7 @@ contract OfficeHoursAction {
         if (_maxLocalHour <= _minLocalHour) revert InvalidHourRange();
         if (_minLocalHour > 24) revert InvalidHourStart();
         if (_maxLocalHour == 0 || _maxLocalHour > 24) revert InvalidHourEnd();
+        // UTC is between -12 and +14 https://en.wikipedia.org/wiki/UTC
         if (_localHourOffset < -12 || _localHourOffset > 14) revert InvalidLocalHourOffset();
         if (_minDayOfWeek > _maxDayOfWeek) revert InvalidDayOfWeekRange();
         if (_minDayOfWeek == 0 || _minDayOfWeek > 7) revert InvalidDayOfWeekStart();
