@@ -37,7 +37,7 @@ import {
   ProposalExecutedEventObject,
   ProposalQueuedEventObject,
 } from "../typechain-types/src/L2ArbitrumGovernor";
-import { hasTimelock, hasVettingPeriod, getL1BlockNumberFromL2 } from "./utils";
+import { hasTimelock, hasVettingPeriod, getL1BlockNumberFromL2, wait } from "./utils";
 import { CallScheduledEvent } from "../typechain-types/src/ArbitrumTimelock";
 import { GnosisSafeL2__factory } from "../types/ethers-contracts/factories/GnosisSafeL2__factory";
 
@@ -1383,7 +1383,21 @@ export class RetryableExecutionStage implements ProposalStage {
     if (!this.isWriter(this.l1ToL2Message)) {
       throw new Error("Message is not a writer");
     }
-    await (await this.l1ToL2Message.redeem()).wait();
+
+    while (true) {
+      try {
+        await (await this.l1ToL2Message.redeem()).wait();
+        break;
+      } catch (e) {
+        const knownPending = JSON.parse(process.env.PENDING_RETRYABLES?.toLowerCase() || "[]");
+        const id = this.l1ToL2Message.retryableCreationId.toLowerCase();
+        if (!knownPending.includes(id)) {
+          throw e
+        }
+        console.log(`Failed to redeem retryable ${id}, retrying in 60s`);
+        await wait(60_000);
+      }
+    }
   }
 
   public async getExecuteReceipt(): Promise<TransactionReceipt> {
