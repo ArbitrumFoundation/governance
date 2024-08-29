@@ -63,17 +63,15 @@ contract OfficeHoursAction {
     function perform() external view {
         if (block.timestamp < minimumTimestamp) revert MinimumTimestampNotMet();
 
-        // Convert timestamp to weekday (1 = Monday, 7 = Sunday)
+        // Convert to local time, leap seconds are not accounted for
+        uint256 localTimestamp = uint256(int256(block.timestamp) + (localHourOffset * 3600));
+
         // Adding 3 because Unix epoch (January 1, 1970) was a Thursday
         // from https://github.com/Vectorized/solady/blob/7175c21f95255dc7711ce84cc32080a41864abd6/src/utils/DateTimeLib.sol#L196
-        uint256 weekday = ((block.timestamp / 86_400 + 3) % 7 + 1);
+        uint256 weekday = (localTimestamp / 86_400 + 3) % 7 + 1;
         if (weekday < minDayOfWeek || weekday > maxDayOfWeek) revert OutsideOfficeDays();
 
-        // This is UTC time, leap seconds are not accounted for
-        int256 hoursSinceMidnight = int256((block.timestamp % 86_400) / 3600);
-        // Apply offset to convert to local time, also wrap if needed
-        uint256 localHour = uint256(hoursSinceMidnight + localHourOffset + 24) % 24;
-
+        uint256 localHour = localTimestamp % 86_400 / 3600;
         if (localHour < minLocalHour || localHour >= maxLocalHour) revert OutsideOfficeHours();
     }
 }
