@@ -4,20 +4,20 @@ pragma solidity 0.8.16;
 /// @notice Action that requires the current time to be within office hours. Should be included as an L1 action in proposal data.
 contract OfficeHoursAction {
     /// @notice The minimum hour (inclusive) to execute the action on. 0 = midnight, 23 = 11pm
-    /// @dev We assume the range would not cross local midnight
+    /// @dev We enforce the range would not cross local midnight
     uint256 public immutable minLocalHour;
     /// @notice The maximum hour (exclusive) to execute the action on. 0 = midnight, 23 = 11pm
-    /// @dev We assume the range would not cross local midnight
+    /// @dev We enforce the range would not cross local midnight
     uint256 public immutable maxLocalHour;
 
     /// @notice The offset from UTC to local time. e.g. -5 for EST, -4 for EDT
     int256 public immutable localHourOffset;
 
     /// @notice The minimum day of week (inclusive) to execute the action on. 1 = Monday, 7 = Sunday
-    /// @dev We assume the range would not cross weekends
+    /// @dev We enforce the range would not cross weekends
     uint256 public immutable minDayOfWeek;
     /// @notice The maximum day of week (inclusive) to execute the action on. 1 = Monday, 7 = Sunday
-    /// @dev We assume the range would not cross weekends
+    /// @dev We enforce the range would not cross weekends
     uint256 public immutable maxDayOfWeek;
 
     /// @notice The minimum timestamp to execute the action on
