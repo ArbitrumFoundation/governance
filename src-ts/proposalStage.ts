@@ -1058,7 +1058,7 @@ abstract class L1TimelockExecutionStage {
       const inbox = Inbox__factory.connect(inboxAddress, timelock.provider!);
       const submissionFee = await inbox.callStatic.calculateRetryableSubmissionFee(
         hexDataLength(innerData),
-        0
+        await inbox.provider!.getGasPrice()
       );
 
       // enough value to create a retryable ticket = submission fee + gas

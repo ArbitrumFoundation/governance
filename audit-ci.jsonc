@@ -81,7 +81,10 @@
         // ECDSA missing leading bit r and s check - only used in dev
         "GHSA-977x-g7h5-7qgw",
         // EDDSA missing sig length check - package only used in dev
-        "GHSA-f7q4-pwc6-w24p"
-
+        "GHSA-f7q4-pwc6-w24p",
+        // Server-Side Request Forgery in axios
+        "GHSA-8hc4-vh64-cxmj",
+        // Regular Expression Denial of Service (ReDoS) in micromatch
+        "GHSA-952p-6rrq-rcjv"
     ]
   }
