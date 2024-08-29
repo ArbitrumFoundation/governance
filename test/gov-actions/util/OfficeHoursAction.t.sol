@@ -118,7 +118,7 @@ contract OfficeHoursActionTest is Test {
 
         // Set time to Friday 11:00 PM UTC (08:00 AM JST)
         // This is 2023-01-06 23:00:00 UTC, which is 2023-01-07 08:00:00 PST (Saturday)
-        vm.warp(1673046000);
+        vm.warp(1_673_046_000);
 
         vm.expectRevert(OfficeHoursAction.OutsideOfficeDays.selector);
         jstOfficeHours.perform();
@@ -130,7 +130,7 @@ contract OfficeHoursActionTest is Test {
 
         // Set time to Monday 12:30 AM UTC (2:30 PM Monday LIT)
         // This is 2023-01-09 00:30:00 UTC, which is 2023-01-08 19:30:00 EST (Sunday)
-        vm.warp(1673224200);
+        vm.warp(1_673_224_200);
 
         vm.expectRevert(OfficeHoursAction.OutsideOfficeDays.selector);
         estOfficeHours.perform();
