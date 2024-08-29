@@ -23,20 +23,20 @@ contract OfficeHoursActionTest is Test {
 
     function testPerformDuringOfficeHours() public {
         // Set time to Wednesday (3) at 2 PM EST (19:00 UTC)
-        vm.warp(1672848000); // Wednesday, January 4, 2023 19:00:00 UTC
+        vm.warp(1_672_848_000); // Wednesday, January 4, 2023 19:00:00 UTC
         officeHours.perform(); // Should not revert
     }
 
     function testPerformOutsideOfficeHours() public {
         // Set time to Wednesday (3) at 8 PM EST (01:00 UTC next day)
-        vm.warp(1672876800); // Thursday, January 5, 2023 01:00:00 UTC
+        vm.warp(1_672_876_800); // Thursday, January 5, 2023 01:00:00 UTC
         vm.expectRevert(OfficeHoursAction.OutsideOfficeHours.selector);
         officeHours.perform();
     }
 
     function testPerformOnWeekend() public {
         // Set time to Saturday (6) at 2 PM EST (19:00 UTC)
-        vm.warp(1673107200); // Saturday, January 7, 2023 19:00:00 UTC
+        vm.warp(1_673_107_200); // Saturday, January 7, 2023 19:00:00 UTC
         vm.expectRevert(OfficeHoursAction.OutsideOfficeDays.selector);
         officeHours.perform();
     }
@@ -88,7 +88,7 @@ contract OfficeHoursActionTest is Test {
     ) public {
         // Bound the input values to reasonable ranges
         _minLocalHour = bound(_minLocalHour, 0, 23);
-        _maxLocalHour = bound(_maxLocalHour, _minLocalHour+1, 24);
+        _maxLocalHour = bound(_maxLocalHour, _minLocalHour + 1, 24);
         _localHourOffset = int256(bound(uint256(int256(_localHourOffset)), 0, 26)) - 12; // -12 to 14
         _minDayOfWeek = bound(_minDayOfWeek, 1, 7);
         _maxDayOfWeek = bound(_maxDayOfWeek, _minDayOfWeek, 7);
