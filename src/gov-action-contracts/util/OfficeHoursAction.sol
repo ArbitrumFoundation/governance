@@ -67,9 +67,9 @@ contract OfficeHoursAction {
         if (weekday < minDayOfWeek || weekday > maxDayOfWeek) revert OutsideOfficeDays();
 
         // This is UTC time, leap seconds are not accounted for
-        uint256 hoursSinceMidnight = (block.timestamp % 86_400) / 3600;
+        int256 hoursSinceMidnight = int256((block.timestamp % 86_400) / 3600);
         // Apply offset to convert to local time, also wrap if needed
-        uint256 localHour = (hoursSinceMidnight + uint256(localHourOffset) + 24) % 24;
+        uint256 localHour = uint256(hoursSinceMidnight + localHourOffset + 24) % 24;
 
         if (localHour < minLocalHour || localHour >= maxLocalHour) revert OutsideOfficeHours();
     }
