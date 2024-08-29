@@ -23,6 +23,17 @@ contract OfficeHoursAction {
     /// @notice The minimum timestamp to execute the action on
     uint256 public immutable minimumTimestamp;
 
+    error InvalidHourRange();
+    error InvalidHourStart();
+    error InvalidHourEnd();
+    error InvalidLocalHourOffset();
+    error InvalidDayOfWeekRange();
+    error InvalidDayOfWeekStart();
+    error InvalidDayOfWeekEnd();
+    error MinimumTimestampNotMet();
+    error OutsideOfficeDays();
+    error OutsideOfficeHours();
+
     constructor(
         uint256 _minLocalHour,
         uint256 _maxLocalHour,
@@ -31,13 +42,13 @@ contract OfficeHoursAction {
         uint256 _maxDayOfWeek,
         uint256 _minimumTimestamp
     ) {
-        require(_minLocalHour < _maxLocalHour, "Invalid hour range");
-        require(_minLocalHour <= 24, "Invalid hour start");
-        require(_maxLocalHour > 0 && _maxLocalHour <= 24, "Invalid hour end");
-        require(_localHourOffset >= -12 && _localHourOffset <= 14, "Invalid local hour offset");
-        require(_minDayOfWeek <= _maxDayOfWeek, "Invalid day of week range");
-        require(_minDayOfWeek >= 1 && _minDayOfWeek <= 5, "Invalid day of week start");
-        require(_maxDayOfWeek >= 1 && _maxDayOfWeek <= 5, "Invalid day of week end");
+        if (_maxLocalHour <= _minLocalHour) revert InvalidHourRange();
+        if (_minLocalHour > 24) revert InvalidHourStart();
+        if (_maxLocalHour == 0 || _maxLocalHour > 24) revert InvalidHourEnd();
+        if (_localHourOffset < -12 || _localHourOffset > 14) revert InvalidLocalHourOffset();
+        if (_minDayOfWeek > _maxDayOfWeek) revert InvalidDayOfWeekRange();
+        if (_minDayOfWeek == 0 || _minDayOfWeek > 7) revert InvalidDayOfWeekStart();
+        if (_maxDayOfWeek == 0 || _maxDayOfWeek > 7) revert InvalidDayOfWeekEnd();
 
         minLocalHour = _minLocalHour;
         maxLocalHour = _maxLocalHour;
@@ -49,23 +60,17 @@ contract OfficeHoursAction {
 
     /// @notice Revert if the current time is outside of office hours, or if the minimum timestamp is not met.
     function perform() external view {
-        require(block.timestamp >= minimumTimestamp, "Cannot execute before minimum timestamp");
+        if (block.timestamp < minimumTimestamp) revert MinimumTimestampNotMet();
 
         // Convert timestamp to weekday (1 = Monday, 7 = Sunday)
         uint256 weekday = ((block.timestamp / 86_400 + 3) % 7) + 1;
-        require(
-            weekday >= minDayOfWeek && weekday <= maxDayOfWeek,
-            "Cannot execute outside the office days"
-        );
+        if (weekday < minDayOfWeek || weekday > maxDayOfWeek) revert OutsideOfficeDays();
 
         // This is UTC time, leap seconds are not accounted for
         uint256 hoursSinceMidnight = (block.timestamp % 86_400) / 3600;
         // Apply offset to convert to local time, also wrap if needed
-        uint256 localHour = (hoursSinceMidnight + localHourOffset + 24) % 24;
+        uint256 localHour = (hoursSinceMidnight + uint256(localHourOffset) + 24) % 24;
 
-        require(
-            localHour >= minLocalHour && localHour < maxLocalHour,
-            "Cannot execute outside of office hours"
-        );
+        if (localHour < minLocalHour || localHour >= maxLocalHour) revert OutsideOfficeHours();
     }
 }
