@@ -1388,13 +1388,9 @@ export class RetryableExecutionStage implements ProposalStage {
       try {
         await (await this.l1ToL2Message.redeem()).wait();
         break;
-      } catch (e) {
-        const knownPending = JSON.parse(process.env.PENDING_RETRYABLES?.toLowerCase() || "[]");
+      } catch {
         const id = this.l1ToL2Message.retryableCreationId.toLowerCase();
-        if (!knownPending.includes(id)) {
-          throw e
-        }
-        console.log(`Failed to redeem retryable ${id}, retrying in 60s`);
+        console.error(`Failed to redeem retryable ${id}, retrying in 60s`);
         await wait(60_000);
       }
     }
