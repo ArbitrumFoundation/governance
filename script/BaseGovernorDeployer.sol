@@ -7,7 +7,7 @@ import {BaseDeployer} from "script/BaseDeployer.sol";
 import {SharedGovernorConstants} from "script/SharedGovernorConstants.sol";
 import {L2ArbitrumGovernorV2} from "src/L2ArbitrumGovernorV2.sol";
 import {TransparentUpgradeableProxy} from
-    "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+    "openzeppelin-v5/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {TimelockControllerUpgradeable} from
     "openzeppelin-upgradeable-v5/governance/TimelockControllerUpgradeable.sol";
 import {IVotes} from "openzeppelin-v5/governance/utils/IVotes.sol";

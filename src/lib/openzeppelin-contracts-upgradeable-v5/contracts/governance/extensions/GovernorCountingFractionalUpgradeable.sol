@@ -1,29 +1,24 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity 0.8.26;
+pragma solidity ^0.8.20;
 
-import {GovernorUpgradeable} from "openzeppelin-upgradeable-v5/governance/GovernorUpgradeable.sol";
-import {GovernorCountingSimpleUpgradeable} from
-    "openzeppelin-upgradeable-v5/governance/extensions/GovernorCountingSimpleUpgradeable.sol";
-import {Math} from "openzeppelin-v5/utils/math/Math.sol";
-import {Initializable} from "openzeppelin-upgradeable-v5/proxy/utils/Initializable.sol";
+import {GovernorUpgradeable} from "../GovernorUpgradeable.sol";
+import {GovernorCountingSimpleUpgradeable} from "./GovernorCountingSimpleUpgradeable.sol";
+import {Math} from "@openzeppelin-v5/contracts/utils/math/Math.sol";
+import {Initializable} from "../../proxy/utils/Initializable.sol";
 
 /**
  * @dev Extension of {Governor} for fractional voting.
  *
  * Similar to {GovernorCountingSimple}, this contract is a votes counting module for {Governor} that supports 3 options:
- * Against, For, Abstain. Additionally, it includes a fourth option: Fractional, which allows voters to split their
- * voting
+ * Against, For, Abstain. Additionally, it includes a fourth option: Fractional, which allows voters to split their voting
  * power amongst the other 3 options.
  *
- * Votes cast with the Fractional support must be accompanied by a `params` argument that is three packed `uint128`
- * values
- * representing the weight the delegate assigns to Against, For, and Abstain respectively. For those votes cast for the
- * other
+ * Votes cast with the Fractional support must be accompanied by a `params` argument that is three packed `uint128` values
+ * representing the weight the delegate assigns to Against, For, and Abstain respectively. For those votes cast for the other
  * 3 options, the `params` argument must be empty.
  *
- * This is mostly useful when the delegate is a contract that implements its own rules for voting. These
- * delegate-contracts
+ * This is mostly useful when the delegate is a contract that implements its own rules for voting. These delegate-contracts
  * can cast fractional votes according to the preferences of multiple entities delegating their voting power.
  *
  * Some example use cases include:
@@ -32,15 +27,10 @@ import {Initializable} from "openzeppelin-upgradeable-v5/proxy/utils/Initializab
  * * Voting from an L2 with tokens held by a bridge
  * * Voting privately from a shielded pool using zero knowledge proofs.
  *
- * Based on ScopeLift's
- * GovernorCountingFractional[https://github.com/ScopeLift/flexible-voting/blob/e5de2efd1368387b840931f19f3c184c85842761/src/GovernorCountingFractional.sol]
- *
- * @custom:security-contact https://immunefi.com/bug-bounty/arbitrum/information/
+ * Based on ScopeLift's GovernorCountingFractional[https://github.com/ScopeLift/flexible-voting/blob/e5de2efd1368387b840931f19f3c184c85842761/src/GovernorCountingFractional.sol]
  */
 abstract contract GovernorCountingFractionalUpgradeable is Initializable, GovernorUpgradeable {
     using Math for *;
-
-    error GovernorInvalidVoteParams();
 
     uint8 internal constant VOTE_TYPE_FRACTIONAL = 255;
 
@@ -48,7 +38,7 @@ abstract contract GovernorCountingFractionalUpgradeable is Initializable, Govern
         uint256 againstVotes;
         uint256 forVotes;
         uint256 abstainVotes;
-        mapping(address voter => uint256 votes) usedVotes;
+        mapping(address voter => uint256) usedVotes;
     }
 
     /// @custom:storage-location erc7201:openzeppelin.storage.GovernorCountingFractional
@@ -56,12 +46,11 @@ abstract contract GovernorCountingFractionalUpgradeable is Initializable, Govern
         /**
          * @dev Mapping from proposal ID to vote tallies for that proposal.
          */
-        mapping(uint256 proposalId => ProposalVote proposalVote) _proposalVotes;
+        mapping(uint256 => ProposalVote) _proposalVotes;
     }
 
-    // keccak256(abi.encode(uint256(keccak256("openzeppelin.storage.GovernorCountingFractional")) - 1)) &
-    // ~bytes32(uint256(0xff))
-    bytes32 private constant GOVERNOR_COUNTING_FRACTIONAL_STORAGE_LOCATION =
+    // keccak256(abi.encode(uint256(keccak256("openzeppelin.storage.GovernorCountingFractional")) - 1)) & ~bytes32(uint256(0xff))
+    bytes32 private constant GovernorCountingFractionalStorageLocation =
         0xd073797d8f9d07d835a3fc13195afeafd2f137da609f97a44f7a3aa434170800;
 
     function _getGovernorCountingFractionalStorage()
@@ -70,7 +59,7 @@ abstract contract GovernorCountingFractionalUpgradeable is Initializable, Govern
         returns (GovernorCountingFractionalStorage storage $)
     {
         assembly {
-            $.slot := GOVERNOR_COUNTING_FRACTIONAL_STORAGE_LOCATION
+            $.slot := GovernorCountingFractionalStorageLocation
         }
     }
 
@@ -201,26 +190,18 @@ abstract contract GovernorCountingFractionalUpgradeable is Initializable, Govern
         // - "Full" voting: `support = 0` (Against), `1` (For) or `2` (Abstain), with empty params.
         // - "Fractional" voting: `support = 255`, with 48 bytes params.
         if (support == uint8(GovernorCountingSimpleUpgradeable.VoteType.Against)) {
-            if (params.length != 0) {
-                revert GovernorInvalidVoteParams();
-            }
+            if (params.length != 0) revert GovernorInvalidVoteParams();
             usedWeight = againstVotes = remainingWeight;
         } else if (support == uint8(GovernorCountingSimpleUpgradeable.VoteType.For)) {
-            if (params.length != 0) {
-                revert GovernorInvalidVoteParams();
-            }
+            if (params.length != 0) revert GovernorInvalidVoteParams();
             usedWeight = forVotes = remainingWeight;
         } else if (support == uint8(GovernorCountingSimpleUpgradeable.VoteType.Abstain)) {
-            if (params.length != 0) {
-                revert GovernorInvalidVoteParams();
-            }
+            if (params.length != 0) revert GovernorInvalidVoteParams();
             usedWeight = abstainVotes = remainingWeight;
         } else if (support == VOTE_TYPE_FRACTIONAL) {
             // The `params` argument is expected to be three packed `uint128`:
             // `abi.encodePacked(uint128(againstVotes), uint128(forVotes), uint128(abstainVotes))`
-            if (params.length != 0x30) {
-                revert GovernorInvalidVoteParams();
-            }
+            if (params.length != 0x30) revert GovernorInvalidVoteParams();
 
             assembly ("memory-safe") {
                 againstVotes := shr(128, mload(add(params, 0x20)))
@@ -239,15 +220,9 @@ abstract contract GovernorCountingFractionalUpgradeable is Initializable, Govern
 
         // update votes tracking
         ProposalVote storage details = $._proposalVotes[proposalId];
-        if (againstVotes > 0) {
-            details.againstVotes += againstVotes;
-        }
-        if (forVotes > 0) {
-            details.forVotes += forVotes;
-        }
-        if (abstainVotes > 0) {
-            details.abstainVotes += abstainVotes;
-        }
+        if (againstVotes > 0) details.againstVotes += againstVotes;
+        if (forVotes > 0) details.forVotes += forVotes;
+        if (abstainVotes > 0) details.abstainVotes += abstainVotes;
         details.usedVotes[account] += usedWeight;
 
         return usedWeight;

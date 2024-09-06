@@ -8,7 +8,7 @@ import {TimelockControllerUpgradeable} from
 import {IVotes} from "openzeppelin-v5/governance/utils/IVotes.sol";
 import {TransparentUpgradeableProxy} from
     "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
-import {ERC20Mock} from "openzeppelin-contracts-v5/contracts/mocks/token/ERC20Mock.sol";
+import {ERC20Mock} from "openzeppelin-v5/mocks/token/ERC20Mock.sol";
 import {ERC20VotesUpgradeable} from
     "openzeppelin-upgradeable-v5/token/ERC20/extensions/ERC20VotesUpgradeable.sol";
 import {GovernorUpgradeable} from "openzeppelin-upgradeable-v5/governance/GovernorUpgradeable.sol";
