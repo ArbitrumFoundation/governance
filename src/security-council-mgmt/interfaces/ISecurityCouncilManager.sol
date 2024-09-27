@@ -40,6 +40,11 @@ interface ISecurityCouncilManager {
     error SecurityCouncilNotInManager(SecurityCouncilData securiyCouncilData);
     error SecurityCouncilAlreadyInRouter(SecurityCouncilData securiyCouncilData);
 
+    // rotation errors
+    error RotationTooSoon(address rotator, uint256 rotatableWhen);
+    error GovernorNotReplacer();
+    error NewAddressIsContender(uint256 proposalId);
+
     /// @notice initialize SecurityCouncilManager.
     /// @param _firstCohort addresses of first cohort
     /// @param _secondCohort addresses of second cohort
@@ -56,39 +61,43 @@ interface ISecurityCouncilManager {
         UpgradeExecRouteBuilder _router
     ) external;
     /// @notice Replaces a whole cohort.
-    /// @dev    Initiaties cross chain messages to update the individual Security Councils.
+    /// @dev    Initiates cross chain messages to update the individual Security Councils.
     /// @param _newCohort   New cohort members to replace existing cohort. Must have 6 members.
     /// @param _cohort      Cohort to replace.
     function replaceCohort(address[] memory _newCohort, Cohort _cohort) external;
     /// @notice Add a member to the specified cohort.
     ///         Cohorts cannot have more than 6 members, so the cohort must have less than 6 in order to call this.
     ///         New member cannot already be a member of either cohort.
-    /// @dev    Initiaties cross chain messages to update the individual Security Councils.
+    /// @dev    Initiates cross chain messages to update the individual Security Councils.
     ///         When adding a member, make sure that the key does not conflict with any contenders/nominees of ongoing elections.
     /// @param _newMember   New member to add
     /// @param _cohort      Cohort to add member to
     function addMember(address _newMember, Cohort _cohort) external;
     /// @notice Remove a member.
     /// @dev    Searches both cohorts for the member.
-    ///         Initiaties cross chain messages to update the individual Security Councils
+    ///         Initiates cross chain messages to update the individual Security Councils
     /// @param _member  Member to remove
     function removeMember(address _member) external;
     /// @notice Replace a member in a council - equivalent to removing a member, then adding another in its place.
-    ///         Idendities of members should be different.
+    ///         Identities of members should be different.
     ///         Functionality is equivalent to replaceMember,
     ///         though emits a different event to distinguish the security council's intent (different identities).
-    /// @dev    Initiaties cross chain messages to update the individual Security Councils.
+    /// @dev    Initiates cross chain messages to update the individual Security Councils.
     ///         When replacing a member, make sure that the key does not conflict with any contenders/nominees of ongoing electoins.
     /// @param _memberToReplace Security Council member to remove
     /// @param _newMember       Security Council member to add in their place
     function replaceMember(address _memberToReplace, address _newMember) external;
-    /// @notice Security council member can rotate out their address for a new one; _currentAddress and _newAddress should be of the same identity. Functionality is equivalent to replaceMember, tho emits a different event to distinguish the security council's intent (same identity).
-    ///         Rotation must be initiated by the security council.
-    /// @dev    Initiaties cross chain messages to update the individual Security Councils.
-    ///         When rotating a member, make sure that the key does not conflict with any contenders/nominees of ongoing elections.
-    /// @param _currentAddress  Address to rotate out
-    /// @param _newAddress      Address to rotate in
-    function rotateMember(address _currentAddress, address _newAddress) external;
+    /// @notice Recover a address from an addMember signed message
+    ///         Used when rotating a member for the new address to be added
+    /// @param nonce        The nonce that was signed
+    /// @param signature    The signature over the addMember(nonce) message
+    function recoverAddMemberMessage(uint256 nonce, bytes calldata signature) external view returns (address);
+    /// @notice Security council member can rotate out their address for a new one
+    /// @dev    Initiates cross chain messages to update the individual Security Councils.
+    ///         Cannot rotate to a contender in an ongoing election, as this could cause a clash that would stop the election result executing
+    /// @param memberElectionGovernor   The current member election governor - must have the COHORT_REPLACER_ROLE role
+    /// @param signature                A signature from the new member address over the 712 addMember hash
+    function rotateMember(address memberElectionGovernor, bytes calldata signature) external;
     /// @notice Is the account a member of the first cohort
     function firstCohortIncludes(address account) external view returns (bool);
     /// @notice Is the account a member of the second cohort

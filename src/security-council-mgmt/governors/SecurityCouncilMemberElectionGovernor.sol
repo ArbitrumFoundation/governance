@@ -24,7 +24,7 @@ contract SecurityCouncilMemberElectionGovernor is
     ElectionGovernor,
     ISecurityCouncilMemberElectionGovernor
 {
-    /// @notice The SecurityCouncilNomineeElectionGovernor that creates proposals for this governor and contains the list of compliant nominees
+    /// @inheritdoc ISecurityCouncilMemberElectionGovernor
     ISecurityCouncilNomineeElectionGovernor public nomineeElectionGovernor;
 
     /// @notice The SecurityCouncilManager that will execute the election result

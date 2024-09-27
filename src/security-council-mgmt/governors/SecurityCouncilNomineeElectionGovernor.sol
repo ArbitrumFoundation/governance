@@ -67,7 +67,7 @@ contract SecurityCouncilNomineeElectionGovernor is
     /// @notice Security council member election governor contract
     ISecurityCouncilMemberElectionGovernor public securityCouncilMemberElectionGovernor;
 
-    /// @notice Number of elections created
+    /// @inheritdoc ISecurityCouncilNomineeElectionGovernor
     uint256 public electionCount;
 
     /// @notice Maps proposalId to ElectionInfo
@@ -422,7 +422,7 @@ contract SecurityCouncilNomineeElectionGovernor is
         public
         view
         virtual
-        override
+        override(ISecurityCouncilNomineeElectionGovernor, SecurityCouncilNomineeElectionGovernorCountingUpgradeable)
         returns (bool)
     {
         return _elections[proposalId].isContender[possibleContender];

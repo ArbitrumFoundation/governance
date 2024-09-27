@@ -11,7 +11,10 @@ import "../UpgradeExecRouteBuilder.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/governance/IGovernorUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/cryptography/draft-EIP712Upgradeable.sol";
 import "./Common.sol";
+import "./interfaces/ISecurityCouncilMemberElectionGovernor.sol";
 
 /// @title  The Security Council Manager
 /// @notice The source of truth for an array of Security Councils that are under management.
@@ -28,7 +31,8 @@ import "./Common.sol";
 contract SecurityCouncilManager is
     Initializable,
     AccessControlUpgradeable,
-    ISecurityCouncilManager
+    ISecurityCouncilManager,
+    EIP712Upgradeable
 {
     event CohortReplaced(address[] newCohort, Cohort indexed cohort);
     event MemberAdded(address indexed newMember, Cohort indexed cohort);
@@ -76,6 +80,13 @@ contract SecurityCouncilManager is
     /// @notice Size of cohort under ordinary circumstances
     uint256 public cohortSize;
 
+    /// @notice The timestamp at which the address was last rotated
+    mapping(address => uint256) lastRotated;
+    
+    /// @notice There is a minimum period between when an address can be rotated
+    ///         This is to ensure a single member cannot do many rotations in a row
+    uint256 public minRotationPeriod;
+
     /// @notice Magic value used by the L1 timelock to indicate that a retryable ticket should be created
     ///         Value is defined in L1ArbitrumTimelock contract https://etherscan.io/address/0xE6841D92B0C345144506576eC13ECf5103aC7f49#readProxyContract#F5
     address public constant RETRYABLE_TICKET_MAGIC = 0xa723C008e76E379c55599D2E4d93879BeaFDa79C;
@@ -122,6 +133,8 @@ contract SecurityCouncilManager is
         for (uint256 i = 0; i < _securityCouncils.length; i++) {
             _addSecurityCouncil(_securityCouncils[i]);
         }
+
+        __EIP712_init_unchained("SecurityCouncilManager", "1");
     }
 
     /// @inheritdoc ISecurityCouncilManager
@@ -207,14 +220,55 @@ contract SecurityCouncilManager is
     }
 
     /// @inheritdoc ISecurityCouncilManager
-    function rotateMember(address _currentAddress, address _newAddress)
-        external
-        onlyRole(MEMBER_ROTATOR_ROLE)
-    {
-        Cohort cohort = _swapMembers(_currentAddress, _newAddress);
+    function recoverAddMemberMessage(uint256 nonce, bytes calldata signature) public view returns (address) {
+        bytes32 digest = _hashTypedDataV4(keccak256(abi.encode(
+            keccak256("addMember(uint256 nonce)"),
+            nonce
+        )));
+        return ECDSAUpgradeable.recover(digest, signature);
+    }
+
+    /// @inheritdoc ISecurityCouncilManager
+    function rotateMember(address memberElectionGovernor, bytes calldata signature) external {
+        uint256 lastRotatedTimestamp = lastRotated[msg.sender];
+        if(block.timestamp < lastRotatedTimestamp + minRotationPeriod) {
+            revert RotationTooSoon(msg.sender, lastRotatedTimestamp + minRotationPeriod);
+        }
+
+        // we enforce that a the new address is an eoa in the same way do
+        // in NomineeGovernor.addContender
+        address newAddress = recoverAddMemberMessage(updateNonce, signature);
+
+        // the cohort replacer should be the member election governor
+        // we don't explicitly store the member election governor in this manager
+        // so we pass it in here and verify it as having the correct role
+        // since cohort replacing can change any member it's already a trusted entity
+        if(!hasRole(COHORT_REPLACER_ROLE, memberElectionGovernor)) {
+            revert GovernorNotReplacer();
+        }
+        // use the member election governor to get the nominee governor
+        ISecurityCouncilNomineeElectionGovernor nomineeGovernor = ISecurityCouncilMemberElectionGovernor(memberElectionGovernor).nomineeElectionGovernor();
+        // election count is increment after proposal, so the current election is electionCount - 1
+        // we use this to form the proposal id for that election, and then check isContender
+        uint256 currentElectionIndex = nomineeGovernor.electionCount() - 1;
+        (
+            address[] memory targets,
+            uint256[] memory values,
+            bytes[] memory callDatas,
+            string memory description
+        ) = nomineeGovernor.getProposeArgs(currentElectionIndex);
+        uint256 proposalId = IGovernorUpgradeable(address(nomineeGovernor)).hashProposal(targets, values, callDatas, keccak256(bytes(description)));
+        // CHRIS: TODO: we could also check what cohort will be replaced by that election, 
+        //            : since do allow clashes in the same cohort
+        if(nomineeGovernor.isContender(proposalId, newAddress)) {
+            revert NewAddressIsContender(proposalId);
+        }
+
+        lastRotated[newAddress] = block.timestamp;
+        Cohort cohort = _swapMembers(msg.sender, newAddress);
         emit MemberRotated({
-            replacedAddress: _currentAddress,
-            newAddress: _newAddress,
+            replacedAddress: msg.sender,
+            newAddress: newAddress,
             cohort: cohort
         });
     }
