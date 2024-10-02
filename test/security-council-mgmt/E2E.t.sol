@@ -113,8 +113,6 @@ contract E2E is Test, DeployGnosisWithModule {
     address member17 = vm.addr(653);
     address member18 = vm.addr(654);
 
-    
-
     address[] members = [
         member1,
         member2,
@@ -254,11 +252,7 @@ contract E2E is Test, DeployGnosisWithModule {
         UpgradeExecutor novaExecutorLogic = new UpgradeExecutor();
         UpgradeExecutor novaExecutor = UpgradeExecutor(
             address(
-                new TransparentUpgradeableProxy(
-                address(novaExecutorLogic),
-                address(novaAdmin),
-                ""
-                )
+                new TransparentUpgradeableProxy(address(novaExecutorLogic), address(novaAdmin), "")
             )
         );
         address[] memory executors = new address[](2);
@@ -458,7 +452,9 @@ contract E2E is Test, DeployGnosisWithModule {
         SigUtils sigUtils = new SigUtils(address(vars.secDeployedContracts.nomineeElectionGovernor));
         for (uint256 i = 0; i < newCohort1.length; i++) {
             uint256 pk = 649 + i; // member 13 - 18 priv keys
-            vars.secDeployedContracts.nomineeElectionGovernor.addContender(propId, sigUtils.signAddContenderMessage(propId, pk));
+            vars.secDeployedContracts.nomineeElectionGovernor.addContender(
+                propId, sigUtils.signAddContenderMessage(propId, pk)
+            );
         }
 
         // vote for them

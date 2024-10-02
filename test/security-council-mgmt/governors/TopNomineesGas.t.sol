@@ -22,7 +22,7 @@ contract TopNomineesGasTest is Test {
         securityCouncilManager: ISecurityCouncilManager(address(0x22)),
         securityCouncilMemberElectionGovernor: ISecurityCouncilMemberElectionGovernor(
             payable(address(0x33))
-            ),
+        ),
         token: IVotesUpgradeable(address(0x44)),
         owner: address(0x55),
         quorumNumeratorValue: 10_000 / N,
@@ -154,13 +154,7 @@ contract TopNomineesGasTest is Test {
     }
 
     function _deployProxy(address impl) internal returns (address) {
-        return address(
-            new TransparentUpgradeableProxy(
-                impl,
-                proxyAdmin,
-                bytes("")
-            )
-        );
+        return address(new TransparentUpgradeableProxy(impl, proxyAdmin, bytes("")));
     }
 
     function _mockGetPastVotes(address account, uint256 votes) internal {

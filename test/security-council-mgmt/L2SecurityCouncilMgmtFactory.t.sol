@@ -164,9 +164,7 @@ contract L2SecurityCouncilMgmtFactoryTest is Test, DeployGnosisWithModule {
             "memberElectionGovernor has replacer role"
         );
         assertEq(
-            securityCouncilManager.minRotationPeriod(), 
-            minRotationPeriod, 
-            "Min rotation period"
+            securityCouncilManager.minRotationPeriod(), minRotationPeriod, "Min rotation period"
         );
 
         assertTrue(

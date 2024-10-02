@@ -124,7 +124,7 @@ contract SecurityCouncilManagerTest is Test {
         chainAndUpExecLocation.push(firstChainAndUpExecLocation);
         chainAndUpExecLocation.push(secondChainAndUpExecLocation);
         uerb = new UpgradeExecRouteBuilder({
-            _upgradeExecutors:chainAndUpExecLocation,
+            _upgradeExecutors: chainAndUpExecLocation,
             _l1ArbitrumTimelock: l1ArbitrumTimelock,
             _l1TimelockMinDelay: l1TimelockMinDelay
         });
@@ -141,47 +141,49 @@ contract SecurityCouncilManagerTest is Test {
         l2CoreGovTimelock = payable(address(new MockArbitrumTimelock()));
 
         token = L2ArbitrumToken(payable(TestUtil.deployProxy(address(new L2ArbitrumToken()))));
-        token.initialize(
-            address(137),
-            10000000000,
-            address(this)
+        token.initialize(address(137), 10_000_000_000, address(this));
+
+        SecurityCouncilMemberElectionGovernor memGov = SecurityCouncilMemberElectionGovernor(
+            payable(TestUtil.deployProxy(address(new SecurityCouncilMemberElectionGovernor())))
+        );
+        SecurityCouncilNomineeElectionGovernor nomGov = SecurityCouncilNomineeElectionGovernor(
+            payable(TestUtil.deployProxy(address(new SecurityCouncilNomineeElectionGovernor())))
         );
 
-        SecurityCouncilMemberElectionGovernor memGov = SecurityCouncilMemberElectionGovernor(payable(TestUtil.deployProxy(address(new SecurityCouncilMemberElectionGovernor()))));
-        SecurityCouncilNomineeElectionGovernor nomGov = SecurityCouncilNomineeElectionGovernor(payable(TestUtil.deployProxy(address(new SecurityCouncilNomineeElectionGovernor()))));
-        
-        SecurityCouncilNomineeElectionGovernor.InitParams memory initParams = SecurityCouncilNomineeElectionGovernor.InitParams(
-            Date(2000, 1, 1, 1),
-            0,
-            address(0),
-            scm,
-            memGov,
-            token,
-            address(0),
-            20,
-            20
+        SecurityCouncilNomineeElectionGovernor.InitParams memory initParams =
+        SecurityCouncilNomineeElectionGovernor.InitParams(
+            Date(2000, 1, 1, 1), 0, address(0), scm, memGov, token, address(0), 20, 20
         );
         nomGov.initialize(initParams);
-        memGov.initialize(
-            nomGov, 
-            scm, 
-            token, 
-            address(10), 
-            10, 
-            5
-        );
+        memGov.initialize(nomGov, scm, token, address(10), 10, 5);
 
         roles.cohortUpdator = address(memGov);
         memberElectionGovernor = address(memGov);
         nomineeElectionGovernor = address(nomGov);
 
         securityCouncils.push(firstSC);
-        scm.initialize(firstCohort, secondCohort, securityCouncils, roles, l2CoreGovTimelock, uerb, minRotationPeriod);
+        scm.initialize(
+            firstCohort,
+            secondCohort,
+            securityCouncils,
+            roles,
+            l2CoreGovTimelock,
+            uerb,
+            minRotationPeriod
+        );
     }
 
     function testInitialization() public {
         vm.expectRevert("Initializable: contract is already initialized");
-        scm.initialize(firstCohort, secondCohort, securityCouncils, roles, l2CoreGovTimelock, uerb, minRotationPeriod);
+        scm.initialize(
+            firstCohort,
+            secondCohort,
+            securityCouncils,
+            roles,
+            l2CoreGovTimelock,
+            uerb,
+            minRotationPeriod
+        );
 
         assertTrue(
             TestUtil.areUniqueAddressArraysEqual(firstCohort, scm.getFirstCohort()),
@@ -394,14 +396,19 @@ contract SecurityCouncilManagerTest is Test {
         return abi.encodePacked(r, s, v);
     }
 
-    function checkCohortChange(address newMember, uint256 index, address[] memory cohort, Cohort c) public {
+    function checkCohortChange(address newMember, uint256 index, address[] memory cohort, Cohort c)
+        public
+    {
         address[] memory newSecondCohortArray = new address[](6);
         for (uint256 i = 0; i < cohort.length; i++) {
             newSecondCohortArray[i] = cohort[i];
         }
         newSecondCohortArray[index] = newMember;
         assertTrue(
-            TestUtil.areUniqueAddressArraysEqual(newSecondCohortArray, c == Cohort.FIRST ? scm.getFirstCohort() : scm.getSecondCohort() ),
+            TestUtil.areUniqueAddressArraysEqual(
+                newSecondCohortArray,
+                c == Cohort.FIRST ? scm.getFirstCohort() : scm.getSecondCohort()
+            ),
             "cohort updated"
         );
     }
@@ -415,11 +422,18 @@ contract SecurityCouncilManagerTest is Test {
         bytes memory signature = sign(pk1, digest);
         uint256 startNonce = scm.updateNonce();
 
-        vm.expectRevert(abi.encodeWithSelector(ISecurityCouncilManager.InvalidNewAddress.selector, 0x00e6008973a133b0e603275498f18321534c3721f3));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ISecurityCouncilManager.InvalidNewAddress.selector,
+                0x00e6008973a133b0e603275498f18321534c3721f3
+            )
+        );
         vm.prank(secondCohort[2]);
         scm.rotateMember(memberToRotate1, memberElectionGovernor, signature);
 
-        vm.expectRevert(abi.encodeWithSelector(ISecurityCouncilManager.GovernorNotReplacer.selector));
+        vm.expectRevert(
+            abi.encodeWithSelector(ISecurityCouncilManager.GovernorNotReplacer.selector)
+        );
         vm.prank(originalMember);
         scm.rotateMember(memberToRotate1, address(137), signature);
 
@@ -438,13 +452,25 @@ contract SecurityCouncilManagerTest is Test {
         bytes32 digest1 = scm.getRotateMemberHash(memberToRotate1, scm.updateNonce());
         bytes memory signature1 = sign(pk2, digest1);
 
-        vm.expectRevert(abi.encodeWithSelector(ISecurityCouncilManager.RotationTooSoon.selector, memberToRotate1, startTime + minRotationPeriod));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ISecurityCouncilManager.RotationTooSoon.selector,
+                memberToRotate1,
+                startTime + minRotationPeriod
+            )
+        );
         vm.prank(memberToRotate1);
         scm.rotateMember(memberToRotate1, memberElectionGovernor, signature1);
 
         vm.warp(startTime + minRotationPeriod - 1);
 
-        vm.expectRevert(abi.encodeWithSelector(ISecurityCouncilManager.RotationTooSoon.selector, memberToRotate1, startTime + minRotationPeriod));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ISecurityCouncilManager.RotationTooSoon.selector,
+                memberToRotate1,
+                startTime + minRotationPeriod
+            )
+        );
         vm.prank(memberToRotate1);
         scm.rotateMember(memberToRotate1, memberElectionGovernor, signature1);
 
@@ -460,28 +486,34 @@ contract SecurityCouncilManagerTest is Test {
             TestUtil.areUniqueAddressArraysEqual(firstCohort, scm.getFirstCohort()),
             "first cohort untouched 2"
         );
-        assertEq(scm.lastRotated(memberToRotate2), startTime + minRotationPeriod, "Member 2 last rotated");
+        assertEq(
+            scm.lastRotated(memberToRotate2), startTime + minRotationPeriod, "Member 2 last rotated"
+        );
     }
 
     function addAllContendersVoteAndExecute(uint256 proposalId) public {
-        SecurityCouncilNomineeElectionGovernor nGov = SecurityCouncilNomineeElectionGovernor(payable(nomineeElectionGovernor));
+        SecurityCouncilNomineeElectionGovernor nGov =
+            SecurityCouncilNomineeElectionGovernor(payable(nomineeElectionGovernor));
         SigUtils sigUtils = new SigUtils(nomineeElectionGovernor);
         token.delegate(address(this));
 
-        for (uint i = 0; i < 6; i++) {
+        for (uint256 i = 0; i < 6; i++) {
             bytes memory sig = sigUtils.signAddContenderMessage(proposalId, i + 1000);
             nGov.addContender(proposalId, sig);
         }
         vm.roll(nGov.proposalDeadline(proposalId));
-        for (uint i = 0; i < 6; i++) {
+        for (uint256 i = 0; i < 6; i++) {
             nGov.castVoteWithReasonAndParams({
                 proposalId: proposalId,
                 support: 1,
                 reason: "",
-                params: abi.encode(vm.addr(i + 1000), 20000000)
-            });    
+                params: abi.encode(vm.addr(i + 1000), 20_000_000)
+            });
         }
-        vm.roll(SecurityCouncilNomineeElectionGovernorTiming(payable(address(nomineeElectionGovernor))).proposalVettingDeadline(proposalId) + 1);
+        vm.roll(
+            SecurityCouncilNomineeElectionGovernorTiming(payable(address(nomineeElectionGovernor)))
+                .proposalVettingDeadline(proposalId) + 1
+        );
         (
             address[] memory targets,
             uint256[] memory values,
@@ -493,31 +525,52 @@ contract SecurityCouncilManagerTest is Test {
 
     function testRotateMemberNotContender() public {
         address originalMember = secondCohort[1];
-        uint256 startTime = SecurityCouncilNomineeElectionGovernor(payable(nomineeElectionGovernor)).electionToTimestamp(0);
+        uint256 startTime = SecurityCouncilNomineeElectionGovernor(payable(nomineeElectionGovernor))
+            .electionToTimestamp(0);
         vm.warp(startTime);
 
         // start an election and add a contender
         SigUtils sigUtils = new SigUtils(nomineeElectionGovernor);
-        uint256 proposalId = SecurityCouncilNomineeElectionGovernor(payable(nomineeElectionGovernor)).createElection();
+        uint256 proposalId = SecurityCouncilNomineeElectionGovernor(
+            payable(nomineeElectionGovernor)
+        ).createElection();
         bytes memory sig = sigUtils.signAddContenderMessage(proposalId, pk1);
-        SecurityCouncilNomineeElectionGovernor(payable(nomineeElectionGovernor)).addContender(proposalId, sig);
+        SecurityCouncilNomineeElectionGovernor(payable(nomineeElectionGovernor)).addContender(
+            proposalId, sig
+        );
 
         bytes32 digest = scm.getRotateMemberHash(originalMember, scm.updateNonce());
         bytes memory signature = sign(pk1, digest);
         uint256 startNonce = scm.updateNonce();
 
         // replace in other cohort in ongoing election does not work
-        vm.expectRevert(abi.encodeWithSelector(ISecurityCouncilManager.NewMemberIsContender.selector, proposalId, memberToRotate1));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ISecurityCouncilManager.NewMemberIsContender.selector, proposalId, memberToRotate1
+            )
+        );
         vm.prank(originalMember);
         scm.rotateMember(memberToRotate1, memberElectionGovernor, signature);
 
         uint256 snap = vm.snapshot();
         // proceeding to the next stage of election still doesnt work
         addAllContendersVoteAndExecute(proposalId);
-        assertEq(uint8(IGovernorUpgradeable(nomineeElectionGovernor).state(proposalId)), uint8(IGovernorUpgradeable.ProposalState.Executed), "Not executed");
+        assertEq(
+            uint8(IGovernorUpgradeable(nomineeElectionGovernor).state(proposalId)),
+            uint8(IGovernorUpgradeable.ProposalState.Executed),
+            "Not executed"
+        );
         vm.roll(block.number + 1);
-        assertEq(uint8(IGovernorUpgradeable(memberElectionGovernor).state(proposalId)), uint8(IGovernorUpgradeable.ProposalState.Active), "Not active");
-        vm.expectRevert(abi.encodeWithSelector(ISecurityCouncilManager.NewMemberIsContender.selector, proposalId, memberToRotate1));
+        assertEq(
+            uint8(IGovernorUpgradeable(memberElectionGovernor).state(proposalId)),
+            uint8(IGovernorUpgradeable.ProposalState.Active),
+            "Not active"
+        );
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ISecurityCouncilManager.NewMemberIsContender.selector, proposalId, memberToRotate1
+            )
+        );
         vm.prank(originalMember);
         scm.rotateMember(memberToRotate1, memberElectionGovernor, signature);
         vm.revertTo(snap);
@@ -552,20 +605,28 @@ contract SecurityCouncilManagerTest is Test {
     function testPostUpgradeInit() public {
         ProxyAdmin pa = new ProxyAdmin();
         SecurityCouncilManager logic = new SecurityCouncilManager();
-        SecurityCouncilManager s = SecurityCouncilManager(address(new TransparentUpgradeableProxy(address(logic), address(pa), "")));
+        SecurityCouncilManager s = SecurityCouncilManager(
+            address(new TransparentUpgradeableProxy(address(logic), address(pa), ""))
+        );
         uint256 mr = 25;
-        address mrs = address(88766);
-        
+        address mrs = address(88_766);
+
         vm.expectRevert();
         vm.prank(address(137));
-        TransparentUpgradeableProxy(payable(address(s))).upgradeToAndCall(address(logic), abi.encodeCall(s.postUpgradeInit, (mr, mrs)));
+        TransparentUpgradeableProxy(payable(address(s))).upgradeToAndCall(
+            address(logic), abi.encodeCall(s.postUpgradeInit, (mr, mrs))
+        );
 
         vm.expectEmit(true, true, true, true);
         emit MinRotationPeriodSet(mr);
         vm.prank(address(pa));
-        TransparentUpgradeableProxy(payable(address(s))).upgradeToAndCall(address(logic), abi.encodeCall(s.postUpgradeInit, (mr, mrs)));
+        TransparentUpgradeableProxy(payable(address(s))).upgradeToAndCall(
+            address(logic), abi.encodeCall(s.postUpgradeInit, (mr, mrs))
+        );
         assertEq(s.minRotationPeriod(), mr, "Min rotation updated");
-        assertTrue(s.hasRole(s.MIN_ROTATION_PERIOD_SETTER_ROLE(), mrs), "Min rotation period setter role");
+        assertTrue(
+            s.hasRole(s.MIN_ROTATION_PERIOD_SETTER_ROLE(), mrs), "Min rotation period setter role"
+        );
     }
 
     function testSetMinRotationPeriod() public {
