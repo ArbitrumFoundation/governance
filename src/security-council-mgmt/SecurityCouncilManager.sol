@@ -95,7 +95,7 @@ contract SecurityCouncilManager is
 
     /// @notice The timestamp at which the address was last rotated
     mapping(address => uint256) public lastRotated;
-    
+
     /// @notice There is a minimum period between when an address can be rotated
     ///         This is to ensure a single member cannot do many rotations in a row
     uint256 public minRotationPeriod;
@@ -109,7 +109,8 @@ contract SecurityCouncilManager is
     bytes32 public constant MEMBER_REPLACER_ROLE = keccak256("MEMBER_REPLACER");
     bytes32 public constant MEMBER_ROTATOR_ROLE = keccak256("MEMBER_ROTATOR");
     bytes32 public constant MEMBER_REMOVER_ROLE = keccak256("MEMBER_REMOVER");
-    bytes32 public constant MIN_ROTATION_PERIOD_SETTER_ROLE = keccak256("MIN_ROATATION_PERIOD_SETTER");
+    bytes32 public constant MIN_ROTATION_PERIOD_SETTER_ROLE =
+        keccak256("MIN_ROATATION_PERIOD_SETTER");
 
     constructor() {
         _disableInitializers();
@@ -151,11 +152,13 @@ contract SecurityCouncilManager is
         }
 
         setMinRotationPeriodImpl(_minRotationPeriod);
-        
+
         __EIP712_init_unchained("SecurityCouncilManager", "1");
     }
 
-    function postUpgradeInit(uint256 _minRotationPeriod, address minRotationPeriodSetter) external {
+    function postUpgradeInit(uint256 _minRotationPeriod, address minRotationPeriodSetter)
+        external
+    {
         address proxyAdmin = ProxyUtil.getProxyAdmin();
         require(msg.sender == proxyAdmin, "NOT_FROM_ADMIN");
 
@@ -164,7 +167,10 @@ contract SecurityCouncilManager is
     }
 
     /// @inheritdoc ISecurityCouncilManager
-    function setMinRotationPeriod(uint256 _minRotationPeriod) external onlyRole(MIN_ROTATION_PERIOD_SETTER_ROLE) {
+    function setMinRotationPeriod(uint256 _minRotationPeriod)
+        external
+        onlyRole(MIN_ROTATION_PERIOD_SETTER_ROLE)
+    {
         setMinRotationPeriodImpl(_minRotationPeriod);
     }
 
@@ -256,18 +262,23 @@ contract SecurityCouncilManager is
     }
 
     /// @inheritdoc ISecurityCouncilManager
-    function getRotateMemberHash(address from, uint256 nonce) public view returns(bytes32) {
-        return _hashTypedDataV4(keccak256(abi.encode(
-            keccak256("rotateMember(address from, uint256 nonce)"),
-            from,
-            nonce
-        )));
+    function getRotateMemberHash(address from, uint256 nonce) public view returns (bytes32) {
+        return _hashTypedDataV4(
+            keccak256(
+                abi.encode(keccak256("rotateMember(address from, uint256 nonce)"), from, nonce)
+            )
+        );
     }
 
     /// @inheritdoc ISecurityCouncilManager
-    function rotateMember(address newMemberAddress, address memberElectionGovernor, bytes calldata signature) external {
+    function rotateMember(
+        address newMemberAddress,
+        address memberElectionGovernor,
+        bytes calldata signature
+    ) external {
         uint256 lastRotatedTimestamp = lastRotated[msg.sender];
-        if(lastRotatedTimestamp != 0 && block.timestamp < lastRotatedTimestamp + minRotationPeriod) {
+        if (lastRotatedTimestamp != 0 && block.timestamp < lastRotatedTimestamp + minRotationPeriod)
+        {
             revert RotationTooSoon(msg.sender, lastRotatedTimestamp + minRotationPeriod);
         }
 
@@ -277,7 +288,7 @@ contract SecurityCouncilManager is
         address newAddress = ECDSAUpgradeable.recover(digest, signature);
         // we safety check the new member address is the one that we expect to replace here
         // this isn't strictly necessary but it guards agains the case where the wrong sig is accidentally used
-        if(newAddress != newMemberAddress) {
+        if (newAddress != newMemberAddress) {
             revert InvalidNewAddress(newAddress);
         }
 
@@ -285,18 +296,19 @@ contract SecurityCouncilManager is
         // we don't explicitly store the member election governor in this manager
         // so we pass it in here and verify it as having the correct role
         // since cohort replacing can change any member it's already a trusted entity
-        if(!hasRole(COHORT_REPLACER_ROLE, memberElectionGovernor)) {
+        if (!hasRole(COHORT_REPLACER_ROLE, memberElectionGovernor)) {
             revert GovernorNotReplacer();
         }
         // use the member election governor to get the nominee governor
         // we we'll use that to check if there is a clash between the rotation and an ongoing election
-        ISecurityCouncilNomineeElectionGovernor nomineeGovernor = ISecurityCouncilMemberElectionGovernor(memberElectionGovernor).nomineeElectionGovernor();
+        ISecurityCouncilNomineeElectionGovernor nomineeGovernor =
+            ISecurityCouncilMemberElectionGovernor(memberElectionGovernor).nomineeElectionGovernor();
         // election count is incremented after proposal, so the current election is electionCount - 1
         // we use this to form the proposal id for that election, and then check isContender
         uint256 electionCount = nomineeGovernor.electionCount();
         // if the election count is still zero then no elections have started or taken place
         // in that case it is always valid to rotate a member as there can be non clash with contenders
-        if(electionCount != 0) {
+        if (electionCount != 0) {
             uint256 currentElectionIndex = electionCount - 1;
             (
                 address[] memory targets,
@@ -304,22 +316,27 @@ contract SecurityCouncilManager is
                 bytes[] memory callDatas,
                 string memory description
             ) = nomineeGovernor.getProposeArgs(currentElectionIndex);
-            uint256 proposalId = IGovernorUpgradeable(address(nomineeGovernor)).hashProposal(targets, values, callDatas, keccak256(bytes(description)));
+            uint256 proposalId = IGovernorUpgradeable(address(nomineeGovernor)).hashProposal(
+                targets, values, callDatas, keccak256(bytes(description))
+            );
 
             // there can only be a clash with an incoming member if there is
             // a. an ongoing election
             // b. the election is for the other cohort than the member being rotated
             // c. the address is a contender in that ongoing election
-            IGovernorUpgradeable.ProposalState nomineePropState = IGovernorUpgradeable(address(nomineeGovernor)).state(proposalId);
-            if(
-                nomineePropState != IGovernorUpgradeable.ProposalState.Executed || (// the proposal is ongoing in nomination phase
-                    nomineePropState == IGovernorUpgradeable.ProposalState.Executed // the proposal has passed nomination phase but is still in member selection phase
-                    && IGovernorUpgradeable(memberElectionGovernor).state(proposalId) != IGovernorUpgradeable.ProposalState.Executed
-                ) 
+            IGovernorUpgradeable.ProposalState nomineePropState =
+                IGovernorUpgradeable(address(nomineeGovernor)).state(proposalId);
+            if (
+                nomineePropState != IGovernorUpgradeable.ProposalState.Executed // the proposal is ongoing in nomination phase
+                    || (
+                        nomineePropState == IGovernorUpgradeable.ProposalState.Executed // the proposal has passed nomination phase but is still in member selection phase
+                            && IGovernorUpgradeable(memberElectionGovernor).state(proposalId)
+                                != IGovernorUpgradeable.ProposalState.Executed
+                    )
             ) {
                 Cohort otherCohort = nomineeGovernor.otherCohort();
-                if(cohortIncludes(otherCohort, msg.sender)) {
-                    if(nomineeGovernor.isContender(proposalId, newAddress)) {
+                if (cohortIncludes(otherCohort, msg.sender)) {
+                    if (nomineeGovernor.isContender(proposalId, newAddress)) {
                         revert NewMemberIsContender(proposalId, newAddress);
                     }
                 }
@@ -328,11 +345,7 @@ contract SecurityCouncilManager is
 
         lastRotated[newAddress] = block.timestamp;
         Cohort cohort = _swapMembers(msg.sender, newAddress);
-        emit MemberRotated({
-            replacedAddress: msg.sender,
-            newAddress: newAddress,
-            cohort: cohort
-        });
+        emit MemberRotated({replacedAddress: msg.sender, newAddress: newAddress, cohort: cohort});
     }
 
     function _swapMembers(address _addressToRemove, address _addressToAdd)

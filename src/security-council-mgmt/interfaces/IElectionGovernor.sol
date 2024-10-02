@@ -11,5 +11,5 @@ interface IElectionGovernor {
     function getProposeArgs(uint256 electionIndex)
         external
         pure
-        returns (address[] memory, uint256[] memory, bytes[] memory, string memory);    
+        returns (address[] memory, uint256[] memory, bytes[] memory, string memory);
 }

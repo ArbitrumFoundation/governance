@@ -98,7 +98,7 @@ interface ISecurityCouncilManager {
     /// @notice Get the hash to be signed for member rotation
     /// @param from     The address that will be rotated out. Included in the hash so that other members cant use this message to rotate their address
     /// @param nonce    The message nonce. Must be equal to the update nonce in the contract at the time of execution
-    function getRotateMemberHash(address from, uint256 nonce) external view returns(bytes32);
+    function getRotateMemberHash(address from, uint256 nonce) external view returns (bytes32);
     /// @notice Security council member can rotate out their address for a new one
     /// @dev    Initiates cross chain messages to update the individual Security Councils.
     ///         Cannot rotate to a contender in an ongoing election, as this could cause a clash that would stop the election result executing
@@ -108,7 +108,11 @@ interface ISecurityCouncilManager {
     /// @param newMemberAddress         The new member address to be rotated to
     /// @param memberElectionGovernor   The current member election governor - must have the COHORT_REPLACER_ROLE role
     /// @param signature                A signature from the new member address over the 712 addMember hash
-    function rotateMember(address newMemberAddress, address memberElectionGovernor, bytes calldata signature) external;
+    function rotateMember(
+        address newMemberAddress,
+        address memberElectionGovernor,
+        bytes calldata signature
+    ) external;
     /// @notice Is the account a member of the first cohort
     function firstCohortIncludes(address account) external view returns (bool);
     /// @notice Is the account a member of the second cohort

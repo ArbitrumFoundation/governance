@@ -2,7 +2,7 @@
 pragma solidity 0.8.16;
 
 import "./IElectionGovernor.sol";
-import { Cohort } from "../Common.sol";
+import {Cohort} from "../Common.sol";
 
 /// @notice Minimal interface of nominee election governor required by other contracts
 interface ISecurityCouncilNomineeElectionGovernor is IElectionGovernor {
@@ -15,7 +15,7 @@ interface ISecurityCouncilNomineeElectionGovernor is IElectionGovernor {
     ///         A compliant nominee is one who is a nominee, and has not been excluded
     function compliantNominees(uint256 proposalId) external view returns (address[] memory);
     /// @notice Number of elections created
-    function electionCount() external returns(uint256);
+    function electionCount() external returns (uint256);
     /// @notice Whether the account is a contender for the proposal
     function isContender(uint256 proposalId, address possibleContender)
         external
