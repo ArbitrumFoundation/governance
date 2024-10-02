@@ -2,6 +2,7 @@
 pragma solidity 0.8.16;
 
 import "./IElectionGovernor.sol";
+import { Cohort } from "../Common.sol";
 
 /// @notice Minimal interface of nominee election governor required by other contracts
 interface ISecurityCouncilNomineeElectionGovernor is IElectionGovernor {
@@ -20,4 +21,5 @@ interface ISecurityCouncilNomineeElectionGovernor is IElectionGovernor {
         external
         view
         returns (bool);
+    function otherCohort() external view returns (Cohort);
 }

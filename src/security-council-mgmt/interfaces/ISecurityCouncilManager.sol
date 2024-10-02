@@ -12,6 +12,7 @@ struct SecurityCouncilManagerRoles {
     address[] memberRemovers;
     address memberRotator;
     address memberReplacer;
+    address minRotationPeriodSetter;
 }
 
 /// @notice Data for a Security Council to be managed
@@ -43,7 +44,8 @@ interface ISecurityCouncilManager {
     // rotation errors
     error RotationTooSoon(address rotator, uint256 rotatableWhen);
     error GovernorNotReplacer();
-    error NewAddressIsContender(uint256 proposalId);
+    error NewMemberIsContender(uint256 proposalId, address newMember);
+    error InvalidNewAddress(address newAddress);
 
     /// @notice initialize SecurityCouncilManager.
     /// @param _firstCohort addresses of first cohort
@@ -52,14 +54,20 @@ interface ISecurityCouncilManager {
     /// @param _roles permissions for triggering modifications to security councils
     /// @param  _l2CoreGovTimelock timelock for core governance / constitutional proposal
     /// @param _router UpgradeExecRouteBuilder address
+    /// @param _minRotationPeriod The minimum amount of time that must happen between address rotations by the same council member
     function initialize(
         address[] memory _firstCohort,
         address[] memory _secondCohort,
         SecurityCouncilData[] memory _securityCouncils,
         SecurityCouncilManagerRoles memory _roles,
         address payable _l2CoreGovTimelock,
-        UpgradeExecRouteBuilder _router
+        UpgradeExecRouteBuilder _router,
+        uint256 _minRotationPeriod
     ) external;
+    /// @notice Set the min rotation period. This is the minimum period that must occur
+    ///         between two consecutive rotations by the same member
+    /// @param _minRotationPeriod   The new minimum rotation period to be set
+    function setMinRotationPeriod(uint256 _minRotationPeriod) external;
     /// @notice Replaces a whole cohort.
     /// @dev    Initiates cross chain messages to update the individual Security Councils.
     /// @param _newCohort   New cohort members to replace existing cohort. Must have 6 members.
@@ -87,17 +95,20 @@ interface ISecurityCouncilManager {
     /// @param _memberToReplace Security Council member to remove
     /// @param _newMember       Security Council member to add in their place
     function replaceMember(address _memberToReplace, address _newMember) external;
-    /// @notice Recover a address from an addMember signed message
-    ///         Used when rotating a member for the new address to be added
-    /// @param nonce        The nonce that was signed
-    /// @param signature    The signature over the addMember(nonce) message
-    function recoverAddMemberMessage(uint256 nonce, bytes calldata signature) external view returns (address);
+    /// @notice Get the hash to be signed for member rotation
+    /// @param from     The address that will be rotated out. Included in the hash so that other members cant use this message to rotate their address
+    /// @param nonce    The message nonce. Must be equal to the update nonce in the contract at the time of execution
+    function getRotateMemberHash(address from, uint256 nonce) external view returns(bytes32);
     /// @notice Security council member can rotate out their address for a new one
     /// @dev    Initiates cross chain messages to update the individual Security Councils.
     ///         Cannot rotate to a contender in an ongoing election, as this could cause a clash that would stop the election result executing
+    ///         Since the signature is over the update nonce, it is understood that other updates can invalidate the signed message, however since
+    ///         other updates are either from the council itself (trusted), the election (infrequent) or another member rotation (also infrequent due
+    ///         to the minRotationPeriod) the invalidation cannot occur often and in those cases the member should sign a new rotation message
+    /// @param newMemberAddress         The new member address to be rotated to
     /// @param memberElectionGovernor   The current member election governor - must have the COHORT_REPLACER_ROLE role
     /// @param signature                A signature from the new member address over the 712 addMember hash
-    function rotateMember(address memberElectionGovernor, bytes calldata signature) external;
+    function rotateMember(address newMemberAddress, address memberElectionGovernor, bytes calldata signature) external;
     /// @notice Is the account a member of the first cohort
     function firstCohortIncludes(address account) external view returns (bool);
     /// @notice Is the account a member of the second cohort

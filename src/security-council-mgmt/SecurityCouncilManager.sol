@@ -16,6 +16,18 @@ import "@openzeppelin/contracts-upgradeable/utils/cryptography/draft-EIP712Upgra
 import "./Common.sol";
 import "./interfaces/ISecurityCouncilMemberElectionGovernor.sol";
 
+library ProxyUtil {
+    function getProxyAdmin() internal view returns (address admin) {
+        // https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v3.4.0/contracts/proxy/TransparentUpgradeableProxy.sol#L48
+        // Storage slot with the admin of the proxy contract.
+        // This is the keccak-256 hash of "eip1967.proxy.admin" subtracted by 1, and is
+        bytes32 slot = 0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103;
+        assembly {
+            admin := sload(slot)
+        }
+    }
+}
+
 /// @title  The Security Council Manager
 /// @notice The source of truth for an array of Security Councils that are under management.
 ///         Can be used to change members, and replace whole cohorts, ensuring that all managed
@@ -50,6 +62,7 @@ contract SecurityCouncilManager is
         uint256 securityCouncilsLength
     );
     event UpgradeExecRouteBuilderSet(address indexed UpgradeExecRouteBuilder);
+    event MinRotationPeriodSet(uint256 minRotationPeriod);
 
     // The Security Council members are separated into two cohorts, allowing a whole cohort to be replaced, as
     // specified by the Arbitrum Constitution.
@@ -81,7 +94,7 @@ contract SecurityCouncilManager is
     uint256 public cohortSize;
 
     /// @notice The timestamp at which the address was last rotated
-    mapping(address => uint256) lastRotated;
+    mapping(address => uint256) public lastRotated;
     
     /// @notice There is a minimum period between when an address can be rotated
     ///         This is to ensure a single member cannot do many rotations in a row
@@ -96,6 +109,7 @@ contract SecurityCouncilManager is
     bytes32 public constant MEMBER_REPLACER_ROLE = keccak256("MEMBER_REPLACER");
     bytes32 public constant MEMBER_ROTATOR_ROLE = keccak256("MEMBER_ROTATOR");
     bytes32 public constant MEMBER_REMOVER_ROLE = keccak256("MEMBER_REMOVER");
+    bytes32 public constant MIN_ROTATION_PERIOD_SETTER_ROLE = keccak256("MIN_ROATATION_PERIOD_SETTER");
 
     constructor() {
         _disableInitializers();
@@ -107,7 +121,8 @@ contract SecurityCouncilManager is
         SecurityCouncilData[] memory _securityCouncils,
         SecurityCouncilManagerRoles memory _roles,
         address payable _l2CoreGovTimelock,
-        UpgradeExecRouteBuilder _router
+        UpgradeExecRouteBuilder _router,
+        uint256 _minRotationPeriod
     ) external initializer {
         if (_firstCohort.length != _secondCohort.length) {
             revert CohortLengthMismatch(_firstCohort, _secondCohort);
@@ -123,6 +138,7 @@ contract SecurityCouncilManager is
         }
         _grantRole(MEMBER_ROTATOR_ROLE, _roles.memberRotator);
         _grantRole(MEMBER_REPLACER_ROLE, _roles.memberReplacer);
+        _grantRole(MIN_ROTATION_PERIOD_SETTER_ROLE, _roles.minRotationPeriodSetter);
 
         if (!Address.isContract(_l2CoreGovTimelock)) {
             revert NotAContract({account: _l2CoreGovTimelock});
@@ -134,7 +150,27 @@ contract SecurityCouncilManager is
             _addSecurityCouncil(_securityCouncils[i]);
         }
 
+        setMinRotationPeriodImpl(_minRotationPeriod);
+        
         __EIP712_init_unchained("SecurityCouncilManager", "1");
+    }
+
+    function postUpgradeInit(uint256 _minRotationPeriod, address minRotationPeriodSetter) external {
+        address proxyAdmin = ProxyUtil.getProxyAdmin();
+        require(msg.sender == proxyAdmin, "NOT_FROM_ADMIN");
+
+        _grantRole(MIN_ROTATION_PERIOD_SETTER_ROLE, minRotationPeriodSetter);
+        setMinRotationPeriodImpl(_minRotationPeriod);
+    }
+
+    /// @inheritdoc ISecurityCouncilManager
+    function setMinRotationPeriod(uint256 _minRotationPeriod) external onlyRole(MIN_ROTATION_PERIOD_SETTER_ROLE) {
+        setMinRotationPeriodImpl(_minRotationPeriod);
+    }
+
+    function setMinRotationPeriodImpl(uint256 _minRotationPeriod) internal {
+        minRotationPeriod = _minRotationPeriod;
+        emit MinRotationPeriodSet(_minRotationPeriod);
     }
 
     /// @inheritdoc ISecurityCouncilManager
@@ -220,24 +256,30 @@ contract SecurityCouncilManager is
     }
 
     /// @inheritdoc ISecurityCouncilManager
-    function recoverAddMemberMessage(uint256 nonce, bytes calldata signature) public view returns (address) {
-        bytes32 digest = _hashTypedDataV4(keccak256(abi.encode(
-            keccak256("addMember(uint256 nonce)"),
+    function getRotateMemberHash(address from, uint256 nonce) public view returns(bytes32) {
+        return _hashTypedDataV4(keccak256(abi.encode(
+            keccak256("rotateMember(address from, uint256 nonce)"),
+            from,
             nonce
         )));
-        return ECDSAUpgradeable.recover(digest, signature);
     }
 
     /// @inheritdoc ISecurityCouncilManager
-    function rotateMember(address memberElectionGovernor, bytes calldata signature) external {
+    function rotateMember(address newMemberAddress, address memberElectionGovernor, bytes calldata signature) external {
         uint256 lastRotatedTimestamp = lastRotated[msg.sender];
-        if(block.timestamp < lastRotatedTimestamp + minRotationPeriod) {
+        if(lastRotatedTimestamp != 0 && block.timestamp < lastRotatedTimestamp + minRotationPeriod) {
             revert RotationTooSoon(msg.sender, lastRotatedTimestamp + minRotationPeriod);
         }
 
         // we enforce that a the new address is an eoa in the same way do
-        // in NomineeGovernor.addContender
-        address newAddress = recoverAddMemberMessage(updateNonce, signature);
+        // in NomineeGovernor.addContender by requiring a signature
+        bytes32 digest = getRotateMemberHash(msg.sender, updateNonce);
+        address newAddress = ECDSAUpgradeable.recover(digest, signature);
+        // we safety check the new member address is the one that we expect to replace here
+        // this isn't strictly necessary but it guards agains the case where the wrong sig is accidentally used
+        if(newAddress != newMemberAddress) {
+            revert InvalidNewAddress(newAddress);
+        }
 
         // the cohort replacer should be the member election governor
         // we don't explicitly store the member election governor in this manager
@@ -247,21 +289,41 @@ contract SecurityCouncilManager is
             revert GovernorNotReplacer();
         }
         // use the member election governor to get the nominee governor
+        // we we'll use that to check if there is a clash between the rotation and an ongoing election
         ISecurityCouncilNomineeElectionGovernor nomineeGovernor = ISecurityCouncilMemberElectionGovernor(memberElectionGovernor).nomineeElectionGovernor();
-        // election count is increment after proposal, so the current election is electionCount - 1
+        // election count is incremented after proposal, so the current election is electionCount - 1
         // we use this to form the proposal id for that election, and then check isContender
-        uint256 currentElectionIndex = nomineeGovernor.electionCount() - 1;
-        (
-            address[] memory targets,
-            uint256[] memory values,
-            bytes[] memory callDatas,
-            string memory description
-        ) = nomineeGovernor.getProposeArgs(currentElectionIndex);
-        uint256 proposalId = IGovernorUpgradeable(address(nomineeGovernor)).hashProposal(targets, values, callDatas, keccak256(bytes(description)));
-        // CHRIS: TODO: we could also check what cohort will be replaced by that election, 
-        //            : since do allow clashes in the same cohort
-        if(nomineeGovernor.isContender(proposalId, newAddress)) {
-            revert NewAddressIsContender(proposalId);
+        uint256 electionCount = nomineeGovernor.electionCount();
+        // if the election count is still zero then no elections have started or taken place
+        // in that case it is always valid to rotate a member as there can be non clash with contenders
+        if(electionCount != 0) {
+            uint256 currentElectionIndex = electionCount - 1;
+            (
+                address[] memory targets,
+                uint256[] memory values,
+                bytes[] memory callDatas,
+                string memory description
+            ) = nomineeGovernor.getProposeArgs(currentElectionIndex);
+            uint256 proposalId = IGovernorUpgradeable(address(nomineeGovernor)).hashProposal(targets, values, callDatas, keccak256(bytes(description)));
+
+            // there can only be a clash with an incoming member if there is
+            // a. an ongoing election
+            // b. the election is for the other cohort than the member being rotated
+            // c. the address is a contender in that ongoing election
+            IGovernorUpgradeable.ProposalState nomineePropState = IGovernorUpgradeable(address(nomineeGovernor)).state(proposalId);
+            if(
+                nomineePropState != IGovernorUpgradeable.ProposalState.Executed || (// the proposal is ongoing in nomination phase
+                    nomineePropState == IGovernorUpgradeable.ProposalState.Executed // the proposal has passed nomination phase but is still in member selection phase
+                    && IGovernorUpgradeable(memberElectionGovernor).state(proposalId) != IGovernorUpgradeable.ProposalState.Executed
+                ) 
+            ) {
+                Cohort otherCohort = nomineeGovernor.otherCohort();
+                if(cohortIncludes(otherCohort, msg.sender)) {
+                    if(nomineeGovernor.isContender(proposalId, newAddress)) {
+                        revert NewMemberIsContender(proposalId, newAddress);
+                    }
+                }
+            }
         }
 
         lastRotated[newAddress] = block.timestamp;

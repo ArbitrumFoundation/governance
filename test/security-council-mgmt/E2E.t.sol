@@ -194,7 +194,9 @@ contract E2E is Test, DeployGnosisWithModule {
     uint256 nomineeVotingPeriod = 51;
     uint256 memberVotingPeriod = 53;
     uint256 fullWeightDuration = 39;
+    uint256 minRotationPeriod = 1 weeks;
     Date nominationStart = Date(1988, 1, 1, 1);
+    address minRotationPeriodSetter = address(7766);
 
     uint256 chain1Id = 937;
     uint256 chain2Id = 837;
@@ -387,7 +389,9 @@ contract E2E is Test, DeployGnosisWithModule {
                 nomineeQuorumNumerator: nomineeQuorumNumerator,
                 nomineeVotingPeriod: nomineeVotingPeriod,
                 memberVotingPeriod: memberVotingPeriod,
-                fullWeightDuration: fullWeightDuration
+                fullWeightDuration: fullWeightDuration,
+                minRotationPeriod: minRotationPeriod,
+                minRotationPeriodSetter: minRotationPeriodSetter
             });
 
             ContractImplementations memory contractImpls = ContractImplementations({
