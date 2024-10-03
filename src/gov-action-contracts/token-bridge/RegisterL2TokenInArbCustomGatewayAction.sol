@@ -17,11 +17,11 @@ contract RegisterL2TokenInArbCustomGatewayAction {
         uint256 _maxGas,
         uint256 _gasPriceBid,
         uint256 _maxSubmissionCost
-    ) external {
+    ) external payable {
         TokenBridgeActionLib.ensureAllContracts(_l1Tokens);
 
-        addressRegistry.customGateway().forceRegisterTokenToL2(
-            _l1Tokens, _l2Tokens, _maxGas, _gasPriceBid, _maxSubmissionCost
-        );
+        addressRegistry.customGateway().forceRegisterTokenToL2{
+            value: _maxGas * _gasPriceBid + _maxSubmissionCost
+        }(_l1Tokens, _l2Tokens, _maxGas, _gasPriceBid, _maxSubmissionCost);
     }
 }
