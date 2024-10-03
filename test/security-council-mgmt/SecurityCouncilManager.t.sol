@@ -216,6 +216,8 @@ contract SecurityCouncilManagerTest is Test {
         assertEq(minRotationPeriod, scm.minRotationPeriod(), "minRotationPeriod set");
 
         assertEq(address(uerb), address(scm.router()), "exec router set");
+        assertEq(scm.NAME_HASH(), keccak256(bytes("SecurityCouncilManager")));
+        assertEq(scm.VERSION_HASH(), keccak256(bytes("1")));
     }
 
     function testRemoveMemberAffordances() public {
@@ -627,6 +629,8 @@ contract SecurityCouncilManagerTest is Test {
         assertTrue(
             s.hasRole(s.MIN_ROTATION_PERIOD_SETTER_ROLE(), mrs), "Min rotation period setter role"
         );
+        assertEq(s.NAME_HASH(), keccak256(bytes("SecurityCouncilManager")));
+        assertEq(s.VERSION_HASH(), keccak256(bytes("1")));
     }
 
     function testSetMinRotationPeriod() public {
