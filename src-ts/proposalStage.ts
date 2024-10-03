@@ -37,7 +37,7 @@ import {
   ProposalExecutedEventObject,
   ProposalQueuedEventObject,
 } from "../typechain-types/src/L2ArbitrumGovernor";
-import { hasTimelock, hasVettingPeriod, getL1BlockNumberFromL2 } from "./utils";
+import { hasTimelock, hasVettingPeriod, getL1BlockNumberFromL2, wait } from "./utils";
 import { CallScheduledEvent } from "../typechain-types/src/ArbitrumTimelock";
 import { GnosisSafeL2__factory } from "../types/ethers-contracts/factories/GnosisSafeL2__factory";
 
@@ -1058,7 +1058,7 @@ abstract class L1TimelockExecutionStage {
       const inbox = Inbox__factory.connect(inboxAddress, timelock.provider!);
       const submissionFee = await inbox.callStatic.calculateRetryableSubmissionFee(
         hexDataLength(innerData),
-        0
+        await inbox.provider!.getGasPrice()
       );
 
       // enough value to create a retryable ticket = submission fee + gas
@@ -1383,7 +1383,17 @@ export class RetryableExecutionStage implements ProposalStage {
     if (!this.isWriter(this.l1ToL2Message)) {
       throw new Error("Message is not a writer");
     }
-    await (await this.l1ToL2Message.redeem()).wait();
+
+    while (true) {
+      try {
+        await (await this.l1ToL2Message.redeem()).wait();
+        break;
+      } catch {
+        const id = this.l1ToL2Message.retryableCreationId.toLowerCase();
+        console.error(`Failed to redeem retryable ${id}, retrying in 60s`);
+        await wait(60_000);
+      }
+    }
   }
 
   public async getExecuteReceipt(): Promise<TransactionReceipt> {
