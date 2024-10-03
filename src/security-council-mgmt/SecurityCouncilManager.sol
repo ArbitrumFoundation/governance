@@ -12,7 +12,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/governance/IGovernorUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/cryptography/draft-EIP712Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/cryptography/ECDSAUpgradeable.sol";
 import "./Common.sol";
 import "./interfaces/ISecurityCouncilMemberElectionGovernor.sol";
 
@@ -43,8 +43,7 @@ library ProxyUtil {
 contract SecurityCouncilManager is
     Initializable,
     AccessControlUpgradeable,
-    ISecurityCouncilManager,
-    EIP712Upgradeable
+    ISecurityCouncilManager
 {
     event CohortReplaced(address[] newCohort, Cohort indexed cohort);
     event MemberAdded(address indexed newMember, Cohort indexed cohort);
@@ -99,6 +98,11 @@ contract SecurityCouncilManager is
     /// @inheritdoc ISecurityCouncilManager
     uint256 public minRotationPeriod;
 
+    /// @notice The 712 name hash
+    bytes32 public NAME_HASH;
+    /// @notice The 712 version hash
+    bytes32 public VERSION_HASH;
+
     /// @notice Magic value used by the L1 timelock to indicate that a retryable ticket should be created
     ///         Value is defined in L1ArbitrumTimelock contract https://etherscan.io/address/0xE6841D92B0C345144506576eC13ECf5103aC7f49#readProxyContract#F5
     address public constant RETRYABLE_TICKET_MAGIC = 0xa723C008e76E379c55599D2E4d93879BeaFDa79C;
@@ -109,7 +113,12 @@ contract SecurityCouncilManager is
     bytes32 public constant MEMBER_ROTATOR_ROLE = keccak256("MEMBER_ROTATOR");
     bytes32 public constant MEMBER_REMOVER_ROLE = keccak256("MEMBER_REMOVER");
     bytes32 public constant MIN_ROTATION_PERIOD_SETTER_ROLE =
-        keccak256("MIN_ROATATION_PERIOD_SETTER");
+        keccak256("MIN_ROTATION_PERIOD_SETTER");
+    bytes32 public constant DOMAIN_TYPE_HASH = keccak256(
+        "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
+    );
+    bytes32 public constant TYPE_HASH =
+        keccak256(bytes("rotateMember(address from, uint256 nonce)"));
 
     constructor() {
         _disableInitializers();
@@ -152,7 +161,10 @@ contract SecurityCouncilManager is
 
         setMinRotationPeriodImpl(_minRotationPeriod);
 
-        __EIP712_init_unchained("SecurityCouncilManager", "1");
+        // we do our own 712 functionality because inheriting the OZ version
+        // would change our storage layout
+        NAME_HASH = keccak256(bytes("SecurityCouncilManager"));
+        VERSION_HASH = keccak256(bytes("1"));
     }
 
     function postUpgradeInit(uint256 _minRotationPeriod, address minRotationPeriodSetter)
@@ -163,6 +175,15 @@ contract SecurityCouncilManager is
 
         _grantRole(MIN_ROTATION_PERIOD_SETTER_ROLE, minRotationPeriodSetter);
         setMinRotationPeriodImpl(_minRotationPeriod);
+
+        NAME_HASH = keccak256(bytes("SecurityCouncilManager"));
+        VERSION_HASH = keccak256(bytes("1"));
+    }
+
+    function _domainSeparatorV4() private view returns (bytes32) {
+        return keccak256(
+            abi.encode(DOMAIN_TYPE_HASH, NAME_HASH, VERSION_HASH, block.chainid, address(this))
+        );
     }
 
     /// @inheritdoc ISecurityCouncilManager
@@ -262,10 +283,8 @@ contract SecurityCouncilManager is
 
     /// @inheritdoc ISecurityCouncilManager
     function getRotateMemberHash(address from, uint256 nonce) public view returns (bytes32) {
-        return _hashTypedDataV4(
-            keccak256(
-                abi.encode(keccak256("rotateMember(address from, uint256 nonce)"), from, nonce)
-            )
+        return ECDSAUpgradeable.toTypedDataHash(
+            _domainSeparatorV4(), keccak256(abi.encode(TYPE_HASH, from, nonce))
         );
     }
 
@@ -579,5 +598,5 @@ contract SecurityCouncilManager is
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
      */
 
-    uint256[43] private __gap;
+    uint256[39] private __gap;
 }

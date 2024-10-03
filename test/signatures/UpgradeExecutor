@@ -1,0 +1,13 @@
+{
+  "ADMIN_ROLE()": "75b238fc",
+  "DEFAULT_ADMIN_ROLE()": "a217fddf",
+  "EXECUTOR_ROLE()": "07bd0265",
+  "execute(address,bytes)": "1cff79cd",
+  "getRoleAdmin(bytes32)": "248a9ca3",
+  "grantRole(bytes32,address)": "2f2ff15d",
+  "hasRole(bytes32,address)": "91d14854",
+  "initialize(address,address[])": "946d9204",
+  "renounceRole(bytes32,address)": "36568abe",
+  "revokeRole(bytes32,address)": "d547741f",
+  "supportsInterface(bytes4)": "01ffc9a7"
+}
