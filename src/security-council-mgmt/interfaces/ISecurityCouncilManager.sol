@@ -51,6 +51,7 @@ interface ISecurityCouncilManager {
     ///         This is to ensure a single member cannot do many rotations in a row
     function minRotationPeriod() external view returns (uint256);
     function MIN_ROTATION_PERIOD_SETTER_ROLE() external view returns (bytes32);
+    function MEMBER_REMOVER_ROLE() external view returns (bytes32);
 
     /// @notice initialize SecurityCouncilManager.
     /// @param _firstCohort addresses of first cohort

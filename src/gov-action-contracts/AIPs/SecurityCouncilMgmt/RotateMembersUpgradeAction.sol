@@ -12,6 +12,7 @@ contract RotateMembersUpgradeAction {
     uint256 public immutable minRotationPeriod;
     address public immutable minRotationPeriodSetter;
 
+    // CHRIS: TODO: tests and dao constitution hash
     constructor(IL2AddressRegistry _l2AddressRegistry, address _secCouncilManagerImpl, uint256 _minRotationPeriod, address _minRotationPeriodSetter) {
         l2AddressRegistry = _l2AddressRegistry;
         secCouncilManagerImpl = _secCouncilManagerImpl;
