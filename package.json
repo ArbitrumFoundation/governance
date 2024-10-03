@@ -36,6 +36,8 @@
     "verify:foundation-wallet": "tsc && node ./dist/scripts/foundation-wallet-deployment/verifyDeployment.js",
     "test:integration": "hardhat test",
     "test:proposals": "ts-node ./scripts/proposalTests.ts",
+    "test:storage": "./test/storage/test.bash",
+    "test:signatures": "./test/signatures/test-sigs.bash",
     "format:sol": "forge fmt",
     "coverage:filtered-report": "forge coverage --report lcov && lcov --remove ./lcov.info -o ./lcov.info.pruned 'node_modules' 'test' 'hardhatTest' 'gov-action-contracts'",
     "coverage:htmlreport": "rm -rf ./report &&  genhtml ./lcov.info.pruned -o report --branch-coverage",
