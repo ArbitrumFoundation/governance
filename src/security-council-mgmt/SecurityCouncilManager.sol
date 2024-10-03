@@ -164,6 +164,8 @@ contract SecurityCouncilManager is
 
         _grantRole(MIN_ROTATION_PERIOD_SETTER_ROLE, minRotationPeriodSetter);
         setMinRotationPeriodImpl(_minRotationPeriod);
+
+        __EIP712_init_unchained("SecurityCouncilManager", "1");
     }
 
     /// @inheritdoc ISecurityCouncilManager
