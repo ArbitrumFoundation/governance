@@ -26,6 +26,12 @@ jobs:
       - name: Install packages
         run: yarn
 
+      - name: Test Storage Layouts
+        run: yarn run test:storage
+
+      - name: Test function signatures
+        run: yarn run test:signatures
+
       - name: Run tests
         run: make test
 
