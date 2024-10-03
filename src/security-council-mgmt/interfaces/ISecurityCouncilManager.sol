@@ -47,6 +47,11 @@ interface ISecurityCouncilManager {
     error NewMemberIsContender(uint256 proposalId, address newMember);
     error InvalidNewAddress(address newAddress);
 
+    /// @notice There is a minimum period between when an address can be rotated
+    ///         This is to ensure a single member cannot do many rotations in a row
+    function minRotationPeriod() external view returns (uint256);
+    function MIN_ROTATION_PERIOD_SETTER_ROLE() external view returns (bytes32);
+
     /// @notice initialize SecurityCouncilManager.
     /// @param _firstCohort addresses of first cohort
     /// @param _secondCohort addresses of second cohort
@@ -158,4 +163,7 @@ interface ISecurityCouncilManager {
         returns (bytes32);
     /// @notice Each update increments an internal nonce that keeps updates unique, current value stored here
     function updateNonce() external returns (uint256);
+    /// @notice Upgrade an existing contract and add rotation params
+    function postUpgradeInit(uint256 _minRotationPeriod, address minRotationPeriodSetter)
+        external;
 }

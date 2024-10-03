@@ -96,8 +96,7 @@ contract SecurityCouncilManager is
     /// @notice The timestamp at which the address was last rotated
     mapping(address => uint256) public lastRotated;
 
-    /// @notice There is a minimum period between when an address can be rotated
-    ///         This is to ensure a single member cannot do many rotations in a row
+    /// @inheritdoc ISecurityCouncilManager
     uint256 public minRotationPeriod;
 
     /// @notice Magic value used by the L1 timelock to indicate that a retryable ticket should be created

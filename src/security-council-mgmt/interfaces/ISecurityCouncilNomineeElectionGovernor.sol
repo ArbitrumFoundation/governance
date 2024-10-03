@@ -3,6 +3,8 @@ pragma solidity 0.8.16;
 
 import "./IElectionGovernor.sol";
 import {Cohort} from "../Common.sol";
+import "./ISecurityCouncilMemberElectionGovernor.sol";
+import "./ISecurityCouncilManager.sol";
 
 /// @notice Minimal interface of nominee election governor required by other contracts
 interface ISecurityCouncilNomineeElectionGovernor is IElectionGovernor {
@@ -22,4 +24,12 @@ interface ISecurityCouncilNomineeElectionGovernor is IElectionGovernor {
         view
         returns (bool);
     function otherCohort() external view returns (Cohort);
+    /// @notice Security council manager contract
+    /// @dev    Used to execute the election result immediately if <= 6 compliant nominees are chosen
+    function securityCouncilManager() external view returns (ISecurityCouncilManager);
+    /// @notice Security council member election governor contract
+    function securityCouncilMemberElectionGovernor()
+        external
+        view
+        returns (ISecurityCouncilMemberElectionGovernor);
 }

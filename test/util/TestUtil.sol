@@ -13,6 +13,10 @@ library TestUtil {
         return address(new TransparentUpgradeableProxy(address(logic), address(pa), ""));
     }
 
+    function deployProxy(ProxyAdmin pa, address logic) public returns (address) {
+        return address(new TransparentUpgradeableProxy(address(logic), address(pa), ""));
+    }
+
     function deployStubContract() public returns (address) {
         return address(new StubContract());
     }
