@@ -1,6 +1,6 @@
 #!/bin/bash
 output_dir="./test/signatures"
-for CONTRACTNAME in SecurityCouncilManager L1ArbitrumTimelock L2ArbitrumTimelock L2ArbitrumGovernor L2ArbitrumToken L1ArbitrumToken FixedDelegateErc20Wallet UpgradeExecutor SecurityCouncilMemberElectionGovernor SecurityCouncilMemberRemovalGovernor SecurityCouncilNomineeElectionGovernor
+for CONTRACTNAME in SecurityCouncilManager L1ArbitrumTimelock ArbitrumTimelock L2ArbitrumGovernor L2ArbitrumToken L1ArbitrumToken FixedDelegateErc20Wallet UpgradeExecutor SecurityCouncilMemberElectionGovernor SecurityCouncilMemberRemovalGovernor SecurityCouncilNomineeElectionGovernor
 do
     echo "Checking for signature changes in $CONTRACTNAME"
     [ -f "$output_dir/$CONTRACTNAME" ] && mv "$output_dir/$CONTRACTNAME" "$output_dir/$CONTRACTNAME-old"
