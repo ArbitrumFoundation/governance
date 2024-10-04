@@ -103,13 +103,12 @@ contract CancelTimelockAndRemoveMemberOActionTest is Test {
         assertFalse(reg.coreGovTimelock().isOperation(proposalId), "Prop does not exist");
         for (uint256 i = 0; i < 6; i++) {
             if (i == 0 || i == 1 || i == 3 || i == 4) {
-                assertEq(fc[i], fc[i]);
+                assertEq(fc[i], fc1[i]);
             } else if (i == 2) {
                 // do nothing this has been removed
-                assertEq(fc[i], fc[i - 1]);
             } else if (i == 5) {
                 // last place has moved to 2
-                assertEq(fc[i], fc[2]);
+                assertEq(fc[i], fc1[2]);
             } else {
                 revert("Unexpected case");
             }
