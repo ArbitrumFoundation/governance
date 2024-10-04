@@ -51,11 +51,9 @@ contract RotateMembersUpgradeActionTest is Test {
         address newImplementation = address(new SecurityCouncilManager());
         address rotationSetter = address(137);
         uint256 minRotationPeriod = 1 weeks;
-
         RotateMembersUpgradeAction action = new RotateMembersUpgradeAction(
             reg, newImplementation, minRotationPeriod, rotationSetter
         );
-
         vm.prank(council);
         arbOneUe.execute(address(action), abi.encodeWithSelector(action.perform.selector));
 
