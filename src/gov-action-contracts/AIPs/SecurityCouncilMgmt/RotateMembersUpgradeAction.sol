@@ -11,8 +11,9 @@ contract RotateMembersUpgradeAction {
     address public immutable secCouncilManagerImpl;
     uint256 public immutable minRotationPeriod;
     address public immutable minRotationPeriodSetter;
+    // CHRIS: TODO: set the dao constitution hash here
+    bytes32 public immutable daoConstitutionHash = keccak256("testy");
 
-    // CHRIS: TODO: tests and dao constitution hash
     constructor(IL2AddressRegistry _l2AddressRegistry, address _secCouncilManagerImpl, uint256 _minRotationPeriod, address _minRotationPeriodSetter) {
         l2AddressRegistry = _l2AddressRegistry;
         secCouncilManagerImpl = _secCouncilManagerImpl;
@@ -28,7 +29,14 @@ contract RotateMembersUpgradeAction {
             abi.encodeCall(ISecurityCouncilManager(secCouncilManagerImpl).postUpgradeInit, (minRotationPeriod, minRotationPeriodSetter))
         );
 
-        require(minRotationPeriod == secCouncilManager.minRotationPeriod(), "Min rotation peroid not set");
-        require(IAccessControlUpgradeable(address(secCouncilManager)).hasRole(secCouncilManager.MIN_ROTATION_PERIOD_SETTER_ROLE(), minRotationPeriodSetter), "Min rotation period setter not set");
+        require(minRotationPeriod == secCouncilManager.minRotationPeriod(), "RotateMembersUpgradeAction: Min rotation period not set");
+        require(IAccessControlUpgradeable(address(secCouncilManager)).hasRole(secCouncilManager.MIN_ROTATION_PERIOD_SETTER_ROLE(), minRotationPeriodSetter), "RotateMembersUpgradeAction: Min rotation period setter not set");
+
+        IArbitrumDAOConstitution arbitrumDaoConstitution = l2AddressRegistry.arbitrumDAOConstitution();
+        arbitrumDaoConstitution.setConstitutionHash(daoConstitutionHash);
+        require(
+            arbitrumDaoConstitution.constitutionHash() == daoConstitutionHash,
+            "RotateMembersUpgradeAction: new constitution hash not set"
+        );
     }
 }
