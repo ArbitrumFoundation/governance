@@ -13,25 +13,28 @@ contract RotateMembersUpgradeActionTest is Test {
     ProxyAdmin proxyAdmin = ProxyAdmin(0xdb216562328215E010F819B5aBe947bad4ca961e);
     address council = 0x423552c0F05baCCac5Bfa91C6dCF1dc53a0A1641;
     UpgradeExecutor arbOneUe = UpgradeExecutor(0xCF57572261c7c2BCF21ffD220ea7d1a27D40A827);
-    IArbitrumDAOConstitution constitution = IArbitrumDAOConstitution(0x1D62fFeB72e4c360CcBbacf7c965153b00260417);
+    IArbitrumDAOConstitution constitution =
+        IArbitrumDAOConstitution(0x1D62fFeB72e4c360CcBbacf7c965153b00260417);
     bytes32 newConstitutionHash = keccak256("testy");
 
     function setUp() public {
         string memory arbRpc = vm.envOr("ARB_RPC_URL", string(""));
-        if(bytes(arbRpc).length != 0) {
+        if (bytes(arbRpc).length != 0) {
             vm.createSelectFork(arbRpc);
-            vm.rollFork(260227814);
+            vm.rollFork(260_227_814);
         }
     }
 
-    function testAction() external {         
+    function testAction() external {
         if (!_isForkTest()) {
             console.log("not fork test, skipping RotateMembersUpgradeActionTest");
             return;
         }
 
         if (_getImplementation() != oldImplementation) {
-            console.log("implementation not set to old implementation, skipping RotateMembersUpgradeActionTest");
+            console.log(
+                "implementation not set to old implementation, skipping RotateMembersUpgradeActionTest"
+            );
             return;
         }
 
@@ -44,40 +47,27 @@ contract RotateMembersUpgradeActionTest is Test {
             proxyAdmin,
             ISecurityCouncilNomineeElectionGovernor(0x8a1cDA8dee421cD06023470608605934c16A05a0)
         );
-        
+
         address newImplementation = address(new SecurityCouncilManager());
         address rotationSetter = address(137);
         uint256 minRotationPeriod = 1 weeks;
 
         RotateMembersUpgradeAction action = new RotateMembersUpgradeAction(
-            reg, 
-            newImplementation,
-            minRotationPeriod,
-            rotationSetter
+            reg, newImplementation, minRotationPeriod, rotationSetter
         );
 
         vm.prank(council);
         arbOneUe.execute(address(action), abi.encodeWithSelector(action.perform.selector));
 
-        assertEq(
-            scm.minRotationPeriod(),
-            minRotationPeriod,
-            "min rotation period"
-        );
+        assertEq(scm.minRotationPeriod(), minRotationPeriod, "min rotation period");
         assertTrue(
-            IAccessControlUpgradeable(address(scm)).hasRole(scm.MIN_ROTATION_PERIOD_SETTER_ROLE(), rotationSetter),
+            IAccessControlUpgradeable(address(scm)).hasRole(
+                scm.MIN_ROTATION_PERIOD_SETTER_ROLE(), rotationSetter
+            ),
             "Min rotation period setter not set"
         );
-        assertEq(
-            _getImplementation(),
-            newImplementation,
-            "implementation not set"
-        );
-        assertEq(
-            constitution.constitutionHash(),
-            newConstitutionHash,
-            "constitution hash not set"
-        );
+        assertEq(_getImplementation(), newImplementation, "implementation not set");
+        assertEq(constitution.constitutionHash(), newConstitutionHash, "constitution hash not set");
     }
 
     function _getImplementation() internal view returns (address) {
