@@ -20,7 +20,8 @@ contract RotateMembersUpgradeActionTest is Test {
         string memory arbRpc = vm.envOr("ARB_RPC_URL", string(""));
         if (bytes(arbRpc).length != 0) {
             vm.createSelectFork(arbRpc);
-            vm.rollFork(260_227_814);
+            // CHRIS: TODO: need archive for this
+            // vm.rollFork(260_227_814);
         }
     }
 
