@@ -631,6 +631,12 @@ contract SecurityCouncilManagerTest is Test {
         );
         assertEq(s.NAME_HASH(), keccak256(bytes("SecurityCouncilManager")));
         assertEq(s.VERSION_HASH(), keccak256(bytes("1")));
+
+        vm.expectRevert("MIN_ROTATION_ALREADY_SET");
+        vm.prank(address(pa));
+        TransparentUpgradeableProxy(payable(address(s))).upgradeToAndCall(
+            address(logic), abi.encodeCall(s.postUpgradeInit, (mr, mrs))
+        );
     }
 
     function testSetMinRotationPeriod() public {

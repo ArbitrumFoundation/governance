@@ -160,7 +160,7 @@ contract SecurityCouncilManager is
             _addSecurityCouncil(_securityCouncils[i]);
         }
 
-        setMinRotationPeriodImpl(_minRotationPeriod);
+        _setMinRotationPeriod(_minRotationPeriod);
 
         // we do our own 712 functionality because inheriting the OZ version
         // would change our storage layout
@@ -171,11 +171,11 @@ contract SecurityCouncilManager is
     function postUpgradeInit(uint256 _minRotationPeriod, address minRotationPeriodSetter)
         external
     {
-        address proxyAdmin = ProxyUtil.getProxyAdmin();
-        require(msg.sender == proxyAdmin, "NOT_FROM_ADMIN");
+        require(msg.sender == ProxyUtil.getProxyAdmin(), "NOT_FROM_ADMIN");
+        require(minRotationPeriod == 0, "MIN_ROTATION_ALREADY_SET");
 
         _grantRole(MIN_ROTATION_PERIOD_SETTER_ROLE, minRotationPeriodSetter);
-        setMinRotationPeriodImpl(_minRotationPeriod);
+        _setMinRotationPeriod(_minRotationPeriod);
 
         NAME_HASH = keccak256(bytes("SecurityCouncilManager"));
         VERSION_HASH = keccak256(bytes("1"));
@@ -192,10 +192,10 @@ contract SecurityCouncilManager is
         external
         onlyRole(MIN_ROTATION_PERIOD_SETTER_ROLE)
     {
-        setMinRotationPeriodImpl(_minRotationPeriod);
+        _setMinRotationPeriod(_minRotationPeriod);
     }
 
-    function setMinRotationPeriodImpl(uint256 _minRotationPeriod) internal {
+    function _setMinRotationPeriod(uint256 _minRotationPeriod) internal {
         minRotationPeriod = _minRotationPeriod;
         emit MinRotationPeriodSet(_minRotationPeriod);
     }
