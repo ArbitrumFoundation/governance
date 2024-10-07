@@ -11,8 +11,13 @@ contract RotateMembersUpgradeAction {
     address public immutable secCouncilManagerImpl;
     uint256 public immutable minRotationPeriod;
     address public immutable minRotationPeriodSetter;
-    
-    constructor(IL2AddressRegistry _l2AddressRegistry, address _secCouncilManagerImpl, uint256 _minRotationPeriod, address _minRotationPeriodSetter) {
+
+    constructor(
+        IL2AddressRegistry _l2AddressRegistry,
+        address _secCouncilManagerImpl,
+        uint256 _minRotationPeriod,
+        address _minRotationPeriodSetter
+    ) {
         l2AddressRegistry = _l2AddressRegistry;
         secCouncilManagerImpl = _secCouncilManagerImpl;
         minRotationPeriod = _minRotationPeriod;
@@ -24,10 +29,21 @@ contract RotateMembersUpgradeAction {
         l2AddressRegistry.govProxyAdmin().upgradeAndCall(
             TransparentUpgradeableProxy(payable(address(secCouncilManager))),
             secCouncilManagerImpl,
-            abi.encodeCall(ISecurityCouncilManager(secCouncilManagerImpl).postUpgradeInit, (minRotationPeriod, minRotationPeriodSetter))
+            abi.encodeCall(
+                ISecurityCouncilManager(secCouncilManagerImpl).postUpgradeInit,
+                (minRotationPeriod, minRotationPeriodSetter)
+            )
         );
 
-        require(minRotationPeriod == secCouncilManager.minRotationPeriod(), "RotateMembersUpgradeAction: Min rotation period not set");
-        require(IAccessControlUpgradeable(address(secCouncilManager)).hasRole(secCouncilManager.MIN_ROTATION_PERIOD_SETTER_ROLE(), minRotationPeriodSetter), "RotateMembersUpgradeAction: Min rotation period setter not set");
+        require(
+            minRotationPeriod == secCouncilManager.minRotationPeriod(),
+            "RotateMembersUpgradeAction: Min rotation period not set"
+        );
+        require(
+            IAccessControlUpgradeable(address(secCouncilManager)).hasRole(
+                secCouncilManager.MIN_ROTATION_PERIOD_SETTER_ROLE(), minRotationPeriodSetter
+            ),
+            "RotateMembersUpgradeAction: Min rotation period setter not set"
+        );
     }
 }
