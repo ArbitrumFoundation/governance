@@ -8,7 +8,7 @@ import "../../src/gov-action-contracts/governance/CancelTimelockAndRemoveMemberA
 import "../../src/security-council-mgmt/SecurityCouncilManager.sol";
 import "../../src/gov-action-contracts/address-registries/L2AddressRegistry.sol";
 
-contract CancelTimelockAndRemoveMemberOActionTest is Test {
+contract CancelTimelockAndRemoveMemberActionTest is Test {
     address oldImplementation = 0x468dA0eE5570Bdb1Dd81bFd925BAf028A93Dce64;
     ProxyAdmin proxyAdmin = ProxyAdmin(0xdb216562328215E010F819B5aBe947bad4ca961e);
     address council = 0x423552c0F05baCCac5Bfa91C6dCF1dc53a0A1641;

@@ -11,7 +11,6 @@ contract CancelTimelockAndRemoveMemberOAction {
         l2AddressRegistry = _l2AddressRegistry;
     }
 
-    // CHRIS: TODO: restrict this to ony being able to cancel rotation props and not any prop
     function perform(address memberToRemove, bytes32 operationId) public {
         // first remove the council member
         ISecurityCouncilManager scm = l2AddressRegistry.securityCouncilManager();
