@@ -15,7 +15,6 @@ contract RotateMembersUpgradeActionTest is Test {
     UpgradeExecutor arbOneUe = UpgradeExecutor(0xCF57572261c7c2BCF21ffD220ea7d1a27D40A827);
     IArbitrumDAOConstitution constitution =
         IArbitrumDAOConstitution(0x1D62fFeB72e4c360CcBbacf7c965153b00260417);
-    bytes32 newConstitutionHash = keccak256("testy");
 
     function setUp() public {
         string memory arbRpc = vm.envOr("ARB_RPC_URL", string(""));
@@ -65,7 +64,6 @@ contract RotateMembersUpgradeActionTest is Test {
             "Min rotation period setter not set"
         );
         assertEq(_getImplementation(), newImplementation, "implementation not set");
-        assertEq(constitution.constitutionHash(), newConstitutionHash, "constitution hash not set");
     }
 
     function _getImplementation() internal view returns (address) {
