@@ -16,18 +16,6 @@ import "@openzeppelin/contracts-upgradeable/utils/cryptography/ECDSAUpgradeable.
 import "./Common.sol";
 import "./interfaces/ISecurityCouncilMemberElectionGovernor.sol";
 
-library ProxyUtil {
-    function getProxyAdmin() internal view returns (address admin) {
-        // https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v3.4.0/contracts/proxy/TransparentUpgradeableProxy.sol#L48
-        // Storage slot with the admin of the proxy contract.
-        // This is the keccak-256 hash of "eip1967.proxy.admin" subtracted by 1, and is
-        bytes32 slot = 0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103;
-        assembly {
-            admin := sload(slot)
-        }
-    }
-}
-
 /// @title  The Security Council Manager
 /// @notice The source of truth for an array of Security Councils that are under management.
 ///         Can be used to change members, and replace whole cohorts, ensuring that all managed
@@ -95,8 +83,7 @@ contract SecurityCouncilManager is
     /// @notice The timestamp at which the address was last rotated
     mapping(address => uint256) public lastRotated;
 
-    /// @notice There is a minimum period between when an address can be rotated
-    ///         This is to ensure a single member cannot do many rotations in a row
+    /// @inheritdoc ISecurityCouncilManager
     uint256 public minRotationPeriod;
 
     /// @notice The 712 name hash
@@ -166,6 +153,16 @@ contract SecurityCouncilManager is
         // would change our storage layout
         NAME_HASH = keccak256(bytes("SecurityCouncilManager"));
         VERSION_HASH = keccak256(bytes("1"));
+    }
+
+    function getProxyAdmin() internal view returns (address admin) {
+        // https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v3.4.0/contracts/proxy/TransparentUpgradeableProxy.sol#L48
+        // Storage slot with the admin of the proxy contract.
+        // This is the keccak-256 hash of "eip1967.proxy.admin" subtracted by 1, and is
+        bytes32 slot = 0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103;
+        assembly {
+            admin := sload(slot)
+        }
     }
 
     function postUpgradeInit(uint256 _minRotationPeriod, address minRotationPeriodSetter)

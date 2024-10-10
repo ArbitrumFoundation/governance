@@ -305,13 +305,6 @@ contract E2E is Test, DeployGnosisWithModule {
         vars.novaExecutor = deployNova(address(vars.l1Timelock));
 
         // deploy sec council
-        vars.l2AddressRegistry = new L2AddressRegistry(
-            IL2ArbitrumGoverner(address(l2DeployedCoreContracts.coreGov)),
-            IL2ArbitrumGoverner(address(l2DeployedTreasuryContracts.treasuryGov)),
-            IFixedDelegateErc20Wallet(address(l2DeployedTreasuryContracts.arbTreasury)),
-            IArbitrumDAOConstitution(address(l2DeployedCoreContracts.arbitrumDAOConstitution))
-        );
-
         vars.secFac = new L2SecurityCouncilMgmtFactory();
 
         vars.moduleL2Safe = GnosisSafeL2(
@@ -397,6 +390,16 @@ contract E2E is Test, DeployGnosisWithModule {
 
             vars.secDeployedContracts = vars.secFac.deploy(secDeployParams, contractImpls);
         }
+
+        vars.l2AddressRegistry = new L2AddressRegistry(
+            IL2ArbitrumGoverner(address(l2DeployedCoreContracts.coreGov)),
+            IL2ArbitrumGoverner(address(l2DeployedTreasuryContracts.treasuryGov)),
+            IFixedDelegateErc20Wallet(address(l2DeployedTreasuryContracts.arbTreasury)),
+            IArbitrumDAOConstitution(address(l2DeployedCoreContracts.arbitrumDAOConstitution)),
+            l2DeployedCoreContracts.proxyAdmin,
+            vars.secDeployedContracts.nomineeElectionGovernor
+        );
+
 
         L1SCMgmtActivationAction installL1 = new L1SCMgmtActivationAction(
             IGnosisSafe(address(vars.moduleL1Safe)),
