@@ -168,7 +168,7 @@ contract SecurityCouncilManager is
     function postUpgradeInit(uint256 _minRotationPeriod, address minRotationPeriodSetter)
         external
     {
-        require(msg.sender == ProxyUtil.getProxyAdmin(), "NOT_FROM_ADMIN");
+        require(msg.sender == getProxyAdmin(), "NOT_FROM_ADMIN");
         require(minRotationPeriod == 0, "MIN_ROTATION_ALREADY_SET");
 
         _grantRole(MIN_ROTATION_PERIOD_SETTER_ROLE, minRotationPeriodSetter);
