@@ -3,7 +3,6 @@ pragma solidity 0.8.16;
 
 import "forge-std/Test.sol";
 
-import "../../src/UpgradeExecutor.sol";
 import "../../src/ArbitrumTimelock.sol";
 import "../../src/L2ArbitrumGovernor.sol";
 import "../../src/FixedDelegateErc20Wallet.sol";
@@ -404,7 +403,7 @@ contract E2E is Test, DeployGnosisWithModule {
             IGnosisSafe(address(vars.moduleL1Safe)),
             IGnosisSafe(l1EmergencyCouncil),
             secCouncilThreshold,
-            IUpgradeExecutor(address(vars.l1Executor)),
+            UpgradeExecutor(address(vars.l1Executor)),
             ICoreTimelock(address(vars.l1Timelock))
         );
 

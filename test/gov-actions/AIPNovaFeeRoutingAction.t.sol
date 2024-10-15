@@ -6,7 +6,7 @@ pragma solidity 0.8.16;
 import "forge-std/Test.sol";
 
 import "../../src/gov-action-contracts/AIPs/AIPNovaFeeRoutingAction.sol";
-import "../../src/UpgradeExecutor.sol";
+import "@offchainlabs/upgrade-executor/src/UpgradeExecutor.sol";
 
 contract AIPNovaFeeRoutingActionTest is Test {
     UpgradeExecutor constant upExec = UpgradeExecutor(0x86a02dD71363c440b21F4c0E5B2Ad01Ffe1A7482);

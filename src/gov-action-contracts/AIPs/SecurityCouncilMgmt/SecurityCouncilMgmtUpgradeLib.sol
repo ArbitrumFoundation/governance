@@ -2,14 +2,14 @@
 pragma solidity 0.8.16;
 
 import "../../../security-council-mgmt/interfaces/IGnosisSafe.sol";
-import "../../../interfaces/IUpgradeExecutor.sol";
+import "@offchainlabs/upgrade-executor/src/UpgradeExecutor.sol";
 
 library SecurityCouncilMgmtUpgradeLib {
     function replaceEmergencySecurityCouncil(
         IGnosisSafe _prevSecurityCouncil,
         IGnosisSafe _newSecurityCouncil,
         uint256 _threshold,
-        IUpgradeExecutor _upgradeExecutor
+        UpgradeExecutor _upgradeExecutor
     ) internal {
         requireSafesEquivalent(_prevSecurityCouncil, _newSecurityCouncil, _threshold);
         bytes32 EXECUTOR_ROLE = _upgradeExecutor.EXECUTOR_ROLE();

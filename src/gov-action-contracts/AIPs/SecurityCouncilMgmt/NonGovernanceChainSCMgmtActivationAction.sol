@@ -8,13 +8,13 @@ contract NonGovernanceChainSCMgmtActivationAction {
     IGnosisSafe public immutable newEmergencySecurityCouncil;
     IGnosisSafe public immutable prevEmergencySecurityCouncil;
     uint256 public immutable emergencySecurityCouncilThreshold;
-    IUpgradeExecutor public immutable upgradeExecutor;
+    UpgradeExecutor public immutable upgradeExecutor;
 
     constructor(
         IGnosisSafe _newEmergencySecurityCouncil,
         IGnosisSafe _prevEmergencySecurityCouncil,
         uint256 _emergencySecurityCouncilThreshold,
-        IUpgradeExecutor _upgradeExecutor
+        UpgradeExecutor _upgradeExecutor
     ) {
         newEmergencySecurityCouncil = _newEmergencySecurityCouncil;
         prevEmergencySecurityCouncil = _prevEmergencySecurityCouncil;
