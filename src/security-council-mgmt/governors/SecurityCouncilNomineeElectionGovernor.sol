@@ -60,14 +60,13 @@ contract SecurityCouncilNomineeElectionGovernor is
     /// @notice Address responsible for blocking non compliant nominees
     address public nomineeVetter;
 
-    /// @notice Security council manager contract
-    /// @dev    Used to execute the election result immediately if <= 6 compliant nominees are chosen
+    /// @inheritdoc ISecurityCouncilNomineeElectionGovernor
     ISecurityCouncilManager public securityCouncilManager;
 
-    /// @notice Security council member election governor contract
+    /// @inheritdoc ISecurityCouncilNomineeElectionGovernor
     ISecurityCouncilMemberElectionGovernor public securityCouncilMemberElectionGovernor;
 
-    /// @notice Number of elections created
+    /// @inheritdoc ISecurityCouncilNomineeElectionGovernor
     uint256 public electionCount;
 
     /// @notice Maps proposalId to ElectionInfo
@@ -422,18 +421,24 @@ contract SecurityCouncilNomineeElectionGovernor is
         public
         view
         virtual
-        override
+        override(
+            ISecurityCouncilNomineeElectionGovernor,
+            SecurityCouncilNomineeElectionGovernorCountingUpgradeable
+        )
         returns (bool)
     {
         return _elections[proposalId].isContender[possibleContender];
     }
 
     /// @notice Recover EIP712 signature for `AddContenderMessage`
-    function recoverAddContenderMessage(uint256 proposalId, bytes calldata signature) public view returns (address) {
-        bytes32 digest = _hashTypedDataV4(keccak256(abi.encode(
-            keccak256("AddContenderMessage(uint256 proposalId)"),
-            proposalId
-        )));
+    function recoverAddContenderMessage(uint256 proposalId, bytes calldata signature)
+        public
+        view
+        returns (address)
+    {
+        bytes32 digest = _hashTypedDataV4(
+            keccak256(abi.encode(keccak256("AddContenderMessage(uint256 proposalId)"), proposalId))
+        );
         return ECDSAUpgradeable.recover(digest, signature);
     }
 
@@ -490,10 +495,12 @@ contract SecurityCouncilNomineeElectionGovernor is
     }
 
     /// @notice Deprecated, use `addContender(uint256 proposalId, bytes calldata signature)` instead
-    /// @dev    This function is deprecated because contenders should only be EOA's that can produce signatures. 
+    /// @dev    This function is deprecated because contenders should only be EOA's that can produce signatures.
     ///         If a security council member's address is not an EOA, then they may be unable to sign on all relevant chains.
     function addContender(uint256) external pure {
-        revert Deprecated("addContender(uint256 proposalId) has been deprecated. Use addContender(uint256 proposalId, bytes calldata signature) instead");
+        revert Deprecated(
+            "addContender(uint256 proposalId) has been deprecated. Use addContender(uint256 proposalId, bytes calldata signature) instead"
+        );
     }
 
     /**

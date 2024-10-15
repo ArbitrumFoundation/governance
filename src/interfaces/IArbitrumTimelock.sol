@@ -13,4 +13,5 @@ interface IArbitrumTimelock {
     ) external;
     function getMinDelay() external view returns (uint256 duration);
     function updateDelay(uint256 newDelay) external;
+    function isOperation(bytes32 id) external view returns (bool registered);
 }
