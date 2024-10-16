@@ -8,16 +8,17 @@ import {
     TransparentUpgradeableProxy
 } from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 
-contract UpgradeExecutorUpgradeAction {
-    address public immutable newUpgradeExecutorImplementation;
-    ProxyAdmin public immutable proxyAdmin;
+import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Upgrade.sol";
 
-    constructor(ProxyAdmin _proxyAdmin) {
-        proxyAdmin = _proxyAdmin;
+contract UpgradeExecutorUpgradeAction is ERC1967Upgrade {
+    address public immutable newUpgradeExecutorImplementation;
+
+    constructor() {
         newUpgradeExecutorImplementation = address(new UpgradeExecutor());
     }
 
     function perform() external {
+        ProxyAdmin proxyAdmin = ProxyAdmin(_getAdmin());
         TransparentUpgradeableProxy proxy = TransparentUpgradeableProxy(payable(address(this)));
 
         ProxyAdmin(proxyAdmin).upgrade(proxy, newUpgradeExecutorImplementation);
@@ -27,27 +28,4 @@ contract UpgradeExecutorUpgradeAction {
             "UpgradeExecutorUpgradeAction: upgrade failed"
         );
     }
-}
-
-// Proxy Admins:
-// Arb1: 0xdb216562328215E010F819B5aBe947bad4ca961e
-// Nova: 0xf58eA15B20983116c21b05c876cc8e6CDAe5C2b9
-// L1:   0x5613AF0474EB9c528A34701A5b1662E3C8FA0678
-
-contract ArbOneUpgradeExecutorUpgradeAction is UpgradeExecutorUpgradeAction {
-    constructor()
-        UpgradeExecutorUpgradeAction(ProxyAdmin(0xdb216562328215E010F819B5aBe947bad4ca961e))
-    {}
-}
-
-contract NovaUpgradeExecutorUpgradeAction is UpgradeExecutorUpgradeAction {
-    constructor()
-        UpgradeExecutorUpgradeAction(ProxyAdmin(0xf58eA15B20983116c21b05c876cc8e6CDAe5C2b9))
-    {}
-}
-
-contract L1UpgradeExecutorUpgradeAction is UpgradeExecutorUpgradeAction {
-    constructor()
-        UpgradeExecutorUpgradeAction(ProxyAdmin(0x5613AF0474EB9c528A34701A5b1662E3C8FA0678))
-    {}
 }
