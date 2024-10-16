@@ -4,6 +4,11 @@ pragma solidity 0.8.16;
 import "forge-std/Test.sol";
 import "@offchainlabs/upgrade-executor/src/UpgradeExecutor.sol";
 
+import {
+    ProxyAdmin,
+    TransparentUpgradeableProxy
+} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
+
 import "src/gov-action-contracts/AIPs/upgrade-executor-upgrade/UpgradeExecutorUpgradeAction.sol";
 
 contract UpgradeExecutorUpgradeActionTest is Test {
