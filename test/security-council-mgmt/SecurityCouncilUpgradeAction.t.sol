@@ -5,7 +5,7 @@ pragma solidity 0.8.16;
 import "@gnosis.pm/safe-contracts/contracts/GnosisSafeL2.sol";
 import "../util/TestUtil.sol";
 import "../util/DeployGnosisWithModule.sol";
-import "../../src/UpgradeExecutor.sol";
+import "@offchainlabs/upgrade-executor/src/UpgradeExecutor.sol";
 
 import "../../src/security-council-mgmt/SecurityCouncilMemberSyncAction.sol";
 import "../../src/security-council-mgmt/interfaces/IGnosisSafe.sol";

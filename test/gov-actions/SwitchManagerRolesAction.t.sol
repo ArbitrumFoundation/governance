@@ -4,6 +4,7 @@ pragma solidity 0.8.16;
 import "forge-std/Test.sol";
 
 import "../../src/gov-action-contracts/nonemergency/SwitchManagerRolesAction.sol";
+import "@offchainlabs/upgrade-executor/src/UpgradeExecutor.sol";
 
 contract SwitchManagerRolesActionTest is Test {
     UpgradeExecutor arbOneUe = UpgradeExecutor(0xCF57572261c7c2BCF21ffD220ea7d1a27D40A827);

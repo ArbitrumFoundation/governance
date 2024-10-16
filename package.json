@@ -79,6 +79,7 @@
     "@arbitrum/nitro-contracts": "1.1.1",
     "@arbitrum/token-bridge-contracts": "1.0.0-beta.0",
     "@gnosis.pm/safe-contracts": "1.3.0",
+    "@offchainlabs/upgrade-executor": "1.1.0-beta.0",
     "@openzeppelin/contracts": "4.7.3",
     "@openzeppelin/contracts-upgradeable": "4.7.3",
     "@types/yargs": "^17.0.17",
