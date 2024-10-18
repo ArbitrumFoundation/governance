@@ -13,7 +13,7 @@ import "src/gov-action-contracts/AIPs/upgrade-executor-upgrade/UpgradeExecutorUp
 
 contract UpgradeExecutorUpgradeActionTest is Test {
     function testArbOne() external {
-        vm.createSelectFork(vm.envString("ARB_URL"));
+        vm.createSelectFork(vm.envString("ARB_URL"), 265159958);
         _testUpgrade(
             0xdb216562328215E010F819B5aBe947bad4ca961e,
             0xCF57572261c7c2BCF21ffD220ea7d1a27D40A827,
@@ -22,7 +22,7 @@ contract UpgradeExecutorUpgradeActionTest is Test {
     }
 
     function testNova() external {
-        vm.createSelectFork(vm.envString("NOVA_URL"));
+        vm.createSelectFork(vm.envString("NOVA_URL"), 78263024);
         _testUpgrade(
             0xf58eA15B20983116c21b05c876cc8e6CDAe5C2b9,
             0x86a02dD71363c440b21F4c0E5B2Ad01Ffe1A7482,
@@ -31,7 +31,7 @@ contract UpgradeExecutorUpgradeActionTest is Test {
     }
 
     function testL1() external {
-        vm.createSelectFork(vm.envString("ETH_URL"));
+        vm.createSelectFork(vm.envString("ETH_URL"), 20993735);
         _testUpgrade(
             0x5613AF0474EB9c528A34701A5b1662E3C8FA0678,
             0x3ffFbAdAF827559da092217e474760E2b2c3CeDd,
