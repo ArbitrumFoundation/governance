@@ -2,7 +2,7 @@
 pragma solidity 0.8.16;
 
 import "../../../security-council-mgmt/interfaces/IGnosisSafe.sol";
-import "../../../interfaces/IUpgradeExecutor.sol";
+import "@offchainlabs/upgrade-executor/src/IUpgradeExecutor.sol";
 import "../../../interfaces/ICoreTimelock.sol";
 import "./SecurityCouncilMgmtUpgradeLib.sol";
 
@@ -10,14 +10,14 @@ contract L1SCMgmtActivationAction {
     IGnosisSafe public immutable newEmergencySecurityCouncil;
     IGnosisSafe public immutable prevEmergencySecurityCouncil;
     uint256 public immutable emergencySecurityCouncilThreshold;
-    IUpgradeExecutor public immutable l1UpgradeExecutor;
+    UpgradeExecutor public immutable l1UpgradeExecutor;
     ICoreTimelock public immutable l1Timelock;
 
     constructor(
         IGnosisSafe _newEmergencySecurityCouncil,
         IGnosisSafe _prevEmergencySecurityCouncil,
         uint256 _emergencySecurityCouncilThreshold,
-        IUpgradeExecutor _l1UpgradeExecutor,
+        UpgradeExecutor _l1UpgradeExecutor,
         ICoreTimelock _l1Timelock
     ) {
         newEmergencySecurityCouncil = _newEmergencySecurityCouncil;
