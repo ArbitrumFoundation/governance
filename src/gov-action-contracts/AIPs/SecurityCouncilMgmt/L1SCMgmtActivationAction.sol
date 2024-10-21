@@ -10,14 +10,14 @@ contract L1SCMgmtActivationAction {
     IGnosisSafe public immutable newEmergencySecurityCouncil;
     IGnosisSafe public immutable prevEmergencySecurityCouncil;
     uint256 public immutable emergencySecurityCouncilThreshold;
-    UpgradeExecutor public immutable l1UpgradeExecutor;
+    IUpgradeExecutor public immutable l1UpgradeExecutor;
     ICoreTimelock public immutable l1Timelock;
 
     constructor(
         IGnosisSafe _newEmergencySecurityCouncil,
         IGnosisSafe _prevEmergencySecurityCouncil,
         uint256 _emergencySecurityCouncilThreshold,
-        UpgradeExecutor _l1UpgradeExecutor,
+        IUpgradeExecutor _l1UpgradeExecutor,
         ICoreTimelock _l1Timelock
     ) {
         newEmergencySecurityCouncil = _newEmergencySecurityCouncil;

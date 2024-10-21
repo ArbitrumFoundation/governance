@@ -2,7 +2,7 @@
 pragma solidity 0.8.16;
 
 import "@arbitrum/nitro-contracts/src/precompiles/ArbSys.sol";
-import "@offchainlabs/upgrade-executor/src/IUpgradeExecutor.sol";
+import "@offchainlabs/upgrade-executor/src/UpgradeExecutor.sol";
 import "./L1ArbitrumTimelock.sol";
 import "./security-council-mgmt/Common.sol";
 
@@ -136,7 +136,7 @@ contract UpgradeExecRouteBuilder {
             }
 
             bytes memory executorData = abi.encodeWithSelector(
-                IUpgradeExecutor.execute.selector, actionAddresses[i], actionDatas[i]
+                UpgradeExecutor.execute.selector, actionAddresses[i], actionDatas[i]
             );
 
             // for L1, inbox is set to address(0):

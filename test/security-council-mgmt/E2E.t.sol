@@ -403,7 +403,7 @@ contract E2E is Test, DeployGnosisWithModule {
             IGnosisSafe(address(vars.moduleL1Safe)),
             IGnosisSafe(l1EmergencyCouncil),
             secCouncilThreshold,
-            UpgradeExecutor(address(vars.l1Executor)),
+            IUpgradeExecutor(address(vars.l1Executor)),
             ICoreTimelock(address(vars.l1Timelock))
         );
 

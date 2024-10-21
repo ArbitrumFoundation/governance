@@ -8,13 +8,13 @@ contract NonGovernanceChainSCMgmtActivationAction {
     IGnosisSafe public immutable newEmergencySecurityCouncil;
     IGnosisSafe public immutable prevEmergencySecurityCouncil;
     uint256 public immutable emergencySecurityCouncilThreshold;
-    UpgradeExecutor public immutable upgradeExecutor;
+    IUpgradeExecutor public immutable upgradeExecutor;
 
     constructor(
         IGnosisSafe _newEmergencySecurityCouncil,
         IGnosisSafe _prevEmergencySecurityCouncil,
         uint256 _emergencySecurityCouncilThreshold,
-        UpgradeExecutor _upgradeExecutor
+        IUpgradeExecutor _upgradeExecutor
     ) {
         newEmergencySecurityCouncil = _newEmergencySecurityCouncil;
         prevEmergencySecurityCouncil = _prevEmergencySecurityCouncil;
@@ -34,11 +34,11 @@ contract NonGovernanceChainSCMgmtActivationAction {
         // confirm updates
         bytes32 EXECUTOR_ROLE = upgradeExecutor.EXECUTOR_ROLE();
         require(
-            upgradeExecutor.hasRole(EXECUTOR_ROLE, address(newEmergencySecurityCouncil)),
+            IAccessControl(address(upgradeExecutor)).hasRole(EXECUTOR_ROLE, address(newEmergencySecurityCouncil)),
             "NonGovernanceChainSCMgmtActivationAction: new emergency security council not set"
         );
         require(
-            !upgradeExecutor.hasRole(EXECUTOR_ROLE, address(prevEmergencySecurityCouncil)),
+            !IAccessControl(address(upgradeExecutor)).hasRole(EXECUTOR_ROLE, address(prevEmergencySecurityCouncil)),
             "NonGovernanceChainSCMgmtActivationAction: prev emergency security council still set"
         );
     }

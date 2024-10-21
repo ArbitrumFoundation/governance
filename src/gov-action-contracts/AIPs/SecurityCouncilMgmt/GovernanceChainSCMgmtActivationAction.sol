@@ -5,9 +5,10 @@ import "../../../security-council-mgmt/interfaces/IGnosisSafe.sol";
 import "../../address-registries/L2AddressRegistryInterfaces.sol";
 import "./SecurityCouncilMgmtUpgradeLib.sol";
 import "../../../interfaces/IArbitrumDAOConstitution.sol";
-import "@offchainlabs/upgrade-executor/src/UpgradeExecutor.sol";
+import "@offchainlabs/upgrade-executor/src/IUpgradeExecutor.sol";
 import "../../../interfaces/ICoreTimelock.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
+import "@openzeppelin/contracts/access/IAccessControl.sol";
 
 contract GovernanceChainSCMgmtActivationAction {
     IGnosisSafe public immutable newEmergencySecurityCouncil;
@@ -49,7 +50,7 @@ contract GovernanceChainSCMgmtActivationAction {
     }
 
     function perform() external {
-        UpgradeExecutor upgradeExecutor = UpgradeExecutor(l2AddressRegistry.coreGov().owner());
+        IUpgradeExecutor upgradeExecutor = IUpgradeExecutor(l2AddressRegistry.coreGov().owner());
 
         // swap in new emergency security council
         SecurityCouncilMgmtUpgradeLib.replaceEmergencySecurityCouncil({
@@ -116,11 +117,11 @@ contract GovernanceChainSCMgmtActivationAction {
         // confirm updates
         bytes32 EXECUTOR_ROLE = upgradeExecutor.EXECUTOR_ROLE();
         require(
-            upgradeExecutor.hasRole(EXECUTOR_ROLE, address(newEmergencySecurityCouncil)),
+            IAccessControl(address(upgradeExecutor)).hasRole(EXECUTOR_ROLE, address(newEmergencySecurityCouncil)),
             "NonGovernanceChainSCMgmtActivationAction: new emergency security council not set"
         );
         require(
-            !upgradeExecutor.hasRole(EXECUTOR_ROLE, address(prevEmergencySecurityCouncil)),
+            !IAccessControl(address(upgradeExecutor)).hasRole(EXECUTOR_ROLE, address(prevEmergencySecurityCouncil)),
             "NonGovernanceChainSCMgmtActivationAction: prev emergency security council still set"
         );
 
