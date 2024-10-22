@@ -4,7 +4,7 @@ pragma solidity 0.8.16;
 import "./L2ArbitrumToken.sol";
 import "./L2ArbitrumGovernor.sol";
 import "./ArbitrumTimelock.sol";
-import "./UpgradeExecutor.sol";
+import "@offchainlabs/upgrade-executor/src/UpgradeExecutor.sol";
 import "./FixedDelegateErc20Wallet.sol";
 import "./ArbitrumDAOConstitution.sol";
 import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
