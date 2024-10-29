@@ -11,6 +11,6 @@ contract SetValidatorsAction {
     }
 
     function perform(address[] calldata _validators, bool[] calldata _values) external {
-        addressRegistry.rollup().setValidator(_validators, _values);
+        IRollupAdmin(address(addressRegistry.rollup())).setValidator(_validators, _values);
     }
 }

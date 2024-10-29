@@ -11,8 +11,10 @@ import {
   UnreachableCaseError,
   getProvider,
   BaseGovernorExecuteStage,
+  L2TimelockExecutionSingleStage,
+  SecurityCouncilManagerTimelockStage,
 } from "./proposalStage";
-import { Signer } from "ethers";
+import { Signer, BigNumber } from "ethers";
 import { Provider, TransactionReceipt } from "@ethersproject/abstract-provider";
 import { EventEmitter } from "events";
 import { wait } from "./utils";
@@ -28,6 +30,8 @@ export class StageFactory {
     return [
       ...(await BaseGovernorExecuteStage.extractStages(receipt, this.arbOneSignerOrProvider)),
       ...(await L2TimelockExecutionBatchStage.extractStages(receipt, this.arbOneSignerOrProvider)),
+      ...(await SecurityCouncilManagerTimelockStage.extractStages(receipt, this.arbOneSignerOrProvider)),
+      ...(await L2TimelockExecutionSingleStage.extractStages(receipt, this.arbOneSignerOrProvider)),
       ...(await L1TimelockExecutionSingleStage.extractStages(receipt, this.l1SignerOrProvider)),
       ...(await L1TimelockExecutionBatchStage.extractStages(receipt, this.l1SignerOrProvider)),
       ...(await RetryableExecutionStage.extractStages(receipt, this.arbOneSignerOrProvider)),
@@ -61,6 +65,7 @@ export interface TrackerEvent {
   publicExecutionUrl?: string;
   error?: Error;
   proposalDescription?: string;
+  quorum?: BigNumber
 }
 
 export class StageTracker extends EventEmitter {
@@ -106,6 +111,7 @@ export class StageTracker extends EventEmitter {
                 : undefined,
             proposalDescription:
               this.stage instanceof GovernorQueueStage ? this.stage.description : undefined,
+              quorum: this.stage instanceof BaseGovernorExecuteStage && status != ProposalStageStatus.PENDING  ? await this.stage.quorum() : undefined
           });
           currentStatus = status;
         }
@@ -148,6 +154,7 @@ export class StageTracker extends EventEmitter {
 
             break;
           case ProposalStageStatus.PENDING:
+          case ProposalStageStatus.ACTIVE:
             // keep checking status
             await wait(this.pollingIntervalMs);
             break;

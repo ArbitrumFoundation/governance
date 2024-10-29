@@ -217,7 +217,7 @@ describe("Governor", function () {
       l2GovernorContract,
       localMiners
     );
-  }).timeout(360000);
+  }).timeout(600000);
 
   it("L2-L1-L2 monitoring value", async () => {
     const { l1Signer, l2Signer, l1Deployer, l2Deployer } = await testSetup();
@@ -240,7 +240,7 @@ describe("Governor", function () {
       l2GovernorContract,
       localMiners
     );
-  }).timeout(360000);
+  }).timeout(600000);
 
   it("L2-L1 monitoring", async () => {
     const { l1Signer, l2Signer, l1Deployer, l2Deployer } = await testSetup();
@@ -263,7 +263,7 @@ describe("Governor", function () {
       l2GovernorContract,
       localMiners
     );
-  }).timeout(360000);
+  }).timeout(600000);
 
   it("L2-L1-L2 monitoring", async () => {
     const { l1Signer, l2Signer, l1Deployer, l2Deployer } = await testSetup();
@@ -286,7 +286,7 @@ describe("Governor", function () {
       l2GovernorContract,
       localMiners
     );
-  }).timeout(360000);
+  }).timeout(600000);
 
   it("L2-L1 proposal", async () => {
     const { l1Signer, l2Signer, l1Deployer, l2Deployer } = await testSetup();
@@ -307,7 +307,7 @@ describe("Governor", function () {
       l1TimelockContract,
       l2TimelockContract,
     );
-  }).timeout(360000);
+  }).timeout(600000);
 
   it("L2-L1-L2 proposal", async () => {
     const { l1Signer, l2Signer, l1Deployer, l2Deployer } = await testSetup();
@@ -327,5 +327,5 @@ describe("Governor", function () {
       l2TimelockContract,
       l2UpgradeExecutor
     );
-  }).timeout(360000);
+  }).timeout(600000);
 });

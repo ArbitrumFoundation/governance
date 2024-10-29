@@ -21,9 +21,10 @@ The election process and update stages are performed via on-chain smart contract
 
 Process for selecting and voting for the new cohort of Security council members.
 
-1. **Nominee Selection (7 days).** Candidates must gain 0.2% of total votable tokens in order to make it to the next step.
-2. **Compliance check by Foundation (14 days).** As dictated in the Constitution, the selected nominees must undergo a compliance check to ensure they comply with the legal requirements, service agreements, and additional rules dictated by the Constitution.
-3. **Member election (21 days).** Votes are cast and the top 6 nominees are selected.
+1. **Candidate registration (7 days)** Candidates must put themselves up for nomination in order to receive votes.
+2. **Nominee selection (7 days).** Candidates must gain 0.2% of total votable tokens in order to make it to the next step.
+3. **Compliance check by Foundation (14 days).** As dictated in the Constitution, the selected nominees must undergo a compliance check to ensure they comply with the legal requirements, service agreements, and additional rules dictated by the Constitution.
+4. **Member election (21 days).** Votes are cast and the top 6 nominees are selected.
 
 ## Update Stages
 
@@ -37,12 +38,21 @@ Process to install the newly elected cohort of Security Council members into the
 
 # Election Stages in detail
 
-## 1. Nominee selection (7 days)
-
-This stage consists of handling election timing, candidate registration, candidate endorsement:
+## 1. Election creation and candidate registration (7 days)
 
 - **Election creation.** Elections can be created by anyone, but only every 6 months. The election alternates between targeting the positions on the two cohorts. Once created, this first stage of the election process lasts for 7 days.
 - **Candidate registration.** During these 7 days, any candidate can register, unless they are already a member of the other cohort. Members of the current cohort (the cohort up for election) are allowed to register for re-election.
+
+### Implementation details
+
+A new proposal is created each election cycle by calling `SecurityCouncilNomineeElectionGovernor.createElection`. Once a proposal is created it will be "Pending" for 7 days.
+
+Voting is not allowed while the proposal is pending.
+
+During the 7 day pending window, contenders register themselves by signing an EIP712 message of type `AddContenderMessage(uint256 proposalId)` and calling `SecurityCouncilNomineeElectionGovernor.addContender`.
+
+## 2. Nominee selection (7 days)
+
 - **Endorsing candidates.** Delegates can endorse a candidate during this 7 day window. A single delegate can split their vote across multiple candidates. No candidate can accrue more than 0.2% of all votable tokens.
 - **Fallback in case of too few candidates.** In the event that fewer than 6 candidates receive a 0.2% endorsement, the Arbitrum Foundation will randomly select members from the outgoing cohort to make up to 6 candidates.
 
@@ -55,13 +65,9 @@ It inherits most of its functionality from the OpenZeppelin Governor contracts, 
 - Custom counting module to allow delegates to endorse multiple candidates.
 - Overridden proposal and execution to make the governor single purpose.
 
-This governor contract has the following general interface relevant to the first stage: 
+Delegates can call `castVoteWithReasonAndParams` supplying custom arguments in the params to indicate which candidate they wish to endorse with what weight.
 
-- A new proposal is created each election cycle by calling `createElection`
-- Contenders can make themselves eligible to receive votes by calling `addContender`.
-- Delegates can call `castVoteWithReasonAndParams` or `castVoteWithReasonAndParamsBySig` supplying custom arguments in the params to indicate which candidate they wish to endorse with what weight.
-
-## 2. Compliance check by the Foundation (14 days)
+## 3. Compliance check by the Foundation (14 days)
 
 The Foundation will be given 14 days to vet the prospective nominees. If they find that a candidate does not meet the compliance check, they can exclude the candidate from progressing to the next stage. The compliance rules are not detailed here, and will instead be published by the Foundation, but note that grounds for exclusion will include greater than 3 members of a given organisation being represented in the nominee set (as described in section 4 of the Constitution).
 
@@ -77,7 +83,7 @@ The Governor smart contract enforces that at least a 2 week time period be provi
 
 Once the compliance check has completed, anyone can call the `execute` function on the `SecurityCouncilNomineeElectionGovernor` to proceed to the member election stage.
 
-## 3. Member election (21 days)
+## 4. Member election (21 days)
 
 The voting process can begin once a set of compliant candidates have been successfully nominated. 
 
@@ -157,7 +163,7 @@ The old cohort of members will be removed, and the new cohort will replace them.
 
 ### Implementation details
 
-To do this the existing [Upgrade Executor contracts](https://github.com/ArbitrumFoundation/governance/blob/main/docs/overview.md#l1-upgrade-executor) on each chain will be installed as Gnosis Safe modules into the Security Council safes. A custom [Governance Action Contract](https://github.com/ArbitrumFoundation/governance/blob/main/src/gov-action-contracts/README.md) will be used to call the specific `OwnerManager` `addOwnerWithThreshold` and `removeOwner` methods on the Gnosis safes.
+To do this the existing [Upgrade Executor contracts](https://github.com/ArbitrumFoundation/governance/blob/main/docs/overview.md#l1-upgrade-executor) on each chain will be installed as Gnosis Safe modules into the Security Council Safes. A custom [Governance Action Contract](https://github.com/ArbitrumFoundation/governance/blob/main/src/gov-action-contracts/README.md) will be used to call the specific `OwnerManager` `addOwnerWithThreshold` and `removeOwner` methods on the Gnosis Safes.
 
 ## Additional affordances
 
@@ -170,15 +176,17 @@ It accepts proposals in the same format that normal governors do, however it ove
 
 Voting and proposing can occur using the standard governance UIs.
 
-### 9/12 Security Council
+### Non-Emergency Security Council
 
-The Security Council can remove a member prior to the end of their term, if 9 of 12 members agree. The 9 of 12 council has the rights to call `removeMember` on the `SecurityCouncilManager`.
+The Security Council can remove a member prior to the end of their term, if 9 of 12 members agree. The non-emergency council has the right to call `removeMember` on the `SecurityCouncilManager`.
 
-The Security Council can also add a member once one has been removed if 9 of 12 members agree and if there are less than 12 members currently on the council. The 9 of 12 council is be given the rights to call `addMember` on the `SecurityCouncilManager`.
+The Security Council can add a member if there are less than 12 members currently on the council. The non-emergency council has the right to call `addMember` on the `SecurityCouncilManager`.
+
+The Security Council can replace members or rotate keys at any time. The non-emergency council has the right to call `replaceMember` and `rotateMember` on the `SecurityCouncilManager`. These 2 functions are functionally identical, although they imply different intent/purpose
 
 ### Overall diagram
 Below is a diagram showing the interaction between the different components described above:
-![](./security-council-colors.png)
+![](./security-council-mgmt-flow.png)
 
 ### Block periods
 The constitution specifies time periods in days and weeks, however in the implementation block numbers are used as a proxy for this. In the event of an L1 block time change the contracts here, and in general governance, would need to be updated to reflect the time periods again.

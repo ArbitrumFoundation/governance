@@ -41,7 +41,7 @@ contract L1GovernanceFactoryTest is Test {
         assertEq(timelock.governanceChainInbox(), address(inbox), "timelock inbox set");
         assertEq(timelock.l2Timelock(), l2Timelock, "timelock l2Timelock set");
         assertEq(timelock.getMinDelay(), minDelay, "timelock minDelay set");
-        address[] memory proposers;
+        // address[] memory proposers;
         address[] memory executors;
         vm.expectRevert("Initializable: contract is already initialized");
         timelock.initialize(minDelay, executors, address(inbox), l2Timelock);

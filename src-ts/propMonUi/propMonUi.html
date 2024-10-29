@@ -107,6 +107,9 @@
     <h1>Proposal States</h1>
     <div id="data-container"></div>
     <script>
+        function numberWithCommas(x) {
+            return x.toString().replace(/\B(?<!\.\d*)(?=(\d{3})+(?!\d))/g, ",");
+        }
         function fetchData() {
             fetch(`./proposalState.json?${Date.now()}`)
                 .then(response => response.json())
@@ -167,14 +170,20 @@
                         const governorDiv = document.createElement('div');
                         container.appendChild(governorDiv);
 
-                        let govName;
-                        if (governorAddress.toLowerCase() === '0xf07DeD9dC292157749B6Fd268E37DF6EA38395B9'.toLowerCase()) {
-                            govName = 'Core Governor';
-                        } else if (governorAddress.toLowerCase() === '0x789fC99093B09aD01C34DC7251D0C89ce743e5a4'.toLowerCase()) {
-                            govName = 'Treasury Governor';
-                        } else {
-                            govName = 'Unknown Governor';
-                        }
+                        const govName = (()=>{
+                            switch (governorAddress.toLowerCase()) {
+                                case '0xf07DeD9dC292157749B6Fd268E37DF6EA38395B9'.toLowerCase():  
+                                    return 'Core Governor';
+                                case '0x789fC99093B09aD01C34DC7251D0C89ce743e5a4'.toLowerCase():  
+                                    return 'Treasury Governor';
+                                case '0x8a1cDA8dee421cD06023470608605934c16A05a0'.toLowerCase():  
+                                    return 'Election Governor'
+                                case '0xADd68bCb0f66878aB9D37a447C7b9067C5dfa941'.toLowerCase():  
+                                    return 'Non-emergency Security Council'
+                                default:
+                                    return 'Unknown Governor';;
+                            }
+                        })()
 
                         governorDiv.innerHTML = `<h2>${govName}: ${governorAddress}</h2>`;
 
@@ -190,6 +199,13 @@
                             } else {
                                 proposalDiv.innerHTML = `<h3>Proposal ID: ${stage.identifier}</h3>`;
                             }
+
+                            if(stage.quorum){
+                                const quorumDiv = document.createElement('div');
+                                quorumDiv.innerHTML = `<h4>Quorum: ${numberWithCommas(+stage.quorum * 10e-19)}</h4>`
+                                proposalDiv.appendChild(quorumDiv)
+                            }
+
                             if (stage.proposalDescription){
                                 const descDiv = document.createElement('div');
                                 descDiv.className = "desc";

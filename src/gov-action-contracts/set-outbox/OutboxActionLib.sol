@@ -49,6 +49,6 @@ library OutboxActionLib {
         require(
             Address.isContract(address(outbox)), "SetRollupOutboxAction: outbox must be contract"
         );
-        addressRegistry.rollup().setOutbox(outbox);
+        IRollupAdmin(address(addressRegistry.rollup())).setOutbox(outbox);
     }
 }

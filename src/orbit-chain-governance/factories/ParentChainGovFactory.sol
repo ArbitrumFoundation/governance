@@ -15,7 +15,7 @@ import "@openzeppelin/contracts/utils/Address.sol";
 contract ParentChainGovFactory is Ownable {
     bool private done = false;
 
-    event Deployed(L1ArbitrumTimelock timelock);
+    event Deployed(L1ArbitrumTimelock timelock, address inbox);
 
     error AlreadyExecuted();
     error NotAContract(address _address);
@@ -66,7 +66,10 @@ contract ParentChainGovFactory is Ownable {
         timelock.revokeRole(timelock.TIMELOCK_ADMIN_ROLE(), address(timelock));
         timelock.revokeRole(timelock.TIMELOCK_ADMIN_ROLE(), address(this));
 
-        emit Deployed(timelock);
+        // grant canceller role to upgrade executor; this can be used e.g. by an admin with executor affordance granted to the upgrade executor
+        timelock.grantRole(timelock.CANCELLER_ROLE(), address(_parentChainUpExec));
+
+        emit Deployed(timelock, _inbox);
     }
 
     function deployTimelock(ProxyAdmin _proxyAdmin)
