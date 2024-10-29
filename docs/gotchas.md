@@ -12,11 +12,11 @@ The core, treasury, and security-council-member-removal governors all have a min
 - **Timelock vs Governor Execution** 
 An operation queued in the core-governor-timelock or the treasury-governor-timelock can be executed permissionlessly on either its associated governor (typical) or on the timelock itself (atypical). The execution will be the same in either case, but in the later case, the governor’s `ProposalExecuted` event will not be emitted.
 
-- **Two L1 Proxy Admins** 
-There are two L1 proxy admins - one for the governance contracts, once for the governed core Nitro contracts. Note that both proxy admins have the same owner (the DAO), and thus this has no material effect on the DAO's affordances.
+- **Multiple L1 Proxy Admins** 
+There are 3 L1 proxy admins - one for the governance contracts, one for the governed core Nitro contracts of Arb1, and one for the governed core Nitro contracts of Nova. Note that all proxy admins have the same owner (the DAO), and thus this has no material effect on the DAO's affordances.
 
 - **Non-excluded L2 Timelock**
-ARB in the both treasury timelock and the DAO treasury can be transferred via treasury gov DAO vote; however, only ARB in the DAO treasury is excluded from the quorum numerator calculation. Thus, the DAO’s ARB should ideally all be stored in the DAO Treasury. 
+ARB in both the treasury timelock and the DAO treasury can be transferred via treasury gov DAO vote; however, only ARB in the DAO treasury is excluded from the quorum numerator calculation. Thus, the DAO’s ARB should ideally all be stored in the DAO Treasury. 
 
 - **L2ArbitrumGovernoer onlyGovernance behavior**
 Typically, for a timelocked OZ governror, the `onlyGovernance` modifier ensures a call is made from the timelock; in L2ArbitrumGoverner, the _executor() method is overriden such that `onlyGovernance` enforces a call from the governor contract itself. This ensures calls guarded by `onlyGovernance` go through the full core proposal path, as calls from the governor could only be sent via `relay`. See the code comment on `relay` in [L2ArbitrumGoveror](../src/L2ArbitrumGovernor.sol) for more.
@@ -28,5 +28,10 @@ Typically, for a timelocked OZ governror, the `onlyGovernance` modifier ensures 
 - Changes to members of the Security Council should be initiated via the SecurityCouncilManager, not via calling addOwner/removeOwner on the multisigs directly. This ensures that the security council's two cohorts remain properly tracked in the SecurityCouncilManager contract.  
 
 - **UpgradeExecutor Affordance** 
-Affordances are always given to the DAO via an UpgradeExecutor contract, which grants affordance to both the core governor proposal path and the Security Council. This includes abilities that are intended only for the Security Council; for example, proposal cancellation, practically speaking, could/would only ever be preformed by the Security Council (since the DAO wouldn't have time to vote on and execute a cancellation). Still, for this case, the affordance is given to the UpgradeExecutor; this is done for clarity, consistency, and to ensure that the UpgradeExecutor is the single source of truth for execution rights.
 
+Affordances are always given to the DAO via an UpgradeExecutor contract, which grants affordance to both the core governor proposal path and the Emergency Security Councils. This includes abilities that are intended only for the Security Council; for example, proposal cancellation, practically speaking, could/would only ever be preformed by the Security Council (since the DAO wouldn't have time to vote on and execute a cancellation). Still, for this case, the affordance is given to the UpgradeExecutor; this is done for clarity, consistency, and to ensure that the UpgradeExecutor is the single source of truth for execution rights.
+
+- **Non Emergency Security Council Affordances**
+In addition to proposing to the L2 Timlock, the only affordances granted directly to the Non Emergency Security Council are the "MEMBER_ADDER", "MEMBER_REPLACER", "MEMBER_ROTATOR", and "MEMBER_REMOVER" roles on the SecurityCouncilManager contract. If the Non Emergency Security Council on Arbitrum One is ever either removed or deployed to a new address, these roles should be modified accordingly.
+
+Additionally, if the signing threshold of the Non Emergency Security Council is reduced to be less than the Emergency Council, these roles should be revoked and instead granted to the Emergency Council to remain consistent with the Constitution.

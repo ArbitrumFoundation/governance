@@ -419,6 +419,7 @@ async function deployAndInitL1Token(
         await l1GovernanceFactory.proxyAdminAddress(),
         "0x"
       );
+      await proxy.deployed();
       const token = L1ArbitrumToken__factory.connect(proxy.address, ethDeployer);
       await (
         await token.initialize(
@@ -433,6 +434,8 @@ async function deployAndInitL1Token(
       return token;
     }
   );
+
+  await l1Token.deployed();
 
   return { l1Token };
 }
@@ -722,7 +725,7 @@ async function registerTokenOnArbOne(
   const arbGatewaySubmissionFee = (
     await arbInbox.callStatic.calculateRetryableSubmissionFee(
       ethers.utils.hexDataLength(arbGatewayRegistrationData),
-      0
+      await ethDeployer.getGasPrice()
     )
   ).mul(2);
   const valueForArbGateway = arbGatewaySubmissionFee.add(arbMaxGas.mul(arbGasPrice));
@@ -769,7 +772,7 @@ async function registerTokenOnArbOne(
   const arbRouterSubmissionFee = (
     await arbInbox.callStatic.calculateRetryableSubmissionFee(
       ethers.utils.hexDataLength(arbRouterRegistrationData),
-      0
+      await ethDeployer.getGasPrice()
     )
   ).mul(2);
   const valueForArbRouter = arbRouterSubmissionFee.add(arbMaxGas.mul(arbGasPrice));
@@ -831,7 +834,7 @@ async function registerTokenOnNova(
   const novaGatewaySubmissionFee = (
     await novaInbox.callStatic.calculateRetryableSubmissionFee(
       ethers.utils.hexDataLength(novaGatewayRegistrationData),
-      0
+      await ethDeployer.getGasPrice()
     )
   ).mul(2);
   const valueForNovaGateway = novaGatewaySubmissionFee.add(maxGas.mul(novaGasPrice));
@@ -844,7 +847,7 @@ async function registerTokenOnNova(
   const novaRouterSubmissionFee = (
     await novaInbox.callStatic.calculateRetryableSubmissionFee(
       ethers.utils.hexDataLength(novaRouterRegistrationData),
-      0
+      await ethDeployer.getGasPrice()
     )
   ).mul(2);
   const valueForNovaRouter = novaRouterSubmissionFee.add(maxGas.mul(novaGasPrice));

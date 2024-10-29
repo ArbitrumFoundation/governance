@@ -25,3 +25,6 @@ lcov.info
 lcov.info.pruned
 types/
 proposalState.json
+/test/storage/*-old
+/test/signatures/*-old
+.DS_Store

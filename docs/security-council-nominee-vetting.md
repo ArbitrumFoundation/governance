@@ -18,7 +18,7 @@ The address authorised to exclude and include addresses should be a multisig tha
 - Is the address already a member of the opposite cohort? The contracts check that this was not the case at the time of creation, but manipulation in the Manager could cause this to be violated at a later time.
 - Is the owner of the address able to create a signature of all chains where a Security Council is located that will be accepted by a Gnosis Safe?
 
-If any of the above are false the Foundation should call `excludeAddress` to stop that address from proceeding to the next stage.
+If any of the above are false the Foundation should call `excludeNominee` to stop that address from proceeding to the next stage.
 
 ### Including addresses
 

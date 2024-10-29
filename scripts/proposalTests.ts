@@ -58,8 +58,8 @@ async function main() {
   const currentBlock = await arbProvider.getBlockNumber();
   while ((await arbProvider.getBlockNumber()) - currentBlock < 2) {
     if (isLocal) {
-      await mineBlock(ethDeployer);
-      await mineBlock(arbDeployer);
+      await mineBlock(ethDeployer, "2blocketh");
+      await mineBlock(arbDeployer, "2blockarb");
     }
     await wait(1000);
   }

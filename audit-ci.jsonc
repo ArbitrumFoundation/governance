@@ -43,6 +43,48 @@
         // Server-Side Request Forgery in Request
         "GHSA-p8p7-x288-28g6",
         // OpenZeppelin: Using ERC2771Context with a custom forwarder can yield address(0)
-        "GHSA-g4vp-m682-qqmp"
+        "GHSA-g4vp-m682-qqmp",
+        // regular expression DoS in debug - low severity
+        "GHSA-gxpj-cx7g-858c",
+        // undici - only used in hardhat, not used in prod
+        "GHSA-wqq4-5wpv-mx2g",
+        // get-func-name - only used in chai, not used in prod
+        "GHSA-4q6p-r6v2-jvc5",
+        // axios used only in sol2uml
+        "GHSA-wf5p-g6vw-rhxx",
+        // follow-redirects url.parse bug. Not used in prod
+        "GHSA-jchw-25xp-jwwc",
+        // OpenZeppelin Contracts base64 encoding may read from potentially dirty memory
+        "GHSA-9vx6-7xxf-x967",
+        // Undici proxy-authorization header not cleared on cross-origin redirect in fetch
+        "GHSA-3787-6prv-h9w3",
+        // follow-redirects' Proxy-Authorization header kept across hosts
+        "GHSA-cxjh-pqwp-8mfp",
+        // es5-ext vulnerable to Regular Expression Denial of Service in `function#copy` and `function#toStringTokens`
+        "GHSA-4gmj-3p3h-gm8h",
+        // Express.js Open Redirect in malformed URLs
+        "GHSA-rv95-896h-c2vc",
+        // vuln in tar, node doesnt validate tar before trying to untar. Supplied bad tar can cause DOS on client
+        // we use node only in dev, and tar is only used by web3 which we dont use client side
+        // only bad tar we could be provided is through malicious package in dev
+        "GHSA-f5x3-32g6-xq36",
+        // undici proxy autho again - same as GHSA-3787-6prv-h9w3
+        "GHSA-m4v8-wqvr-p9f7",
+        // undici fetch with integrity action is too lax - again we only use undici in dev so not an issue
+        "GHSA-9qxr-qj54-h672",
+        // memory exhaustion possible in lib/parse, but we only use node in dev so not an issue for us
+        "GHSA-grv7-fg5c-xmjg",
+        // ws dos too many http - we only use in dev
+        "GHSA-3h5v-q93c-6h6q",
+        // BER sig malleability vuln - only used in dev
+        "GHSA-49q7-c7j4-3p7m",
+        // ECDSA missing leading bit r and s check - only used in dev
+        "GHSA-977x-g7h5-7qgw",
+        // EDDSA missing sig length check - package only used in dev
+        "GHSA-f7q4-pwc6-w24p",
+        // Server-Side Request Forgery in axios
+        "GHSA-8hc4-vh64-cxmj",
+        // Regular Expression Denial of Service (ReDoS) in micromatch
+        "GHSA-952p-6rrq-rcjv"
     ]
   }

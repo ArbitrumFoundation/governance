@@ -26,6 +26,12 @@ jobs:
       - name: Install packages
         run: yarn
 
+      - name: Test Storage Layouts
+        run: yarn run test:storage
+
+      - name: Test function signatures
+        run: yarn run test:signatures
+
       - name: Run tests
         run: make test
 
@@ -129,6 +135,8 @@ jobs:
         with:
           submodules: recursive
       - uses: OffchainLabs/actions/run-nitro-test-node@main
+        with:
+          no-token-bridge: true
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
@@ -181,15 +189,6 @@ jobs:
 
       - name: Proposal tests
         run: yarn test:proposals
-
-      - name: Prepare asset ownership transfer
-        run: yarn prepare:ownership:transfer
-
-      - name: Execute asset ownership transfer
-        run: yarn execute:ownership:transfer
-
-      - name: Verify protocol ownership
-        run: yarn verify:ownership:transfer
   
   test-integration:
     name: Test integration
@@ -199,6 +198,8 @@ jobs:
         with:
           submodules: recursive
       - uses: OffchainLabs/actions/run-nitro-test-node@main
+        with:
+          no-token-bridge: true
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1

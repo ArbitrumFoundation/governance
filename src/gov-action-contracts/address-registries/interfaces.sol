@@ -5,16 +5,8 @@ import "@arbitrum/nitro-contracts/src/bridge/IBridge.sol";
 import "@arbitrum/nitro-contracts/src/bridge/IInbox.sol";
 import "@arbitrum/nitro-contracts/src/bridge/IOutbox.sol";
 import "@arbitrum/nitro-contracts/src/bridge/ISequencerInbox.sol";
-
-interface IRollupCore {
-    function pause() external;
-    function resume() external;
-    function forceResolveChallenge(address[] memory stackerA, address[] memory stackerB) external;
-    function outbox() external view returns (IOutbox);
-    function setOutbox(IOutbox _outbox) external;
-    function setValidator(address[] memory _validator, bool[] memory _val) external;
-    function setValidatorWhitelistDisabled(bool _validatorWhitelistDisabled) external;
-}
+import "@arbitrum/nitro-contracts/src/rollup/IRollupAdmin.sol";
+import "@arbitrum/nitro-contracts/src/rollup/IRollupLogic.sol";
 
 interface IL1Timelock {
     function updateDelay(uint256 newDelay) external;

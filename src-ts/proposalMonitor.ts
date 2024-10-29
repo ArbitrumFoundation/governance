@@ -12,6 +12,7 @@ import {
 import { EventEmitter } from "events";
 import { Interface } from "@ethersproject/abi";
 import { BigNumber } from "ethers";
+import axios from "axios";
 
 export type GPMEvent = TrackerEvent & { originAddress: string };
 
@@ -23,7 +24,8 @@ export abstract class ProposalMonitor extends EventEmitter {
     public readonly blockLag: number,
     public readonly startBlockNumber: number,
     public readonly stageFactory: StageFactory,
-    public readonly writeMode: boolean
+    public readonly writeMode: boolean,
+    public readonly healthCheckUrl?: string
   ) {
     super();
   }
@@ -37,6 +39,15 @@ export abstract class ProposalMonitor extends EventEmitter {
   }
 
   private polling = false;
+
+  public async waitAndPing(){    
+    await wait(this.pollingIntervalMs);
+    if(this.healthCheckUrl){
+      axios.get(this.healthCheckUrl).catch((err)=>{
+        console.log("healthcheck ping error", err);
+      })
+    }
+  }
 
   public async monitorSingleProposal(receipt: TransactionReceipt) {
     const nextStages = await this.stageFactory.extractStages(receipt);
@@ -75,22 +86,26 @@ export abstract class ProposalMonitor extends EventEmitter {
     this.polling = true;
 
     let blockThen = this.startBlockNumber;
-    await wait(this.pollingIntervalMs);
+    await this.waitAndPing();
 
     while (this.polling) {
-      const blockNow = Math.max(
-        (await this.originProvider.getBlockNumber()) - this.blockLag,
-        blockThen
-      );
+      try {
+        const blockNow = Math.max(
+          (await this.originProvider.getBlockNumber()) - this.blockLag,
+          blockThen
+        );
 
-      const receipts = await this.getOriginReceipts(blockThen, blockNow);
+        const receipts = await this.getOriginReceipts(blockThen, blockNow);
 
-      for (const r of receipts) {
-        await this.monitorSingleProposal(r);
+        for (const r of receipts) {
+          await this.monitorSingleProposal(r);
+        }
+        blockThen = blockNow;
+      } catch (err) {
+        console.log("Proposal monitor Error:", err);
       }
 
-      await wait(this.pollingIntervalMs);
-      blockThen = blockNow;
+      await this.waitAndPing();
     }
   }
 

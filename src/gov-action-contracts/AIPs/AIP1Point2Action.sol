@@ -41,9 +41,11 @@ contract AIP1Point2Action {
         );
     }
 
-    function setProposalThreshold(IL2ArbitrumGoverner gov, uint256 newProposalThreshold) internal {
+    function setProposalThreshold(IL2ArbitrumGoverner gov, uint256 _newProposalThreshold)
+        internal
+    {
         bytes memory setProposalThresholdCalldata = abi.encodeWithSelector(
-            IL2ArbitrumGoverner.setProposalThreshold.selector, newProposalThreshold
+            IL2ArbitrumGoverner.setProposalThreshold.selector, _newProposalThreshold
         );
         gov.relay(address(gov), 0, setProposalThresholdCalldata);
     }

@@ -11,6 +11,6 @@ contract DisableValidatorWhitelistAction {
     }
 
     function perform() external {
-        addressRegistry.rollup().setValidatorWhitelistDisabled(true);
+        IRollupAdmin(address(addressRegistry.rollup())).setValidatorWhitelistDisabled(true);
     }
 }
