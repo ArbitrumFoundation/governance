@@ -87,9 +87,9 @@ contract SecurityCouncilManager is
     uint256 public minRotationPeriod;
 
     /// @notice The 712 name hash
-    bytes32 public NAME_HASH;
+    bytes32 public constant NAME_HASH = keccak256(bytes("SecurityCouncilManager"));
     /// @notice The 712 version hash
-    bytes32 public VERSION_HASH;
+    bytes32 public constant VERSION_HASH = keccak256(bytes("1"));
 
     /// @notice Magic value used by the L1 timelock to indicate that a retryable ticket should be created
     ///         Value is defined in L1ArbitrumTimelock contract https://etherscan.io/address/0xE6841D92B0C345144506576eC13ECf5103aC7f49#readProxyContract#F5
@@ -148,11 +148,6 @@ contract SecurityCouncilManager is
         }
 
         _setMinRotationPeriod(_minRotationPeriod);
-
-        // we do our own 712 functionality because inheriting the OZ version
-        // would change our storage layout
-        NAME_HASH = keccak256(bytes("SecurityCouncilManager"));
-        VERSION_HASH = keccak256(bytes("1"));
     }
 
     function getProxyAdmin() internal view returns (address admin) {
@@ -173,9 +168,6 @@ contract SecurityCouncilManager is
 
         _grantRole(MIN_ROTATION_PERIOD_SETTER_ROLE, minRotationPeriodSetter);
         _setMinRotationPeriod(_minRotationPeriod);
-
-        NAME_HASH = keccak256(bytes("SecurityCouncilManager"));
-        VERSION_HASH = keccak256(bytes("1"));
     }
 
     function _domainSeparatorV4() private view returns (bytes32) {
@@ -596,5 +588,5 @@ contract SecurityCouncilManager is
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
      */
 
-    uint256[39] private __gap;
+    uint256[41] private __gap;
 }
