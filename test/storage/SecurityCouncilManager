@@ -15,6 +15,4 @@
 | cohortSize        | uint256                                                      | 157  | 0      | 32    | src/security-council-mgmt/SecurityCouncilManager.sol:SecurityCouncilManager |
 | lastRotated       | mapping(address => uint256)                                  | 158  | 0      | 32    | src/security-council-mgmt/SecurityCouncilManager.sol:SecurityCouncilManager |
 | minRotationPeriod | uint256                                                      | 159  | 0      | 32    | src/security-council-mgmt/SecurityCouncilManager.sol:SecurityCouncilManager |
-| NAME_HASH         | bytes32                                                      | 160  | 0      | 32    | src/security-council-mgmt/SecurityCouncilManager.sol:SecurityCouncilManager |
-| VERSION_HASH      | bytes32                                                      | 161  | 0      | 32    | src/security-council-mgmt/SecurityCouncilManager.sol:SecurityCouncilManager |
-| __gap             | uint256[39]                                                  | 162  | 0      | 1248  | src/security-council-mgmt/SecurityCouncilManager.sol:SecurityCouncilManager |
+| __gap             | uint256[41]                                                  | 160  | 0      | 1312  | src/security-council-mgmt/SecurityCouncilManager.sol:SecurityCouncilManager |
