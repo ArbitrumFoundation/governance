@@ -82,7 +82,7 @@ export interface ProposalStage {
 }
 
 /**
- * Error with additional proposal information
+ * Fatal error with additional proposal information
  */
 export class ProposalStageError extends Error {
   constructor(message: string, identifier: string, stageName: string, inner?: Error);
@@ -102,6 +102,19 @@ export class ProposalStageError extends Error {
 export class UnreachableCaseError extends Error {
   constructor(value: never) {
     super(`Unreachable case: ${value}`);
+  }
+}
+
+export class RedeemFailedError extends Error {
+  constructor(
+    public readonly retryableId: string, 
+    public readonly since: number,
+    public readonly inner?: Error
+  ) {
+    super(`Retryable redeem for ${retryableId} failing since: ${new Date(since).toISOString()}`)
+    if (inner) {
+      this.stack += "\nCaused By: " + inner.stack;
+    }
   }
 }
 
@@ -1317,6 +1330,7 @@ export class L1TimelockExecutionBatchStage
 export class RetryableExecutionStage implements ProposalStage {
   public readonly identifier: string;
   public name: string = "RetryableExecutionStage";
+  public failingSince: number = 0;
 
   constructor(public readonly l1ToL2Message: L1ToL2MessageReader | L1ToL2MessageWriter) {
     this.identifier = l1ToL2Message.retryableCreationId;
@@ -1384,15 +1398,13 @@ export class RetryableExecutionStage implements ProposalStage {
       throw new Error("Message is not a writer");
     }
 
-    while (true) {
-      try {
-        await (await this.l1ToL2Message.redeem()).wait();
-        break;
-      } catch {
-        const id = this.l1ToL2Message.retryableCreationId.toLowerCase();
-        console.error(`Failed to redeem retryable ${id}, retrying in 60s`);
-        await wait(60_000);
+    try {
+      await (await this.l1ToL2Message.redeem()).wait();
+    } catch(err) {
+      if(this.failingSince === 0) {
+        this.failingSince = Date.now();
       }
+      throw new RedeemFailedError(this.l1ToL2Message.retryableCreationId.toLowerCase(), this.failingSince, err as Error)
     }
   }
 

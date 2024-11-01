@@ -13,6 +13,7 @@ import {
   BaseGovernorExecuteStage,
   L2TimelockExecutionSingleStage,
   SecurityCouncilManagerTimelockStage,
+  RedeemFailedError,
 } from "./proposalStage";
 import { Signer, BigNumber } from "ethers";
 import { Provider, TransactionReceipt } from "@ethersproject/abstract-provider";
@@ -129,7 +130,7 @@ export class StageTracker extends EventEmitter {
                 this.stageFactory,
                 nStage,
                 this.pollingIntervalMs,
-                this.writeMode
+                this.writeMode,
               );
 
               // propagate events to the listener of this tracker - add some info about the previous stage
@@ -184,8 +185,18 @@ export class StageTracker extends EventEmitter {
       } catch (err) {
         if (err instanceof ProposalStageError) throw err;
         if (err instanceof UnreachableCaseError) throw err;
+        if (err instanceof RedeemFailedError) {
+          this.emit(TrackerEventName.TRACKER_ERRORED, {
+            status: currentStatus!,
+            stage: this.stage.name,
+            identifier: this.stage.identifier,
+            error: err,
+          });
 
-        consecutiveErrors++;
+        } else {
+          consecutiveErrors++;
+        }
+
         const error = err as Error;
         if (consecutiveErrors > 5) {
           // emit an error here
@@ -203,7 +214,6 @@ export class StageTracker extends EventEmitter {
             error
           );
         }
-
         await wait(this.pollingIntervalMs);
       }
     }
