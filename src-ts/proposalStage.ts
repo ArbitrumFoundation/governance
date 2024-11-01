@@ -107,11 +107,11 @@ export class UnreachableCaseError extends Error {
 
 export class RedeemFailedError extends Error {
   constructor(
-    public readonly retryableId: string, 
+    public readonly retryableId: string,
     public readonly since: number,
     public readonly inner?: Error
   ) {
-    super(`Retryable redeem for ${retryableId} failing since: ${new Date(since).toISOString()}`)
+    super(`Retryable redeem for ${retryableId} failing since: ${new Date(since).toISOString()}`);
     if (inner) {
       this.stack += "\nCaused By: " + inner.stack;
     }
@@ -882,7 +882,7 @@ export class SecurityCouncilManagerTimelockStage extends L2TimelockExecutionSing
     receipt: TransactionReceipt,
     arbOneSignerOrProvider: Provider | Signer
   ): Promise<L2TimelockExecutionSingleStage[]> {
-    const hasManagerEvent = receipt.logs.find(log => log.address === this.managerAddress);
+    const hasManagerEvent = receipt.logs.find((log) => log.address === this.managerAddress);
 
     if (!hasManagerEvent) return [];
 
@@ -891,24 +891,36 @@ export class SecurityCouncilManagerTimelockStage extends L2TimelockExecutionSing
     const upExecInterface = UpgradeExecutor__factory.createInterface();
     const actionInterface = SecurityCouncilMemberSyncAction__factory.createInterface();
 
-    const logs = receipt.logs.filter(log => log.topics[0] === timelockInterface.getEventTopic("CallScheduled"));
+    const logs = receipt.logs.filter(
+      (log) => log.topics[0] === timelockInterface.getEventTopic("CallScheduled")
+    );
 
     if (logs.length === 0) return [];
 
     // we take the last log since it has the highest updateNonce
     const lastLog = logs[logs.length - 1];
 
-    const callScheduledArgs = timelockInterface.parseLog(lastLog).args as CallScheduledEvent["args"];
-    const parsedSendTxToL1 = arbSysInterface.decodeFunctionData("sendTxToL1", callScheduledArgs.data);
+    const callScheduledArgs = timelockInterface.parseLog(lastLog)
+      .args as CallScheduledEvent["args"];
+    const parsedSendTxToL1 = arbSysInterface.decodeFunctionData(
+      "sendTxToL1",
+      callScheduledArgs.data
+    );
     const parsedL1ScheduleBatch = L2TimelockExecutionStage.decodeScheduleBatch(parsedSendTxToL1[1]);
 
-    const parsedExecute = upExecInterface.decodeFunctionData("execute", parsedL1ScheduleBatch.callDatas[0]);
-    const parsedPerform = actionInterface.decodeFunctionData("perform", parsedExecute[1])
+    const parsedExecute = upExecInterface.decodeFunctionData(
+      "execute",
+      parsedL1ScheduleBatch.callDatas[0]
+    );
+    const parsedPerform = actionInterface.decodeFunctionData("perform", parsedExecute[1]);
 
-    const newMembers = parsedPerform[1]
-    const updateNonce = parsedPerform[2]
+    const newMembers = parsedPerform[1];
+    const updateNonce = parsedPerform[2];
 
-    const scheduleSalt = await SecurityCouncilManager__factory.connect(this.managerAddress, arbOneSignerOrProvider).generateSalt(newMembers, updateNonce)
+    const scheduleSalt = await SecurityCouncilManager__factory.connect(
+      this.managerAddress,
+      arbOneSignerOrProvider
+    ).generateSalt(newMembers, updateNonce);
 
     return [
       new L2TimelockExecutionSingleStage(
@@ -919,8 +931,8 @@ export class SecurityCouncilManagerTimelockStage extends L2TimelockExecutionSing
         scheduleSalt,
         lastLog.address,
         arbOneSignerOrProvider
-      )
-    ]
+      ),
+    ];
   }
 }
 
@@ -1400,11 +1412,15 @@ export class RetryableExecutionStage implements ProposalStage {
 
     try {
       await (await this.l1ToL2Message.redeem()).wait();
-    } catch(err) {
-      if(this.failingSince === 0) {
+    } catch (err) {
+      if (this.failingSince === 0) {
         this.failingSince = Date.now();
       }
-      throw new RedeemFailedError(this.l1ToL2Message.retryableCreationId.toLowerCase(), this.failingSince, err as Error)
+      throw new RedeemFailedError(
+        this.l1ToL2Message.retryableCreationId.toLowerCase(),
+        this.failingSince,
+        err as Error
+      );
     }
   }
 
