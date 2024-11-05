@@ -76,7 +76,7 @@
     "typescript": "^4.8.4"
   },
   "dependencies": {
-    "@arbitrum/nitro-contracts": "3.0.0-alpha.0",
+    "@arbitrum/nitro-contracts": "3.0.0-alpha.2",
     "@arbitrum/token-bridge-contracts": "1.0.0-beta.0",
     "@gnosis.pm/safe-contracts": "1.3.0",
     "@openzeppelin/contracts": "4.7.3",
