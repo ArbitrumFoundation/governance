@@ -2,15 +2,16 @@
 # yarn lockfile v1
 
 
-"@arbitrum/nitro-contracts@1.1.1":
-  version "1.1.1"
-  resolved "https://registry.yarnpkg.com/@arbitrum/nitro-contracts/-/nitro-contracts-1.1.1.tgz#2d8a2f9ab757bb7654562aebe435bff833c4b98d"
-  integrity sha512-4Tyk3XVHz+bm8UujUC78LYSw3xAxyYvBCxfEX4z3qE4/ww7Qck/rmce5gbHMzQjArEAzAP2YSfYIFuIFuRXtfg==
+"@arbitrum/nitro-contracts@3.0.0-alpha.0":
+  version "3.0.0-alpha.0"
+  resolved "https://registry.yarnpkg.com/@arbitrum/nitro-contracts/-/nitro-contracts-3.0.0-alpha.0.tgz#8452455755c3f83c9177f2f40ae3859e95161fd8"
+  integrity sha512-GDY5nvEaga8fDHLH4XDp//mCf1WW54XdQPvwrkhgqjW/bghZTlt2keF2mwB0aMnSloxecn/I9IN9uncIMQvXlA==
   dependencies:
     "@offchainlabs/upgrade-executor" "1.1.0-beta.0"
-    "@openzeppelin/contracts" "4.5.0"
-    "@openzeppelin/contracts-upgradeable" "4.5.2"
+    "@openzeppelin/contracts" "4.7.3"
+    "@openzeppelin/contracts-upgradeable" "4.7.3"
     patch-package "^6.4.7"
+    solady "0.0.182"
 
 "@arbitrum/nitro-contracts@^1.0.0-beta.8":
   version "1.0.0-beta.8"
@@ -5822,6 +5823,11 @@ slice-ansi@^4.0.0:
     ansi-styles "^4.0.0"
     astral-regex "^2.0.0"
     is-fullwidth-code-point "^3.0.0"
+
+solady@0.0.182:
+  version "0.0.182"
+  resolved "https://registry.yarnpkg.com/solady/-/solady-0.0.182.tgz#bd8c47f128a3a752358ad052782773966d74c400"
+  integrity sha512-FW6xo1akJoYpkXMzu58/56FcNU3HYYNamEbnFO3iSibXk0nSHo0DV2Gu/zI3FPg3So5CCX6IYli1TT1IWATnvg==
 
 solc@0.7.3:
   version "0.7.3"
