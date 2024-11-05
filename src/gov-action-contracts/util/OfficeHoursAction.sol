@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.16;
+pragma solidity 0.8.17;
 
 /// @notice Action that requires the current time to be within office hours. Should be included as an L1 action in proposal data.
 contract OfficeHoursAction {

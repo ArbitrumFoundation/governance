@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
-pragma solidity 0.8.16;
+pragma solidity 0.8.17;
 
 import "../src/L1ArbitrumToken.sol";
 import "./util/TestUtil.sol";

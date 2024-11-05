@@ -1384,12 +1384,12 @@ export class RetryableExecutionStage implements ProposalStage {
       throw new Error("Message is not a writer");
     }
 
-    while (true) {
-      try {
-        await (await this.l1ToL2Message.redeem()).wait();
-        break;
-      } catch {
-        const id = this.l1ToL2Message.retryableCreationId.toLowerCase();
+    try {
+      await (await this.l1ToL2Message.redeem()).wait();
+    } catch {
+      const id = this.l1ToL2Message.retryableCreationId.toLowerCase();
+      const redeemed = await this.l1ToL2Message.status();
+      if (redeemed !== L1ToL2MessageStatus.REDEEMED) {
         console.error(`Failed to redeem retryable ${id}, retrying in 60s`);
         await wait(60_000);
       }
