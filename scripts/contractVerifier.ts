@@ -11,7 +11,7 @@ export class ContractVerifier {
   deployedContracts: DeployProgressCache;
 
   readonly NUM_OF_OPTIMIZATIONS = 20000;
-  readonly COMPILER_VERSION = "0.8.16";
+  readonly COMPILER_VERSION = "0.8.17";
 
   ///// List of contract addresses and their corresponding source code files
   readonly TUP =
