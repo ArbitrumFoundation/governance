@@ -73,8 +73,8 @@ abstract contract ActionTestBase {
         rollup.transferOwnership(address(ue));
         bridge = Bridge(TestUtil.deployProxy(address(new Bridge())));
         bridge.initialize(IOwnable(address(rollup)));
-        si = SequencerInbox(TestUtil.deployProxy(address(new SequencerInbox(117964))));
-        si.initialize(bridge, ISequencerInbox.MaxTimeVariation(0, 0, 0, 0));
+        si = SequencerInbox(TestUtil.deployProxy(address(new SequencerInbox(117964, IReader4844(address(1337)), false, false))));
+        si.initialize(bridge, ISequencerInbox.MaxTimeVariation(0, 0, 0, 0), BufferConfig(0, 0, 0));
         inbox = Inbox(TestUtil.deployProxy(address(new Inbox(117964))));
         inbox.initialize(bridge, si);
 
