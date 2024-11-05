@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 // solhint-disable-next-line compiler-version
-pragma solidity ^0.8.16;
+pragma solidity ^0.8.17;
 
 // This file was copied from
 // * https://github.com/OffchainLabs/token-bridge-contracts/blob/e304fa491f0574c984e80705f9f6d7cf8f0d798e/contracts/tokenbridge/libraries/TransferAndCallToken.sol
 // * https://github.com/OffchainLabs/token-bridge-contracts/blob/e304fa491f0574c984e80705f9f6d7cf8f0d798e/contracts/tokenbridge/libraries/ITransferAndCall.sol
-// But the version was updated from >0.6.0 <0.8.0 to ^0.8.16 and the
+// But the version was updated from >0.6.0 <0.8.0 to ^0.8.17 and the
 // imports where made from upgradeable instead of 0.6
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";

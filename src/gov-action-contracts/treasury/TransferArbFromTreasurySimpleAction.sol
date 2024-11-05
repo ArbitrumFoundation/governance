@@ -1,4 +1,4 @@
-pragma solidity 0.8.16;
+pragma solidity 0.8.17;
 
 import "../address-registries/L2AddressRegistry.sol";
 import "./TransferERC20FromTreasury.sol";

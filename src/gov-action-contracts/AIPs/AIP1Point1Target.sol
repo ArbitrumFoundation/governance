@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.16;
+pragma solidity 0.8.17;
 
 /// @notice contract for AIP-1.1 https://forum.arbitrum.foundation/t/proposal-aip-1-1-lockup-budget-transparency/13360.
 ///  AIP-1.1 Is a non-constitutional proposal as per the constitution and thus is to be put to an on-chain vote; however,

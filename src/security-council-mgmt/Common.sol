@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-pragma solidity 0.8.16;
+pragma solidity 0.8.17;
 
 /// @notice Security council members are members of one of two cohorts.
 ///         Periodically all the positions on a cohort are put up for election,
