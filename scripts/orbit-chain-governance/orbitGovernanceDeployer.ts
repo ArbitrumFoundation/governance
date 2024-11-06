@@ -63,6 +63,7 @@ export const deployGovernance = async () => {
     childChainDeployerWallet
   ).deploy();
   const governanceToken = await governanceTokenFac.deployed();
+  console.log("GovernanceToken: ", governanceToken.address);
 
   // get deployment data
   const { childChainUpExec, childChainProxyAdmin, parentChainUpExec, parentChainProxyAdmin } =
@@ -86,6 +87,7 @@ export const deployGovernance = async () => {
       _coreQuorumThreshold: 500,
     })
   ).wait();
+  console.log("Step1 finished");
 
   //// step 2
   const { coreTimelock: _childChainCoreTimelock, coreGoverner: _childChainCoreGov } =
