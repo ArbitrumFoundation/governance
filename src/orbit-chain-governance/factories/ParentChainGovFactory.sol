@@ -56,7 +56,7 @@ contract ParentChainGovFactory is Ownable {
         // anyone can execute
         timelock.grantRole(timelock.EXECUTOR_ROLE(), address(0));
 
-        // grant admin rights to the upgrade executor
+        // grant timelock admin rights to the upgrade executor
         timelock.grantRole(timelock.TIMELOCK_ADMIN_ROLE(), address(_parentChainUpExec));
 
         // grant canceller role to upgrade executor; this can be used e.g. by an admin with executor affordance granted to the upgrade executor
@@ -65,9 +65,6 @@ contract ParentChainGovFactory is Ownable {
         // revoke admin rights
         timelock.revokeRole(timelock.TIMELOCK_ADMIN_ROLE(), address(timelock));
         timelock.revokeRole(timelock.TIMELOCK_ADMIN_ROLE(), address(this));
-
-        // grant canceller role to upgrade executor; this can be used e.g. by an admin with executor affordance granted to the upgrade executor
-        timelock.grantRole(timelock.CANCELLER_ROLE(), address(_parentChainUpExec));
 
         emit Deployed(timelock, _inbox);
     }
