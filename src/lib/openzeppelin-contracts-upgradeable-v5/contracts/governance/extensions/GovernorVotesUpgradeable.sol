@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Contracts (last updated v5.0.0) (governance/extensions/GovernorVotes.sol)
+// OpenZeppelin Contracts (last updated v5.1.0) (governance/extensions/GovernorVotes.sol)
 
 pragma solidity ^0.8.20;
 
 import {GovernorUpgradeable} from "../GovernorUpgradeable.sol";
-import {IVotes} from "openzeppelin-v5/governance/utils/IVotes.sol";
+import {IVotes} from "@openzeppelin-v5/contracts/governance/utils/IVotes.sol";
 import {IERC5805} from "@openzeppelin-v5/contracts/interfaces/IERC5805.sol";
 import {SafeCast} from "@openzeppelin-v5/contracts/utils/math/SafeCast.sol";
 import {Time} from "@openzeppelin-v5/contracts/utils/types/Time.sol";

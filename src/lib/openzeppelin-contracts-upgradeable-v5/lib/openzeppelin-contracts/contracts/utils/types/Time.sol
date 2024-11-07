@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Contracts (last updated v5.0.0) (utils/types/Time.sol)
+// OpenZeppelin Contracts (last updated v5.1.0) (utils/types/Time.sol)
 
 pragma solidity ^0.8.20;
 
@@ -71,12 +71,11 @@ library Time {
      * @dev Get the value at a given timepoint plus the pending value and effect timepoint if there is a scheduled
      * change after this timepoint. If the effect timepoint is 0, then the pending value should not be considered.
      */
-    function _getFullAt(Delay self, uint48 timepoint)
-        private
-        pure
-        returns (uint32, uint32, uint48)
-    {
-        (uint32 valueBefore, uint32 valueAfter, uint48 effect) = self.unpack();
+    function _getFullAt(
+        Delay self,
+        uint48 timepoint
+    ) private pure returns (uint32 valueBefore, uint32 valueAfter, uint48 effect) {
+        (valueBefore, valueAfter, effect) = self.unpack();
         return effect <= timepoint ? (valueAfter, 0, 0) : (valueBefore, valueAfter, effect);
     }
 
@@ -84,7 +83,7 @@ library Time {
      * @dev Get the current value plus the pending value and effect timepoint if there is a scheduled change. If the
      * effect timepoint is 0, then the pending value should not be considered.
      */
-    function getFull(Delay self) internal view returns (uint32, uint32, uint48) {
+    function getFull(Delay self) internal view returns (uint32 valueBefore, uint32 valueAfter, uint48 effect) {
         return _getFullAt(self, timestamp());
     }
 
@@ -92,7 +91,7 @@ library Time {
      * @dev Get the current value.
      */
     function get(Delay self) internal view returns (uint32) {
-        (uint32 delay,,) = self.getFull();
+        (uint32 delay, , ) = self.getFull();
         return delay;
     }
 
@@ -101,11 +100,11 @@ library Time {
      * enforce the old delay at the moment of the update. Returns the updated Delay object and the timestamp when the
      * new delay becomes effective.
      */
-    function withUpdate(Delay self, uint32 newValue, uint32 minSetback)
-        internal
-        view
-        returns (Delay updatedDelay, uint48 effect)
-    {
+    function withUpdate(
+        Delay self,
+        uint32 newValue,
+        uint32 minSetback
+    ) internal view returns (Delay updatedDelay, uint48 effect) {
         uint32 value = self.get();
         uint32 setback = uint32(Math.max(minSetback, value > newValue ? value - newValue : 0));
         effect = timestamp() + setback;
@@ -115,11 +114,7 @@ library Time {
     /**
      * @dev Split a delay into its components: valueBefore, valueAfter and effect (transition timepoint).
      */
-    function unpack(Delay self)
-        internal
-        pure
-        returns (uint32 valueBefore, uint32 valueAfter, uint48 effect)
-    {
+    function unpack(Delay self) internal pure returns (uint32 valueBefore, uint32 valueAfter, uint48 effect) {
         uint112 raw = Delay.unwrap(self);
 
         valueAfter = uint32(raw);
@@ -132,12 +127,7 @@ library Time {
     /**
      * @dev pack the components into a Delay object.
      */
-    function pack(uint32 valueBefore, uint32 valueAfter, uint48 effect)
-        internal
-        pure
-        returns (Delay)
-    {
-        return
-            Delay.wrap((uint112(effect) << 64) | (uint112(valueBefore) << 32) | uint112(valueAfter));
+    function pack(uint32 valueBefore, uint32 valueAfter, uint48 effect) internal pure returns (Delay) {
+        return Delay.wrap((uint112(effect) << 64) | (uint112(valueBefore) << 32) | uint112(valueAfter));
     }
 }

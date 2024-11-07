@@ -5,8 +5,8 @@ import {Initializable} from "openzeppelin-upgradeable-v5/proxy/utils/Initializab
 import {GovernorUpgradeable} from "openzeppelin-upgradeable-v5/governance/GovernorUpgradeable.sol";
 import {GovernorSettingsUpgradeable} from
     "openzeppelin-upgradeable-v5/governance/extensions/GovernorSettingsUpgradeable.sol";
-import {GovernorCountingFractionalUpgradeable} from
-    "openzeppelin-upgradeable-v5/governance/extensions/GovernorCountingFractionalUpgradeable.sol";
+import {GovernorCountingSimpleUpgradeable} from
+    "openzeppelin-upgradeable-v5/governance/extensions/GovernorCountingSimpleUpgradeable.sol";
 import {GovernorTimelockControlUpgradeable} from
     "openzeppelin-upgradeable-v5/governance/extensions/GovernorTimelockControlUpgradeable.sol";
 import {GovernorVotesQuorumFractionUpgradeable} from
@@ -27,7 +27,7 @@ import {Address} from "openzeppelin-v5/utils/Address.sol";
 contract L2ArbitrumGovernorV2 is
     Initializable,
     GovernorSettingsUpgradeable,
-    GovernorCountingFractionalUpgradeable,
+    GovernorCountingSimpleUpgradeable,
     GovernorVotesUpgradeable,
     GovernorTimelockControlUpgradeable,
     GovernorVotesQuorumFractionUpgradeable,
@@ -78,6 +78,7 @@ contract L2ArbitrumGovernorV2 is
         __GovernorSettings_init(
             _initialVotingDelay, _initialVotingPeriod, _initialProposalThreshold
         );
+        __GovernorCountingSimple_init();
         __GovernorVotes_init(_arbAddress);
         __GovernorTimelockControl_init(_timelockAddress);
         __GovernorVotesQuorumFraction_init(_quorumNumeratorValue);

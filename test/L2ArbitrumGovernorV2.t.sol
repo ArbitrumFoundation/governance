@@ -18,10 +18,7 @@ import {EtherReceiverMock} from "openzeppelin-v5/mocks/EtherReceiverMock.sol";
 import {BaseGovernorDeployer} from "script/BaseGovernorDeployer.sol";
 import {SubmitUpgradeProposalScript} from "script/SubmitUpgradeProposalScript.s.sol";
 import {SetupNewGovernors} from "test/util/SetupNewGovernors.sol";
-import {
-    L2ArbitrumGovernorV2,
-    GovernorCountingFractionalUpgradeable
-} from "src/L2ArbitrumGovernorV2.sol";
+import {L2ArbitrumGovernorV2} from "src/L2ArbitrumGovernorV2.sol";
 import {TimelockRolesUpgrader} from
     "src/gov-action-contracts/gov-upgrade-contracts/update-timelock-roles/TimelockRolesUpgrader.sol";
 import {ProposalHelper, Proposal} from "test/util/ProposalHelper.sol";
@@ -40,7 +37,6 @@ abstract contract L2ArbitrumGovernorV2Test is SetupNewGovernors {
     L2ArbitrumGovernorV2 governor;
     GovernorUpgradeable _oldGovernor;
     TimelockControllerUpgradeable timelock;
-    address PROXY_ADMIN_CONTRACT = L2_PROXY_ADMIN;
     ERC20Mock mockToken;
     ERC20VotesUpgradeable arbitrumToken;
     EtherReceiverMock mockEthReceiver;
@@ -387,7 +383,7 @@ abstract contract Relay is L2ArbitrumGovernorV2Test {
     }
 
     function testFuzz_RevertIf_NotOwner(address _actor, uint256 _numerator) public {
-        vm.assume(_actor != L2_UPGRADE_EXECUTOR && _actor != PROXY_ADMIN_CONTRACT);
+        vm.assume(_actor != L2_UPGRADE_EXECUTOR && _actor != L2_PROXY_ADMIN_CONTRACT);
         _numerator = bound(_numerator, 1, governor.quorumDenominator());
         vm.expectRevert(abi.encodeWithSelector(OwnableUnauthorizedAccount.selector, _actor));
         vm.prank(_actor);
@@ -527,7 +523,7 @@ abstract contract Propose is L2ArbitrumGovernorV2Test {
     ) public {
         uint256 _actorVotes = arbitrumToken.getPastVotes(_actor, vm.getBlockNumber() - 1);
         vm.assume(_actorVotes < governor.proposalThreshold());
-        vm.assume(_actor != PROXY_ADMIN_CONTRACT);
+        vm.assume(_actor != L2_PROXY_ADMIN_CONTRACT);
 
         vm.expectRevert(
             abi.encodeWithSelector(
@@ -648,10 +644,51 @@ abstract contract CastVote is L2ArbitrumGovernorV2Test {
 
         vm.assertEq(uint256(governor.state(_proposal.proposalId)), uint256(ProposalState.Defeated));
     }
+
+    function testFuzz_RevertIf_DelegateVotesTwice(
+        uint256 _proposalSeed,
+        uint256 _delegateSeed,
+        uint256 _voteSeed
+    ) public {
+        _skipToPostUpgrade();
+        Proposal memory _proposal = _proposeRealisticProposal(_proposalSeed);
+        vm.roll(vm.getBlockNumber() + governor.votingDelay() + 1);
+        assertEq(
+            uint256(governor.state(_proposal.proposalId)), uint256(IGovernor.ProposalState.Active)
+        );
+
+        address _delegate = _getMajorDelegate(_delegateSeed);
+        uint8 _vote = uint8(VoteType(_voteSeed % 3));
+        vm.startPrank(_delegate);
+        governor.castVote(_proposal.proposalId, _vote);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(IGovernor.GovernorAlreadyCastVote.selector, _delegate)
+        );
+        governor.castVote(_proposal.proposalId, _vote);
+        vm.stopPrank();
+    }
+
+    function testFuzz_RevertIf_ProposalDoesNotExist(
+        uint256 _proposalId,
+        uint256 _delegateSeed,
+        uint256 _voteSeed
+    ) public {
+        _skipToPostUpgrade();
+
+        address _delegate = _getMajorDelegate(_delegateSeed);
+        uint8 _vote = uint8(VoteType(_voteSeed % 3));
+
+        vm.prank(_delegate);
+        vm.expectRevert(
+            abi.encodeWithSelector(IGovernor.GovernorNonexistentProposal.selector, _proposalId)
+        );
+        governor.castVote(_proposalId, _vote);
+    }
 }
 
 abstract contract CastVoteWithReasonAndParams is L2ArbitrumGovernorV2Test {
-    function testFuzz_CorrectlyVotesViaNominalVote(
+    function testFuzz_CorrectlyVotes(
         uint256 _proposalSeed,
         uint256 _delegateSeed,
         uint256 _voteSeed
@@ -676,7 +713,7 @@ abstract contract CastVoteWithReasonAndParams is L2ArbitrumGovernorV2Test {
         assertEq(_abstainVotesCast, _support == 2 ? _votes : 0);
     }
 
-    function testFuzz_RevertIf_DelegateVotesTwiceViaNominalVote(
+    function testFuzz_RevertIf_DelegateVotesTwice(
         uint256 _proposalSeed,
         uint256 _delegateSeed,
         uint256 _voteSeed
@@ -698,316 +735,6 @@ abstract contract CastVoteWithReasonAndParams is L2ArbitrumGovernorV2Test {
         );
         governor.castVoteWithReasonAndParams(_proposal.proposalId, _support, "MyReason", _params);
         vm.stopPrank();
-    }
-
-    function testFuzz_CastCorrectVotesViaFlexibleVoting(
-        uint256 _proposalSeed,
-        uint256 _actorSeed,
-        uint256 _forVotes,
-        uint256 _againstVotes,
-        uint256 _abstainVotes
-    ) public {
-        _skipToPostUpgrade();
-        Proposal memory _proposal = _proposeRealisticProposal(_proposalSeed);
-        vm.roll(vm.getBlockNumber() + governor.votingDelay() + 1);
-
-        address _delegate = _getMajorDelegate(_actorSeed);
-        uint256 _votes = governor.getVotes(_delegate, vm.getBlockNumber() - 1);
-        _forVotes = bound(_forVotes, 0, _votes);
-        _againstVotes = bound(_againstVotes, 0, _votes - _forVotes);
-        _abstainVotes = bound(_abstainVotes, 0, _votes - _forVotes - _againstVotes);
-
-        vm.prank(_delegate);
-        bytes memory _params =
-            abi.encodePacked(uint128(_againstVotes), uint128(_forVotes), uint128(_abstainVotes));
-        governor.castVoteWithReasonAndParams(
-            _proposal.proposalId, VOTE_TYPE_FRACTIONAL, "MyReason", _params
-        );
-
-        (uint256 _againstVotesCast, uint256 _forVotesCast, uint256 _abstainVotesCast) =
-            governor.proposalVotes(_proposal.proposalId);
-
-        assertEq(_againstVotesCast, _againstVotes);
-        assertEq(_forVotesCast, _forVotes);
-        assertEq(_abstainVotesCast, _abstainVotes);
-    }
-
-    function testFuzz_CorrectlyVotesTwiceViaFlexibleVoting(
-        uint256 _proposalSeed,
-        uint256 _actorSeed,
-        uint256 _firstVote,
-        uint256 _secondVote,
-        uint256 _forVotes,
-        uint256 _againstVotes,
-        uint256 _abstainVotes
-    ) public {
-        _skipToPostUpgrade();
-        Proposal memory _proposal = _proposeRealisticProposal(_proposalSeed);
-        vm.roll(vm.getBlockNumber() + governor.votingDelay() + 1);
-
-        address _delegate = _getMajorDelegate(_actorSeed);
-        uint256 _votes = governor.getVotes(_delegate, vm.getBlockNumber() - 1);
-        _firstVote = bound(_firstVote, 0, _votes - 1);
-        _forVotes = bound(_forVotes, 0, _firstVote);
-        _againstVotes = bound(_againstVotes, 0, _firstVote - _forVotes);
-        _abstainVotes = bound(_abstainVotes, 0, _firstVote - _forVotes - _againstVotes);
-
-        {
-            vm.prank(_delegate);
-            bytes memory _params =
-                abi.encodePacked(uint128(_againstVotes), uint128(_forVotes), uint128(_abstainVotes));
-            governor.castVoteWithReasonAndParams(
-                _proposal.proposalId, VOTE_TYPE_FRACTIONAL, "MyReason", _params
-            );
-
-            (uint256 _againstVotesCast, uint256 _forVotesCast, uint256 _abstainVotesCast) =
-                governor.proposalVotes(_proposal.proposalId);
-
-            assertEq(_againstVotesCast, _againstVotes);
-            assertEq(_forVotesCast, _forVotes);
-            assertEq(_abstainVotesCast, _abstainVotes);
-        }
-        _secondVote = bound(_secondVote, 0, _votes - _firstVote);
-        uint256 _forFirstVote = _forVotes;
-        _forVotes = bound(uint256(keccak256(abi.encode(_forVotes))), 0, _secondVote);
-        uint256 _againstFirstVote = _againstVotes;
-        _againstVotes =
-            bound(uint256(keccak256(abi.encode(_againstVotes))), 0, _secondVote - _forVotes);
-        uint256 _abstainFirstVote = _abstainVotes;
-        _abstainVotes = bound(
-            uint256(keccak256(abi.encode(_abstainVotes))),
-            0,
-            _secondVote - _forVotes - _againstVotes
-        );
-
-        {
-            bytes memory _params =
-                abi.encodePacked(uint128(_againstVotes), uint128(_forVotes), uint128(_abstainVotes));
-
-            vm.prank(_delegate);
-            governor.castVoteWithReasonAndParams(
-                _proposal.proposalId, VOTE_TYPE_FRACTIONAL, "MyReason", _params
-            );
-        }
-        (uint256 _againstVotesCast2, uint256 _forVotesCast2, uint256 _abstainVotesCast2) =
-            governor.proposalVotes(_proposal.proposalId);
-
-        assertEq(_againstVotesCast2, _againstFirstVote + _againstVotes);
-        assertEq(_forVotesCast2, _forFirstVote + _forVotes);
-        assertEq(_abstainVotesCast2, _abstainFirstVote + _abstainVotes);
-    }
-
-    // fails if voting with weight > totalWeight
-    function testFuzz_RevertIf_VoteWeightGreaterThanTotalWeightViaFlexibleVoting(
-        uint256 _proposalSeed,
-        uint256 _actorSeed,
-        uint256 _forVotes,
-        uint256 _againstVotes,
-        uint256 _abstainVotes,
-        uint256 _sumOfVotes
-    ) public {
-        _skipToPostUpgrade();
-        Proposal memory _proposal = _proposeRealisticProposal(_proposalSeed);
-        vm.roll(vm.getBlockNumber() + governor.votingDelay() + 1);
-
-        address _delegate = _getMajorDelegate(_actorSeed);
-        uint256 _votes = governor.getVotes(_delegate, vm.getBlockNumber() - 1);
-        _sumOfVotes = bound(_sumOfVotes, _votes + 1, _votes * 2);
-        _forVotes = bound(_forVotes, 0, _sumOfVotes);
-        _againstVotes = bound(_againstVotes, 0, _sumOfVotes - _forVotes);
-        _abstainVotes = _sumOfVotes - _forVotes - _againstVotes;
-
-        bytes memory _params =
-            abi.encodePacked(uint128(_againstVotes), uint128(_forVotes), uint128(_abstainVotes));
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                GovernorCountingFractionalUpgradeable.GovernorExceedRemainingWeight.selector,
-                _delegate,
-                _sumOfVotes,
-                _votes
-            )
-        );
-        vm.prank(_delegate);
-        governor.castVoteWithReasonAndParams(
-            _proposal.proposalId, VOTE_TYPE_FRACTIONAL, "MyReason", _params
-        );
-    }
-
-    // fails if voting twice with (first votes + second votes) > totalWeight
-    function testFuzz_RevertIf_VotingWeightGreaterThanTwoVotesViaFlexibleVoting(
-        uint256 _proposalSeed,
-        uint256 _actorSeed,
-        uint256 _firstVote,
-        uint256 _secondVote,
-        uint256 _forVotes,
-        uint256 _againstVotes,
-        uint256 _abstainVotes
-    ) public {
-        _skipToPostUpgrade();
-        Proposal memory _proposal = _proposeRealisticProposal(_proposalSeed);
-        vm.roll(vm.getBlockNumber() + governor.votingDelay() + 1);
-
-        address _delegate = _getMajorDelegate(_actorSeed);
-        uint256 _votes = governor.getVotes(_delegate, vm.getBlockNumber() - 1);
-        _firstVote = bound(_firstVote, 0, _votes - 1);
-        _forVotes = bound(_forVotes, 0, _firstVote);
-        _againstVotes = bound(_againstVotes, 0, _firstVote - _forVotes);
-        _abstainVotes = bound(_abstainVotes, 0, _firstVote - _forVotes - _againstVotes);
-
-        {
-            vm.prank(_delegate);
-            bytes memory _params =
-                abi.encodePacked(uint128(_againstVotes), uint128(_forVotes), uint128(_abstainVotes));
-            governor.castVoteWithReasonAndParams(
-                _proposal.proposalId, VOTE_TYPE_FRACTIONAL, "MyReason", _params
-            );
-
-            (uint256 _againstVotesCast, uint256 _forVotesCast, uint256 _abstainVotesCast) =
-                governor.proposalVotes(_proposal.proposalId);
-
-            assertEq(_againstVotesCast, _againstVotes);
-            assertEq(_forVotesCast, _forVotes);
-            assertEq(_abstainVotesCast, _abstainVotes);
-        }
-        uint256 _firstVoteTotal = _forVotes + _againstVotes + _abstainVotes;
-        _secondVote = bound(_secondVote, _votes - _firstVoteTotal + 1, _votes * 2);
-        _forVotes = bound(uint256(keccak256(abi.encode(_forVotes))), 0, _secondVote);
-        _againstVotes =
-            bound(uint256(keccak256(abi.encode(_againstVotes))), 0, _secondVote - _forVotes);
-        _abstainVotes = _secondVote - _forVotes - _againstVotes;
-
-        {
-            bytes memory _params =
-                abi.encodePacked(uint128(_againstVotes), uint128(_forVotes), uint128(_abstainVotes));
-
-            vm.prank(_delegate);
-            vm.expectRevert(
-                abi.encodeWithSelector(
-                    GovernorCountingFractionalUpgradeable.GovernorExceedRemainingWeight.selector,
-                    _delegate,
-                    _secondVote,
-                    _votes - _firstVoteTotal
-                )
-            );
-            governor.castVoteWithReasonAndParams(
-                _proposal.proposalId, VOTE_TYPE_FRACTIONAL, "MyReason", _params
-            );
-        }
-    }
-
-    // vote first with flexible, second with nominal should pass
-    function testFuzz_CastFractionalVotesThenNominalVotesViaFlexibleVoting(
-        uint256 _proposalSeed,
-        uint256 _actorSeed,
-        uint256 _forVotes,
-        uint256 _againstVotes,
-        uint256 _abstainVotes,
-        uint256 _voteSeed
-    ) public {
-        _skipToPostUpgrade();
-        Proposal memory _proposal = _proposeRealisticProposal(_proposalSeed);
-        vm.roll(vm.getBlockNumber() + governor.votingDelay() + 1);
-
-        address _delegate = _getMajorDelegate(_actorSeed);
-        uint256 _votes = governor.getVotes(_delegate, vm.getBlockNumber() - 1);
-        _forVotes = bound(_forVotes, 0, _votes - 1);
-        _againstVotes = bound(_againstVotes, 0, _votes - 1 - _forVotes);
-        _abstainVotes = bound(_abstainVotes, 0, _votes - 1 - _forVotes - _againstVotes);
-
-        vm.prank(_delegate);
-        bytes memory _params =
-            abi.encodePacked(uint128(_againstVotes), uint128(_forVotes), uint128(_abstainVotes));
-        governor.castVoteWithReasonAndParams(
-            _proposal.proposalId, VOTE_TYPE_FRACTIONAL, "MyReason", _params
-        );
-
-        (uint256 _againstVotesCast, uint256 _forVotesCast, uint256 _abstainVotesCast) =
-            governor.proposalVotes(_proposal.proposalId);
-
-        assertEq(_againstVotesCast, _againstVotes);
-        assertEq(_forVotesCast, _forVotes);
-        assertEq(_abstainVotesCast, _abstainVotes);
-
-        // Nominal Votes
-        uint8 _support = uint8(_voteSeed % 3);
-        vm.prank(_delegate);
-        _params = "";
-        governor.castVoteWithReasonAndParams(_proposal.proposalId, _support, "MyReason", _params);
-
-        (_againstVotesCast, _forVotesCast, _abstainVotesCast) =
-            governor.proposalVotes(_proposal.proposalId);
-        assertEq(
-            _againstVotesCast, _support == 0 ? _votes - _forVotes - _abstainVotes : _againstVotes
-        );
-        assertEq(_forVotesCast, _support == 1 ? _votes - _againstVotes - _abstainVotes : _forVotes);
-        assertEq(
-            _abstainVotesCast, _support == 2 ? _votes - _againstVotes - _forVotes : _abstainVotes
-        );
-    }
-
-    function testFuzz_ProposalSucceedsAfterFractionalVotes(uint256 _proposalSeed) public {
-        _skipToPostUpgrade();
-        Proposal memory _proposal = _proposeRealisticProposal(_proposalSeed);
-        vm.roll(vm.getBlockNumber() + governor.votingDelay() + 1);
-
-        uint256 _totalForVotes;
-        for (uint256 i; i < _majorDelegates.length; i++) {
-            address _delegate = _majorDelegates[i];
-            uint256 _votes = governor.getVotes(_delegate, vm.getBlockNumber() - 1);
-            uint256 _forVotes = _votes;
-            uint256 _againstVotes = 0;
-            uint256 _abstainVotes = 0;
-
-            vm.prank(_delegate);
-            bytes memory _params =
-                abi.encodePacked(uint128(_againstVotes), uint128(_forVotes), uint128(_abstainVotes));
-            governor.castVoteWithReasonAndParams(
-                _proposal.proposalId, VOTE_TYPE_FRACTIONAL, "MyReason", _params
-            );
-            _totalForVotes += _forVotes;
-        }
-
-        (uint256 _againstVotesCast, uint256 _forVotesCast, uint256 _abstainVotesCast) =
-            governor.proposalVotes(_proposal.proposalId);
-        assertEq(_forVotesCast, _totalForVotes);
-        assertEq(_againstVotesCast, 0);
-        assertEq(_abstainVotesCast, 0);
-
-        vm.roll(vm.getBlockNumber() + governor.votingPeriod() + 1);
-        assertEq(uint8(governor.state(_proposal.proposalId)), uint8(ProposalState.Succeeded));
-    }
-
-    // should move a proposal to succeeded via only flexible voting
-    function testFuzz_ProposalFailsAfterFractionalVotes(uint256 _proposalSeed) public {
-        _skipToPostUpgrade();
-        Proposal memory _proposal = _proposeRealisticProposal(_proposalSeed);
-        vm.roll(vm.getBlockNumber() + governor.votingDelay() + 1);
-
-        uint256 _totalAgainstVotes;
-        for (uint256 i; i < _majorDelegates.length; i++) {
-            address _delegate = _majorDelegates[i];
-            uint256 _votes = governor.getVotes(_delegate, vm.getBlockNumber() - 1);
-            uint256 _forVotes = 0;
-            uint256 _againstVotes = _votes;
-            uint256 _abstainVotes = 0;
-
-            vm.prank(_delegate);
-            bytes memory _params =
-                abi.encodePacked(uint128(_againstVotes), uint128(_forVotes), uint128(_abstainVotes));
-            governor.castVoteWithReasonAndParams(
-                _proposal.proposalId, VOTE_TYPE_FRACTIONAL, "MyReason", _params
-            );
-            _totalAgainstVotes += _againstVotes;
-        }
-
-        (uint256 _againstVotesCast, uint256 _forVotesCast, uint256 _abstainVotesCast) =
-            governor.proposalVotes(_proposal.proposalId);
-        assertEq(_forVotesCast, 0);
-        assertEq(_againstVotesCast, _totalAgainstVotes);
-        assertEq(_abstainVotesCast, 0);
-
-        vm.roll(vm.getBlockNumber() + governor.votingPeriod() + 1);
-        assertEq(uint8(governor.state(_proposal.proposalId)), uint8(ProposalState.Defeated));
     }
 }
 
@@ -1249,7 +976,7 @@ abstract contract Cancel is L2ArbitrumGovernorV2Test {
 
     function testFuzz_RevertIf_NotProposer(uint256 _actorSeed, address _actor) public {
         address _proposer = _getMajorDelegate(_actorSeed);
-        vm.assume(_actor != _proposer && _actor != PROXY_ADMIN_CONTRACT);
+        vm.assume(_actor != _proposer && _actor != L2_PROXY_ADMIN_CONTRACT);
         address[] memory targets = new address[](1);
         uint256[] memory values = new uint256[](1);
         bytes[] memory calldatas = new bytes[](1);
@@ -1322,6 +1049,12 @@ abstract contract EXCLUDE_ADDRESS is L2ArbitrumGovernorV2Test {
 abstract contract QuorumDenominator is L2ArbitrumGovernorV2Test {
     function test_ReturnsCorrectQuorumDenominator() public view {
         assertEq(governor.quorumDenominator(), QUORUM_DENOMINATOR);
+    }
+}
+
+abstract contract CountingMode is L2ArbitrumGovernorV2Test {
+    function test_ReturnsCorrectCountingMode() public view {
+        assertEq(governor.COUNTING_MODE(), "support=bravo&quorum=for,abstain");
     }
 }
 
@@ -1417,6 +1150,12 @@ contract CoreGovernorQuorumDenominator is CoreGovernorBase, QuorumDenominator {
     }
 }
 
+contract CoreGovernorCountingMode is CoreGovernorBase, CountingMode {
+    function setUp() public override(L2ArbitrumGovernorV2Test, CoreGovernorBase) {
+        super.setUp();
+    }
+}
+
 contract TreasuryGovernorInitialize is TreasuryGovernorBase, Initialize {
     function setUp() public override(L2ArbitrumGovernorV2Test, TreasuryGovernorBase) {
         super.setUp();
@@ -1499,6 +1238,12 @@ contract TreasuryGovernorExcludeAddress is TreasuryGovernorBase, EXCLUDE_ADDRESS
 }
 
 contract TreasuryGovernorQuorumDenominator is TreasuryGovernorBase, QuorumDenominator {
+    function setUp() public override(L2ArbitrumGovernorV2Test, TreasuryGovernorBase) {
+        super.setUp();
+    }
+}
+
+contract TreasuryGovernorCountingMode is TreasuryGovernorBase, CountingMode {
     function setUp() public override(L2ArbitrumGovernorV2Test, TreasuryGovernorBase) {
         super.setUp();
     }

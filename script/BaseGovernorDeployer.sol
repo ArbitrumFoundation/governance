@@ -7,7 +7,7 @@ import {BaseDeployer} from "script/BaseDeployer.sol";
 import {SharedGovernorConstants} from "script/SharedGovernorConstants.sol";
 import {L2ArbitrumGovernorV2} from "src/L2ArbitrumGovernorV2.sol";
 import {TransparentUpgradeableProxy} from
-    "openzeppelin-v5/proxy/transparent/TransparentUpgradeableProxy.sol";
+    "@openzeppelin-v5/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {TimelockControllerUpgradeable} from
     "openzeppelin-upgradeable-v5/governance/TimelockControllerUpgradeable.sol";
 import {IVotes} from "openzeppelin-v5/governance/utils/IVotes.sol";
@@ -39,7 +39,7 @@ abstract contract BaseGovernorDeployer is BaseDeployer, SharedGovernorConstants 
             )
         );
         TransparentUpgradeableProxy _proxy =
-            new TransparentUpgradeableProxy(_implementation, L2_PROXY_ADMIN, _initData);
+            new TransparentUpgradeableProxy(_implementation, L2_PROXY_ADMIN_OWNER, _initData);
         _governor = L2ArbitrumGovernorV2(payable(address(_proxy)));
         vm.stopBroadcast();
     }

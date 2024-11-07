@@ -13,10 +13,10 @@ contract SubmitUpgradeProposalTest is SetupNewGovernors {
         TimelockRolesUpgrader timelockRolesUpgrader = new TimelockRolesUpgrader(
             L2_CORE_GOVERNOR_TIMELOCK,
             L2_CORE_GOVERNOR,
-            L2_CORE_GOVERNOR_NEW_DEPLOY,
+            address(newCoreGovernor),
             L2_TREASURY_GOVERNOR_TIMELOCK,
             L2_TREASURY_GOVERNOR,
-            L2_TREASURY_GOVERNOR_NEW_DEPLOY
+            address(newTreasuryGovernor)
         );
 
         // Propose

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// OpenZeppelin Contracts (last updated v5.0.0) (governance/extensions/GovernorTimelockControl.sol)
+// OpenZeppelin Contracts (last updated v5.1.0) (governance/extensions/GovernorTimelockControl.sol)
 
 pragma solidity ^0.8.20;
 
@@ -32,9 +32,14 @@ abstract contract GovernorTimelockControlUpgradeable is Initializable, GovernorU
     }
 
     // keccak256(abi.encode(uint256(keccak256("openzeppelin.storage.GovernorTimelockControl")) - 1)) & ~bytes32(uint256(0xff))
-    bytes32 private constant GovernorTimelockControlStorageLocation = 0x0d5829787b8befdbc6044ef7457d8a95c2a04bc99235349f1a212c063e59d400;
+    bytes32 private constant GovernorTimelockControlStorageLocation =
+        0x0d5829787b8befdbc6044ef7457d8a95c2a04bc99235349f1a212c063e59d400;
 
-    function _getGovernorTimelockControlStorage() private pure returns (GovernorTimelockControlStorage storage $) {
+    function _getGovernorTimelockControlStorage()
+        private
+        pure
+        returns (GovernorTimelockControlStorage storage $)
+    {
         assembly {
             $.slot := GovernorTimelockControlStorageLocation
         }
@@ -48,11 +53,17 @@ abstract contract GovernorTimelockControlUpgradeable is Initializable, GovernorU
     /**
      * @dev Set the timelock.
      */
-    function __GovernorTimelockControl_init(TimelockControllerUpgradeable timelockAddress) internal onlyInitializing {
+    function __GovernorTimelockControl_init(TimelockControllerUpgradeable timelockAddress)
+        internal
+        onlyInitializing
+    {
         __GovernorTimelockControl_init_unchained(timelockAddress);
     }
 
-    function __GovernorTimelockControl_init_unchained(TimelockControllerUpgradeable timelockAddress) internal onlyInitializing {
+    function __GovernorTimelockControl_init_unchained(TimelockControllerUpgradeable timelockAddress)
+        internal
+        onlyInitializing
+    {
         _updateTimelock(timelockAddress);
     }
 
@@ -108,7 +119,8 @@ abstract contract GovernorTimelockControlUpgradeable is Initializable, GovernorU
         uint256 delay = $._timelock.getMinDelay();
 
         bytes32 salt = _timelockSalt(descriptionHash);
-        $._timelockIds[proposalId] = $._timelock.hashOperationBatch(targets, values, calldatas, 0, salt);
+        $._timelockIds[proposalId] =
+            $._timelock.hashOperationBatch(targets, values, calldatas, 0, salt);
         $._timelock.scheduleBatch(targets, values, calldatas, 0, salt, delay);
 
         return SafeCast.toUint48(block.timestamp + delay);
@@ -127,7 +139,9 @@ abstract contract GovernorTimelockControlUpgradeable is Initializable, GovernorU
     ) internal virtual override {
         GovernorTimelockControlStorage storage $ = _getGovernorTimelockControlStorage();
         // execute
-        $._timelock.executeBatch{value: msg.value}(targets, values, calldatas, 0, _timelockSalt(descriptionHash));
+        $._timelock.executeBatch{value: msg.value}(
+            targets, values, calldatas, 0, _timelockSalt(descriptionHash)
+        );
         // cleanup for refund
         delete $._timelockIds[proposalId];
     }
@@ -173,7 +187,11 @@ abstract contract GovernorTimelockControlUpgradeable is Initializable, GovernorU
      *
      * CAUTION: It is not recommended to change the timelock while there are other queued governance proposals.
      */
-    function updateTimelock(TimelockControllerUpgradeable newTimelock) external virtual onlyGovernance {
+    function updateTimelock(TimelockControllerUpgradeable newTimelock)
+        external
+        virtual
+        onlyGovernance
+    {
         _updateTimelock(newTimelock);
     }
 
