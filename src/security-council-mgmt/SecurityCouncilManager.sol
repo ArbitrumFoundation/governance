@@ -83,6 +83,9 @@ contract SecurityCouncilManager is
     /// @notice The timestamp at which the address was last rotated
     mapping(address => uint256) public lastRotated;
 
+    /// @notice If an address was rotated, this is the address that it rotated to
+    mapping(address => address) public rotatedTo;
+
     /// @inheritdoc ISecurityCouncilManager
     uint256 public minRotationPeriod;
 
@@ -248,14 +251,22 @@ contract SecurityCouncilManager is
         emit MemberAdded(_newMember, _cohort);
     }
 
+    function memberRotatedTo(address _member) internal returns(address) {
+        if(rotatedTo[_member] != address(0) && !SecurityCouncilMgmtUtils.isInArray(_member, getBothCohorts())) {
+            return rotatedTo[_member];
+        } else return _member;
+    }
+
     /// @inheritdoc ISecurityCouncilManager
     function removeMember(address _member) external onlyRole(MEMBER_REMOVER_ROLE) {
         if (_member == address(0)) {
             revert ZeroAddress();
         }
-        Cohort cohort = _removeMemberFromCohortArray(_member);
+        address memberIfRotated = memberRotatedTo(_member);
+        
+        Cohort cohort = _removeMemberFromCohortArray(memberIfRotated);
         _scheduleUpdate();
-        emit MemberRemoved({member: _member, cohort: cohort});
+        emit MemberRemoved({member: memberIfRotated, cohort: cohort});
     }
 
     /// @inheritdoc ISecurityCouncilManager
@@ -263,9 +274,10 @@ contract SecurityCouncilManager is
         external
         onlyRole(MEMBER_REPLACER_ROLE)
     {
-        Cohort cohort = _swapMembers(_memberToReplace, _newMember);
+        address memberIfRotated = memberRotatedTo(_member);
+        Cohort cohort = _swapMembers(memberIfRotated, _newMember);
         emit MemberReplaced({
-            replacedMember: _memberToReplace,
+            replacedMember: memberIfRotated,
             newMember: _newMember,
             cohort: cohort
         });
@@ -352,6 +364,7 @@ contract SecurityCouncilManager is
         }
 
         lastRotated[newAddress] = block.timestamp;
+        rotatedTo[msg.sender] = newAddress;
         Cohort cohort = _swapMembers(msg.sender, newAddress);
         emit MemberRotated({replacedAddress: msg.sender, newAddress: newAddress, cohort: cohort});
     }
