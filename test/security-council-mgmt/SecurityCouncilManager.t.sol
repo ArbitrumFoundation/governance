@@ -85,6 +85,7 @@ contract SecurityCouncilManagerTest is Test {
     address memberToRotate2 = vm.addr(pk2);
 
     address l1ArbitrumTimelock = address(8881);
+    address nomineeVetter = address(8882);
 
     address payable l2CoreGovTimelock;
 
@@ -152,7 +153,7 @@ contract SecurityCouncilManagerTest is Test {
 
         SecurityCouncilNomineeElectionGovernor.InitParams memory initParams =
         SecurityCouncilNomineeElectionGovernor.InitParams(
-            Date(2000, 1, 1, 1), 0, address(0), scm, memGov, token, address(0), 20, 20
+            Date(2000, 1, 1, 1), 3, nomineeVetter, scm, memGov, token, address(0), 20, 20
         );
         nomGov.initialize(initParams);
         memGov.initialize(nomGov, scm, token, address(10), 10, 5);
@@ -568,7 +569,7 @@ contract SecurityCouncilManagerTest is Test {
         );
     }
 
-    function addAllContendersVoteAndExecute(uint256 proposalId) public {
+    function addAllContendersAndVote(uint256 proposalId) public {
         SecurityCouncilNomineeElectionGovernor nGov =
             SecurityCouncilNomineeElectionGovernor(payable(nomineeElectionGovernor));
         SigUtils sigUtils = new SigUtils(nomineeElectionGovernor);
@@ -587,6 +588,11 @@ contract SecurityCouncilManagerTest is Test {
                 params: abi.encode(vm.addr(i + 1000), 20_000_000)
             });
         }
+    }
+
+    function execProp(uint256 proposalId) public {
+        SecurityCouncilNomineeElectionGovernor nGov =
+            SecurityCouncilNomineeElectionGovernor(payable(nomineeElectionGovernor));
         vm.roll(
             SecurityCouncilNomineeElectionGovernorTiming(payable(address(nomineeElectionGovernor)))
                 .proposalVettingDeadline(proposalId) + 1
@@ -618,6 +624,8 @@ contract SecurityCouncilManagerTest is Test {
 
         bytes32 digest = scm.getRotateMemberHash(originalMember, scm.updateNonce());
         bytes memory signature = sign(pk1, digest);
+        bytes memory signature2 =
+            sign(pk2, scm.getRotateMemberHash(originalMember, scm.updateNonce()));
         uint256 startNonce = scm.updateNonce();
 
         // replace in other cohort in ongoing election does not work
@@ -630,8 +638,31 @@ contract SecurityCouncilManagerTest is Test {
         scm.rotateMember(memberToRotate1, memberElectionGovernor, signature);
 
         uint256 snap = vm.snapshot();
-        // proceeding to the next stage of election still doesnt work
-        addAllContendersVoteAndExecute(proposalId);
+
+        addAllContendersAndVote(proposalId);
+
+        // check that we cant rotate to a nominee
+        vm.roll(
+            SecurityCouncilNomineeElectionGovernor(payable(nomineeElectionGovernor))
+                .proposalDeadline(proposalId) + 1
+        );
+        vm.prank(nomineeVetter);
+        SecurityCouncilNomineeElectionGovernor(payable(nomineeElectionGovernor)).excludeNominee(
+            proposalId, vm.addr(1004)
+        );
+        vm.prank(nomineeVetter);
+        SecurityCouncilNomineeElectionGovernor(payable(nomineeElectionGovernor)).includeNominee(
+            proposalId, memberToRotate2
+        );
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ISecurityCouncilManager.NewMemberIsNominee.selector, proposalId, memberToRotate2
+            )
+        );
+        vm.prank(originalMember);
+        scm.rotateMember(memberToRotate2, memberElectionGovernor, signature2);
+
+        execProp(proposalId);
         assertEq(
             uint8(IGovernorUpgradeable(nomineeElectionGovernor).state(proposalId)),
             uint8(IGovernorUpgradeable.ProposalState.Executed),
@@ -650,19 +681,20 @@ contract SecurityCouncilManagerTest is Test {
         );
         vm.prank(originalMember);
         scm.rotateMember(memberToRotate1, memberElectionGovernor, signature);
+
         vm.revertTo(snap);
 
         // replacing that member with one in the same cohort does work
-        bytes32 digestA = scm.getRotateMemberHash(firstCohort[1], scm.updateNonce());
-        bytes memory signatureA = sign(pk1, digestA);
+        bytes memory signatureA =
+            sign(pk1, scm.getRotateMemberHash(firstCohort[1], scm.updateNonce()));
         vm.prank(firstCohort[1]);
         scm.rotateMember(memberToRotate1, memberElectionGovernor, signatureA);
         assertEq(startNonce + 1, scm.updateNonce(), "nonce 1");
         checkCohortChange(memberToRotate1, 1, firstCohort, Cohort.FIRST);
         vm.revertTo(snap);
 
-        bytes32 digest1 = scm.getRotateMemberHash(originalMember, scm.updateNonce());
-        bytes memory signature1 = sign(pk2, digest1);
+        bytes memory signature1 =
+            sign(pk2, scm.getRotateMemberHash(originalMember, scm.updateNonce()));
 
         vm.recordLogs();
         vm.prank(originalMember);

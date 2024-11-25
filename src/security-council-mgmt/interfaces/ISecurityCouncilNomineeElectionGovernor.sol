@@ -6,8 +6,16 @@ import {Cohort} from "../Common.sol";
 import "./ISecurityCouncilMemberElectionGovernor.sol";
 import "./ISecurityCouncilManager.sol";
 
+interface ISecurityCouncilNomineeElectionGovernorCountingUpgradeable {
+    /// @notice Whether the contender has enough votes to be a nominee
+    function isNominee(uint256 proposalId, address contender) external view returns (bool);
+}
+
 /// @notice Minimal interface of nominee election governor required by other contracts
-interface ISecurityCouncilNomineeElectionGovernor is IElectionGovernor {
+interface ISecurityCouncilNomineeElectionGovernor is
+    IElectionGovernor,
+    ISecurityCouncilNomineeElectionGovernorCountingUpgradeable
+{
     /// @notice Whether the account a compliant nominee for a given proposal
     ///         A compliant nominee is one who is a nominee, and has not been excluded
     /// @param  proposalId The id of the proposal

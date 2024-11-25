@@ -45,6 +45,7 @@ interface ISecurityCouncilManager {
     error RotationTooSoon(address rotator, uint256 rotatableWhen);
     error GovernorNotReplacer();
     error NewMemberIsContender(uint256 proposalId, address newMember);
+    error NewMemberIsNominee(uint256 proposalId, address newMember);
     error InvalidNewAddress(address newAddress);
 
     /// @notice There is a minimum period between when an address can be rotated

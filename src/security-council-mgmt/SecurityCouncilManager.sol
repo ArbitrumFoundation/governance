@@ -362,6 +362,9 @@ contract SecurityCouncilManager is
                     if (nomineeGovernor.isContender(proposalId, newAddress)) {
                         revert NewMemberIsContender(proposalId, newAddress);
                     }
+                    if (nomineeGovernor.isNominee(proposalId, newAddress)) {
+                        revert NewMemberIsNominee(proposalId, newAddress);
+                    }
                 }
             }
         }
