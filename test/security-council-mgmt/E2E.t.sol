@@ -400,7 +400,6 @@ contract E2E is Test, DeployGnosisWithModule {
             vars.secDeployedContracts.nomineeElectionGovernor
         );
 
-
         L1SCMgmtActivationAction installL1 = new L1SCMgmtActivationAction(
             IGnosisSafe(address(vars.moduleL1Safe)),
             IGnosisSafe(l1EmergencyCouncil),

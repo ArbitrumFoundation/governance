@@ -253,10 +253,15 @@ contract SecurityCouncilManager is
         emit MemberAdded(_newMember, _cohort);
     }
 
-    function memberRotatedTo(address _member) internal view returns(address) {
-        if(rotatedTo[_member] != address(0) && !SecurityCouncilMgmtUtils.isInArray(_member, getBothCohorts())) {
+    function memberRotatedTo(address _member) internal view returns (address) {
+        if (
+            rotatedTo[_member] != address(0)
+                && !SecurityCouncilMgmtUtils.isInArray(_member, getBothCohorts())
+        ) {
             return rotatedTo[_member];
-        } else return _member;
+        } else {
+            return _member;
+        }
     }
 
     /// @inheritdoc ISecurityCouncilManager
@@ -265,7 +270,7 @@ contract SecurityCouncilManager is
             revert ZeroAddress();
         }
         address memberIfRotated = memberRotatedTo(_member);
-        
+
         Cohort cohort = _removeMemberFromCohortArray(memberIfRotated);
         _scheduleUpdate();
         emit MemberRemoved({member: memberIfRotated, cohort: cohort});
@@ -278,11 +283,7 @@ contract SecurityCouncilManager is
     {
         address memberIfRotated = memberRotatedTo(_memberToReplace);
         Cohort cohort = _swapMembers(memberIfRotated, _newMember);
-        emit MemberReplaced({
-            replacedMember: memberIfRotated,
-            newMember: _newMember,
-            cohort: cohort
-        });
+        emit MemberReplaced({replacedMember: memberIfRotated, newMember: _newMember, cohort: cohort});
     }
 
     /// @inheritdoc ISecurityCouncilManager
