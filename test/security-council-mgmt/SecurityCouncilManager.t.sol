@@ -245,6 +245,28 @@ contract SecurityCouncilManagerTest is Test {
         );
     }
 
+    function testRemoveMemberRotated() public {
+        address memberToRemove = firstCohort[0];
+        bytes32 digest = scm.getRotateMemberHash(memberToRemove, scm.updateNonce());
+        bytes memory signature = sign(pk1, digest);
+        vm.prank(memberToRemove);
+        scm.rotateMember(memberToRotate1, memberElectionGovernor, signature);
+
+        vm.recordLogs();
+        vm.prank(roles.memberRemovers[0]);
+        scm.removeMember(memberToRemove);
+        checkScheduleWasCalled();
+
+        address[] memory remainingMembers = new address[](5);
+        for (uint256 i = 1; i < firstCohort.length; i++) {
+            remainingMembers[i - 1] = firstCohort[i];
+        }
+        assertTrue(
+            TestUtil.areUniqueAddressArraysEqual(remainingMembers, scm.getFirstCohort()),
+            "member removed from first chohort"
+        );
+    }
+
     function testAddMemberSpecialAddresses() public {
         vm.prank(roles.memberAdder);
         vm.expectRevert(ZeroAddress.selector);
@@ -372,7 +394,60 @@ contract SecurityCouncilManagerTest is Test {
         vm.stopPrank();
     }
 
+    function testReplaceMemberInFirstCohortAfterRotation() public {
+        bytes32 digest = scm.getRotateMemberHash(firstCohort[0], scm.updateNonce());
+        bytes memory signature = sign(pk1, digest);
+        vm.prank(firstCohort[0]);
+        scm.rotateMember(memberToRotate1, memberElectionGovernor, signature);
+
+        vm.startPrank(roles.memberReplacer);
+        vm.recordLogs();
+        scm.replaceMember(firstCohort[0], memberToAdd);
+        checkScheduleWasCalled();
+
+        address[] memory newFirstCohortArray = new address[](6);
+        newFirstCohortArray[0] = memberToAdd;
+        for (uint256 i = 1; i < firstCohort.length; i++) {
+            newFirstCohortArray[i] = firstCohort[i];
+        }
+        assertTrue(
+            TestUtil.areUniqueAddressArraysEqual(newFirstCohortArray, scm.getFirstCohort()),
+            "first cohort updated"
+        );
+        assertTrue(
+            TestUtil.areUniqueAddressArraysEqual(secondCohort, scm.getSecondCohort()),
+            "second cohort untouched"
+        );
+        vm.stopPrank();
+    }
+
     function testReplaceMemberInSecondCohort() public {
+        bytes32 digest = scm.getRotateMemberHash(secondCohort[0], scm.updateNonce());
+        bytes memory signature = sign(pk2, digest);
+        vm.prank(secondCohort[0]);
+        scm.rotateMember(memberToRotate2, memberElectionGovernor, signature);
+
+        vm.startPrank(roles.memberReplacer);
+        vm.recordLogs();
+        scm.replaceMember(secondCohort[0], memberToAdd);
+        checkScheduleWasCalled();
+        address[] memory newSecondCohortArray = new address[](6);
+        newSecondCohortArray[0] = memberToAdd;
+        for (uint256 i = 1; i < secondCohort.length; i++) {
+            newSecondCohortArray[i] = secondCohort[i];
+        }
+        assertTrue(
+            TestUtil.areUniqueAddressArraysEqual(newSecondCohortArray, scm.getSecondCohort()),
+            "second cohort updated"
+        );
+        assertTrue(
+            TestUtil.areUniqueAddressArraysEqual(firstCohort, scm.getFirstCohort()),
+            "first cohort untouched"
+        );
+        vm.stopPrank();
+    }
+
+    function testReplaceMemberInSecondCohortAfterRotation() public {
         vm.startPrank(roles.memberReplacer);
         vm.recordLogs();
         scm.replaceMember(secondCohort[0], memberToAdd);

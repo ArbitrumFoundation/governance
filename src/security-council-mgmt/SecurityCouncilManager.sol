@@ -83,7 +83,8 @@ contract SecurityCouncilManager is
     /// @notice The timestamp at which the address was last rotated
     mapping(address => uint256) public lastRotated;
 
-    /// @notice If an address was rotated, this is the address that it rotated to
+    /// @notice If an address was rotated, this is the last address it rotated to
+    /// @dev    This can be used to avoid race conditions between rotation and other actions
     mapping(address => address) public rotatedTo;
 
     /// @inheritdoc ISecurityCouncilManager
@@ -115,6 +116,7 @@ contract SecurityCouncilManager is
         _disableInitializers();
     }
 
+    /// @inheritdoc ISecurityCouncilManager
     function initialize(
         address[] memory _firstCohort,
         address[] memory _secondCohort,
@@ -251,7 +253,7 @@ contract SecurityCouncilManager is
         emit MemberAdded(_newMember, _cohort);
     }
 
-    function memberRotatedTo(address _member) internal returns(address) {
+    function memberRotatedTo(address _member) internal view returns(address) {
         if(rotatedTo[_member] != address(0) && !SecurityCouncilMgmtUtils.isInArray(_member, getBothCohorts())) {
             return rotatedTo[_member];
         } else return _member;
@@ -274,7 +276,7 @@ contract SecurityCouncilManager is
         external
         onlyRole(MEMBER_REPLACER_ROLE)
     {
-        address memberIfRotated = memberRotatedTo(_member);
+        address memberIfRotated = memberRotatedTo(_memberToReplace);
         Cohort cohort = _swapMembers(memberIfRotated, _newMember);
         emit MemberReplaced({
             replacedMember: memberIfRotated,
