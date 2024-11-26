@@ -14,5 +14,6 @@
 | updateNonce       | uint256                                                      | 156  | 0      | 32    | src/security-council-mgmt/SecurityCouncilManager.sol:SecurityCouncilManager |
 | cohortSize        | uint256                                                      | 157  | 0      | 32    | src/security-council-mgmt/SecurityCouncilManager.sol:SecurityCouncilManager |
 | lastRotated       | mapping(address => uint256)                                  | 158  | 0      | 32    | src/security-council-mgmt/SecurityCouncilManager.sol:SecurityCouncilManager |
-| minRotationPeriod | uint256                                                      | 159  | 0      | 32    | src/security-council-mgmt/SecurityCouncilManager.sol:SecurityCouncilManager |
-| __gap             | uint256[41]                                                  | 160  | 0      | 1312  | src/security-council-mgmt/SecurityCouncilManager.sol:SecurityCouncilManager |
+| rotatedTo         | mapping(address => address)                                  | 159  | 0      | 32    | src/security-council-mgmt/SecurityCouncilManager.sol:SecurityCouncilManager |
+| minRotationPeriod | uint256                                                      | 160  | 0      | 32    | src/security-council-mgmt/SecurityCouncilManager.sol:SecurityCouncilManager |
+| __gap             | uint256[40]                                                  | 161  | 0      | 1280  | src/security-council-mgmt/SecurityCouncilManager.sol:SecurityCouncilManager |
