@@ -1,0 +1,21 @@
+{
+    "@context": "http://www.daostar.org/schemas",
+    "type": "DAO",
+    "name": "ArbitrumDAO",
+    "description": "Arbitrum is a technology suite designed to scale Ethereum. The Arbitrum DAO is a new entity with decision-making authority over the Arbitrum One and Arbitrum Nova chains, along with their underlying protocols. This DAO is governed by The Constitution of the Arbitrum DAO, which is a set of rules that describe how the DAO will operate. The Constitution is enshrined within a number of social contracts that are used by the Arbitrum DAO to govern itself and its technologies.",
+    "membersURI": "https://membersuri.daostar.org/members/arbitrumfoundation.eth?onchain=arbitrum",
+    "proposalsURI": "https://proposalsuri.daostar.org/proposals/arbitrumfoundation.eth?onchain=arbitrum",
+    "contractsURI": "https://raw.githubusercontent.com/metagov/daostar/main/contractRegistryURI/arbitrumfoundation.json",
+    "governanceURI": "https://docs.arbitrum.foundation",
+    "constitutionURI": {
+        "link": "https://docs.arbitrum.foundation/dao-constitution",
+        "hash": "0x28faf2acba9b3ff80ec484e3d5646931eeef40568b1b7c38dbe52b890bfd7938"
+    },
+    "calendarURI": "https://calendar.google.com/calendar/u/0/embed?src=c_4157985d2452dfd8a91b6a36bccab37deb9bffe9053a4b9bcc4e9fff9ef02924@group.calendar.google.com&ctz=Europe/Warsaw",
+    "dashboards": {
+        "walletDashboard": "https://www.tally.xyz/gov/arbitrum/treasury",
+        "blockExplorer": "https://arbiscan.io/",
+        "crossChainMessageDashboard": "https://retryable-dashboard.arbitrum.io/tx",
+        "forum": "https://forum.arbitrum.foundation/"
+    }
+}
