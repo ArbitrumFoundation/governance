@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# OfficeHoursAction: TODO
+# OfficeHoursAction: 0x05c81465e881CC10D822A7290ae276A2dB1a845C
 
 # arb1 RollupUpgradeSecondaryAction: 0x2A3a4BDbC7c00d5115d297d83A31358B317d4740
 # - new impl at 0x5c93BAB9Ff2Fa3884b643bd8545C625De0633517
@@ -18,7 +18,7 @@ yarn gen:proposalData \
     --upgradeValues 0 0 0 0 0 0 \
     --actionChainIds 1 1 1 1 1 1 \
     --actionAddresses \
-        0x000000000000000000000000000000000000dead \
+        0x05c81465e881CC10D822A7290ae276A2dB1a845C \
         0x2A3a4BDbC7c00d5115d297d83A31358B317d4740 \
         0x8E1c1555b2Fe22870e7a0A454789b0c92e494ADC \
         0xf795ec38701234664f69Dbd761Ee9c511F25ac1D \
