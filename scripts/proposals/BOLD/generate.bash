@@ -15,6 +15,8 @@
 
 yarn gen:proposalData \
     --govChainProviderRPC https://arb1.arbitrum.io/rpc \
+    --predecessor 0x0000000000000000000000000000000000000000000000000000000000000000 \
+    --upgradeValues 0 0 0 0 0 0 \
     --actionChainIds 1 1 1 1 1 1 \
     --actionAddresses \
         0x000000000000000000000000000000000000dead \
@@ -23,7 +25,7 @@ yarn gen:proposalData \
         0x8E1c1555b2Fe22870e7a0A454789b0c92e494ADC \
         0xd25B258B55765c9fb5567eCABB6114b03b0f78b5 \
         0x2f845d909058200e4E56855C2735975a004a4922 \
-    --actionDatas \
+    --upgradeDatas \
         $(cast calldata "perform()") \
         $(cast calldata "perform(address)" 0x5c93BAB9Ff2Fa3884b643bd8545C625De0633517) \
         $(cast calldata "perform(address[])" "[]") \
