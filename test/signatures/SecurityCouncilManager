@@ -38,6 +38,7 @@
   "replaceMember(address,address)": "e577e32e",
   "revokeRole(bytes32,address)": "d547741f",
   "rotateMember(address,address,bytes)": "02ea6df4",
+  "rotatedTo(address)": "86bc77a3",
   "router()": "f887ea40",
   "secondCohortIncludes(address)": "e9d9f048",
   "securityCouncils(uint256)": "bef3f745",
