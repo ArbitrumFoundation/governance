@@ -83,6 +83,10 @@ contract SecurityCouncilManager is
     /// @notice The timestamp at which the address was last rotated
     mapping(address => uint256) public lastRotated;
 
+    /// @notice If an address was rotated, this is the last address it rotated to
+    /// @dev    This can be used to avoid race conditions between rotation and other actions
+    mapping(address => address) public rotatedTo;
+
     /// @inheritdoc ISecurityCouncilManager
     uint256 public minRotationPeriod;
 
@@ -112,6 +116,7 @@ contract SecurityCouncilManager is
         _disableInitializers();
     }
 
+    /// @inheritdoc ISecurityCouncilManager
     function initialize(
         address[] memory _firstCohort,
         address[] memory _secondCohort,
@@ -248,14 +253,27 @@ contract SecurityCouncilManager is
         emit MemberAdded(_newMember, _cohort);
     }
 
+    function memberRotatedTo(address _member) internal view returns (address) {
+        if (
+            rotatedTo[_member] != address(0)
+                && !SecurityCouncilMgmtUtils.isInArray(_member, getBothCohorts())
+        ) {
+            return rotatedTo[_member];
+        } else {
+            return _member;
+        }
+    }
+
     /// @inheritdoc ISecurityCouncilManager
     function removeMember(address _member) external onlyRole(MEMBER_REMOVER_ROLE) {
         if (_member == address(0)) {
             revert ZeroAddress();
         }
-        Cohort cohort = _removeMemberFromCohortArray(_member);
+        address memberIfRotated = memberRotatedTo(_member);
+
+        Cohort cohort = _removeMemberFromCohortArray(memberIfRotated);
         _scheduleUpdate();
-        emit MemberRemoved({member: _member, cohort: cohort});
+        emit MemberRemoved({member: memberIfRotated, cohort: cohort});
     }
 
     /// @inheritdoc ISecurityCouncilManager
@@ -263,12 +281,9 @@ contract SecurityCouncilManager is
         external
         onlyRole(MEMBER_REPLACER_ROLE)
     {
-        Cohort cohort = _swapMembers(_memberToReplace, _newMember);
-        emit MemberReplaced({
-            replacedMember: _memberToReplace,
-            newMember: _newMember,
-            cohort: cohort
-        });
+        address memberIfRotated = memberRotatedTo(_memberToReplace);
+        Cohort cohort = _swapMembers(memberIfRotated, _newMember);
+        emit MemberReplaced({replacedMember: memberIfRotated, newMember: _newMember, cohort: cohort});
     }
 
     /// @inheritdoc ISecurityCouncilManager
@@ -347,11 +362,15 @@ contract SecurityCouncilManager is
                     if (nomineeGovernor.isContender(proposalId, newAddress)) {
                         revert NewMemberIsContender(proposalId, newAddress);
                     }
+                    if (nomineeGovernor.isNominee(proposalId, newAddress)) {
+                        revert NewMemberIsNominee(proposalId, newAddress);
+                    }
                 }
             }
         }
 
         lastRotated[newAddress] = block.timestamp;
+        rotatedTo[msg.sender] = newAddress;
         Cohort cohort = _swapMembers(msg.sender, newAddress);
         emit MemberRotated({replacedAddress: msg.sender, newAddress: newAddress, cohort: cohort});
     }
@@ -582,11 +601,11 @@ contract SecurityCouncilManager is
             delay: ArbitrumTimelock(l2CoreGovTimelock).getMinDelay()
         });
     }
+    
     /**
      * @dev This empty reserved space is put in place to allow future versions to add new
      * variables without shifting down storage in the inheritance chain.
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
      */
-
-    uint256[41] private __gap;
+    uint256[40] private __gap;
 }

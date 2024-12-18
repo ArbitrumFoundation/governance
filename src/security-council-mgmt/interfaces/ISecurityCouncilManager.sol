@@ -45,6 +45,7 @@ interface ISecurityCouncilManager {
     error RotationTooSoon(address rotator, uint256 rotatableWhen);
     error GovernorNotReplacer();
     error NewMemberIsContender(uint256 proposalId, address newMember);
+    error NewMemberIsNominee(uint256 proposalId, address newMember);
     error InvalidNewAddress(address newAddress);
 
     /// @notice There is a minimum period between when an address can be rotated
@@ -61,6 +62,13 @@ interface ISecurityCouncilManager {
     /// @param  _l2CoreGovTimelock timelock for core governance / constitutional proposal
     /// @param _router UpgradeExecRouteBuilder address
     /// @param _minRotationPeriod The minimum amount of time that must happen between address rotations by the same council member
+    ///                           Rotations are in race conditions with other actions, so care must be taken to set this parameter to be
+    ///                           greater than the time taken for other actions. An example of this is if the removal governor has the removal
+    ///                           role it may try to remove an address, but doing so requires passing a vote and in the meantime the address may
+    ///                           rotate. If the address is only allowed to rotate once during this period the manager can keep track of this and still
+    ///                           and still remove the address, however if the rotation period allows for two rotations the address will not get removed
+    ///                           A general rule for setting the min rotation period is: make sure it is longer that the amount of time taken to conduct
+    ///                           any other actions on the sec council manager.
     function initialize(
         address[] memory _firstCohort,
         address[] memory _secondCohort,
