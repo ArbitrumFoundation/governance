@@ -85,6 +85,30 @@
         // Server-Side Request Forgery in axios
         "GHSA-8hc4-vh64-cxmj",
         // Regular Expression Denial of Service (ReDoS) in micromatch
-        "GHSA-952p-6rrq-rcjv"
+        "GHSA-952p-6rrq-rcjv",
+        // Elliptic's verify function omits uniqueness validation
+        "GHSA-434g-2637-qmqr",
+        // Valid ECDSA signatures erroneously rejected in Elliptic
+        "GHSA-fc9h-whq2-v747",
+        // body-parser vulnerable to denial of service when url encoding is enabled
+        "GHSA-qwcr-r2fm-qrc7",
+        // path-to-regexp outputs backtracking regular expressions
+        "GHSA-9wv6-86v2-598j",
+        // cookie accepts cookie name, path, and domain with out of bounds characters
+        "GHSA-pxg6-pf52-xh8x",
+        // send vulnerable to template injection that can lead to XSS
+        "GHSA-m6fv-jmcg-4jfg",
+        // serve-static vulnerable to template injection that can lead to XSS
+        "GHSA-cm22-4g7w-348p",
+        // express vulnerable to XSS via response.redirect()
+        "GHSA-qw6h-vgh9-j6wx",
+        // Unpatched `path-to-regexp` ReDoS in 0.1.x
+        "GHSA-rhx6-c78j-4q9w",
+        // Predictable results in nanoid generation when given non-integer values
+        "GHSA-mwcw-c2x4-8c55",
+        // secp256k1-node allows private key extraction over ECDH
+        "GHSA-584q-6j8j-r5pm",
+        // Regular Expression Denial of Service (ReDoS) in cross-spawn
+        "GHSA-3xgq-45jj-v275"
     ]
   }
