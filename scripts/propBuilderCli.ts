@@ -72,6 +72,7 @@ const options = yargs(process.argv.slice(2))
       defaultValue: constants.HashZero,
     },
   })
+  .strict()
   .parseSync() as {
   govChainProviderRPC: string;
   actionChainIds: number[];
