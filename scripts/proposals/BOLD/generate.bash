@@ -10,7 +10,7 @@
 # arb1 BoldUpgradeAction: 0xf795ec38701234664f69Dbd761Ee9c511F25ac1D
 # nova BoldUpgradeAction: 0xd25B258B55765c9fb5567eCABB6114b03b0f78b5
 
-# nova SetValidatorsAction: 0x2f845d909058200e4E56855C2735975a004a4922
+# nova SetValidatorsAction: 0xBF94aFEbFBf062A88615bC012da39d0822670aBa
 
 yarn gen:proposalData \
     --govChainProviderRPC https://arb1.arbitrum.io/rpc \
@@ -23,7 +23,7 @@ yarn gen:proposalData \
         0x8E1c1555b2Fe22870e7a0A454789b0c92e494ADC \
         0xf795ec38701234664f69Dbd761Ee9c511F25ac1D \
         0xd25B258B55765c9fb5567eCABB6114b03b0f78b5 \
-        0x2f845d909058200e4E56855C2735975a004a4922 \
+        0xBF94aFEbFBf062A88615bC012da39d0822670aBa \
     --upgradeDatas \
         $(cast calldata "perform()") \
         $(cast calldata "perform(address)" 0x5c93BAB9Ff2Fa3884b643bd8545C625De0633517) \
