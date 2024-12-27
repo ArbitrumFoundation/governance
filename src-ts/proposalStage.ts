@@ -1395,7 +1395,7 @@ export class RetryableExecutionStage implements ProposalStage {
         }
         const id = this.l1ToL2Message.retryableCreationId.toLowerCase();
         console.error(`Failed to redeem retryable ${id}, retrying in 60s`);
-        await wait(60_000);
+        await wait(5_000);
       }
     }
   }
