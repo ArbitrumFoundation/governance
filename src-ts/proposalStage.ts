@@ -40,6 +40,7 @@ import {
 import { hasTimelock, hasVettingPeriod, getL1BlockNumberFromL2, wait } from "./utils";
 import { CallScheduledEvent } from "../typechain-types/src/ArbitrumTimelock";
 import { GnosisSafeL2__factory } from "../types/ethers-contracts/factories/GnosisSafeL2__factory";
+import { ArbSdkError } from "@arbitrum/sdk/dist/lib/dataEntities/errors";
 
 type Provider = providers.Provider;
 
@@ -1385,17 +1386,13 @@ export class RetryableExecutionStage implements ProposalStage {
     }
 
     while (true) {
-      const status = await this.l1ToL2Message.status();
-      if (status === L1ToL2MessageStatus.REDEEMED) {
-        break;
-      } else if (status === L1ToL2MessageStatus.EXPIRED) {
-        const id = this.l1ToL2Message.retryableCreationId.toLowerCase();
-        throw new ProposalStageError(`Retryable ticket expired ${id}`, this.identifier, this.name);
-      }
       try {
         await (await this.l1ToL2Message.redeem()).wait();
         break;
-      } catch {
+      } catch (e) {
+        if (e instanceof ArbSdkError && e.message.includes("Message status: REDEEMED")) {
+          break;
+        }
         const id = this.l1ToL2Message.retryableCreationId.toLowerCase();
         console.error(`Failed to redeem retryable ${id}, retrying in 60s`);
         await wait(60_000);
