@@ -7,6 +7,7 @@ import
     "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorCountingSimpleUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorSettingsUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
 import "./../interfaces/ISecurityCouncilManager.sol";
 import "../Common.sol";
 import "./modules/ArbitrumGovernorVotesQuorumFractionUpgradeable.sol";

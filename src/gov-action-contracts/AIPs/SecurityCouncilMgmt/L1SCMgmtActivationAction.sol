@@ -2,7 +2,7 @@
 pragma solidity 0.8.16;
 
 import "../../../security-council-mgmt/interfaces/IGnosisSafe.sol";
-import "../../../interfaces/IUpgradeExecutor.sol";
+import "@offchainlabs/upgrade-executor/src/IUpgradeExecutor.sol";
 import "../../../interfaces/ICoreTimelock.sol";
 import "./SecurityCouncilMgmtUpgradeLib.sol";
 
