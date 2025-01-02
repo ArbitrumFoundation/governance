@@ -5,6 +5,7 @@ import "forge-std/Test.sol";
 
 import "../../src/gov-action-contracts/AIPs/NomineeGovernorV2UpgradeAction.sol";
 import "../../src/security-council-mgmt/governors/SecurityCouncilNomineeElectionGovernor.sol";
+import "@offchainlabs/upgrade-executor/src/UpgradeExecutor.sol";
 
 contract NomineeGovernorV2UpgradeActionTest is Test {
     address oldImplementation = 0x8436A1bc9f9f9EB0cF1B51942C5657b60A40CCDD;
