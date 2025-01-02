@@ -22,6 +22,9 @@ import {
   GovernorUpgradeable__factory,
   SecurityCouncilNomineeElectionGovernor__factory,
   ArbSys__factory,
+  UpgradeExecutor__factory,
+  SecurityCouncilMemberSyncAction__factory,
+  SecurityCouncilManager__factory,
 } from "../typechain-types";
 import { Inbox__factory } from "@arbitrum/sdk/dist/lib/abi/factories/Inbox__factory";
 import { EventArgs } from "@arbitrum/sdk/dist/lib/dataEntities/event";
@@ -34,9 +37,10 @@ import {
   ProposalExecutedEventObject,
   ProposalQueuedEventObject,
 } from "../typechain-types/src/L2ArbitrumGovernor";
-import { hasTimelock, hasVettingPeriod, getL1BlockNumberFromL2 } from "./utils";
+import { hasTimelock, hasVettingPeriod, getL1BlockNumberFromL2, wait } from "./utils";
 import { CallScheduledEvent } from "../typechain-types/src/ArbitrumTimelock";
 import { GnosisSafeL2__factory } from "../types/ethers-contracts/factories/GnosisSafeL2__factory";
+import { ArbSdkError } from "@arbitrum/sdk/dist/lib/dataEntities/errors";
 
 type Provider = providers.Provider;
 
@@ -859,6 +863,55 @@ export class L2TimelockExecutionSingleStage extends L2TimelockExecutionStage {
   }
 }
 
+export class SecurityCouncilManagerTimelockStage extends L2TimelockExecutionSingleStage {
+  public static readonly managerAddress = "0xD509E5f5aEe2A205F554f36E8a7d56094494eDFC";
+
+  public static async extractStages(
+    receipt: TransactionReceipt,
+    arbOneSignerOrProvider: Provider | Signer
+  ): Promise<L2TimelockExecutionSingleStage[]> {
+    const hasManagerEvent = receipt.logs.find(log => log.address === this.managerAddress);
+
+    if (!hasManagerEvent) return [];
+
+    const timelockInterface = ArbitrumTimelock__factory.createInterface();
+    const arbSysInterface = ArbSys__factory.createInterface();
+    const upExecInterface = UpgradeExecutor__factory.createInterface();
+    const actionInterface = SecurityCouncilMemberSyncAction__factory.createInterface();
+
+    const logs = receipt.logs.filter(log => log.topics[0] === timelockInterface.getEventTopic("CallScheduled"));
+
+    if (logs.length === 0) return [];
+
+    // we take the last log since it has the highest updateNonce
+    const lastLog = logs[logs.length - 1];
+
+    const callScheduledArgs = timelockInterface.parseLog(lastLog).args as CallScheduledEvent["args"];
+    const parsedSendTxToL1 = arbSysInterface.decodeFunctionData("sendTxToL1", callScheduledArgs.data);
+    const parsedL1ScheduleBatch = L2TimelockExecutionStage.decodeScheduleBatch(parsedSendTxToL1[1]);
+
+    const parsedExecute = upExecInterface.decodeFunctionData("execute", parsedL1ScheduleBatch.callDatas[0]);
+    const parsedPerform = actionInterface.decodeFunctionData("perform", parsedExecute[1])
+
+    const newMembers = parsedPerform[1]
+    const updateNonce = parsedPerform[2]
+
+    const scheduleSalt = await SecurityCouncilManager__factory.connect(this.managerAddress, arbOneSignerOrProvider).generateSalt(newMembers, updateNonce)
+
+    return [
+      new L2TimelockExecutionSingleStage(
+        callScheduledArgs.target,
+        BigNumber.from(0),
+        callScheduledArgs.data,
+        callScheduledArgs.predecessor,
+        scheduleSalt,
+        lastLog.address,
+        arbOneSignerOrProvider
+      )
+    ]
+  }
+}
+
 /**
  * When a outbox entry is ready for execution, execute it
  */
@@ -1006,7 +1059,7 @@ abstract class L1TimelockExecutionStage {
       const inbox = Inbox__factory.connect(inboxAddress, timelock.provider!);
       const submissionFee = await inbox.callStatic.calculateRetryableSubmissionFee(
         hexDataLength(innerData),
-        0
+        await inbox.provider!.getGasPrice()
       );
 
       // enough value to create a retryable ticket = submission fee + gas
@@ -1331,7 +1384,20 @@ export class RetryableExecutionStage implements ProposalStage {
     if (!this.isWriter(this.l1ToL2Message)) {
       throw new Error("Message is not a writer");
     }
-    await (await this.l1ToL2Message.redeem()).wait();
+
+    while (true) {
+      try {
+        await (await this.l1ToL2Message.redeem()).wait();
+        break;
+      } catch (e) {
+        if (e instanceof ArbSdkError && e.message.includes("Message status: REDEEMED")) {
+          break;
+        }
+        const id = this.l1ToL2Message.retryableCreationId.toLowerCase();
+        console.error(`Failed to redeem retryable ${id}, retrying in 5s`);
+        await wait(5_000);
+      }
+    }
   }
 
   public async getExecuteReceipt(): Promise<TransactionReceipt> {
