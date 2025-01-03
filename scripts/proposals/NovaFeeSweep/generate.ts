@@ -7,7 +7,8 @@ import {
 } from '../../../typechain-types'
 import { JsonRpcProvider } from '@ethersproject/providers'
 import fs from 'fs'
-;(async () => {
+;import { keccak256 } from 'ethers/lib/utils';
+(async () => {
   const l1TimelockAlias = '0xf7951d92b0c345144506576ec13ecf5103ac905a'
   const novaInbox = '0xc4448b71118c9071Bcb9734A0EAc55D18A153949'
   const novaToParentRouter = '0x36D0170D92F66e8949eB276C3AC4FEA64f83704d'
@@ -39,7 +40,7 @@ import fs from 'fs'
     0,
     unsafeCreateRetryableCalldata,
     '0x0000000000000000000000000000000000000000000000000000000000000000',
-    '0xafa240dd4c6513a86965b2fdce079dc265548e8d301653ccf5602a9126c06bf8',
+    keccak256('Nova Fee Sweep'),
     259200,
   ])
 
