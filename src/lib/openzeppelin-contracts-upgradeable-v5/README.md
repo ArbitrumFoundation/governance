@@ -1,0 +1,3 @@
+## README
+
+Contracts in this directory are copied from `v5.1.0` of [openzeppelin-contracts-upgradeable](https://github.com/OpenZeppelin/openzeppelin-contracts-upgradeable/releases/tag/v5.1.0). To avoid conflict with the existing `openzeppelin-contracts-upgradeable` package in node_modules,`openzeppelin-upgradeable-v5/` is used as the import path with a remapping to this directory. `@openzeppelin` import paths in these files are modified to be `@openzeppelin-v5`, which has a remapping to `src/lib/openzeppelin-contracts-upgradeable-v5/lib/openzeppelin-contracts` to avoid conflicts with the existing remapping and the `openzeppelin-contracts` package in node_modules.
