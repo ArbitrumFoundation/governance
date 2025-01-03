@@ -7,8 +7,8 @@ import {
 } from '../../../typechain-types'
 import { JsonRpcProvider } from '@ethersproject/providers'
 import fs from 'fs'
-;import { keccak256, toUtf8Bytes } from 'ethers/lib/utils';
-(async () => {
+import { keccak256, toUtf8Bytes } from 'ethers/lib/utils'
+;(async () => {
   const l1TimelockAlias = '0xf7951d92b0c345144506576ec13ecf5103ac905a'
   const novaInbox = '0xc4448b71118c9071Bcb9734A0EAc55D18A153949'
   const novaToParentRouter = '0x36D0170D92F66e8949eB276C3AC4FEA64f83704d'
@@ -44,11 +44,18 @@ import fs from 'fs'
     259200,
   ])
 
-  console.log(scheduleCalldata)
+  const output = {
+    arbSysSendTxToL1Args: {
+      l1Timelock: '0xE6841D92B0C345144506576eC13ECf5103aC7f49',
+      calldata: scheduleCalldata,
+    },
+  }
+
+  console.log(output)
 
   fs.writeFileSync(
-    './scripts/proposals/NovaFeeSweep/proposal.txt',
-    scheduleCalldata
+    './scripts/proposals/NovaFeeSweep/data.json',
+    JSON.stringify(output, null, 2)
   )
 })()
 
