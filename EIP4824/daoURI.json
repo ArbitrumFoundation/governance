@@ -11,7 +11,7 @@
         "link": "https://docs.arbitrum.foundation/dao-constitution",
         "hash": "0x28faf2acba9b3ff80ec484e3d5646931eeef40568b1b7c38dbe52b890bfd7938"
     },
-    "calendarURI": "https://calendar.google.com/calendar/u/0/embed?src=c_4157985d2452dfd8a91b6a36bccab37deb9bffe9053a4b9bcc4e9fff9ef02924@group.calendar.google.com&ctz=Europe/Warsaw",
+    "calendarURI": "https://calendar.google.com/calendar/u/0/embed?src=c_4157985d2452dfd8a91b6a36bccab37deb9bffe9053a4b9bcc4e9fff9ef02924@group.calendar.google.com",
     "dashboards": {
         "walletDashboard": "https://www.tally.xyz/gov/arbitrum/treasury",
         "blockExplorer": "https://arbiscan.io/",
