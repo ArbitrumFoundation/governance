@@ -258,9 +258,7 @@ contract SecurityCouncilManager is
     }
 
     function memberRotatedTo(address _member) internal view returns (address) {
-        if (
-            rotatedTo[_member] != address(0)
-        ) {
+        if (rotatedTo[_member] != address(0)) {
             return rotatedTo[_member];
         } else {
             return _member;
@@ -604,7 +602,7 @@ contract SecurityCouncilManager is
             delay: ArbitrumTimelock(l2CoreGovTimelock).getMinDelay()
         });
     }
-    
+
     /**
      * @dev This empty reserved space is put in place to allow future versions to add new
      * variables without shifting down storage in the inheritance chain.
