@@ -38,6 +38,7 @@ contract SecurityCouncilManager is
     event MemberRemoved(address indexed member, Cohort indexed cohort);
     event MemberReplaced(address indexed replacedMember, address indexed newMember, Cohort cohort);
     event MemberRotated(address indexed replacedAddress, address indexed newAddress, Cohort cohort);
+    event MemberChanging(address indexed changingAddress, address indexed newAddress);
     event SecurityCouncilAdded(
         address indexed securityCouncil,
         address indexed updateAction,
@@ -86,6 +87,12 @@ contract SecurityCouncilManager is
     /// @notice If an address was rotated, this is the last address it rotated to
     /// @dev    This can be used to avoid race conditions between rotation and other actions
     mapping(address => address) public rotatedTo;
+
+    /// @notice The timestamp at which the address was last changed
+    mapping(address => uint256) public lastChanging;
+
+    /// @notice Store the address to be changed to for new members
+    mapping(address => address) public changingTo;
 
     /// @inheritdoc ISecurityCouncilManager
     uint256 public minRotationPeriod;
@@ -207,6 +214,10 @@ contract SecurityCouncilManager is
         _cohort == Cohort.FIRST ? delete firstCohort : delete secondCohort;
 
         for (uint256 i = 0; i < _newCohort.length; i++) {
+            address newMember = _newCohort[i];
+            if (changingTo[newMember] != address(0)) {
+                newMember = changingTo[newMember];
+            }
             _addMemberToCohortArray(_newCohort[i], _cohort);
         }
 
@@ -294,18 +305,11 @@ contract SecurityCouncilManager is
         );
     }
 
-    /// @inheritdoc ISecurityCouncilManager
-    function rotateMember(
+    function _rotateMemberChecks(
         address newMemberAddress,
         address memberElectionGovernor,
         bytes calldata signature
-    ) external {
-        uint256 lastRotatedTimestamp = lastRotated[msg.sender];
-        if (lastRotatedTimestamp != 0 && block.timestamp < lastRotatedTimestamp + minRotationPeriod)
-        {
-            revert RotationTooSoon(msg.sender, lastRotatedTimestamp + minRotationPeriod);
-        }
-
+    ) internal returns (address) {
         // we enforce that a the new address is an eoa in the same way do
         // in NomineeGovernor.addContender by requiring a signature
         bytes32 digest = getRotateMemberHash(msg.sender, updateNonce);
@@ -369,11 +373,43 @@ contract SecurityCouncilManager is
                 }
             }
         }
+    }
+
+    /// @inheritdoc ISecurityCouncilManager
+    function rotateMember(
+        address newMemberAddress,
+        address memberElectionGovernor,
+        bytes calldata signature
+    ) external {
+        uint256 lastRotatedTimestamp = lastRotated[msg.sender];
+        if (lastRotatedTimestamp != 0 && block.timestamp < lastRotatedTimestamp + minRotationPeriod)
+        {
+            revert RotationTooSoon(msg.sender, lastRotatedTimestamp + minRotationPeriod);
+        }
+        address newAddress = _rotateMemberChecks(newMemberAddress, memberElectionGovernor, signature);
 
         lastRotated[newAddress] = block.timestamp;
         rotatedTo[msg.sender] = newAddress;
         Cohort cohort = _swapMembers(msg.sender, newAddress);
         emit MemberRotated({replacedAddress: msg.sender, newAddress: newAddress, cohort: cohort});
+    }
+
+    /// @notice change incomming member (mid election rotation)
+    function changeIncomming(
+        address newMemberAddress,
+        address memberElectionGovernor,
+        bytes calldata signature
+    ) external {
+        uint256 lastChangingTimestamp = lastChanging[msg.sender];
+        if (lastChangingTimestamp != 0 && block.timestamp < lastChangingTimestamp + minRotationPeriod)
+        {
+            revert RotationTooSoon(msg.sender, lastChangingTimestamp + minRotationPeriod);
+        }
+        address newAddress = _rotateMemberChecks(newMemberAddress, memberElectionGovernor, signature);
+
+        lastChanging[newAddress] = block.timestamp;
+        changingTo[msg.sender] = newAddress;
+        emit MemberChanging({changingAddress: msg.sender, newAddress: newAddress});
     }
 
     function _swapMembers(address _addressToRemove, address _addressToAdd)
