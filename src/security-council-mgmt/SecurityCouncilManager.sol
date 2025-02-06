@@ -373,6 +373,16 @@ contract SecurityCouncilManager is
                 }
             }
         }
+
+        if (newAddress == msg.sender) {
+            revert CannotRotateToSelf();
+        }
+
+        if (changingTo[newAddress] != address(0)) {
+            revert InvalidTarget();
+        }
+
+        return newAddress;
     }
 
     /// @inheritdoc ISecurityCouncilManager
@@ -409,6 +419,7 @@ contract SecurityCouncilManager is
 
         lastChanging[newAddress] = block.timestamp;
         changingTo[msg.sender] = newAddress;
+        changingTo[newAddress] = newAddress; // this is to prevert further changes to the new member
         emit MemberChanging({changingAddress: msg.sender, newAddress: newAddress});
     }
 

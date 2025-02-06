@@ -48,6 +48,10 @@ interface ISecurityCouncilManager {
     error NewMemberIsNominee(uint256 proposalId, address newMember);
     error InvalidNewAddress(address newAddress);
 
+    error InvalidTarget();
+    error CannotRotateToSelf();
+    error NewMemberIsTarget();
+
     /// @notice There is a minimum period between when an address can be rotated
     ///         This is to ensure a single member cannot do many rotations in a row
     function minRotationPeriod() external view returns (uint256);
