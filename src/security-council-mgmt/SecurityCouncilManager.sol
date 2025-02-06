@@ -230,6 +230,10 @@ contract SecurityCouncilManager is
         }
 
         cohort.push(_newMember);
+        // we use the rotatedTo mapping to ensure that a member is to be removed they cant rotate away from that
+        // however we assume that if a member is added after being rotated away, then the removal is actually targetting that member
+        // and not the one previously rotated away from, so we we wipe the rotation record
+        rotatedTo[_newMember] = address(0);
     }
 
     function _removeMemberFromCohortArray(address _member) internal returns (Cohort) {
@@ -256,7 +260,6 @@ contract SecurityCouncilManager is
     function memberRotatedTo(address _member) internal view returns (address) {
         if (
             rotatedTo[_member] != address(0)
-                && !SecurityCouncilMgmtUtils.isInArray(_member, getBothCohorts())
         ) {
             return rotatedTo[_member];
         } else {
