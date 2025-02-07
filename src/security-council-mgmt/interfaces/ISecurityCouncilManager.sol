@@ -46,6 +46,7 @@ interface ISecurityCouncilManager {
     error GovernorNotReplacer();
     error NewMemberIsContender(uint256 proposalId, address newMember);
     error NewMemberIsNominee(uint256 proposalId, address newMember);
+    error NewMemberIsRotating(address newMember);
     error NewMemberIsRotatingTarget(address newMember);
     error InvalidNewAddress(address newAddress);
 

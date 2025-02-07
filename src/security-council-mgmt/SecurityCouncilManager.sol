@@ -397,8 +397,14 @@ contract SecurityCouncilManager is
             }
         }
 
-        if (rotatingTo[newAddress] != newAddress) {
-            revert NewMemberIsRotatingTarget(newAddress);
+        address rotatingTarget = rotatingTo[newAddress];
+        if (rotatingTarget != address(0)) {
+            // if newAddress is a rotating target, it might cause a clash when new members are elected
+            if (rotatingTarget == newAddress) {
+                revert NewMemberIsRotatingTarget(newAddress);
+            }
+            // if newAddress is rotating, it likely make no sense to rotate into it now
+            revert NewMemberIsRotating(newAddress);
         }
 
         lastRotated[newAddress] = block.timestamp;
