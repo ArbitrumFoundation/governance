@@ -88,12 +88,15 @@ contract SecurityCouncilManager is
     /// @dev    This can be used to avoid race conditions between rotation and other actions
     mapping(address => address) public rotatedTo;
 
+    /// @inheritdoc ISecurityCouncilManager
+    uint256 public minRotationPeriod;
+
     /// @notice Store the address to be rotated to for new members in the future
     /// @dev    `rotatingTo[X] = Y` means if X is installed as a new member, Y will be installed instead
     mapping(address => address) public rotatingTo;
 
-    /// @inheritdoc ISecurityCouncilManager
-    uint256 public minRotationPeriod;
+    /// @notice Nonce used when setting rotatingTo
+    mapping(address => uint256) public rotatingToNonce;
 
     /// @notice The 712 name hash
     bytes32 public constant NAME_HASH = keccak256(bytes("SecurityCouncilManager"));
@@ -114,8 +117,11 @@ contract SecurityCouncilManager is
     bytes32 public constant DOMAIN_TYPE_HASH = keccak256(
         "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
     );
-    bytes32 public constant TYPE_HASH =
+    bytes32 public constant ROTATE_MEMBER_TYPE_HASH =
         keccak256(bytes("rotateMember(address from, uint256 nonce)"));
+    bytes32 public constant SET_ROTATING_TO_TYPE_HASH =
+        keccak256(bytes("setRotatingTo(address from, uint256 nonce)"));
+    
 
     constructor() {
         _disableInitializers();
@@ -307,39 +313,15 @@ contract SecurityCouncilManager is
     /// @inheritdoc ISecurityCouncilManager
     function getRotateMemberHash(address from, uint256 nonce) public view returns (bytes32) {
         return ECDSAUpgradeable.toTypedDataHash(
-            _domainSeparatorV4(), keccak256(abi.encode(TYPE_HASH, from, nonce))
+            _domainSeparatorV4(), keccak256(abi.encode(ROTATE_MEMBER_TYPE_HASH, from, nonce))
         );
     }
 
-    function _verifyNewAddress(address newMemberAddress, bytes calldata signature)
-        internal
-        returns (address)
-    {
-        // we enforce that a the new address is an eoa in the same way do
-        // in NomineeGovernor.addContender by requiring a signature
-        // TODO: this updateNonce is global and only updated when an update is scheduled
-        //       permissionless `rotateForFutureMember` will not update the nonce
-        //       permissioned `rotateMember` will allow other member to dos rotation
-        bytes32 digest = getRotateMemberHash(msg.sender, updateNonce);
-        address newAddress = ECDSAUpgradeable.recover(digest, signature);
-        // we safety check the new member address is the one that we expect to replace here
-        // this isn't strictly necessary but it guards agains the case where the wrong sig is accidentally used
-        if (newAddress != newMemberAddress) {
-            revert InvalidNewAddress(newAddress);
-        }
-        return newAddress;
-    }
-
-    function _checkNotRotatingSrcOrTarget(address newAddress) internal view {
-        address rotatingTarget = rotatingTo[newAddress];
-        if (rotatingTarget != address(0)) {
-            // if newAddress is a rotating target, it might cause a clash when new members are elected
-            if (rotatingTarget == newAddress) {
-                revert NewMemberIsRotatingTarget(newAddress);
-            }
-            // if newAddress is rotating, it likely make no sense to rotate into it now
-            revert NewMemberIsRotating(newAddress);
-        }
+    /// @inheritdoc ISecurityCouncilManager
+    function getSetRotatingToHash(address from, uint256 nonce) public view returns (bytes32) {
+        return ECDSAUpgradeable.toTypedDataHash(
+            _domainSeparatorV4(), keccak256(abi.encode(SET_ROTATING_TO_TYPE_HASH, from, nonce))
+        );
     }
 
     /// @inheritdoc ISecurityCouncilManager
@@ -353,7 +335,15 @@ contract SecurityCouncilManager is
         {
             revert RotationTooSoon(msg.sender, lastRotatedTimestamp + minRotationPeriod);
         }
-        address newAddress = _verifyNewAddress(newMemberAddress, signature);
+        // we enforce that a the new address is an eoa in the same way do
+        // in NomineeGovernor.addContender by requiring a signature
+        bytes32 digest = getRotateMemberHash(msg.sender, updateNonce);
+        address newAddress = ECDSAUpgradeable.recover(digest, signature);
+        // we safety check the new member address is the one that we expect to replace here
+        // this isn't strictly necessary but it guards agains the case where the wrong sig is accidentally used
+        if (newAddress != newMemberAddress) {
+            revert InvalidNewAddress(newAddress);
+        }
 
         // the cohort replacer should be the member election governor
         // we don't explicitly store the member election governor in this manager
@@ -409,8 +399,6 @@ contract SecurityCouncilManager is
             }
         }
 
-        _checkNotRotatingSrcOrTarget(newAddress);
-
         lastRotated[newAddress] = block.timestamp;
         rotatedTo[msg.sender] = newAddress;
         Cohort cohort = _swapMembers(msg.sender, newAddress);
@@ -418,17 +406,21 @@ contract SecurityCouncilManager is
     }
 
     /// @inheritdoc ISecurityCouncilManager
-    function rotateForFutureMember(address newMemberAddress, bytes calldata signature) external {
-        // we don't have to check timestamp here, because dos is not possible
-        address newAddress = _verifyNewAddress(newMemberAddress, signature);
+    function setRotatingTo(address newMemberAddress, bytes calldata signature) external {
+        uint256 currentRotatingToNonce = rotatingToNonce[msg.sender];
+        // we enforce that a the new address is an eoa in the same way do
+        // in NomineeGovernor.addContender by requiring a signature
+        bytes32 digest = getSetRotatingToHash(msg.sender, currentRotatingToNonce);
+        address newAddress = ECDSAUpgradeable.recover(digest, signature);
+        // we safety check the new member address is the one that we expect to replace here
+        // this isn't strictly necessary but it guards against the case where the wrong sig is accidentally used
+        if (newAddress != newMemberAddress) {
+            revert InvalidNewAddress(newAddress);
+        }
 
         rotatingTo[msg.sender] = newAddress;
+        rotatingToNonce[msg.sender] = currentRotatingToNonce + 1;
 
-        // this serves 2 purposes:
-        // 1. it prevents "chained" rotations
-        // 2. it allow one to check rotatingTo[x] to see if x can be a rotation target
-        _checkNotRotatingSrcOrTarget(newAddress);
-        rotatingTo[newAddress] = newAddress;
         emit MemberToBeRotated({replacedAddress: msg.sender, newAddress: newAddress});
     }
 

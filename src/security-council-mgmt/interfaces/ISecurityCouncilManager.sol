@@ -52,6 +52,7 @@ interface ISecurityCouncilManager {
 
     function rotatedTo(address) external view returns (address);
     function rotatingTo(address) external view returns (address);
+    function rotatingToNonce(address) external view returns(uint256);
 
     /// @notice There is a minimum period between when an address can be rotated
     ///         This is to ensure a single member cannot do many rotations in a row
@@ -114,7 +115,7 @@ interface ISecurityCouncilManager {
     /// @param _memberToReplace Security Council member to remove
     /// @param _newMember       Security Council member to add in their place
     function replaceMember(address _memberToReplace, address _newMember) external;
-    /// @notice Get the hash to be signed for member rotation
+    /// @notice Get the hash to be signed for an existing member rotation
     /// @param from     The address that will be rotated out. Included in the hash so that other members cant use this message to rotate their address
     /// @param nonce    The message nonce. Must be equal to the update nonce in the contract at the time of execution
     function getRotateMemberHash(address from, uint256 nonce) external view returns (bytes32);
@@ -132,13 +133,18 @@ interface ISecurityCouncilManager {
         address memberElectionGovernor,
         bytes calldata signature
     ) external;
+    /// @notice Get the hash to be signed for future member rotation
+    /// @param from     The address that will be rotated out. Included in the hash so that other members cant use this message to rotate their address
+    /// @param nonce    The message nonce. Must be the from address's current futureRotationNonce
+    function getSetRotatingToHash(address from, uint256 nonce) external view returns (bytes32);
+    // CHRIS:  TODO: check docs for all new functions
     /// @notice Allow rotation to another address when the sender becomes a member of the Security Council in the future through election
     /// @dev    Cannot rotate to a contender in an ongoing election, as this could cause a clash that would stop the election result executing
     ///         If this future rotation causes a clash, the rotation will not be executed and the original address will be installed
     ///         This rotation only applies to future replaceCohort, mainly used by the member election governor
     /// @param newMemberAddress         The new member address to be rotated to
-    /// @param signature                A signature from the new member address over the 712 addMember hash
-    function rotateForFutureMember(address newMemberAddress, bytes calldata signature) external;
+    /// @param signature                A signature from the new member address over the 712 rotatingTo hash
+    function setRotatingTo(address newMemberAddress, bytes calldata signature) external;
     /// @notice Is the account a member of the first cohort
     function firstCohortIncludes(address account) external view returns (bool);
     /// @notice Is the account a member of the second cohort
