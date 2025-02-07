@@ -38,7 +38,7 @@ contract SecurityCouncilManager is
     event MemberRemoved(address indexed member, Cohort indexed cohort);
     event MemberReplaced(address indexed replacedMember, address indexed newMember, Cohort cohort);
     event MemberRotated(address indexed replacedAddress, address indexed newAddress, Cohort cohort);
-    event MemberChanging(address indexed changingAddress, address indexed newAddress);
+    event MemberToBeRotated(address indexed replacedAddress, address indexed newAddress);
     event SecurityCouncilAdded(
         address indexed securityCouncil,
         address indexed updateAction,
@@ -88,11 +88,9 @@ contract SecurityCouncilManager is
     /// @dev    This can be used to avoid race conditions between rotation and other actions
     mapping(address => address) public rotatedTo;
 
-    /// @notice The timestamp at which the address was last changed
-    mapping(address => uint256) public lastChanging;
-
-    /// @notice Store the address to be changed to for new members
-    mapping(address => address) public changingTo;
+    /// @notice Store the address to be rotated to for new members in the future
+    /// @dev    `rotatingTo[X] = Y` means if X is installed as a new member, Y will be installed instead
+    mapping(address => address) public rotatingTo;
 
     /// @inheritdoc ISecurityCouncilManager
     uint256 public minRotationPeriod;
@@ -212,11 +210,19 @@ contract SecurityCouncilManager is
 
         // delete the old cohort
         _cohort == Cohort.FIRST ? delete firstCohort : delete secondCohort;
+        address[] storage otherCohort = _cohort == Cohort.FIRST ? secondCohort : firstCohort;
 
         for (uint256 i = 0; i < _newCohort.length; i++) {
-            address newMember = _newCohort[i];
-            if (changingTo[newMember] != address(0)) {
-                newMember = changingTo[newMember];
+            // we have to change the array so correct _newCohort can be emitted
+            address rotatingAddress = rotatingTo[_newCohort[i]];
+            if (rotatingAddress != address(0)) {
+                // only replace if there is no clash
+                if (
+                    !SecurityCouncilMgmtUtils.isInArray(rotatingAddress, _newCohort)
+                        && !SecurityCouncilMgmtUtils.isInArray(rotatingAddress, otherCohort)
+                ) {
+                    _newCohort[i] = rotatingAddress;
+                }
             }
             _addMemberToCohortArray(_newCohort[i], _cohort);
         }
@@ -305,13 +311,15 @@ contract SecurityCouncilManager is
         );
     }
 
-    function _rotateMemberChecks(
-        address newMemberAddress,
-        address memberElectionGovernor,
-        bytes calldata signature
-    ) internal returns (address) {
+    function _verifyNewAddress(address newMemberAddress, bytes calldata signature)
+        internal
+        returns (address)
+    {
         // we enforce that a the new address is an eoa in the same way do
         // in NomineeGovernor.addContender by requiring a signature
+        // TODO: this updateNonce is global and only updated when an update is scheduled
+        //       permissionless `rotateForFutureMember` will not update the nonce
+        //       permissioned `rotateMember` will allow other member to dos rotation
         bytes32 digest = getRotateMemberHash(msg.sender, updateNonce);
         address newAddress = ECDSAUpgradeable.recover(digest, signature);
         // we safety check the new member address is the one that we expect to replace here
@@ -319,6 +327,21 @@ contract SecurityCouncilManager is
         if (newAddress != newMemberAddress) {
             revert InvalidNewAddress(newAddress);
         }
+        return newAddress;
+    }
+
+    /// @inheritdoc ISecurityCouncilManager
+    function rotateMember(
+        address newMemberAddress,
+        address memberElectionGovernor,
+        bytes calldata signature
+    ) external {
+        uint256 lastRotatedTimestamp = lastRotated[msg.sender];
+        if (lastRotatedTimestamp != 0 && block.timestamp < lastRotatedTimestamp + minRotationPeriod)
+        {
+            revert RotationTooSoon(msg.sender, lastRotatedTimestamp + minRotationPeriod);
+        }
+        address newAddress = _verifyNewAddress(newMemberAddress, signature);
 
         // the cohort replacer should be the member election governor
         // we don't explicitly store the member election governor in this manager
@@ -374,29 +397,9 @@ contract SecurityCouncilManager is
             }
         }
 
-        if (newAddress == msg.sender) {
-            revert CannotRotateToSelf();
+        if (rotatingTo[newAddress] != newAddress) {
+            revert NewMemberIsRotatingTarget(newAddress);
         }
-
-        if (changingTo[newAddress] != address(0)) {
-            revert InvalidTarget();
-        }
-
-        return newAddress;
-    }
-
-    /// @inheritdoc ISecurityCouncilManager
-    function rotateMember(
-        address newMemberAddress,
-        address memberElectionGovernor,
-        bytes calldata signature
-    ) external {
-        uint256 lastRotatedTimestamp = lastRotated[msg.sender];
-        if (lastRotatedTimestamp != 0 && block.timestamp < lastRotatedTimestamp + minRotationPeriod)
-        {
-            revert RotationTooSoon(msg.sender, lastRotatedTimestamp + minRotationPeriod);
-        }
-        address newAddress = _rotateMemberChecks(newMemberAddress, memberElectionGovernor, signature);
 
         lastRotated[newAddress] = block.timestamp;
         rotatedTo[msg.sender] = newAddress;
@@ -404,23 +407,18 @@ contract SecurityCouncilManager is
         emit MemberRotated({replacedAddress: msg.sender, newAddress: newAddress, cohort: cohort});
     }
 
-    /// @notice change incomming member (mid election rotation)
-    function changeIncomming(
-        address newMemberAddress,
-        address memberElectionGovernor,
-        bytes calldata signature
-    ) external {
-        uint256 lastChangingTimestamp = lastChanging[msg.sender];
-        if (lastChangingTimestamp != 0 && block.timestamp < lastChangingTimestamp + minRotationPeriod)
-        {
-            revert RotationTooSoon(msg.sender, lastChangingTimestamp + minRotationPeriod);
-        }
-        address newAddress = _rotateMemberChecks(newMemberAddress, memberElectionGovernor, signature);
+    /// @inheritdoc ISecurityCouncilManager
+    function rotateForFutureMember(address newMemberAddress, bytes calldata signature) external {
+        // we don't have to check timestamp here, because dos is not possible
+        address newAddress = _verifyNewAddress(newMemberAddress, signature);
 
-        lastChanging[newAddress] = block.timestamp;
-        changingTo[msg.sender] = newAddress;
-        changingTo[newAddress] = newAddress; // this is to prevert further changes to the new member
-        emit MemberChanging({changingAddress: msg.sender, newAddress: newAddress});
+        rotatingTo[msg.sender] = newAddress;
+
+        // this serves 2 purposes:
+        // 1. it prevents "chained" rotations
+        // 2. it allow one to check rotatingTo[x] to see if x can be a rotation target
+        rotatingTo[newAddress] = newAddress;
+        emit MemberToBeRotated({replacedAddress: msg.sender, newAddress: newAddress});
     }
 
     function _swapMembers(address _addressToRemove, address _addressToAdd)

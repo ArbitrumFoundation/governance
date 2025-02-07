@@ -46,11 +46,11 @@ interface ISecurityCouncilManager {
     error GovernorNotReplacer();
     error NewMemberIsContender(uint256 proposalId, address newMember);
     error NewMemberIsNominee(uint256 proposalId, address newMember);
+    error NewMemberIsRotatingTarget(address newMember);
     error InvalidNewAddress(address newAddress);
 
-    error InvalidTarget();
-    error CannotRotateToSelf();
-    error NewMemberIsTarget();
+    function rotatedTo(address) external view returns (address);
+    function rotatingTo(address) external view returns (address);
 
     /// @notice There is a minimum period between when an address can be rotated
     ///         This is to ensure a single member cannot do many rotations in a row
@@ -131,6 +131,13 @@ interface ISecurityCouncilManager {
         address memberElectionGovernor,
         bytes calldata signature
     ) external;
+    /// @notice Allow rotation to another address when the sender becomes a member of the Security Council in the future through election
+    /// @dev    Cannot rotate to a contender in an ongoing election, as this could cause a clash that would stop the election result executing
+    ///         If this future rotation causes a clash, the rotation will not be executed and the original address will be installed
+    ///         This rotation only applies to future replaceCohort, mainly used by the member election governor
+    /// @param newMemberAddress         The new member address to be rotated to
+    /// @param signature                A signature from the new member address over the 712 addMember hash
+    function rotateForFutureMember(address newMemberAddress, bytes calldata signature) external;
     /// @notice Is the account a member of the first cohort
     function firstCohortIncludes(address account) external view returns (bool);
     /// @notice Is the account a member of the second cohort
