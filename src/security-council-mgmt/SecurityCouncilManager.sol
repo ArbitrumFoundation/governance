@@ -330,6 +330,18 @@ contract SecurityCouncilManager is
         return newAddress;
     }
 
+    function _checkNotRotatingSrcOrTarget(address newAddress) internal view {
+        address rotatingTarget = rotatingTo[newAddress];
+        if (rotatingTarget != address(0)) {
+            // if newAddress is a rotating target, it might cause a clash when new members are elected
+            if (rotatingTarget == newAddress) {
+                revert NewMemberIsRotatingTarget(newAddress);
+            }
+            // if newAddress is rotating, it likely make no sense to rotate into it now
+            revert NewMemberIsRotating(newAddress);
+        }
+    }
+
     /// @inheritdoc ISecurityCouncilManager
     function rotateMember(
         address newMemberAddress,
@@ -397,15 +409,7 @@ contract SecurityCouncilManager is
             }
         }
 
-        address rotatingTarget = rotatingTo[newAddress];
-        if (rotatingTarget != address(0)) {
-            // if newAddress is a rotating target, it might cause a clash when new members are elected
-            if (rotatingTarget == newAddress) {
-                revert NewMemberIsRotatingTarget(newAddress);
-            }
-            // if newAddress is rotating, it likely make no sense to rotate into it now
-            revert NewMemberIsRotating(newAddress);
-        }
+        _checkNotRotatingSrcOrTarget(newAddress);
 
         lastRotated[newAddress] = block.timestamp;
         rotatedTo[msg.sender] = newAddress;
@@ -423,6 +427,7 @@ contract SecurityCouncilManager is
         // this serves 2 purposes:
         // 1. it prevents "chained" rotations
         // 2. it allow one to check rotatingTo[x] to see if x can be a rotation target
+        _checkNotRotatingSrcOrTarget(newAddress);
         rotatingTo[newAddress] = newAddress;
         emit MemberToBeRotated({replacedAddress: msg.sender, newAddress: newAddress});
     }
