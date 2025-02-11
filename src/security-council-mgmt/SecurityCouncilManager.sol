@@ -95,8 +95,8 @@ contract SecurityCouncilManager is
     /// @dev    `rotatingTo[X] = Y` means if X is installed as a new member, Y will be installed instead
     mapping(address => address) public rotatingTo;
 
-    /// @notice Nonce used when setting rotatingTo
-    mapping(address => uint256) public rotatingToNonce;
+    /// @notice Nonce used when setting rotatingTo or rotatedTo
+    mapping(address => uint256) public rotationNonce;
 
     /// @notice The 712 name hash
     bytes32 public constant NAME_HASH = keccak256(bytes("SecurityCouncilManager"));
@@ -337,7 +337,8 @@ contract SecurityCouncilManager is
         }
         // we enforce that a the new address is an eoa in the same way do
         // in NomineeGovernor.addContender by requiring a signature
-        bytes32 digest = getRotateMemberHash(msg.sender, updateNonce);
+        uint256 currentRotationNonce = rotationNonce[msg.sender];
+        bytes32 digest = getRotateMemberHash(msg.sender, currentRotationNonce);
         address newAddress = ECDSAUpgradeable.recover(digest, signature);
         // we safety check the new member address is the one that we expect to replace here
         // this isn't strictly necessary but it guards agains the case where the wrong sig is accidentally used
@@ -401,16 +402,17 @@ contract SecurityCouncilManager is
 
         lastRotated[newAddress] = block.timestamp;
         rotatedTo[msg.sender] = newAddress;
+        rotationNonce[msg.sender] = currentRotationNonce + 1;
         Cohort cohort = _swapMembers(msg.sender, newAddress);
         emit MemberRotated({replacedAddress: msg.sender, newAddress: newAddress, cohort: cohort});
     }
 
     /// @inheritdoc ISecurityCouncilManager
     function setRotatingTo(address newMemberAddress, bytes calldata signature) external {
-        uint256 currentRotatingToNonce = rotatingToNonce[msg.sender];
+        uint256 currentRotationNonce = rotationNonce[msg.sender];
         // we enforce that a the new address is an eoa in the same way do
         // in NomineeGovernor.addContender by requiring a signature
-        bytes32 digest = getSetRotatingToHash(msg.sender, currentRotatingToNonce);
+        bytes32 digest = getSetRotatingToHash(msg.sender, currentRotationNonce);
         address newAddress = ECDSAUpgradeable.recover(digest, signature);
         // we safety check the new member address is the one that we expect to replace here
         // this isn't strictly necessary but it guards against the case where the wrong sig is accidentally used
@@ -419,7 +421,7 @@ contract SecurityCouncilManager is
         }
 
         rotatingTo[msg.sender] = newAddress;
-        rotatingToNonce[msg.sender] = currentRotatingToNonce + 1;
+        rotationNonce[msg.sender] = currentRotationNonce + 1;
 
         emit MemberToBeRotated({replacedAddress: msg.sender, newAddress: newAddress});
     }
