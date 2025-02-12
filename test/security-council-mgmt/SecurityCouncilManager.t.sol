@@ -423,7 +423,8 @@ contract SecurityCouncilManagerTest is Test {
     }
 
     function testReplaceMemberInSecondCohort() public {
-        bytes32 digest = scm.getRotateMemberHash(secondCohort[0], scm.rotationNonce(secondCohort[0]));
+        bytes32 digest =
+            scm.getRotateMemberHash(secondCohort[0], scm.rotationNonce(secondCohort[0]));
         bytes memory signature = sign(pk2, digest);
         vm.prank(secondCohort[0]);
         scm.rotateMember(memberToRotate2, memberElectionGovernor, signature);
@@ -527,7 +528,8 @@ contract SecurityCouncilManagerTest is Test {
         );
         assertEq(scm.lastRotated(memberToRotate1), startTime, "Member 1 last rotated");
 
-        bytes32 digest1 = scm.getRotateMemberHash(memberToRotate1, scm.rotationNonce(memberToRotate1));
+        bytes32 digest1 =
+            scm.getRotateMemberHash(memberToRotate1, scm.rotationNonce(memberToRotate1));
         bytes memory signature1 = sign(pk2, digest1);
 
         vm.expectRevert(
@@ -618,10 +620,12 @@ contract SecurityCouncilManagerTest is Test {
             payable(nomineeElectionGovernor)
         ).createElection();
         SecurityCouncilNomineeElectionGovernor(payable(nomineeElectionGovernor)).addContender(
-            proposalId, new SigUtils(nomineeElectionGovernor).signAddContenderMessage(proposalId, pk1)
+            proposalId,
+            new SigUtils(nomineeElectionGovernor).signAddContenderMessage(proposalId, pk1)
         );
 
-        bytes memory signature = sign(pk1, scm.getRotateMemberHash(originalMember, scm.rotationNonce(originalMember)));
+        bytes memory signature =
+            sign(pk1, scm.getRotateMemberHash(originalMember, scm.rotationNonce(originalMember)));
         bytes memory signature2 =
             sign(pk2, scm.getRotateMemberHash(originalMember, scm.rotationNonce(originalMember)));
         uint256 startNonce = scm.rotationNonce(originalMember);

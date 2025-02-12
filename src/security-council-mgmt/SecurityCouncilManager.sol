@@ -121,7 +121,6 @@ contract SecurityCouncilManager is
         keccak256(bytes("rotateMember(address from, uint256 nonce)"));
     bytes32 public constant SET_ROTATING_TO_TYPE_HASH =
         keccak256(bytes("setRotatingTo(address from, uint256 nonce)"));
-    
 
     constructor() {
         _disableInitializers();
@@ -338,7 +337,9 @@ contract SecurityCouncilManager is
         // we enforce that a the new address is an eoa in the same way do
         // in NomineeGovernor.addContender by requiring a signature
         uint256 currentRotationNonce = rotationNonce[msg.sender];
-        address newAddress = ECDSAUpgradeable.recover(getRotateMemberHash(msg.sender, currentRotationNonce), signature);
+        address newAddress = ECDSAUpgradeable.recover(
+            getRotateMemberHash(msg.sender, currentRotationNonce), signature
+        );
         // we safety check the new member address is the one that we expect to replace here
         // this isn't strictly necessary but it guards agains the case where the wrong sig is accidentally used
         if (newAddress != newMemberAddress) {
