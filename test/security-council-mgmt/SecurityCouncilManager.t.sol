@@ -41,17 +41,22 @@ contract MockArbitrumTimelock {
 }
 
 contract SecurityCouncilManagerTest is Test {
+    uint256 pknc1 = 9772;
+    address pkncAddr1 = vm.addr(pknc1);
+    uint256 pknc2 = 9773;
+    address pkncAddr2 = vm.addr(pknc2);
+
     address[] firstCohort = new address[](6);
     address[6] _firstCohort =
         [address(1111), address(1112), address(1113), address(1114), address(1115), address(1116)];
 
     address[] secondCohort = new address[](6);
     address[6] _secondCohort =
-        [address(2221), address(2222), address(2223), address(2224), address(2225), address(2226)];
+        [address(2221), address(2222), address(2223), pkncAddr2, address(2225), address(2226)];
 
     address[] newCohort = new address[](6);
     address[6] _newCohort =
-        [address(3331), address(3332), address(3333), address(3334), address(3335), address(3336)];
+        [address(3331), address(3332), address(3333), address(3334), pkncAddr1, address(3336)];
 
     address[] newCohortWithADup = new address[](6);
     address dup = address(3335);
@@ -493,7 +498,7 @@ contract SecurityCouncilManagerTest is Test {
     }
 
     function testRotateMember() public {
-        address originalMember = secondCohort[1];
+        address originalMember = secondCohort[3];
         uint256 startTime = 5678;
         vm.warp(startTime);
 
@@ -504,7 +509,7 @@ contract SecurityCouncilManagerTest is Test {
         vm.expectRevert(
             abi.encodeWithSelector(
                 ISecurityCouncilManager.InvalidNewAddress.selector,
-                0x00e6008973a133b0e603275498f18321534c3721f3
+                0xf1ba0050017D0A16690e3Be7B4A2Ab75F22CFFA2
             )
         );
         vm.prank(secondCohort[2]);
@@ -521,7 +526,7 @@ contract SecurityCouncilManagerTest is Test {
         scm.rotateMember(memberToRotate1, memberElectionGovernor, signature);
         assertEq(startNonce + 1, scm.rotationNonce(originalMember), "nonce 1");
         checkScheduleWasCalled();
-        checkCohortChange(memberToRotate1, 1, secondCohort, Cohort.SECOND);
+        checkCohortChange(memberToRotate1, 3, secondCohort, Cohort.SECOND);
         assertTrue(
             TestUtil.areUniqueAddressArraysEqual(firstCohort, scm.getFirstCohort()),
             "first cohort untouched"
@@ -562,7 +567,7 @@ contract SecurityCouncilManagerTest is Test {
         scm.rotateMember(memberToRotate2, memberElectionGovernor, signature1);
         assertEq(startNonce + 1, scm.rotationNonce(memberToRotate1), "nonce 2");
         checkScheduleWasCalled();
-        checkCohortChange(memberToRotate2, 1, secondCohort, Cohort.SECOND);
+        checkCohortChange(memberToRotate2, 3, secondCohort, Cohort.SECOND);
         assertTrue(
             TestUtil.areUniqueAddressArraysEqual(firstCohort, scm.getFirstCohort()),
             "first cohort untouched 2"
@@ -570,6 +575,41 @@ contract SecurityCouncilManagerTest is Test {
         assertEq(
             scm.lastRotated(memberToRotate2), startTime + minRotationPeriod, "Member 2 last rotated"
         );
+
+        // now do another rotation from the original address - we rotate back to it then away from it - this tests the nonce updates
+        signature1 = sign(
+            pknc2, scm.getRotateMemberHash(memberToRotate2, scm.rotationNonce(memberToRotate2))
+        );
+        vm.warp(startTime + 2 * minRotationPeriod);
+        vm.recordLogs();
+        vm.prank(memberToRotate2);
+        scm.rotateMember(pkncAddr2, memberElectionGovernor, signature1);
+        checkScheduleWasCalled();
+
+        assertTrue(
+            TestUtil.areUniqueAddressArraysEqual(firstCohort, scm.getFirstCohort()),
+            "first cohort untouched 1"
+        );
+        assertTrue(
+            TestUtil.areUniqueAddressArraysEqual(secondCohort, scm.getSecondCohort()),
+            "first cohort back to original"
+        );
+
+        signature1 =
+            sign(pk1, scm.getRotateMemberHash(originalMember, scm.rotationNonce(originalMember)));
+        vm.warp(startTime + 3 * minRotationPeriod);
+        startNonce = scm.rotationNonce(originalMember);
+        vm.recordLogs();
+        vm.prank(originalMember);
+        scm.rotateMember(memberToRotate1, memberElectionGovernor, signature1);
+        checkScheduleWasCalled();
+        assertEq(startNonce + 1, scm.rotationNonce(originalMember), "nonce 3");
+
+        assertTrue(
+            TestUtil.areUniqueAddressArraysEqual(firstCohort, scm.getFirstCohort()),
+            "first cohort untouched 1"
+        );
+        checkCohortChange(memberToRotate1, 3, secondCohort, Cohort.SECOND);
     }
 
     function addAllContendersAndVote(uint256 proposalId) public {
@@ -879,6 +919,127 @@ contract SecurityCouncilManagerTest is Test {
             abi.encodeWithSelector(ISecurityCouncilManager.MemberInCohort.selector, dup, 1)
         );
         scm.replaceCohort(newCohortWithADup, Cohort.SECOND);
+    }
+
+    function testReplaceCohortRotatingTo() public {
+        // set a rotatingTo for a member of the first cohort
+        address[] memory newCohortCopy = newCohort;
+        address rotatingFrom = newCohortCopy[1];
+        bytes32 digest = scm.getSetRotatingToHash(rotatingFrom, scm.rotationNonce(rotatingFrom));
+        bytes memory signature = sign(pk1, digest);
+        vm.prank(rotatingFrom);
+        scm.setRotatingTo(memberToRotate1, signature);
+
+        vm.startPrank(roles.cohortUpdator);
+        vm.recordLogs();
+        scm.replaceCohort(newCohortCopy, Cohort.FIRST);
+        checkScheduleWasCalled();
+        vm.stopPrank();
+
+        newCohortCopy[1] = memberToRotate1;
+
+        assertTrue(
+            TestUtil.areUniqueAddressArraysEqual(newCohortCopy, scm.getFirstCohort()),
+            "first cohort updated"
+        );
+
+        assertTrue(
+            TestUtil.areUniqueAddressArraysEqual(secondCohort, scm.getSecondCohort()),
+            "second cohort untouched"
+        );
+
+        rotatingFrom = newCohortCopy[2];
+        digest = scm.getSetRotatingToHash(rotatingFrom, scm.rotationNonce(rotatingFrom));
+        signature = sign(pknc1, digest);
+        vm.prank(rotatingFrom);
+        scm.setRotatingTo(pkncAddr1, signature);
+
+        // set rotation to a member of the incoming cohort
+        vm.startPrank(roles.cohortUpdator);
+        vm.recordLogs();
+        scm.replaceCohort(newCohortCopy, Cohort.FIRST);
+        checkScheduleWasCalled();
+        vm.stopPrank();
+
+        // should still just equal the newcohort copy
+        assertTrue(
+            TestUtil.areUniqueAddressArraysEqual(newCohortCopy, scm.getFirstCohort()),
+            "first cohort updated"
+        );
+        assertTrue(
+            TestUtil.areUniqueAddressArraysEqual(secondCohort, scm.getSecondCohort()),
+            "second cohort untouched"
+        );
+
+        // now try rotate to a member of the other cohort
+        rotatingFrom = newCohortCopy[2];
+        digest = scm.getSetRotatingToHash(rotatingFrom, scm.rotationNonce(rotatingFrom));
+        signature = sign(pknc2, digest);
+        vm.prank(rotatingFrom);
+        scm.setRotatingTo(pkncAddr2, signature);
+
+        // set rotation to a member of the incoming cohort
+        vm.startPrank(roles.cohortUpdator);
+        vm.recordLogs();
+        scm.replaceCohort(newCohortCopy, Cohort.FIRST);
+        checkScheduleWasCalled();
+        vm.stopPrank();
+
+        // should still just equal the newcohort copy
+        assertTrue(
+            TestUtil.areUniqueAddressArraysEqual(newCohortCopy, scm.getFirstCohort()),
+            "first cohort updated"
+        );
+        assertTrue(
+            TestUtil.areUniqueAddressArraysEqual(secondCohort, scm.getSecondCohort()),
+            "second cohort untouched"
+        );
+
+        // put it back to how we found it
+        vm.startPrank(roles.cohortUpdator);
+        vm.recordLogs();
+        scm.replaceCohort(firstCohort, Cohort.FIRST);
+        checkScheduleWasCalled();
+        vm.stopPrank();
+    }
+
+    event RotatingToSet(address indexed replacedAddress, address indexed newAddress);
+
+    function testSetRotatingTo() public {
+        address testAddr = vm.addr(97_990);
+
+        uint256 testPk1 = 45_678;
+        address addr1 = vm.addr(testPk1);
+        uint256 testPk2 = 45_679;
+        address addr2 = vm.addr(testPk2);
+
+        assertEq(scm.rotatingTo(testAddr), address(0));
+        assertEq(scm.rotationNonce(testAddr), 0);
+
+        bytes32 digest = scm.getSetRotatingToHash(testAddr, scm.rotationNonce(testAddr));
+        bytes memory signature = sign(testPk1, digest);
+
+        vm.prank(testAddr);
+        vm.expectRevert(
+            abi.encodeWithSelector(ISecurityCouncilManager.InvalidNewAddress.selector, addr1)
+        );
+        scm.setRotatingTo(address(1), signature);
+
+        vm.prank(testAddr);
+        vm.expectEmit(true, true, true, true);
+        emit RotatingToSet({replacedAddress: testAddr, newAddress: addr1});
+        scm.setRotatingTo(addr1, signature);
+        assertEq(scm.rotatingTo(testAddr), addr1);
+        assertEq(scm.rotationNonce(testAddr), 1);
+
+        digest = scm.getSetRotatingToHash(testAddr, scm.rotationNonce(testAddr));
+        signature = sign(testPk2, digest);
+        vm.prank(testAddr);
+        vm.expectEmit(true, true, true, true);
+        emit RotatingToSet({replacedAddress: testAddr, newAddress: addr2});
+        scm.setRotatingTo(addr2, signature);
+        assertEq(scm.rotatingTo(testAddr), addr2);
+        assertEq(scm.rotationNonce(testAddr), 2);
     }
 
     function testUpdateRouterAffordances() public {

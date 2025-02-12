@@ -52,7 +52,7 @@ interface ISecurityCouncilManager {
 
     function rotatedTo(address) external view returns (address);
     function rotatingTo(address) external view returns (address);
-    function rotationNonce(address) external view returns(uint256);
+    function rotationNonce(address) external view returns (uint256);
 
     /// @notice There is a minimum period between when an address can be rotated
     ///         This is to ensure a single member cannot do many rotations in a row

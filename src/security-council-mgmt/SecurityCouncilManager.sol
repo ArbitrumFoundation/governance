@@ -38,7 +38,7 @@ contract SecurityCouncilManager is
     event MemberRemoved(address indexed member, Cohort indexed cohort);
     event MemberReplaced(address indexed replacedMember, address indexed newMember, Cohort cohort);
     event MemberRotated(address indexed replacedAddress, address indexed newAddress, Cohort cohort);
-    event MemberToBeRotated(address indexed replacedAddress, address indexed newAddress);
+    event RotatingToSet(address indexed replacedAddress, address indexed newAddress);
     event SecurityCouncilAdded(
         address indexed securityCouncil,
         address indexed updateAction,
@@ -423,7 +423,7 @@ contract SecurityCouncilManager is
         rotatingTo[msg.sender] = newAddress;
         rotationNonce[msg.sender] = currentRotationNonce + 1;
 
-        emit MemberToBeRotated({replacedAddress: msg.sender, newAddress: newAddress});
+        emit RotatingToSet({replacedAddress: msg.sender, newAddress: newAddress});
     }
 
     function _swapMembers(address _addressToRemove, address _addressToAdd)
