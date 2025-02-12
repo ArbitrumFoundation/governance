@@ -53,7 +53,7 @@ contract CancelTimelockAndRemoveMemberActionTest is Test {
         bytes memory sig;
         {
             (uint8 v, bytes32 r, bytes32 s) =
-                vm.sign(memberInKey, scm.getRotateMemberHash(memberOut, scm.updateNonce()));
+                vm.sign(memberInKey, scm.getRotateMemberHash(memberOut, scm.rotationNonce(memberOut)));
             sig = abi.encodePacked(r, s, v);
         }
 

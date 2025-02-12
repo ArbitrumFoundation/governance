@@ -45,7 +45,14 @@ interface ISecurityCouncilManager {
     error RotationTooSoon(address rotator, uint256 rotatableWhen);
     error GovernorNotReplacer();
     error NewMemberIsContender(uint256 proposalId, address newMember);
+    error NewMemberIsNominee(uint256 proposalId, address newMember);
+    error NewMemberIsRotating(address newMember);
+    error NewMemberIsRotatingTarget(address newMember);
     error InvalidNewAddress(address newAddress);
+
+    function rotatedTo(address) external view returns (address);
+    function rotatingTo(address) external view returns (address);
+    function rotationNonce(address) external view returns (uint256);
 
     /// @notice There is a minimum period between when an address can be rotated
     ///         This is to ensure a single member cannot do many rotations in a row
@@ -61,6 +68,13 @@ interface ISecurityCouncilManager {
     /// @param  _l2CoreGovTimelock timelock for core governance / constitutional proposal
     /// @param _router UpgradeExecRouteBuilder address
     /// @param _minRotationPeriod The minimum amount of time that must happen between address rotations by the same council member
+    ///                           Rotations are in race conditions with other actions, so care must be taken to set this parameter to be
+    ///                           greater than the time taken for other actions. An example of this is if the removal governor has the removal
+    ///                           role it may try to remove an address, but doing so requires passing a vote and in the meantime the address may
+    ///                           rotate. If the address is only allowed to rotate once during this period the manager can keep track of this and still
+    ///                           and still remove the address, however if the rotation period allows for two rotations the address will not get removed
+    ///                           A general rule for setting the min rotation period is: make sure it is longer that the amount of time taken to conduct
+    ///                           any other actions on the sec council manager.
     function initialize(
         address[] memory _firstCohort,
         address[] memory _secondCohort,
@@ -101,24 +115,34 @@ interface ISecurityCouncilManager {
     /// @param _memberToReplace Security Council member to remove
     /// @param _newMember       Security Council member to add in their place
     function replaceMember(address _memberToReplace, address _newMember) external;
-    /// @notice Get the hash to be signed for member rotation
+    /// @notice Get the hash to be signed for an existing member rotation
     /// @param from     The address that will be rotated out. Included in the hash so that other members cant use this message to rotate their address
-    /// @param nonce    The message nonce. Must be equal to the update nonce in the contract at the time of execution
+    /// @param nonce    The message nonce. Must be equal to the rotationNonce for the member being rotated out
     function getRotateMemberHash(address from, uint256 nonce) external view returns (bytes32);
     /// @notice Security council member can rotate out their address for a new one
     /// @dev    Initiates cross chain messages to update the individual Security Councils.
     ///         Cannot rotate to a contender in an ongoing election, as this could cause a clash that would stop the election result executing
-    ///         Since the signature is over the update nonce, it is understood that other updates can invalidate the signed message, however since
-    ///         other updates are either from the council itself (trusted), the election (infrequent) or another member rotation (also infrequent due
-    ///         to the minRotationPeriod) the invalidation cannot occur often and in those cases the member should sign a new rotation message
     /// @param newMemberAddress         The new member address to be rotated to
     /// @param memberElectionGovernor   The current member election governor - must have the COHORT_REPLACER_ROLE role
-    /// @param signature                A signature from the new member address over the 712 addMember hash
+    /// @param signature                A signature from the new member address over the 712 rotateMember hash
     function rotateMember(
         address newMemberAddress,
         address memberElectionGovernor,
         bytes calldata signature
     ) external;
+    /// @notice Get the hash to be signed for future member rotation
+    /// @param from     The address that will be rotated out. This is included in the hash so that other members cant use this message to rotate their address
+    /// @param nonce    The message nonce. Must be the from address's current rotationNonce
+    function getSetRotatingToHash(address from, uint256 nonce) external view returns (bytes32);
+    /// @notice Set an address to be rotated to if the sender is ever elected as a member
+    ///         This enables unelected members to decide where their election address will update to. When a member is elected to the council they
+    ///         are expected to have a high level of security on their member key. Election candidates may not have set up that high level of security before
+    ///         registering their election key, so this method allows them to set up a new key that will be actually installed as the member upon election.
+    ///         If this future rotation causes a clash, the rotation will not be executed and the original address will be installed
+    ///         This rotation only applies to future replaceCohort, mainly used by the member election governor
+    /// @param newMemberAddress The new member address to be rotated to
+    /// @param signature        A signature from the new member address over the 712 setRotatingTo hash
+    function setRotatingTo(address newMemberAddress, bytes calldata signature) external;
     /// @notice Is the account a member of the first cohort
     function firstCohortIncludes(address account) external view returns (bool);
     /// @notice Is the account a member of the second cohort
