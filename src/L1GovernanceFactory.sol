@@ -2,7 +2,7 @@
 pragma solidity 0.8.16;
 
 import "./L1ArbitrumTimelock.sol";
-import "./UpgradeExecutor.sol";
+import "@offchainlabs/upgrade-executor/src/UpgradeExecutor.sol";
 
 import "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";

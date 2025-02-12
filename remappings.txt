@@ -1,5 +1,6 @@
 forge-std/=lib/forge-std/src/
 solady/=lib/solady/src/
+@offchainlabs/upgrade-executor/=node_modules/@offchainlabs/upgrade-executor/
 @arbitrum/token-bridge-contracts/=node_modules/@arbitrum/token-bridge-contracts/
 @arbitrum/nitro-contracts/=node_modules/@arbitrum/nitro-contracts/
 @openzeppelin/contracts-upgradeable/=node_modules/@openzeppelin/contracts-upgradeable/
