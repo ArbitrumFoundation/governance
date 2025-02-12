@@ -338,8 +338,7 @@ contract SecurityCouncilManager is
         // we enforce that a the new address is an eoa in the same way do
         // in NomineeGovernor.addContender by requiring a signature
         uint256 currentRotationNonce = rotationNonce[msg.sender];
-        bytes32 digest = getRotateMemberHash(msg.sender, currentRotationNonce);
-        address newAddress = ECDSAUpgradeable.recover(digest, signature);
+        address newAddress = ECDSAUpgradeable.recover(getRotateMemberHash(msg.sender, currentRotationNonce), signature);
         // we safety check the new member address is the one that we expect to replace here
         // this isn't strictly necessary but it guards agains the case where the wrong sig is accidentally used
         if (newAddress != newMemberAddress) {

@@ -248,7 +248,7 @@ contract SecurityCouncilManagerTest is Test {
 
     function testRemoveMemberRotated() public {
         address memberToRemove = firstCohort[0];
-        bytes32 digest = scm.getRotateMemberHash(memberToRemove, scm.updateNonce());
+        bytes32 digest = scm.getRotateMemberHash(memberToRemove, scm.rotationNonce(memberToRemove));
         bytes memory signature = sign(pk1, digest);
         vm.prank(memberToRemove);
         scm.rotateMember(memberToRotate1, memberElectionGovernor, signature);
@@ -396,7 +396,7 @@ contract SecurityCouncilManagerTest is Test {
     }
 
     function testReplaceMemberInFirstCohortAfterRotation() public {
-        bytes32 digest = scm.getRotateMemberHash(firstCohort[0], scm.updateNonce());
+        bytes32 digest = scm.getRotateMemberHash(firstCohort[0], scm.rotationNonce(firstCohort[0]));
         bytes memory signature = sign(pk1, digest);
         vm.prank(firstCohort[0]);
         scm.rotateMember(memberToRotate1, memberElectionGovernor, signature);
@@ -423,7 +423,7 @@ contract SecurityCouncilManagerTest is Test {
     }
 
     function testReplaceMemberInSecondCohort() public {
-        bytes32 digest = scm.getRotateMemberHash(secondCohort[0], scm.updateNonce());
+        bytes32 digest = scm.getRotateMemberHash(secondCohort[0], scm.rotationNonce(secondCohort[0]));
         bytes memory signature = sign(pk2, digest);
         vm.prank(secondCohort[0]);
         scm.rotateMember(memberToRotate2, memberElectionGovernor, signature);
@@ -496,9 +496,9 @@ contract SecurityCouncilManagerTest is Test {
         uint256 startTime = 5678;
         vm.warp(startTime);
 
-        bytes32 digest = scm.getRotateMemberHash(originalMember, scm.updateNonce());
+        bytes32 digest = scm.getRotateMemberHash(originalMember, scm.rotationNonce(originalMember));
         bytes memory signature = sign(pk1, digest);
-        uint256 startNonce = scm.updateNonce();
+        uint256 startNonce = scm.rotationNonce(originalMember);
 
         vm.expectRevert(
             abi.encodeWithSelector(
@@ -518,7 +518,7 @@ contract SecurityCouncilManagerTest is Test {
         vm.recordLogs();
         vm.prank(originalMember);
         scm.rotateMember(memberToRotate1, memberElectionGovernor, signature);
-        assertEq(startNonce + 1, scm.updateNonce(), "nonce 1");
+        assertEq(startNonce + 1, scm.rotationNonce(originalMember), "nonce 1");
         checkScheduleWasCalled();
         checkCohortChange(memberToRotate1, 1, secondCohort, Cohort.SECOND);
         assertTrue(
@@ -527,7 +527,7 @@ contract SecurityCouncilManagerTest is Test {
         );
         assertEq(scm.lastRotated(memberToRotate1), startTime, "Member 1 last rotated");
 
-        bytes32 digest1 = scm.getRotateMemberHash(memberToRotate1, scm.updateNonce());
+        bytes32 digest1 = scm.getRotateMemberHash(memberToRotate1, scm.rotationNonce(memberToRotate1));
         bytes memory signature1 = sign(pk2, digest1);
 
         vm.expectRevert(
@@ -554,10 +554,11 @@ contract SecurityCouncilManagerTest is Test {
 
         vm.warp(startTime + minRotationPeriod);
 
+        startNonce = scm.rotationNonce(memberToRotate1);
         vm.recordLogs();
         vm.prank(memberToRotate1);
         scm.rotateMember(memberToRotate2, memberElectionGovernor, signature1);
-        assertEq(startNonce + 2, scm.updateNonce(), "nonce 2");
+        assertEq(startNonce + 1, scm.rotationNonce(memberToRotate1), "nonce 2");
         checkScheduleWasCalled();
         checkCohortChange(memberToRotate2, 1, secondCohort, Cohort.SECOND);
         assertTrue(
@@ -613,20 +614,17 @@ contract SecurityCouncilManagerTest is Test {
         vm.warp(startTime);
 
         // start an election and add a contender
-        SigUtils sigUtils = new SigUtils(nomineeElectionGovernor);
         uint256 proposalId = SecurityCouncilNomineeElectionGovernor(
             payable(nomineeElectionGovernor)
         ).createElection();
-        bytes memory sig = sigUtils.signAddContenderMessage(proposalId, pk1);
         SecurityCouncilNomineeElectionGovernor(payable(nomineeElectionGovernor)).addContender(
-            proposalId, sig
+            proposalId, new SigUtils(nomineeElectionGovernor).signAddContenderMessage(proposalId, pk1)
         );
 
-        bytes32 digest = scm.getRotateMemberHash(originalMember, scm.updateNonce());
-        bytes memory signature = sign(pk1, digest);
+        bytes memory signature = sign(pk1, scm.getRotateMemberHash(originalMember, scm.rotationNonce(originalMember)));
         bytes memory signature2 =
-            sign(pk2, scm.getRotateMemberHash(originalMember, scm.updateNonce()));
-        uint256 startNonce = scm.updateNonce();
+            sign(pk2, scm.getRotateMemberHash(originalMember, scm.rotationNonce(originalMember)));
+        uint256 startNonce = scm.rotationNonce(originalMember);
 
         // replace in other cohort in ongoing election does not work
         vm.expectRevert(
@@ -686,20 +684,22 @@ contract SecurityCouncilManagerTest is Test {
 
         // replacing that member with one in the same cohort does work
         bytes memory signatureA =
-            sign(pk1, scm.getRotateMemberHash(firstCohort[1], scm.updateNonce()));
+            sign(pk1, scm.getRotateMemberHash(firstCohort[1], scm.rotationNonce(firstCohort[1])));
+        startNonce = scm.rotationNonce(firstCohort[1]);
         vm.prank(firstCohort[1]);
         scm.rotateMember(memberToRotate1, memberElectionGovernor, signatureA);
-        assertEq(startNonce + 1, scm.updateNonce(), "nonce 1");
+        assertEq(startNonce + 1, scm.rotationNonce(firstCohort[1]), "nonce 1");
         checkCohortChange(memberToRotate1, 1, firstCohort, Cohort.FIRST);
         vm.revertTo(snap);
 
         bytes memory signature1 =
-            sign(pk2, scm.getRotateMemberHash(originalMember, scm.updateNonce()));
+            sign(pk2, scm.getRotateMemberHash(originalMember, scm.rotationNonce(originalMember)));
+        startNonce = scm.rotationNonce(originalMember);
 
         vm.recordLogs();
         vm.prank(originalMember);
         scm.rotateMember(memberToRotate2, memberElectionGovernor, signature1);
-        assertEq(startNonce + 1, scm.updateNonce(), "nonce 1");
+        assertEq(startNonce + 1, scm.rotationNonce(originalMember), "nonce 1");
         checkScheduleWasCalled();
         checkCohortChange(memberToRotate2, 1, secondCohort, Cohort.SECOND);
         assertTrue(
