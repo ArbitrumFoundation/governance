@@ -36,22 +36,16 @@
         "GHSA-7grf-83vw-6f5x",
         // Improper Initialization in OpenZeppelin
         "GHSA-88g8-f5mf-f5rj",
-        // flat vulnerable to Prototype Pollution
-        "GHSA-2j2x-2gpw-g8fm",
         // tough-cookie Prototype Pollution vulnerability
         "GHSA-72xf-g2v4-qvf3",
         // Server-Side Request Forgery in Request
         "GHSA-p8p7-x288-28g6",
         // OpenZeppelin: Using ERC2771Context with a custom forwarder can yield address(0)
         "GHSA-g4vp-m682-qqmp",
-        // regular expression DoS in debug - low severity
-        "GHSA-gxpj-cx7g-858c",
         // undici - only used in hardhat, not used in prod
         "GHSA-wqq4-5wpv-mx2g",
         // get-func-name - only used in chai, not used in prod
         "GHSA-4q6p-r6v2-jvc5",
-        // axios used only in sol2uml
-        "GHSA-wf5p-g6vw-rhxx",
         // follow-redirects url.parse bug. Not used in prod
         "GHSA-jchw-25xp-jwwc",
         // OpenZeppelin Contracts base64 encoding may read from potentially dirty memory
@@ -76,20 +70,10 @@
         "GHSA-grv7-fg5c-xmjg",
         // ws dos too many http - we only use in dev
         "GHSA-3h5v-q93c-6h6q",
-        // BER sig malleability vuln - only used in dev
-        "GHSA-49q7-c7j4-3p7m",
-        // ECDSA missing leading bit r and s check - only used in dev
-        "GHSA-977x-g7h5-7qgw",
-        // EDDSA missing sig length check - package only used in dev
-        "GHSA-f7q4-pwc6-w24p",
         // Server-Side Request Forgery in axios
         "GHSA-8hc4-vh64-cxmj",
         // Regular Expression Denial of Service (ReDoS) in micromatch
         "GHSA-952p-6rrq-rcjv",
-        // Elliptic's verify function omits uniqueness validation
-        "GHSA-434g-2637-qmqr",
-        // Valid ECDSA signatures erroneously rejected in Elliptic
-        "GHSA-fc9h-whq2-v747",
         // body-parser vulnerable to denial of service when url encoding is enabled
         "GHSA-qwcr-r2fm-qrc7",
         // path-to-regexp outputs backtracking regular expressions
