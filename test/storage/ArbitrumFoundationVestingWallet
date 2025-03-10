@@ -1,0 +1,29 @@
+
+╭----------------+-----------------------------+------+--------+-------+-------------------------------------------------------------------------╮
+| Name           | Type                        | Slot | Offset | Bytes | Contract                                                                |
++================================================================================================================================================+
+| _initialized   | uint8                       | 0    | 0      | 1     | src/ArbitrumFoundationVestingWallet.sol:ArbitrumFoundationVestingWallet |
+|----------------+-----------------------------+------+--------+-------+-------------------------------------------------------------------------|
+| _initializing  | bool                        | 0    | 1      | 1     | src/ArbitrumFoundationVestingWallet.sol:ArbitrumFoundationVestingWallet |
+|----------------+-----------------------------+------+--------+-------+-------------------------------------------------------------------------|
+| __gap          | uint256[50]                 | 1    | 0      | 1600  | src/ArbitrumFoundationVestingWallet.sol:ArbitrumFoundationVestingWallet |
+|----------------+-----------------------------+------+--------+-------+-------------------------------------------------------------------------|
+| _released      | uint256                     | 51   | 0      | 32    | src/ArbitrumFoundationVestingWallet.sol:ArbitrumFoundationVestingWallet |
+|----------------+-----------------------------+------+--------+-------+-------------------------------------------------------------------------|
+| _erc20Released | mapping(address => uint256) | 52   | 0      | 32    | src/ArbitrumFoundationVestingWallet.sol:ArbitrumFoundationVestingWallet |
+|----------------+-----------------------------+------+--------+-------+-------------------------------------------------------------------------|
+| _beneficiary   | address                     | 53   | 0      | 20    | src/ArbitrumFoundationVestingWallet.sol:ArbitrumFoundationVestingWallet |
+|----------------+-----------------------------+------+--------+-------+-------------------------------------------------------------------------|
+| _start         | uint64                      | 53   | 20     | 8     | src/ArbitrumFoundationVestingWallet.sol:ArbitrumFoundationVestingWallet |
+|----------------+-----------------------------+------+--------+-------+-------------------------------------------------------------------------|
+| _duration      | uint64                      | 54   | 0      | 8     | src/ArbitrumFoundationVestingWallet.sol:ArbitrumFoundationVestingWallet |
+|----------------+-----------------------------+------+--------+-------+-------------------------------------------------------------------------|
+| __gap          | uint256[48]                 | 55   | 0      | 1536  | src/ArbitrumFoundationVestingWallet.sol:ArbitrumFoundationVestingWallet |
+|----------------+-----------------------------+------+--------+-------+-------------------------------------------------------------------------|
+| _owner         | address                     | 103  | 0      | 20    | src/ArbitrumFoundationVestingWallet.sol:ArbitrumFoundationVestingWallet |
+|----------------+-----------------------------+------+--------+-------+-------------------------------------------------------------------------|
+| __gap          | uint256[49]                 | 104  | 0      | 1568  | src/ArbitrumFoundationVestingWallet.sol:ArbitrumFoundationVestingWallet |
+|----------------+-----------------------------+------+--------+-------+-------------------------------------------------------------------------|
+| _beneficiary   | address                     | 153  | 0      | 20    | src/ArbitrumFoundationVestingWallet.sol:ArbitrumFoundationVestingWallet |
+╰----------------+-----------------------------+------+--------+-------+-------------------------------------------------------------------------╯
+
