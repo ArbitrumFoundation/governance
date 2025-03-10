@@ -8,7 +8,7 @@ import "../util/ActionTestBase.sol";
 import "../../src/gov-action-contracts/sequencer/SetSequencerInboxMaxTimeVariationAction.sol" as
     action;
 
-contract SetSequencerInboxMaxTimeVariationAction is Test, ActionTestBase {
+contract SetSequencerInboxMaxTimeVariationActionTest is Test, ActionTestBase {
     uint256 public newDelayBlocks = 123;
     uint256 public newFutureBlocks = 456;
     uint256 public newDelaySeconds = 789;
