@@ -38,6 +38,7 @@ contract SecurityCouncilManager is
     event MemberRemoved(address indexed member, Cohort indexed cohort);
     event MemberReplaced(address indexed replacedMember, address indexed newMember, Cohort cohort);
     event MemberRotated(address indexed replacedAddress, address indexed newAddress, Cohort cohort);
+    event RotatingToSet(address indexed replacedAddress, address indexed newAddress);
     event SecurityCouncilAdded(
         address indexed securityCouncil,
         address indexed updateAction,
@@ -83,8 +84,19 @@ contract SecurityCouncilManager is
     /// @notice The timestamp at which the address was last rotated
     mapping(address => uint256) public lastRotated;
 
+    /// @notice If an address was rotated, this is the last address it rotated to
+    /// @dev    This can be used to avoid race conditions between rotation and other actions
+    mapping(address => address) public rotatedTo;
+
     /// @inheritdoc ISecurityCouncilManager
     uint256 public minRotationPeriod;
+
+    /// @notice Store the address to be rotated to for new members in the future
+    /// @dev    `rotatingTo[X] = Y` means if X is installed as a new member, Y will be installed instead
+    mapping(address => address) public rotatingTo;
+
+    /// @notice Nonce used when setting rotatingTo or rotatedTo
+    mapping(address => uint256) public rotationNonce;
 
     /// @notice The 712 name hash
     bytes32 public constant NAME_HASH = keccak256(bytes("SecurityCouncilManager"));
@@ -105,13 +117,16 @@ contract SecurityCouncilManager is
     bytes32 public constant DOMAIN_TYPE_HASH = keccak256(
         "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
     );
-    bytes32 public constant TYPE_HASH =
+    bytes32 public constant ROTATE_MEMBER_TYPE_HASH =
         keccak256(bytes("rotateMember(address from, uint256 nonce)"));
+    bytes32 public constant SET_ROTATING_TO_TYPE_HASH =
+        keccak256(bytes("setRotatingTo(address from, uint256 nonce)"));
 
     constructor() {
         _disableInitializers();
     }
 
+    /// @inheritdoc ISecurityCouncilManager
     function initialize(
         address[] memory _firstCohort,
         address[] memory _secondCohort,
@@ -200,8 +215,20 @@ contract SecurityCouncilManager is
 
         // delete the old cohort
         _cohort == Cohort.FIRST ? delete firstCohort : delete secondCohort;
+        address[] storage otherCohort = _cohort == Cohort.FIRST ? secondCohort : firstCohort;
 
         for (uint256 i = 0; i < _newCohort.length; i++) {
+            // we have to change the array so correct _newCohort can be emitted
+            address rotatingAddress = rotatingTo[_newCohort[i]];
+            if (rotatingAddress != address(0)) {
+                // only replace if there is no clash
+                if (
+                    !SecurityCouncilMgmtUtils.isInArray(rotatingAddress, _newCohort)
+                        && !SecurityCouncilMgmtUtils.isInArray(rotatingAddress, otherCohort)
+                ) {
+                    _newCohort[i] = rotatingAddress;
+                }
+            }
             _addMemberToCohortArray(_newCohort[i], _cohort);
         }
 
@@ -225,6 +252,10 @@ contract SecurityCouncilManager is
         }
 
         cohort.push(_newMember);
+        // we use the rotatedTo mapping to ensure that a member is to be removed they cant rotate away from that
+        // however we assume that if a member is added after being rotated away, then the removal is actually targetting that member
+        // and not the one previously rotated away from, so we we wipe the rotation record
+        rotatedTo[_newMember] = address(0);
     }
 
     function _removeMemberFromCohortArray(address _member) internal returns (Cohort) {
@@ -248,14 +279,24 @@ contract SecurityCouncilManager is
         emit MemberAdded(_newMember, _cohort);
     }
 
+    function memberRotatedTo(address _member) internal view returns (address) {
+        if (rotatedTo[_member] != address(0)) {
+            return rotatedTo[_member];
+        } else {
+            return _member;
+        }
+    }
+
     /// @inheritdoc ISecurityCouncilManager
     function removeMember(address _member) external onlyRole(MEMBER_REMOVER_ROLE) {
         if (_member == address(0)) {
             revert ZeroAddress();
         }
-        Cohort cohort = _removeMemberFromCohortArray(_member);
+        address memberIfRotated = memberRotatedTo(_member);
+
+        Cohort cohort = _removeMemberFromCohortArray(memberIfRotated);
         _scheduleUpdate();
-        emit MemberRemoved({member: _member, cohort: cohort});
+        emit MemberRemoved({member: memberIfRotated, cohort: cohort});
     }
 
     /// @inheritdoc ISecurityCouncilManager
@@ -263,18 +304,22 @@ contract SecurityCouncilManager is
         external
         onlyRole(MEMBER_REPLACER_ROLE)
     {
-        Cohort cohort = _swapMembers(_memberToReplace, _newMember);
-        emit MemberReplaced({
-            replacedMember: _memberToReplace,
-            newMember: _newMember,
-            cohort: cohort
-        });
+        address memberIfRotated = memberRotatedTo(_memberToReplace);
+        Cohort cohort = _swapMembers(memberIfRotated, _newMember);
+        emit MemberReplaced({replacedMember: memberIfRotated, newMember: _newMember, cohort: cohort});
     }
 
     /// @inheritdoc ISecurityCouncilManager
     function getRotateMemberHash(address from, uint256 nonce) public view returns (bytes32) {
         return ECDSAUpgradeable.toTypedDataHash(
-            _domainSeparatorV4(), keccak256(abi.encode(TYPE_HASH, from, nonce))
+            _domainSeparatorV4(), keccak256(abi.encode(ROTATE_MEMBER_TYPE_HASH, from, nonce))
+        );
+    }
+
+    /// @inheritdoc ISecurityCouncilManager
+    function getSetRotatingToHash(address from, uint256 nonce) public view returns (bytes32) {
+        return ECDSAUpgradeable.toTypedDataHash(
+            _domainSeparatorV4(), keccak256(abi.encode(SET_ROTATING_TO_TYPE_HASH, from, nonce))
         );
     }
 
@@ -289,11 +334,12 @@ contract SecurityCouncilManager is
         {
             revert RotationTooSoon(msg.sender, lastRotatedTimestamp + minRotationPeriod);
         }
-
         // we enforce that a the new address is an eoa in the same way do
         // in NomineeGovernor.addContender by requiring a signature
-        bytes32 digest = getRotateMemberHash(msg.sender, updateNonce);
-        address newAddress = ECDSAUpgradeable.recover(digest, signature);
+        uint256 currentRotationNonce = rotationNonce[msg.sender];
+        address newAddress = ECDSAUpgradeable.recover(
+            getRotateMemberHash(msg.sender, currentRotationNonce), signature
+        );
         // we safety check the new member address is the one that we expect to replace here
         // this isn't strictly necessary but it guards agains the case where the wrong sig is accidentally used
         if (newAddress != newMemberAddress) {
@@ -347,13 +393,38 @@ contract SecurityCouncilManager is
                     if (nomineeGovernor.isContender(proposalId, newAddress)) {
                         revert NewMemberIsContender(proposalId, newAddress);
                     }
+                    if (nomineeGovernor.isNominee(proposalId, newAddress)) {
+                        revert NewMemberIsNominee(proposalId, newAddress);
+                    }
                 }
             }
         }
 
         lastRotated[newAddress] = block.timestamp;
+        rotatedTo[msg.sender] = newAddress;
+        rotationNonce[msg.sender] = currentRotationNonce + 1;
         Cohort cohort = _swapMembers(msg.sender, newAddress);
         emit MemberRotated({replacedAddress: msg.sender, newAddress: newAddress, cohort: cohort});
+    }
+
+    /// @inheritdoc ISecurityCouncilManager
+    function setRotatingTo(address newMemberAddress, bytes calldata signature) external {
+        uint256 currentRotationNonce = rotationNonce[msg.sender];
+        // we enforce that a the new address is an eoa in the same way do
+        // in NomineeGovernor.addContender by requiring a signature
+        address newAddress = ECDSAUpgradeable.recover(
+            getSetRotatingToHash(msg.sender, currentRotationNonce), signature
+        );
+        // we safety check the new member address is the one that we expect to replace here
+        // this isn't strictly necessary but it guards against the case where the wrong sig is accidentally used
+        if (newAddress != newMemberAddress) {
+            revert InvalidNewAddress(newAddress);
+        }
+
+        rotatingTo[msg.sender] = newAddress;
+        rotationNonce[msg.sender] = currentRotationNonce + 1;
+
+        emit RotatingToSet({replacedAddress: msg.sender, newAddress: newAddress});
     }
 
     function _swapMembers(address _addressToRemove, address _addressToAdd)
@@ -582,11 +653,11 @@ contract SecurityCouncilManager is
             delay: ArbitrumTimelock(l2CoreGovTimelock).getMinDelay()
         });
     }
+
     /**
      * @dev This empty reserved space is put in place to allow future versions to add new
      * variables without shifting down storage in the inheritance chain.
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
      */
-
-    uint256[41] private __gap;
+    uint256[38] private __gap;
 }
