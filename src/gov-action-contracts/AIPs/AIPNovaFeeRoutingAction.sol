@@ -58,7 +58,9 @@ contract AIPNovaFeeRoutingAction {
         // upgrade executor should have at least 3 * fullWeight ETH to fund the distributors
         // we need each of the reward distributors to have at least fullWeight in balance
         // otherwise we may get NoFundsToDistribute() errors
-        require(address(this).balance >= 3 * fullWeight, "AIPNovaFeeRoutingAction: insufficient balance");
+        require(
+            address(this).balance >= 3 * fullWeight, "AIPNovaFeeRoutingAction: insufficient balance"
+        );
         _fundDistributor(novaL1SurplusFeeDistr);
         _fundDistributor(novaL2SurplusFeeDistr);
         _fundDistributor(novaL2BaseFeeDistr);
@@ -134,7 +136,7 @@ contract AIPNovaFeeRoutingAction {
     }
 
     function _fundDistributor(address recipient) internal {
-        (bool b, ) = recipient.call{value: fullWeight}("");
+        (bool b,) = recipient.call{value: fullWeight}("");
         require(b, "AIPNovaFeeRoutingAction: funding failed");
     }
 }
