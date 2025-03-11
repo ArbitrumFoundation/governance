@@ -75,9 +75,9 @@ abstract contract ActionTestBase {
         rollup.transferOwnership(address(ue));
         bridge = Bridge(TestUtil.deployProxy(pa, address(new Bridge())));
         bridge.initialize(IOwnable(address(rollup)));
-        si = SequencerInbox(TestUtil.deployProxy(pa, address(new SequencerInbox(117964))));
+        si = SequencerInbox(TestUtil.deployProxy(pa, address(new SequencerInbox(117_964))));
         si.initialize(bridge, ISequencerInbox.MaxTimeVariation(0, 0, 0, 0));
-        inbox = Inbox(TestUtil.deployProxy(pa, address(new Inbox(117964))));
+        inbox = Inbox(TestUtil.deployProxy(pa, address(new Inbox(117_964))));
         inbox.initialize(bridge, si);
 
         l1Timelock =
@@ -89,8 +89,12 @@ abstract contract ActionTestBase {
         l1Timelock.revokeRole(l1Timelock.TIMELOCK_ADMIN_ROLE(), address(l1Timelock));
         l1Timelock.revokeRole(l1Timelock.TIMELOCK_ADMIN_ROLE(), address(this));
 
-        addressRegistry =
-        new _ar.L1AddressRegistry(IInbox(address(inbox)), _ifaces.IL1Timelock(address(l1Timelock)), _ifaces.IL1CustomGateway(address(0)), _ifaces.IL1GatewayRouter(address(0)));
+        addressRegistry = new _ar.L1AddressRegistry(
+            IInbox(address(inbox)),
+            _ifaces.IL1Timelock(address(l1Timelock)),
+            _ifaces.IL1CustomGateway(address(0)),
+            _ifaces.IL1GatewayRouter(address(0))
+        );
         bridgeGetter = _ifaces.IBridgeGetter(address(addressRegistry));
         inboxGetter = _ifaces.IInboxGetter(address(addressRegistry));
         sequencerInboxGetter = _ifaces.ISequencerInboxGetter(address(addressRegistry));
@@ -131,19 +135,20 @@ abstract contract ActionTestBase {
         treasuryTimelock.revokeRole(treasuryTimelock.TIMELOCK_ADMIN_ROLE(), address(this));
         treasuryGov.initialize(arbOneToken, treasuryTimelock, address(arbOneUe), 7, 8, 600, 60, 60);
 
-        treasuryWallet =
-            FixedDelegateErc20Wallet(TestUtil.deployProxy(pa, address(new FixedDelegateErc20Wallet())));
+        treasuryWallet = FixedDelegateErc20Wallet(
+            TestUtil.deployProxy(pa, address(new FixedDelegateErc20Wallet()))
+        );
         treasuryWallet.initialize(
             address(arbOneToken), treasuryGov.EXCLUDE_ADDRESS(), address(treasuryTimelock)
         );
 
-        arbOneAddressRegistry =
-        new _ar1.L2AddressRegistry(
-            _ar1.IL2ArbitrumGoverner(address(coreGov)), 
-            _ar1.IL2ArbitrumGoverner(address(treasuryGov)), 
-            _ar1.IFixedDelegateErc20Wallet(address(treasuryWallet)), 
+        arbOneAddressRegistry = new _ar1.L2AddressRegistry(
+            _ar1.IL2ArbitrumGoverner(address(coreGov)),
+            _ar1.IL2ArbitrumGoverner(address(treasuryGov)),
+            _ar1.IFixedDelegateErc20Wallet(address(treasuryWallet)),
             _ar1.IArbitrumDAOConstitution(address(arbitrumDAOConstitution)),
             pa,
-            ISecurityCouncilNomineeElectionGovernor(payable(address(0))));
+            ISecurityCouncilNomineeElectionGovernor(payable(address(0)))
+        );
     }
 }
