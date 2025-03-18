@@ -93,7 +93,7 @@ contract CancelTimelockAndRemoveMemberActionTest is Test {
         }
         assertTrue(reg.coreGovTimelock().isOperation(proposalId), "Prop does not exist");
 
-        CancelTimelockAndRemoveMemberOAction action = new CancelTimelockAndRemoveMemberOAction(reg);
+        CancelTimelockAndRemoveMemberAction action = new CancelTimelockAndRemoveMemberAction(reg);
         vm.prank(council);
         arbOneUe.execute(
             address(action), abi.encodeCall(action.perform, (memberToRemove, proposalId))
