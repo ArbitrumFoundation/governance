@@ -13,4 +13,4 @@ yarn gen:proposalData --govChainProviderRPC https://arb1.arbitrum.io/rpc \
     --predecessor \
         0x0000000000000000000000000000000000000000000000000000000000000000 \
     --writeToJsonPath \
-        ./scripts/proposals/upgrade-executor-upgrade/proposalData.json
+        ./scripts/proposals/upgrade-executor-upgrade/data.json
