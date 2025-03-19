@@ -486,15 +486,15 @@ async function deployTokenToNova(
   const novaTokenLogic = await getOrInitDefault(
     "novaTokenLogic",
     novaDeployer,
-    L2CustomGatewayToken__factory
+    L2CustomGatewayToken__factory as unknown as TypeChainContractFactoryStatic<Contract>
   );
 
   // deploy token proxy
   const novaTokenProxy = await getOrInit(
     "novaTokenProxy",
     novaDeployer,
-    L2CustomGatewayToken__factory,
-    async () => {
+    L2CustomGatewayToken__factory as unknown as TypeChainContractFactoryStatic<Contract>,
+    (async () => {
       const proxy = await new TransparentUpgradeableProxy__factory(novaDeployer).deploy(
         novaTokenLogic.address,
         proxyAdmin.address,
@@ -512,11 +512,11 @@ async function deployTokenToNova(
         )
       ).wait();
 
-      return novaToken;
-    }
+      return novaToken as unknown as Contract;
+    }) as () => Promise<Contract>
   );
 
-  return novaTokenProxy;
+  return novaTokenProxy as unknown as L2CustomGatewayToken;
 }
 
 async function initL2Governance(
