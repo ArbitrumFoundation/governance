@@ -4,7 +4,7 @@ pragma solidity 0.8.16;
 import "../address-registries/L2AddressRegistry.sol";
 import "./CancelTimelockOperation.sol";
 
-contract CancelTimelockAndRemoveMemberOAction {
+contract CancelTimelockAndRemoveMemberAction {
     IL2AddressRegistry public immutable l2AddressRegistry;
 
     constructor(IL2AddressRegistry _l2AddressRegistry) {
