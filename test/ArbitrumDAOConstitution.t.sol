@@ -10,7 +10,7 @@ contract ArbitrumDAOConstitutionTest is Test {
     bytes32 initialHash = bytes32("0x123");
     address owner = address(12_345);
 
-    function deployConstition() internal returns (ArbitrumDAOConstitution) {
+    function deployConstitution() internal returns (ArbitrumDAOConstitution) {
         vm.prank(owner);
         ArbitrumDAOConstitution arbitrumDAOConstitution = new ArbitrumDAOConstitution(
                 initialHash
