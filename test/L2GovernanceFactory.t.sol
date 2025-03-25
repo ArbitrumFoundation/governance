@@ -3,7 +3,7 @@
 
 import "../src/L2GovernanceFactory.sol";
 import "../src/L2ArbitrumGovernor.sol";
-import "../src/UpgradeExecutor.sol";
+import "@offchainlabs/upgrade-executor/src/UpgradeExecutor.sol";
 import "../src/ArbitrumTimelock.sol";
 import "../src/ArbitrumDAOConstitution.sol";
 

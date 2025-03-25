@@ -3,7 +3,6 @@ pragma solidity 0.8.16;
 
 import "forge-std/Test.sol";
 
-import "../../src/UpgradeExecutor.sol";
 import "../../src/ArbitrumTimelock.sol";
 import "../../src/L2ArbitrumGovernor.sol";
 import "../../src/FixedDelegateErc20Wallet.sol";

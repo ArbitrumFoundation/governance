@@ -2,7 +2,7 @@
 pragma solidity 0.8.16;
 
 import "@arbitrum/nitro-contracts/src/precompiles/ArbSys.sol";
-import "./UpgradeExecutor.sol";
+import "@offchainlabs/upgrade-executor/src/UpgradeExecutor.sol";
 import "./L1ArbitrumTimelock.sol";
 import "./security-council-mgmt/Common.sol";
 
