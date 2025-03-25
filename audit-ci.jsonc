@@ -97,6 +97,8 @@
         // Use of Insufficiently Random Values in undici
         "GHSA-c76h-2ccp-4975",
         // Cross-site Scripting (XSS) in serialize-javascript
-        "GHSA-76p7-773f-r4q5"
+        "GHSA-76p7-773f-r4q5",
+        // axios Requests Vulnerable To Possible SSRF and Credential Leakage via Absolute URL
+        "GHSA-jr5f-v2jv-69x6"
     ]
   }
