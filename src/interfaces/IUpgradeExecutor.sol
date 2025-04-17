@@ -3,8 +3,11 @@ pragma solidity 0.8.16;
 
 import "@openzeppelin/contracts-upgradeable/access/IAccessControlUpgradeable.sol";
 
-interface IUpgradeExecutor is IAccessControlUpgradeable {
-    function execute(address upgrade, bytes memory upgradeCallData) external;
-    function ADMIN_ROLE() external returns (bytes32);
-    function EXECUTOR_ROLE() external returns (bytes32);
+// TODO: import from @offchainlabs/upgrade-executor@1.1.1
+interface IUpgradeExecutor {
+    function initialize(address admin, address[] memory executors) external;
+    function execute(address upgrade, bytes memory upgradeCallData) external payable;
+    function executeCall(address target, bytes memory targetCallData) external payable;
+    function ADMIN_ROLE() external view returns (bytes32);
+    function EXECUTOR_ROLE() external view returns (bytes32);
 }

@@ -875,9 +875,7 @@ contract SecurityCouncilMemberElectionGovernorTest is Test {
         return SecurityCouncilMemberElectionGovernor(
             payable(
                 new TransparentUpgradeableProxy(
-                    address(new SecurityCouncilMemberElectionGovernor()),
-                    proxyAdmin,
-                    bytes("")
+                    address(new SecurityCouncilMemberElectionGovernor()), proxyAdmin, bytes("")
                 )
             )
         );

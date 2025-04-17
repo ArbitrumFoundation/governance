@@ -14,16 +14,24 @@ library SecurityCouncilMgmtUpgradeLib {
         requireSafesEquivalent(_prevSecurityCouncil, _newSecurityCouncil, _threshold);
         bytes32 EXECUTOR_ROLE = _upgradeExecutor.EXECUTOR_ROLE();
         require(
-            _upgradeExecutor.hasRole(EXECUTOR_ROLE, address(_prevSecurityCouncil)),
+            IAccessControlUpgradeable(address(_upgradeExecutor)).hasRole(
+                EXECUTOR_ROLE, address(_prevSecurityCouncil)
+            ),
             "SecurityCouncilMgmtUpgradeLib: prev council not executor"
         );
         require(
-            !_upgradeExecutor.hasRole(EXECUTOR_ROLE, address(_newSecurityCouncil)),
+            !IAccessControlUpgradeable(address(_upgradeExecutor)).hasRole(
+                EXECUTOR_ROLE, address(_newSecurityCouncil)
+            ),
             "SecurityCouncilMgmtUpgradeLib: new council already executor"
         );
 
-        _upgradeExecutor.revokeRole(EXECUTOR_ROLE, address(_prevSecurityCouncil));
-        _upgradeExecutor.grantRole(EXECUTOR_ROLE, address(_newSecurityCouncil));
+        IAccessControlUpgradeable(address(_upgradeExecutor)).revokeRole(
+            EXECUTOR_ROLE, address(_prevSecurityCouncil)
+        );
+        IAccessControlUpgradeable(address(_upgradeExecutor)).grantRole(
+            EXECUTOR_ROLE, address(_newSecurityCouncil)
+        );
     }
 
     function requireSafesEquivalent(

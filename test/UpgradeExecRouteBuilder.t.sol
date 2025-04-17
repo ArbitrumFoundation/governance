@@ -27,11 +27,7 @@ contract UpgradeExecRouteBuilderTest is Test {
             })
         });
 
-        return new UpgradeExecRouteBuilder(
-            chainLocations,
-            l1TimelockAddress,
-            259200
-        );
+        return new UpgradeExecRouteBuilder(chainLocations, l1TimelockAddress, 259_200);
     }
 
     // test that aip1.2 would have been created with the same call data if it had used
