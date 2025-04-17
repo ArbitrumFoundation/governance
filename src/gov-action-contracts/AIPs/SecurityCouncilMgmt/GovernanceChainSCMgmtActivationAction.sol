@@ -5,7 +5,7 @@ import "../../../security-council-mgmt/interfaces/IGnosisSafe.sol";
 import "../../address-registries/L2AddressRegistryInterfaces.sol";
 import "./SecurityCouncilMgmtUpgradeLib.sol";
 import "../../../interfaces/IArbitrumDAOConstitution.sol";
-import "../../../interfaces/IUpgradeExecutor.sol";
+import "@offchainlabs/upgrade-executor/src/IUpgradeExecutor.sol";
 import "../../../interfaces/ICoreTimelock.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 
