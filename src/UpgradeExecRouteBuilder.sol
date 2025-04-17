@@ -41,6 +41,7 @@ contract UpgradeExecRouteBuilder {
     error UpgradeExecAlreadyExists(uint256 chindId);
     error ParamLengthMismatch(uint256 len1, uint256 len2);
     error EmptyActionBytesData(bytes[]);
+    error InvalidActionType(uint256 actionType);
 
     /// @notice The magic value used by the L1 timelock to indicate that a retryable ticket should be created
     ///         See L1ArbitrumTimelock for more details
@@ -100,13 +101,15 @@ contract UpgradeExecRouteBuilder {
     /// @param actionAddresses  Addresses of the action contracts to be called
     /// @param actionValues     Values to call the action contracts with
     /// @param actionDatas      Call data to call the action contracts with
+    /// @param actionTypes      Types of the action contracts to be called (0: execute, 1: executeCall)
     /// @param predecessor      A predecessor value for the l1 timelock operation
     /// @param timelockSalt     A salt for the l1 timelock operation
-    function createActionRouteData(
+    function createActionRouteData2(
         uint256[] memory chainIds,
         address[] memory actionAddresses,
         uint256[] memory actionValues,
         bytes[] memory actionDatas,
+        uint256[] memory actionTypes,
         bytes32 predecessor,
         bytes32 timelockSalt
     ) public view returns (address, bytes memory) {
@@ -135,9 +138,18 @@ contract UpgradeExecRouteBuilder {
                 revert EmptyActionBytesData(actionDatas);
             }
 
-            bytes memory executorData = abi.encodeWithSelector(
-                IUpgradeExecutor.execute.selector, actionAddresses[i], actionDatas[i]
-            );
+            bytes memory executorData;
+            if (actionTypes[i] == 0) {
+                executorData = abi.encodeWithSelector(
+                    IUpgradeExecutor.execute.selector, actionAddresses[i], actionDatas[i]
+                );
+            } else if (actionTypes[i] == 1) {
+                executorData = abi.encodeWithSelector(
+                    IUpgradeExecutor.executeCall.selector, actionAddresses[i], actionDatas[i]
+                );
+            } else {
+                revert InvalidActionType(actionTypes[i]);
+            }
 
             // for L1, inbox is set to address(0):
             if (upExecLocation.inbox == address(0)) {
@@ -174,6 +186,37 @@ contract UpgradeExecRouteBuilder {
         return (
             address(100),
             abi.encodeWithSelector(ArbSys.sendTxToL1.selector, l1TimelockAddr, timelockCallData)
+        );
+    }
+
+    /// @notice Creates the to address and calldata to be called to execute a route to a batch of action contracts.
+    ///         See Governance Action Contracts for more details.
+    /// @param chainIds         Chain ids containing the actions to be called
+    /// @param actionAddresses  Addresses of the action contracts to be called
+    /// @param actionValues     Values to call the action contracts with
+    /// @param actionDatas      Call data to call the action contracts with
+    /// @param predecessor      A predecessor value for the l1 timelock operation
+    /// @param timelockSalt     A salt for the l1 timelock operation
+    function createActionRouteData(
+        uint256[] memory chainIds,
+        address[] memory actionAddresses,
+        uint256[] memory actionValues,
+        bytes[] memory actionDatas,
+        bytes32 predecessor,
+        bytes32 timelockSalt
+    ) public view returns (address, bytes memory) {
+        uint256[] memory actionTypes = new uint256[](chainIds.length);
+        for (uint256 i = 0; i < chainIds.length; i++) {
+            actionTypes[i] = 0; // default is execute
+        }
+        return createActionRouteData2(
+            chainIds,
+            actionAddresses,
+            actionValues,
+            actionDatas,
+            actionTypes,
+            predecessor,
+            timelockSalt
         );
     }
 
