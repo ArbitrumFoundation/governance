@@ -102,5 +102,15 @@ contract UpgradeExecRouteBuilderTest is Test {
         routeBuilder.createActionRouteData(
             chainIds, actionAddresses, actionValues, badActionDatas, predecessor, salt
         );
+
+        uint256[] memory badActionTypes = new uint256[](1);
+        badActionTypes[0] = 2;
+        vm.expectRevert(
+            abi.encodeWithSelector(UpgradeExecRouteBuilder.InvalidActionType.selector, 2)
+        );
+        routeBuilder.createActionRouteData2(
+            chainIds, actionAddresses, actionValues, actionDatas, badActionTypes, predecessor, salt
+        );
+        // TODO: more test for execute vs executeCall
     }
 }
