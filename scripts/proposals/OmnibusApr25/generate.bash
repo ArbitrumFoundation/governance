@@ -53,35 +53,35 @@ PROP4_VALUES=(0)
 
 # Generate proposal data
 yarn gen:proposalData \
-    --routeBuilderAddress 0x20eBEE002d53dbC02eaD1C55Bd7E31FF67615Ce0 \
-    --govChainProviderRPC http://localhost:8545 \
-    --actionChainIds \
-        ${PROP1_CHAIN_IDS[@]} \
-        ${PROP2_CHAIN_IDS[@]} \
-        ${PROP3_CHAIN_IDS[@]} \
-        ${PROP4_CHAIN_IDS[@]} \
-    --actionAddresses \
-        ${PROP1_ADDRESSES[@]} \
-        ${PROP2_ADDRESSES[@]} \
-        ${PROP3_ADDRESSES[@]} \
-        ${PROP4_ADDRESSES[@]} \
-    --upgradeDatas \
-        ${PROP1_DATAS[@]} \
-        ${PROP2_DATAS[@]} \
-        ${PROP3_DATAS[@]} \
-        ${PROP4_DATAS[@]} \
-    --actionTypes \
-        ${PROP1_ACTION_TYPES[@]} \
-        ${PROP2_ACTION_TYPES[@]} \
-        ${PROP3_ACTION_TYPES[@]} \
-        ${PROP4_ACTION_TYPES[@]} \
-    --upgradeValues \
-        ${PROP1_VALUES[@]} \
-        ${PROP2_VALUES[@]} \
-        ${PROP3_VALUES[@]} \
-        ${PROP4_VALUES[@]} \
-    --predecessor \
-        0x0000000000000000000000000000000000000000000000000000000000000000 \
-    --writeToJsonPath \
-        ./scripts/proposals/OmnibusApr25/data.json
+  --routeBuilderAddress 0x20eBEE002d53dbC02eaD1C55Bd7E31FF67615Ce0 \
+  --govChainProviderRPC http://localhost:8545 \
+  --actionChainIds \
+    ${PROP1_CHAIN_IDS[@]} \
+    ${PROP2_CHAIN_IDS[@]} \
+    ${PROP3_CHAIN_IDS[@]} \
+    ${PROP4_CHAIN_IDS[@]} \
+  --actionAddresses \
+    ${PROP1_ADDRESSES[@]} \
+    ${PROP2_ADDRESSES[@]} \
+    ${PROP3_ADDRESSES[@]} \
+    ${PROP4_ADDRESSES[@]} \
+  --upgradeDatas \
+    ${PROP1_DATAS[@]} \
+    ${PROP2_DATAS[@]} \
+    ${PROP3_DATAS[@]} \
+    ${PROP4_DATAS[@]} \
+  --actionTypes \
+    ${PROP1_ACTION_TYPES[@]} \
+    ${PROP2_ACTION_TYPES[@]} \
+    ${PROP3_ACTION_TYPES[@]} \
+    ${PROP4_ACTION_TYPES[@]} \
+  --upgradeValues \
+    ${PROP1_VALUES[@]} \
+    ${PROP2_VALUES[@]} \
+    ${PROP3_VALUES[@]} \
+    ${PROP4_VALUES[@]} \
+  --predecessor \
+    0x0000000000000000000000000000000000000000000000000000000000000000 \
+  --writeToJsonPath \
+    ./scripts/proposals/OmnibusApr25/data.json
 
