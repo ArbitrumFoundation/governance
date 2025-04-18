@@ -35,9 +35,8 @@ PROP3_ADDRESSES=(
   0xa5aBADAF73DFcf5261C7f55420418736707Dc0db  # Arbitrum Nova ELA
 )
 PROP3_DATAS=(
-  # TODO: DEPLOY REWARD DISTRIBUTORS
-  $(cast calldata "setBeneficiary(address)" 0x0000000000000000000000000000000000000000)
-  $(cast calldata "setBeneficiary(address)" 0x0000000000000000000000000000000000000000)
+  $(cast calldata "setBeneficiary(address)" 0xA4A8a4E2fe847Af59D340926aDCdeF6e988bB1f1) # Arbitrum One
+  $(cast calldata "setBeneficiary(address)" 0x9D537C5519B05f58CCddE6d77aEDa3B87F642Bbf) # Arbitrum Nova
 )
 PROP3_ACTION_TYPES=(1 1) # executeCall
 PROP3_VALUES=(0 0)
