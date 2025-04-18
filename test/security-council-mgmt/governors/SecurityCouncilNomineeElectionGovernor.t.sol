@@ -13,44 +13,53 @@ import "../../../src/security-council-mgmt/Common.sol";
 contract SigUtils is Test {
     bytes32 private constant _HASHED_NAME = keccak256("SecurityCouncilNomineeElectionGovernor");
     bytes32 private constant _HASHED_VERSION = keccak256("1");
-    bytes32 private constant _TYPE_HASH = keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
+    bytes32 private constant _TYPE_HASH = keccak256(
+        "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
+    );
     address private immutable _VERIFIER;
 
     constructor(address verifier) {
         _VERIFIER = verifier;
     }
 
-    function signAddContenderMessage(uint256 proposalId, uint256 privKey) public view returns (bytes memory sig) {
-        bytes32 digest = _hashTypedDataV4(keccak256(abi.encode(
-            keccak256("AddContenderMessage(uint256 proposalId)"),
-            proposalId
-        )));
+    function signAddContenderMessage(uint256 proposalId, uint256 privKey)
+        public
+        view
+        returns (bytes memory sig)
+    {
+        bytes32 digest = _hashTypedDataV4(
+            keccak256(abi.encode(keccak256("AddContenderMessage(uint256 proposalId)"), proposalId))
+        );
 
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(privKey, digest);
 
         sig = abi.encodePacked(r, s, v);
     }
+
     function _domainSeparatorV4() internal view returns (bytes32) {
         return _buildDomainSeparator(_TYPE_HASH, _EIP712NameHash(), _EIP712VersionHash());
     }
-    function _buildDomainSeparator(
-        bytes32 typeHash,
-        bytes32 nameHash,
-        bytes32 versionHash
-    ) private view returns (bytes32) {
+
+    function _buildDomainSeparator(bytes32 typeHash, bytes32 nameHash, bytes32 versionHash)
+        private
+        view
+        returns (bytes32)
+    {
         return keccak256(abi.encode(typeHash, nameHash, versionHash, block.chainid, _VERIFIER));
     }
+
     function _hashTypedDataV4(bytes32 structHash) internal view virtual returns (bytes32) {
         return ECDSAUpgradeable.toTypedDataHash(_domainSeparatorV4(), structHash);
     }
-    function _EIP712NameHash() internal virtual view returns (bytes32) {
+
+    function _EIP712NameHash() internal view virtual returns (bytes32) {
         return _HASHED_NAME;
     }
-    function _EIP712VersionHash() internal virtual view returns (bytes32) {
+
+    function _EIP712VersionHash() internal view virtual returns (bytes32) {
         return _HASHED_VERSION;
     }
 }
-
 
 contract SecurityCouncilNomineeElectionGovernorTest is Test {
     SecurityCouncilNomineeElectionGovernor governor;
@@ -65,7 +74,7 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
         securityCouncilManager: ISecurityCouncilManager(address(0x22)),
         securityCouncilMemberElectionGovernor: ISecurityCouncilMemberElectionGovernor(
             payable(address(0x33))
-            ),
+        ),
         token: IVotesUpgradeable(address(0x44)),
         owner: address(0x55),
         quorumNumeratorValue: 20,
@@ -770,7 +779,7 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
         vm.expectRevert(
             abi.encodeWithSelector(SecurityCouncilNomineeElectionGovernor.ProposeDisabled.selector)
         );
-        governor.propose(new address[](1), new uint[](1), new bytes[](1), "");
+        governor.propose(new address[](1), new uint256[](1), new bytes[](1), "");
     }
 
     function testCastVoteReverts() public {
@@ -949,9 +958,7 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
         return SecurityCouncilNomineeElectionGovernor(
             payable(
                 new TransparentUpgradeableProxy(
-                    address(new SecurityCouncilNomineeElectionGovernor()),
-                    proxyAdmin,
-                    bytes("")
+                    address(new SecurityCouncilNomineeElectionGovernor()), proxyAdmin, bytes("")
                 )
             )
         );

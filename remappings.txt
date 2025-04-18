@@ -5,4 +5,5 @@ solady/=lib/solady/src/
 @openzeppelin/contracts-upgradeable/=node_modules/@openzeppelin/contracts-upgradeable/
 @openzeppelin/contracts/=node_modules/@openzeppelin/contracts/
 @gnosis.pm/safe-contracts/=node_modules/@gnosis.pm/safe-contracts/
+@offchainlabs/upgrade-executor=node_modules/@offchainlabs/upgrade-executor/
 ds-test/=lib/forge-std/lib/ds-test/src/

@@ -109,7 +109,7 @@ contract SecurityCouncilManagerTest is Test {
         chainAndUpExecLocation.push(firstChainAndUpExecLocation);
         chainAndUpExecLocation.push(secondChainAndUpExecLocation);
         uerb = new UpgradeExecRouteBuilder({
-            _upgradeExecutors:chainAndUpExecLocation,
+            _upgradeExecutors: chainAndUpExecLocation,
             _l1ArbitrumTimelock: l1ArbitrumTimelock,
             _l1TimelockMinDelay: l1TimelockMinDelay
         });
