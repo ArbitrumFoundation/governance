@@ -43,7 +43,15 @@ PROP3_ACTION_TYPES=(1 1) # executeCall
 PROP3_VALUES=(0 0)
 
 # SC Key Rotation Upgrade (PROP4)
+PROP4_CHAIN_IDS=(42161)
+PROP4_ADDRESSES=(0x86E93E21AD108CaE7ADe482C34C230Bfd94D4A8B)
+PROP4_DATAS=(
+  $(cast calldata "perform()")
+)
+PROP4_ACTION_TYPES=(0)
+PROP4_VALUES=(0)
 
+# Generate proposal data
 yarn gen:proposalData \
     --routeBuilderAddress 0x20eBEE002d53dbC02eaD1C55Bd7E31FF67615Ce0 \
     --govChainProviderRPC http://localhost:8545 \
@@ -51,22 +59,27 @@ yarn gen:proposalData \
         ${PROP1_CHAIN_IDS[@]} \
         ${PROP2_CHAIN_IDS[@]} \
         ${PROP3_CHAIN_IDS[@]} \
+        ${PROP4_CHAIN_IDS[@]} \
     --actionAddresses \
         ${PROP1_ADDRESSES[@]} \
         ${PROP2_ADDRESSES[@]} \
         ${PROP3_ADDRESSES[@]} \
+        ${PROP4_ADDRESSES[@]} \
     --upgradeDatas \
         ${PROP1_DATAS[@]} \
         ${PROP2_DATAS[@]} \
         ${PROP3_DATAS[@]} \
+        ${PROP4_DATAS[@]} \
     --actionTypes \
         ${PROP1_ACTION_TYPES[@]} \
         ${PROP2_ACTION_TYPES[@]} \
         ${PROP3_ACTION_TYPES[@]} \
+        ${PROP4_ACTION_TYPES[@]} \
     --upgradeValues \
         ${PROP1_VALUES[@]} \
         ${PROP2_VALUES[@]} \
         ${PROP3_VALUES[@]} \
+        ${PROP4_VALUES[@]} \
     --predecessor \
         0x0000000000000000000000000000000000000000000000000000000000000000 \
     --writeToJsonPath \
