@@ -52,8 +52,7 @@ PROP4_VALUES=(0)
 
 # Generate proposal data
 yarn gen:proposalData \
-  --routeBuilderAddress 0x20eBEE002d53dbC02eaD1C55Bd7E31FF67615Ce0 \
-  --govChainProviderRPC http://localhost:8545 \
+  --govChainProviderRPC https://arb1.arbitrum.io/rpc \
   --actionChainIds \
     ${PROP1_CHAIN_IDS[@]} \
     ${PROP2_CHAIN_IDS[@]} \
