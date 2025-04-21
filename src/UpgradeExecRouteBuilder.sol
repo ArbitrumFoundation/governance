@@ -205,16 +205,12 @@ contract UpgradeExecRouteBuilder {
         bytes32 predecessor,
         bytes32 timelockSalt
     ) public view returns (address, bytes memory) {
-        uint256[] memory actionTypes = new uint256[](chainIds.length);
-        for (uint256 i = 0; i < chainIds.length; i++) {
-            actionTypes[i] = 0; // default is execute
-        }
         return createActionRouteData2(
             chainIds,
             actionAddresses,
             actionValues,
             actionDatas,
-            actionTypes,
+            new uint256[](chainIds.length), // action types, default to 0 for execute
             predecessor,
             timelockSalt
         );
