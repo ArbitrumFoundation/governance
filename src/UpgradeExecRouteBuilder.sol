@@ -122,6 +122,9 @@ contract UpgradeExecRouteBuilder {
         if (chainIds.length != actionDatas.length) {
             revert ParamLengthMismatch(chainIds.length, actionDatas.length);
         }
+        if (chainIds.length != actionTypes.length) {
+            revert ParamLengthMismatch(chainIds.length, actionTypes.length);
+        }
 
         address[] memory schedTargets = new address[](chainIds.length);
         uint256[] memory schedValues = new uint256[](chainIds.length);
