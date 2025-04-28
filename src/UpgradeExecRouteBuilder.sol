@@ -122,6 +122,9 @@ contract UpgradeExecRouteBuilder {
         if (chainIds.length != actionDatas.length) {
             revert ParamLengthMismatch(chainIds.length, actionDatas.length);
         }
+        if (chainIds.length != actionTypes.length) {
+            revert ParamLengthMismatch(chainIds.length, actionTypes.length);
+        }
 
         address[] memory schedTargets = new address[](chainIds.length);
         uint256[] memory schedValues = new uint256[](chainIds.length);
@@ -190,7 +193,8 @@ contract UpgradeExecRouteBuilder {
     }
 
     /// @notice Creates the to address and calldata to be called to execute a route to a batch of action contracts.
-    ///         See Governance Action Contracts for more details.
+    ///         Action types are defaulted to 0 (execute). See Governance Action Contracts for more details.
+    /// @dev    This function is deprecated. Use createActionRouteData2 instead.
     /// @param chainIds         Chain ids containing the actions to be called
     /// @param actionAddresses  Addresses of the action contracts to be called
     /// @param actionValues     Values to call the action contracts with

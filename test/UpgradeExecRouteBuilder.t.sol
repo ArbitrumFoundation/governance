@@ -123,6 +123,13 @@ contract UpgradeExecRouteBuilderTest is Test {
             chainIds, actionAddresses, actionValues, new bytes[](0), predecessor, salt
         );
 
+        vm.expectRevert(
+            abi.encodeWithSelector(UpgradeExecRouteBuilder.ParamLengthMismatch.selector, 1, 0)
+        );
+        routeBuilder.createActionRouteData2(
+            chainIds, actionAddresses, actionValues, actionDatas, new uint256[](0), predecessor, salt
+        );
+
         uint256[] memory badChainIds = new uint256[](1);
         badChainIds[0] = 42_162;
         vm.expectRevert(

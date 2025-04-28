@@ -28,6 +28,6 @@
   "securityCouncilManagerLogic": "0x468dA0eE5570Bdb1Dd81bFd925BAf028A93Dce64",
   "securityCouncilMemberRemoverGov": "0x6f3a242cA91A119F872f0073BC14BC8a74a315Ad",
   "securityCouncilMemberRemoverGovLogic": "0x2F06643fc2CC18585Ae790b546388F0DE4Ec6635",
-  "upgradeExecRouteBuilder": "0xEd89EFf4780D3467Ea7E888F0AB73c10273C6B04",
+  "upgradeExecRouteBuilder": "0x474b3dE6d993BAd662E68Ef2aea050BB67847a77",
   "l2SecurityCouncilMgmtFactory": "0xe8e5DC1793d6fe39452DdCB90d12997FA39dE1de"
 }
