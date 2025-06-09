@@ -16,8 +16,9 @@ contract SetCoreGovernorQuorumAction {
     }
 
     function perform() external {
-        govAddressRegisry.coreGov().relay(
-            address(govAddressRegisry.coreGov()),
+        IL2ArbitrumGoverner coreGov = govAddressRegisry.coreGov();
+        coreGov.relay(
+            address(coreGov),
             0,
             abi.encodeCall(
                 GovernorVotesQuorumFractionUpgradeable.updateQuorumNumerator, newQuorumNumerator
