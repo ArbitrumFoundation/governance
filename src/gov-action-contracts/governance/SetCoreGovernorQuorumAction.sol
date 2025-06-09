@@ -16,7 +16,12 @@ contract SetCoreGovernorQuorumAction {
     }
 
     function perform() external {
-        GovernorVotesQuorumFractionUpgradeable(payable(address(govAddressRegisry.coreGov())))
-            .updateQuorumNumerator(newQuorumNumerator);
+        govAddressRegisry.coreGov().relay(
+            address(govAddressRegisry.coreGov()),
+            0,
+            abi.encodeCall(
+                GovernorVotesQuorumFractionUpgradeable.updateQuorumNumerator, newQuorumNumerator
+            )
+        );
     }
 }
