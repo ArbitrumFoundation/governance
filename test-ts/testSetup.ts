@@ -126,6 +126,8 @@ export const getCustomNetworks = async (
     nitroGenesisBlock: 0,
     nitroGenesisL1Block: 0,
     depositTimeout: 900000,
+    blockTime: 0.25,
+    partnerChainIDs: []
   };
   return {
     l1Network,
