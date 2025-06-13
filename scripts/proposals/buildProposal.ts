@@ -19,24 +19,26 @@ async function _getCallDataFromRouteBuilder(
   actionAddresses: string[],
   actionValues: BigNumberish[] | undefined,
   actionDatas: BytesLike[] | undefined,
+  actionTypes: number[] | undefined,
   predecessor: BytesLike | undefined
 ) {
   const timelockSalt = _generateL1TimelockSalt(actionChainIds, actionAddresses);
   const routeBuilder = UpgradeExecRouteBuilder__factory.connect(routeBuilderAddress, provider);
-  if (actionValues && actionDatas && predecessor) {
+  if (actionValues && actionDatas && actionTypes && predecessor) {
     return (
-      await routeBuilder.createActionRouteData(
+      await routeBuilder.createActionRouteData2(
         actionChainIds,
         actionAddresses,
         actionValues,
         actionDatas,
+        actionTypes,
         predecessor,
         timelockSalt
       )
     )[1]; // returns [ArbSysAddress, Proposal Data]
-  } else if (actionValues || actionDatas || predecessor) {
+  } else if (actionValues || actionDatas || actionTypes || predecessor) {
     throw new Error(
-      "Custom actionValues, actionDatas and predecessor must all be provided if any are"
+      "Custom actionValues, actionDatas, actionTypes and predecessor must all be provided if any are"
     );
   } else {
     return (
@@ -56,6 +58,7 @@ async function _buildProposal(
   actionAddresses: string[],
   actionValues: BigNumberish[] | undefined,
   actionDatas: BytesLike[] | undefined,
+  actionTypes: number[] | undefined,
   predecessor: BytesLike | undefined
 ): Promise<CoreGovProposal> {
   let calldata = await _getCallDataFromRouteBuilder(
@@ -65,6 +68,7 @@ async function _buildProposal(
     actionAddresses,
     actionValues,
     actionDatas,
+    actionTypes,
     predecessor
   );
 
@@ -90,6 +94,7 @@ export function buildProposalCustom(
   actionAddresses: string[],
   actionValues: BigNumberish[],
   actionDatas: BytesLike[],
+  actionTypes: number[],
   predecessor: BytesLike
 ): Promise<CoreGovProposal> {
   return _buildProposal(
@@ -99,6 +104,7 @@ export function buildProposalCustom(
     actionAddresses,
     actionValues,
     actionDatas,
+    actionTypes,
     predecessor
   );
 }
@@ -116,6 +122,7 @@ export function buildProposal(
     actionAddresses,
     undefined,
     undefined,
+    undefined,
     undefined
   );
 }
@@ -127,6 +134,7 @@ export async function buildNonEmergencySecurityCouncilProposal(
   actionAddresses: string[],
   actionValues?: BigNumberish[],
   actionDatas?: BytesLike[],
+  actionTypes?: number[],
   predecessor?: BytesLike
 ): Promise<NonEmergencySCProposal> {
   // get data; unlike CoreProposal path, we keep the encoded sendTxToL1 call
@@ -137,6 +145,7 @@ export async function buildNonEmergencySecurityCouncilProposal(
     actionAddresses,
     actionValues,
     actionDatas,
+    actionTypes,
     predecessor
   );
 

@@ -37,6 +37,12 @@ const options = yargs(process.argv.slice(2))
       description:
         "Addresses for action contracts in proposal; indices should correspond to indices in actionChainIds",
     },
+    actionTypes: {
+      type: "array",
+      number: true,
+      demandOption: false,
+      description: "The action types for each item in the proposal, 0 for execute, 1 for executeCall"
+    },
     writeToJsonPath: {
       type: "string",
       demandOption: false,
@@ -77,6 +83,7 @@ const options = yargs(process.argv.slice(2))
   govChainProviderRPC: string;
   actionChainIds: number[];
   actionAddresses: string[];
+  actionTypes?: number[];
   writeToJsonPath?: string;
   routeBuilderAddress: string;
   upgradeValues?: number[];
@@ -109,6 +116,7 @@ const main = async () => {
       options.actionAddresses,
       options.upgradeValues,
       options.upgradeDatas,
+      options.actionTypes,
       options.predecessor
     );
     console.log("Proposal data:");
@@ -124,8 +132,8 @@ const main = async () => {
   }
 
   const proposalData = await (() => {
-    if (!options.upgradeValues && !options.upgradeDatas && !options.predecessor) {
-      console.log("Using defaults for upgradeValues, upgradeDatas, and predecessor");
+    if (!options.upgradeValues && !options.upgradeDatas && !options.actionTypes && !options.predecessor) {
+      console.log("Using defaults for upgradeValues, upgradeDatas, actionTypes, and predecessor");
       return buildProposal(
         govChainProvider,
         routeBuilderAddress,
@@ -138,6 +146,7 @@ const main = async () => {
     const upgradeValues = options.upgradeValues || options.actionChainIds.map(() => constants.Zero);
     const upgradeDatas =
       options.upgradeDatas || options.actionChainIds.map(() => defaultUpgradeData);
+    const actionTypes = options.actionTypes || options.actionChainIds.map(() => 0);
     let predecessor = options.predecessor;
     return buildProposalCustom(
       govChainProvider,
@@ -146,6 +155,7 @@ const main = async () => {
       options.actionAddresses,
       upgradeValues,
       upgradeDatas,
+      actionTypes,
       predecessor
     );
   })();
