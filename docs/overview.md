@@ -50,7 +50,7 @@ Once the proposal has gone through each of these delays, it is then directed to 
 ```mermaid
 graph TD;
   D["<a href='#phase-3-on-chain-dao-vote' style='text-decoration:none;'><b>On-chain DAO vote</b></a><br/><span style='font-size:smaller'>(14 days, extendable by 2 days)</span>"];
-  D -->|"<span style='padding: 3px;'>Passes, Constitutional AIP</span>"| E["<a href='#phase-4-l2-waiting-period' style='text-decoration:none;'><b>L2 waiting period</b></a><br/><span style='font-size:smaller'>(3 days)</span>"];
+  D -->|"<span style='padding: 3px;'>Passes, Constitutional AIP</span>"| E["<a href='#phase-4-l2-waiting-period' style='text-decoration:none;'><b>L2 waiting period</b></a><br/><span style='font-size:smaller'>(8 days)</span>"];
   E --> F["<a href='#phase-5-l2-to-l1-message' style='text-decoration:none;'><b>L2-to-L1 message</b></a><br/><span style='font-size:smaller'>(~ 1 week)</span>"];
   F --> G["<a href='#phase-6-l1-waiting-period' style='text-decoration:none;'><b>L1 waiting period</b></a><br/><span style='font-size:smaller'>(3 days)</span>"];
   G --> H["<a href='#phase-7-implementation' style='text-decoration:none;'><b>Execution target</b></a>"];
