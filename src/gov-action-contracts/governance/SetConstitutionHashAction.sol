@@ -5,17 +5,17 @@ import "../address-registries/L2AddressRegistryInterfaces.sol";
 
 /// @notice Governance action for setting the constitution hash
 contract SetConstitutionHashAction {
-    IL2AddressRegistry public immutable govAddressRegisry;
+    IL2AddressRegistry public immutable govAddressRegistry;
     bytes32 public immutable newConstitutionHash;
 
-    constructor(IL2AddressRegistry _govAddressRegisry, bytes32 _newConstitutionHash) {
-        govAddressRegisry = _govAddressRegisry;
+    constructor(IL2AddressRegistry _govAddressRegistry, bytes32 _newConstitutionHash) {
+        govAddressRegistry = _govAddressRegistry;
         newConstitutionHash = _newConstitutionHash;
     }
 
     function perform() external {
         IArbitrumDAOConstitution arbitrumDaoConstitution =
-            govAddressRegisry.arbitrumDAOConstitution();
+            govAddressRegistry.arbitrumDAOConstitution();
         arbitrumDaoConstitution.setConstitutionHash(newConstitutionHash);
         require(
             arbitrumDaoConstitution.constitutionHash() == newConstitutionHash,
