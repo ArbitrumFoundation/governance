@@ -8,6 +8,7 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/draft-ERC20Pe
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20VotesUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "./TransferAndCallToken.sol";
+import "@openzeppelin/contracts/utils/Checkpoints.sol";
 
 /// @title  L2 Arbitrum Token
 /// @notice The L2 counterparty of the Arbitrum token.
@@ -27,6 +28,8 @@ contract L2ArbitrumToken is
     OwnableUpgradeable,
     TransferAndCallToken
 {
+    using Checkpoints for Checkpoints.History;
+
     string private constant NAME = "Arbitrum";
     string private constant SYMBOL = "ARB";
     /// @notice The minimum amount of time that must elapse before a mint is allowed
@@ -40,6 +43,42 @@ contract L2ArbitrumToken is
     address public l1Address;
     /// @notice The time at which the next mint is allowed - timestamp
     uint256 public nextMint;
+
+    /// @dev History of the total amount of delegated tokens
+    ///      The initial value is an estimate of the total delegation at the time of upgrade proposal creation.
+    ///      Another proposal can be made later to update this value if needed.
+    Checkpoints.History private _totalDelegationHistory;
+
+    /// @notice Called at proposal #1
+    /// @param  initialTotalDelegation The initial total delegation at the time of upgrade proposal creation.
+    ///         This is an estimate since it is chosen at proposal creation time and not effective until the proposal is executed.
+    function postUpgradeInit1(uint256 initialTotalDelegation) external onlyOwner {
+        _totalDelegationHistory.push(initialTotalDelegation);
+    }
+
+    /// @notice Called at proposal #2
+    /// @param  initialEstimationErrorAdjustment The amount the adjustment was off by, negated. This is added to the current total delegation.
+    function postUpgradeInit2(int256 initialEstimationErrorAdjustment) external onlyOwner {
+        _totalDelegationHistory.push(
+            uint256(int256(_totalDelegationHistory.latest()) + initialEstimationErrorAdjustment)
+        );
+    }
+
+    function getTotalDelegation() 
+        external
+        view
+        returns (uint256)
+    {
+        return _totalDelegationHistory.latest();
+    }
+
+    function getTotalDelegationAt(uint256 blockNumber)
+        external
+        view
+        returns (uint256)
+    {
+        return _totalDelegationHistory.getAtBlock(blockNumber);
+    }
 
     constructor() {
         _disableInitializers();
@@ -89,6 +128,24 @@ contract L2ArbitrumToken is
         override(ERC20Upgradeable, ERC20VotesUpgradeable)
     {
         super._afterTokenTransfer(from, to, amount);
+
+        address fromDelegate = delegates(from);
+        address toDelegate = delegates(to);
+
+        if (fromDelegate != toDelegate) {
+            int256 delta = 0;
+            if (fromDelegate != address(0)) {
+                delta -= int256(amount);
+            }
+            if (toDelegate != address(0)) {
+                delta += int256(amount);
+            }
+            if (delta != 0) {
+                _totalDelegationHistory.push(
+                    uint256(int256(_totalDelegationHistory.latest()) + delta)
+                );
+            }
+        }
     }
 
     function _mint(address to, uint256 amount)
