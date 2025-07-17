@@ -109,9 +109,9 @@ abstract contract SecurityCouncilNomineeElectionGovernorTiming is
         }
 
         uint256 electionCount = _getElectionCount();
-        require(electionCount > 0, "Cannot change cadence before first election");
 
-        uint256 electionIndex = electionCount - 1;
+        // if candence is changed before the first election created, we apply to the next election
+        uint256 electionIndex = electionCount == 0 ? 0 : electionCount - 1;
         uint256 electionStartTime = electionToTimestamp(electionIndex);
         require(
             block.timestamp != electionStartTime,
