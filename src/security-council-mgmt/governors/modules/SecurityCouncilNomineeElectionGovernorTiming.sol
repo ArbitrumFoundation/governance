@@ -77,8 +77,8 @@ abstract contract SecurityCouncilNomineeElectionGovernorTiming is
         _initializeCadence();
     }
 
-    /// @notice Get the current election count (must be implemented by parent contract)
-    function _getCurrentElectionCount() internal view virtual returns (uint256);
+    /// @notice Get the election count (must be implemented by parent contract)
+    function _getElectionCount() internal view virtual returns (uint256);
 
     /// @notice Initialize cadence for existing deployments
     /// @dev This function can be called via relay during an upgrade to initialize the cadence system
@@ -108,19 +108,28 @@ abstract contract SecurityCouncilNomineeElectionGovernorTiming is
             revert InvalidCadence(newCadenceMonths);
         }
 
-        uint256 currentElectionCount = _getCurrentElectionCount();
-        uint256 currentElectionStartTime = electionToTimestamp(currentElectionCount);
+        uint256 electionCount = _getElectionCount();
+        require(electionCount > 0, "Cannot change cadence before first election");
+
+        uint256 electionIndex = electionCount - 1;
+        uint256 electionStartTime = electionToTimestamp(electionIndex);
         require(
-            block.timestamp != currentElectionStartTime,
+            block.timestamp != electionStartTime,
             "Cannot change cadence at exact election start time"
         );
 
         _cadenceCheckpoints.push(
             CadenceCheckpoint({
-                electionIndex: uint32(currentElectionCount),
-                timestamp: uint128(currentElectionStartTime),
+                electionIndex: uint32(electionIndex),
+                timestamp: uint128(electionStartTime),
                 cadenceMonths: uint96(newCadenceMonths)
             })
+        );
+
+        uint256 nextElectionStartTime = electionToTimestamp(electionIndex + 1);
+        require(
+            block.timestamp < nextElectionStartTime,
+            "Cannot make next election start time too early"
         );
     }
 
@@ -157,12 +166,13 @@ abstract contract SecurityCouncilNomineeElectionGovernorTiming is
             return timestamp;
         }
 
+        uint256 previousElectionIndex = electionIndex - 1;
         // Copied from OpenZeppelin Contracts (last updated v4.5.0) (utils/Checkpoints.sol)
         uint256 high = _cadenceCheckpoints.length;
         uint256 low = 0;
         while (low < high) {
             uint256 mid = Math.average(low, high);
-            if (_cadenceCheckpoints[mid].electionIndex > electionIndex) {
+            if (_cadenceCheckpoints[mid].electionIndex > previousElectionIndex) {
                 high = mid;
             } else {
                 low = mid + 1;

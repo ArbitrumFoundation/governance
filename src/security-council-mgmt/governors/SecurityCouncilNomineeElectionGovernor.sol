@@ -404,7 +404,7 @@ contract SecurityCouncilNomineeElectionGovernor is
     }
 
     /// @inheritdoc SecurityCouncilNomineeElectionGovernorTiming
-    function _getCurrentElectionCount() internal view override returns (uint256) {
+    function _getElectionCount() internal view override returns (uint256) {
         return electionCount;
     }
 
