@@ -2,7 +2,7 @@
 pragma solidity 0.8.16;
 
 import "@arbitrum/nitro-contracts/src/precompiles/ArbSys.sol";
-import "./UpgradeExecutor.sol";
+import "@offchainlabs/upgrade-executor/src/IUpgradeExecutor.sol";
 import "./L1ArbitrumTimelock.sol";
 import "./security-council-mgmt/Common.sol";
 
@@ -41,6 +41,7 @@ contract UpgradeExecRouteBuilder {
     error UpgradeExecAlreadyExists(uint256 chindId);
     error ParamLengthMismatch(uint256 len1, uint256 len2);
     error EmptyActionBytesData(bytes[]);
+    error InvalidActionType(uint256 actionType);
 
     /// @notice The magic value used by the L1 timelock to indicate that a retryable ticket should be created
     ///         See L1ArbitrumTimelock for more details
@@ -100,13 +101,15 @@ contract UpgradeExecRouteBuilder {
     /// @param actionAddresses  Addresses of the action contracts to be called
     /// @param actionValues     Values to call the action contracts with
     /// @param actionDatas      Call data to call the action contracts with
+    /// @param actionTypes      Types of the action contracts to be called (0: execute, 1: executeCall)
     /// @param predecessor      A predecessor value for the l1 timelock operation
     /// @param timelockSalt     A salt for the l1 timelock operation
-    function createActionRouteData(
+    function createActionRouteData2(
         uint256[] memory chainIds,
         address[] memory actionAddresses,
         uint256[] memory actionValues,
         bytes[] memory actionDatas,
+        uint256[] memory actionTypes,
         bytes32 predecessor,
         bytes32 timelockSalt
     ) public view returns (address, bytes memory) {
@@ -118,6 +121,9 @@ contract UpgradeExecRouteBuilder {
         }
         if (chainIds.length != actionDatas.length) {
             revert ParamLengthMismatch(chainIds.length, actionDatas.length);
+        }
+        if (chainIds.length != actionTypes.length) {
+            revert ParamLengthMismatch(chainIds.length, actionTypes.length);
         }
 
         address[] memory schedTargets = new address[](chainIds.length);
@@ -135,9 +141,18 @@ contract UpgradeExecRouteBuilder {
                 revert EmptyActionBytesData(actionDatas);
             }
 
-            bytes memory executorData = abi.encodeWithSelector(
-                UpgradeExecutor.execute.selector, actionAddresses[i], actionDatas[i]
-            );
+            bytes memory executorData;
+            if (actionTypes[i] == 0) {
+                executorData = abi.encodeWithSelector(
+                    IUpgradeExecutor.execute.selector, actionAddresses[i], actionDatas[i]
+                );
+            } else if (actionTypes[i] == 1) {
+                executorData = abi.encodeWithSelector(
+                    IUpgradeExecutor.executeCall.selector, actionAddresses[i], actionDatas[i]
+                );
+            } else {
+                revert InvalidActionType(actionTypes[i]);
+            }
 
             // for L1, inbox is set to address(0):
             if (upExecLocation.inbox == address(0)) {
@@ -174,6 +189,34 @@ contract UpgradeExecRouteBuilder {
         return (
             address(100),
             abi.encodeWithSelector(ArbSys.sendTxToL1.selector, l1TimelockAddr, timelockCallData)
+        );
+    }
+
+    /// @notice Creates the to address and calldata to be called to execute a route to a batch of action contracts.
+    ///         Action types are defaulted to 0 (execute). See Governance Action Contracts for more details.
+    /// @dev    This function is deprecated. Use createActionRouteData2 instead.
+    /// @param chainIds         Chain ids containing the actions to be called
+    /// @param actionAddresses  Addresses of the action contracts to be called
+    /// @param actionValues     Values to call the action contracts with
+    /// @param actionDatas      Call data to call the action contracts with
+    /// @param predecessor      A predecessor value for the l1 timelock operation
+    /// @param timelockSalt     A salt for the l1 timelock operation
+    function createActionRouteData(
+        uint256[] memory chainIds,
+        address[] memory actionAddresses,
+        uint256[] memory actionValues,
+        bytes[] memory actionDatas,
+        bytes32 predecessor,
+        bytes32 timelockSalt
+    ) public view returns (address, bytes memory) {
+        return createActionRouteData2(
+            chainIds,
+            actionAddresses,
+            actionValues,
+            actionDatas,
+            new uint256[](chainIds.length), // action types, default to 0 for execute
+            predecessor,
+            timelockSalt
         );
     }
 

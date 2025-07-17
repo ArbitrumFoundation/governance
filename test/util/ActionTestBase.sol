@@ -15,7 +15,7 @@ import "../../src/ArbitrumTimelock.sol";
 import "../../src/L1ArbitrumTimelock.sol";
 import "../../src/FixedDelegateErc20Wallet.sol";
 import "../util/TestUtil.sol";
-import "../../src/UpgradeExecutor.sol";
+import "@offchainlabs/upgrade-executor/src/UpgradeExecutor.sol";
 import "../../src/ArbitrumDAOConstitution.sol";
 import "../../src/gov-action-contracts/address-registries/L1AddressRegistry.sol" as _ar;
 import "../../src/gov-action-contracts/address-registries/L2AddressRegistry.sol" as _ar1;

@@ -34,11 +34,15 @@ contract NonGovernanceChainSCMgmtActivationAction {
         // confirm updates
         bytes32 EXECUTOR_ROLE = upgradeExecutor.EXECUTOR_ROLE();
         require(
-            upgradeExecutor.hasRole(EXECUTOR_ROLE, address(newEmergencySecurityCouncil)),
+            IAccessControlUpgradeable(address(upgradeExecutor)).hasRole(
+                EXECUTOR_ROLE, address(newEmergencySecurityCouncil)
+            ),
             "NonGovernanceChainSCMgmtActivationAction: new emergency security council not set"
         );
         require(
-            !upgradeExecutor.hasRole(EXECUTOR_ROLE, address(prevEmergencySecurityCouncil)),
+            !IAccessControlUpgradeable(address(upgradeExecutor)).hasRole(
+                EXECUTOR_ROLE, address(prevEmergencySecurityCouncil)
+            ),
             "NonGovernanceChainSCMgmtActivationAction: prev emergency security council still set"
         );
     }
