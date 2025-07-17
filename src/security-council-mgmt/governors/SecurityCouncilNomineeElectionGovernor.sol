@@ -180,6 +180,15 @@ contract SecurityCouncilNomineeElectionGovernor is
         proposalId = GovernorUpgradeable.propose(targets, values, callDatas, description);
 
         electionCount++;
+
+        address[] memory membersUpForReelection = currentCohort() == Cohort.FIRST
+            ? securityCouncilManager.getFirstCohort()
+            : securityCouncilManager.getSecondCohort();
+
+        // add the members up for reelection as automatic nominees
+        for (uint256 i = 0; i < membersUpForReelection.length; i++) {
+            _addNominee(proposalId, membersUpForReelection[i]);
+        }
     }
 
     /// @dev Revert if the previous member election has not executed.
