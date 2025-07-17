@@ -838,8 +838,11 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
         pure
         returns (uint256)
     {
+        uint256 year = months / 12;
+        months = months % 12;
+
         return DateTimeLib.dateTimeToTimestamp({
-            year: date.year,
+            year: date.year + year,
             month: date.month + months,
             day: date.day,
             hour: date.hour,
@@ -1107,16 +1110,16 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
     function testCadenceWithLargeValues() public {
         vm.prank(initParams.owner);
         governor.relay(
-            address(governor), 0, abi.encodeWithSelector(governor.setCadence.selector, 12)
+            address(governor), 0, abi.encodeWithSelector(governor.setCadence.selector, 36)
         );
 
         uint256 secondElection = governor.electionToTimestamp(1);
 
         // First election: Jan 1, 2030
-        // Second election: Jan 1, 2031 (12 months later)
+        // Second election: Jan 1, 2033 (36 months later)
         uint256 expectedSecondTime =
-            _datePlusMonthsToTimestamp(initParams.firstNominationStartDate, 12);
+            _datePlusMonthsToTimestamp(initParams.firstNominationStartDate, 36);
 
-        assertEq(secondElection, expectedSecondTime, "Elections should be 12 months apart");
+        assertEq(secondElection, expectedSecondTime, "Elections should be 36 months apart");
     }
 }
