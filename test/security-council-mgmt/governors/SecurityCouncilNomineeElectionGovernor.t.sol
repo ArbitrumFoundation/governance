@@ -963,4 +963,160 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
             )
         );
     }
+
+    function testDefaultCadence() public {
+        assertEq(governor.cadenceInMonths(), 6, "Default cadence should be 6 months");
+    }
+
+    function testSetCadenceBeforeFirstElection() public {
+        vm.prank(initParams.owner);
+        governor.relay(
+            address(governor), 0, abi.encodeWithSelector(governor.setCadence.selector, 3)
+        );
+
+        assertEq(governor.cadenceInMonths(), 3, "Cadence should be updated to 3 months");
+    }
+
+    function testSetCadenceInvalidValue() public {
+        vm.prank(initParams.owner);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                SecurityCouncilNomineeElectionGovernorTiming.InvalidCadence.selector, 0
+            )
+        );
+        governor.relay(
+            address(governor), 0, abi.encodeWithSelector(governor.setCadence.selector, 0)
+        );
+    }
+
+    function testSetCadenceOnlyOwner() public {
+        address nonOwner = address(0x1234);
+        vm.prank(nonOwner);
+        vm.expectRevert("Governor: onlyGovernance");
+        governor.setCadence(3);
+    }
+
+    function testElectionTimestampsWithDefaultCadence() public {
+        uint256 secondElectionTime = governor.electionToTimestamp(1);
+        uint256 thirdElectionTime = governor.electionToTimestamp(2);
+
+        // Check that elections are properly spaced
+        // First election: Jan 1, 2030
+        // Second election: Jul 1, 2030 (6 months later)
+        // Third election: Jan 1, 2031 (6 months later)
+
+        // The actual timestamps depend on the exact calendar calculation
+        uint256 expectedSecondTime =
+            _datePlusMonthsToTimestamp(initParams.firstNominationStartDate, 6);
+        uint256 expectedThirdTime =
+            _datePlusMonthsToTimestamp(initParams.firstNominationStartDate, 12);
+
+        assertEq(
+            secondElectionTime, expectedSecondTime, "Second election should be 6 months after first"
+        );
+        assertEq(
+            thirdElectionTime, expectedThirdTime, "Third election should be 12 months after first"
+        );
+    }
+
+    function testSetCadenceAfterElections() public {
+        // Create first election
+        _propose();
+
+        // Fast forward and create second election
+        vm.warp(_datePlusMonthsToTimestamp(initParams.firstNominationStartDate, 6));
+        vm.prank(proposer);
+        governor.createElection();
+
+        // Now change cadence to 3 months
+        vm.prank(initParams.owner);
+        governor.relay(
+            address(governor), 0, abi.encodeWithSelector(governor.setCadence.selector, 3)
+        );
+
+        assertEq(governor.cadenceInMonths(), 3, "Cadence should be updated to 3 months");
+
+        // The next election (index 2) should be 3 months after the last one (index 1)
+        uint256 nextElectionTime = governor.electionToTimestamp(2);
+
+        // Should be approximately 3 months
+        uint256 expectedTime = _datePlusMonthsToTimestamp(
+            Date({
+                year: 2030,
+                month: 7, // January + 6 months
+                day: 1,
+                hour: 0
+            }),
+            3
+        );
+        assertEq(nextElectionTime, expectedTime, "Next election should follow new cadence");
+    }
+
+    function testSetCadenceTooSoonReverts() public {
+        // Create first election
+        _propose();
+
+        // Fast forward to near the end of the 6-month period
+        vm.warp(_datePlusMonthsToTimestamp(initParams.firstNominationStartDate, 6) - 1 days);
+
+        // Try to set cadence to 1 month - this would make next election in the past
+        vm.prank(initParams.owner);
+        vm.expectRevert();
+        governor.relay(
+            address(governor), 0, abi.encodeWithSelector(governor.setCadence.selector, 1)
+        );
+    }
+
+    function testMultipleCadenceChanges() public {
+        // Create first election with default 6-month cadence
+        _propose();
+
+        // Change to 4 months
+        vm.prank(initParams.owner);
+        governor.relay(
+            address(governor), 0, abi.encodeWithSelector(governor.setCadence.selector, 4)
+        );
+
+        // Fast forward and create second election
+        vm.warp(_datePlusMonthsToTimestamp(initParams.firstNominationStartDate, 4));
+        vm.prank(proposer);
+        governor.createElection();
+
+        // Change to 2 months
+        vm.prank(initParams.owner);
+        governor.relay(
+            address(governor), 0, abi.encodeWithSelector(governor.setCadence.selector, 2)
+        );
+
+        // Verify the third election timing
+        uint256 thirdElectionTime = governor.electionToTimestamp(2);
+
+        // Should be 2 months after the second election
+        uint256 expectedTime = _datePlusMonthsToTimestamp(
+            Date({
+                year: 2030,
+                month: 5, // January + 4 months
+                day: 1,
+                hour: 0
+            }),
+            2
+        );
+        assertEq(thirdElectionTime, expectedTime, "Third election should follow newest cadence");
+    }
+
+    function testCadenceWithLargeValues() public {
+        vm.prank(initParams.owner);
+        governor.relay(
+            address(governor), 0, abi.encodeWithSelector(governor.setCadence.selector, 12)
+        );
+
+        uint256 secondElection = governor.electionToTimestamp(1);
+
+        // First election: Jan 1, 2030
+        // Second election: Jan 1, 2031 (12 months later)
+        uint256 expectedSecondTime =
+            _datePlusMonthsToTimestamp(initParams.firstNominationStartDate, 12);
+
+        assertEq(secondElection, expectedSecondTime, "Elections should be 12 months apart");
+    }
 }
