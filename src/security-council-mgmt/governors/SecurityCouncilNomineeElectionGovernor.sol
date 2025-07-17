@@ -101,6 +101,21 @@ contract SecurityCouncilNomineeElectionGovernor is
         _disableInitializers();
     }
 
+    function getProxyAdmin() internal view returns (address admin) {
+        // https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v3.4.0/contracts/proxy/TransparentUpgradeableProxy.sol#L48
+        // Storage slot with the admin of the proxy contract.
+        // This is the keccak-256 hash of "eip1967.proxy.admin" subtracted by 1, and is
+        bytes32 slot = 0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103;
+        assembly {
+            admin := sload(slot)
+        }
+    }
+
+    function postUpgradeInit() external {
+        require(msg.sender == getProxyAdmin(), "NOT_FROM_ADMIN");
+        _initializeCadence();
+    }
+
     /// @notice Initializes the governor
     function initialize(InitParams memory params) public initializer {
         __Governor_init("SecurityCouncilNomineeElectionGovernor");
@@ -386,6 +401,11 @@ contract SecurityCouncilNomineeElectionGovernor is
         return SecurityCouncilMgmtUtils.filterAddressesWithExcludeList(
             maybeCompliantNominees, election.isExcluded
         );
+    }
+
+    /// @inheritdoc SecurityCouncilNomineeElectionGovernorTiming
+    function _getCurrentElectionCount() internal view override returns (uint256) {
+        return electionCount;
     }
 
     /// @notice Current number of compliant nominees for the proposal
