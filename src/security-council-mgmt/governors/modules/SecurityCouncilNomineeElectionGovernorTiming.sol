@@ -13,15 +13,20 @@ abstract contract SecurityCouncilNomineeElectionGovernorTiming is
     Initializable,
     GovernorUpgradeable
 {
-    /// @notice First election start date
+    /// @notice This is the first election start date only if the first election is yet to be created
     Date public firstNominationStartDate;
 
     /// @notice Duration of the nominee vetting period (expressed in blocks)
     /// @dev    This is the amount of time after voting ends that the nomineeVetter can exclude noncompliant nominees
     uint256 public nomineeVettingDuration;
 
+    /// @notice The cadence of elections in months
+    uint256 public cadenceInMonths;
+
     error InvalidStartDate(uint256 year, uint256 month, uint256 day, uint256 hour);
     error StartDateTooEarly(uint256 startTime, uint256 currentTime);
+    error InvalidCadence(uint256 cadence);
+    error NextElectionTooSoon(uint256 nextElectionTimestamp, uint256 currentTimestamp);
 
     /// @notice Initialize the timing module
     /// @dev    Checks to make sure the start date is in the future and is valid
@@ -63,6 +68,7 @@ abstract contract SecurityCouncilNomineeElectionGovernorTiming is
 
         firstNominationStartDate = _firstNominationStartDate;
         nomineeVettingDuration = _nomineeVettingDuration;
+        cadenceInMonths = 6; // Default to 6 months
     }
 
     /// @notice Deadline for the nominee vetting period for a given `proposalId`
@@ -70,13 +76,71 @@ abstract contract SecurityCouncilNomineeElectionGovernorTiming is
         return proposalDeadline(proposalId) + nomineeVettingDuration;
     }
 
+    /// @notice Set the cadence for future elections
+    /// @param numberOfMonths The new cadence in months (must be >= 1)
+    /// @dev Internal function to be called by the main governor contract
+    function _setCadence(uint256 numberOfMonths, uint256 currentElectionCount) internal {
+        if (numberOfMonths < 1) {
+            revert InvalidCadence(numberOfMonths);
+        }
+
+        // If no elections have been created yet, just update the cadence
+        if (currentElectionCount == 0) {
+            cadenceInMonths = numberOfMonths;
+            return;
+        }
+
+        // Calculate the timestamp of the last election
+        uint256 lastElectionTimestamp = electionToTimestamp(currentElectionCount - 1);
+
+        // Calculate what the next election timestamp should be (last + new cadence)
+        (uint256 year, uint256 month, uint256 day, uint256 hour,,) =
+            DateTimeLib.timestampToDateTime(lastElectionTimestamp);
+        month += numberOfMonths;
+        year += (month - 1) / 12;
+        month = ((month - 1) % 12) + 1;
+
+        uint256 nextElectionTimestamp =
+            DateTimeLib.dateTimeToTimestamp(year, month, day, hour, 0, 0);
+
+        // Ensure the next election won't be moved to the past
+        if (nextElectionTimestamp < block.timestamp) {
+            revert NextElectionTooSoon(nextElectionTimestamp, block.timestamp);
+        }
+
+        // Calculate the new firstNominationStartDate that would make election at currentElectionCount
+        // occur at nextElectionTimestamp with the new cadence
+        // nextElectionTimestamp = newFirstDate + (currentElectionCount * numberOfMonths)
+        // So: newFirstDate = nextElectionTimestamp - (currentElectionCount * numberOfMonths)
+
+        // Work backwards from the next election timestamp
+        month = numberOfMonths * currentElectionCount;
+        uint256 yearsToSubtract = month / 12;
+        uint256 monthsToSubtract = month % 12;
+
+        (year, month, day, hour,,) = DateTimeLib.timestampToDateTime(nextElectionTimestamp);
+
+        if (month > monthsToSubtract) {
+            month -= monthsToSubtract;
+        } else {
+            month = month + 12 - monthsToSubtract;
+            yearsToSubtract += 1;
+        }
+        year -= yearsToSubtract;
+
+        // Update the firstNominationStartDate and cadence
+        firstNominationStartDate = Date({year: year, month: month, day: day, hour: hour});
+        cadenceInMonths = numberOfMonths;
+    }
+
     /// @notice Start timestamp of an election
+    ///         Only returns accurate timestamps for the last and upcoming elections after cadence changes
     /// @param electionIndex The index of the election
     function electionToTimestamp(uint256 electionIndex) public view returns (uint256) {
         // subtract one to make month 0 indexed
         uint256 month = firstNominationStartDate.month - 1;
 
-        month += 6 * electionIndex;
+        month += cadenceInMonths * electionIndex;
         uint256 year = firstNominationStartDate.year + month / 12;
         month = month % 12;
 
@@ -98,5 +162,5 @@ abstract contract SecurityCouncilNomineeElectionGovernorTiming is
      * variables without shifting down storage in the inheritance chain.
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
      */
-    uint256[45] private __gap;
+    uint256[44] private __gap;
 }
