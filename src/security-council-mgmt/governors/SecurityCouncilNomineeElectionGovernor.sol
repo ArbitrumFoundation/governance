@@ -76,6 +76,13 @@ contract SecurityCouncilNomineeElectionGovernor is
     event NomineeVetterChanged(address indexed oldNomineeVetter, address indexed newNomineeVetter);
     event ContenderAdded(uint256 indexed proposalId, address indexed contender);
     event NomineeExcluded(uint256 indexed proposalId, address indexed nominee);
+    event CadenceChanged(
+        uint256 newCadence,
+        uint256 nextElectionDate,
+        uint256 nextElectionMonth,
+        uint256 nextElectionDay,
+        uint256 nextElectionHour
+    );
 
     error OnlyNomineeVetter();
     error CreateTooEarly(uint256 blockTimestamp, uint256 startTime);
@@ -285,7 +292,14 @@ contract SecurityCouncilNomineeElectionGovernor is
     /// @notice Set the cadence for future elections
     /// @param numberOfMonths The new cadence in months (must be >= 1)
     function setCadence(uint256 numberOfMonths) external onlyGovernance {
-        _setCadence(numberOfMonths, electionCount);
+        Date memory nextElectionDate = _setCadence(numberOfMonths, electionCount);
+        emit CadenceChanged(
+            numberOfMonths,
+            nextElectionDate.year,
+            nextElectionDate.month,
+            nextElectionDate.day,
+            nextElectionDate.hour
+        );
     }
 
     /// @notice Allows the nomineeVetter to exclude a noncompliant nominee.

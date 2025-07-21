@@ -79,7 +79,10 @@ abstract contract SecurityCouncilNomineeElectionGovernorTiming is
     /// @notice Set the cadence for future elections
     /// @param numberOfMonths The new cadence in months (must be >= 1)
     /// @dev Internal function to be called by the main governor contract
-    function _setCadence(uint256 numberOfMonths, uint256 currentElectionCount) internal {
+    function _setCadence(uint256 numberOfMonths, uint256 currentElectionCount)
+        internal
+        returns (Date memory)
+    {
         if (numberOfMonths < 1) {
             revert InvalidCadence(numberOfMonths);
         }
@@ -87,21 +90,25 @@ abstract contract SecurityCouncilNomineeElectionGovernorTiming is
         // If no elections have been created yet, just update the cadence
         if (currentElectionCount == 0) {
             cadenceInMonths = numberOfMonths;
-            return;
+            return firstNominationStartDate;
         }
 
-        // Calculate the timestamp of the last election
-        uint256 lastElectionTimestamp = electionToTimestamp(currentElectionCount - 1);
-
         // Calculate what the next election timestamp should be (last + new cadence)
-        (uint256 year, uint256 month, uint256 day, uint256 hour,,) =
-            DateTimeLib.timestampToDateTime(lastElectionTimestamp);
-        month += numberOfMonths;
-        year += (month - 1) / 12;
-        month = ((month - 1) % 12) + 1;
+        Date memory nextElectionDate;
+        uint256 nextElectionTimestamp;
+        {
+            // Calculate the timestamp of the last election
+            uint256 lastElectionTimestamp = electionToTimestamp(currentElectionCount - 1);
 
-        uint256 nextElectionTimestamp =
-            DateTimeLib.dateTimeToTimestamp(year, month, day, hour, 0, 0);
+            (uint256 year, uint256 month, uint256 day, uint256 hour,,) =
+                DateTimeLib.timestampToDateTime(lastElectionTimestamp);
+            month += numberOfMonths;
+            year += (month - 1) / 12;
+            month = ((month - 1) % 12) + 1;
+
+            nextElectionDate = Date({year: year, month: month, day: day, hour: hour});
+            nextElectionTimestamp = DateTimeLib.dateTimeToTimestamp(year, month, day, hour, 0, 0);
+        }
 
         // Ensure the next election won't be moved to the past
         if (nextElectionTimestamp < block.timestamp) {
@@ -114,11 +121,12 @@ abstract contract SecurityCouncilNomineeElectionGovernorTiming is
         // So: newFirstDate = nextElectionTimestamp - (currentElectionCount * numberOfMonths)
 
         // Work backwards from the next election timestamp
-        month = numberOfMonths * currentElectionCount;
-        uint256 yearsToSubtract = month / 12;
-        uint256 monthsToSubtract = month % 12;
+        uint256 monthsToSubtract = numberOfMonths * currentElectionCount;
+        uint256 yearsToSubtract = monthsToSubtract / 12;
+        monthsToSubtract = monthsToSubtract % 12;
 
-        (year, month, day, hour,,) = DateTimeLib.timestampToDateTime(nextElectionTimestamp);
+        (uint256 year, uint256 month, uint256 day, uint256 hour,,) =
+            DateTimeLib.timestampToDateTime(nextElectionTimestamp);
 
         if (month > monthsToSubtract) {
             month -= monthsToSubtract;
@@ -131,6 +139,7 @@ abstract contract SecurityCouncilNomineeElectionGovernorTiming is
         // Update the firstNominationStartDate and cadence
         firstNominationStartDate = Date({year: year, month: month, day: day, hour: hour});
         cadenceInMonths = numberOfMonths;
+        return nextElectionDate;
     }
 
     /// @notice Start timestamp of an election
