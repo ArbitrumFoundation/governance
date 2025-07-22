@@ -23,6 +23,14 @@ abstract contract SecurityCouncilNomineeElectionGovernorTiming is
     /// @notice The cadence of elections in months
     uint256 public cadenceInMonths;
 
+    event CadenceChanged(
+        uint256 newCadence,
+        uint256 nextElectionDate,
+        uint256 nextElectionMonth,
+        uint256 nextElectionDay,
+        uint256 nextElectionHour
+    );
+
     error InvalidStartDate(uint256 year, uint256 month, uint256 day, uint256 hour);
     error StartDateTooEarly(uint256 startTime, uint256 currentTime);
     error InvalidCadence(uint256 cadence);
@@ -79,10 +87,7 @@ abstract contract SecurityCouncilNomineeElectionGovernorTiming is
     /// @notice Set the cadence for future elections
     /// @param numberOfMonths The new cadence in months (must be >= 1)
     /// @dev Internal function to be called by the main governor contract
-    function _setCadence(uint256 numberOfMonths, uint256 currentElectionCount)
-        internal
-        returns (Date memory)
-    {
+    function _setCadence(uint256 numberOfMonths, uint256 currentElectionCount) internal {
         if (numberOfMonths < 1) {
             revert InvalidCadence(numberOfMonths);
         }
@@ -90,7 +95,13 @@ abstract contract SecurityCouncilNomineeElectionGovernorTiming is
         // If no elections have been created yet, just update the cadence
         if (currentElectionCount == 0) {
             cadenceInMonths = numberOfMonths;
-            return firstNominationStartDate;
+            emit CadenceChanged(
+                numberOfMonths,
+                firstNominationStartDate.year,
+                firstNominationStartDate.month,
+                firstNominationStartDate.day,
+                firstNominationStartDate.hour
+            );
         }
 
         // Calculate what the next election timestamp should be (last + new cadence)
@@ -139,7 +150,14 @@ abstract contract SecurityCouncilNomineeElectionGovernorTiming is
         // Update the firstNominationStartDate and cadence
         firstNominationStartDate = Date({year: year, month: month, day: day, hour: hour});
         cadenceInMonths = numberOfMonths;
-        return nextElectionDate;
+
+        emit CadenceChanged(
+            numberOfMonths,
+            nextElectionDate.year,
+            nextElectionDate.month,
+            nextElectionDate.day,
+            nextElectionDate.hour
+        );
     }
 
     /// @notice Start timestamp of an election
