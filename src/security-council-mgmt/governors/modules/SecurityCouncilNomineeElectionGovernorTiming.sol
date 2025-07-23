@@ -105,7 +105,6 @@ abstract contract SecurityCouncilNomineeElectionGovernorTiming is
         }
 
         // Calculate what the next election timestamp should be (last + new cadence)
-        Date memory nextElectionDate;
         uint256 nextElectionTimestamp;
         {
             // Calculate the timestamp of the last election
@@ -117,7 +116,14 @@ abstract contract SecurityCouncilNomineeElectionGovernorTiming is
             year += (month - 1) / 12;
             month = ((month - 1) % 12) + 1;
 
-            nextElectionDate = Date({year: year, month: month, day: day, hour: hour});
+            // we emit the event here to save some stack space
+            emit CadenceChanged(
+                numberOfMonths,
+                year,
+                month,
+                day,
+                hour
+            );
             nextElectionTimestamp = DateTimeLib.dateTimeToTimestamp(year, month, day, hour, 0, 0);
         }
 
@@ -150,14 +156,6 @@ abstract contract SecurityCouncilNomineeElectionGovernorTiming is
         // Update the firstNominationStartDate and cadence
         firstNominationStartDate = Date({year: year, month: month, day: day, hour: hour});
         cadenceInMonths = numberOfMonths;
-
-        emit CadenceChanged(
-            numberOfMonths,
-            nextElectionDate.year,
-            nextElectionDate.month,
-            nextElectionDate.day,
-            nextElectionDate.hour
-        );
     }
 
     /// @notice Start timestamp of an election
