@@ -930,6 +930,7 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
     function _addContender(uint256 proposalId, uint8 contender) internal {
         uint256 privKey = _contenderPrivKey(contender);
         address addr = _contender(contender);
+        _mockCohortIncludes(Cohort.FIRST, addr, false);
         _mockCohortIncludes(Cohort.SECOND, addr, false);
         bytes memory sig = sigUtils.signAddContenderMessage(proposalId, privKey);
         governor.addContender(proposalId, sig);
