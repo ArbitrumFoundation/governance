@@ -248,6 +248,7 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
         sig = sigUtils.signAddContenderMessage(proposalId, _contenderPrivKey(0));
 
         // test in other cohort
+        _mockCohortIncludes(Cohort.FIRST, _contender(0), false);
         _mockCohortIncludes(Cohort.SECOND, _contender(0), true);
         vm.expectRevert(
             abi.encodeWithSelector(
@@ -259,6 +260,7 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
         governor.addContender(proposalId, sig);
 
         // should fail if the proposal is not pending
+        _mockCohortIncludes(Cohort.FIRST, _contender(0), false);
         _mockCohortIncludes(Cohort.SECOND, _contender(0), false);
         vm.roll(governor.proposalSnapshot(proposalId) + 1);
         assertTrue(governor.state(proposalId) == IGovernorUpgradeable.ProposalState.Active);
@@ -277,6 +279,7 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
 
         // check that it correctly mutated the state
         assertTrue(governor.isContender(proposalId, _contender(0)));
+        assertFalse(governor.isNominee(proposalId, _contender(0)));
 
         // adding again should fail
         vm.expectRevert(
@@ -285,6 +288,16 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
             )
         );
         governor.addContender(proposalId, sig);
+
+        // adding a member up for reelection should succeed and automatically add them as a nominee
+        _mockCohortIncludes(Cohort.FIRST, _contender(1), true);
+        _mockCohortIncludes(Cohort.SECOND, _contender(1), false);
+        sig = sigUtils.signAddContenderMessage(proposalId, _contenderPrivKey(1));
+        governor.addContender(proposalId, sig);
+
+        // check that it correctly mutated the state
+        assertTrue(governor.isContender(proposalId, _contender(1)));
+        assertTrue(governor.isNominee(proposalId, _contender(1)));
     }
 
     function testSetNomineeVetter() public {
