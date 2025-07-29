@@ -4,7 +4,7 @@
 [submodule "token-bridge-contracts"]
 	path = token-bridge-contracts
 	url = https://github.com/OffchainLabs/token-bridge-contracts.git
-	branch = reverse-bridge-2
+	branch = v1.2.3
 [submodule "lib/solady"]
 	path = lib/solady
 	url = https://github.com/Vectorized/solady
