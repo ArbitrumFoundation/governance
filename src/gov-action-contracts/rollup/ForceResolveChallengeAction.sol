@@ -10,7 +10,12 @@ contract ForceResolveChallengeAction {
         addressRegistry = _addressRegistry;
     }
 
-    function perform(address[] calldata stakerA, address[] calldata stakerB) external {
-        IRollupAdmin(address(addressRegistry.rollup())).forceResolveChallenge(stakerA, stakerB);
+    function perform(bytes32 assertionHash, bytes32 parentAssertionHash, AssertionState calldata confirmState, bytes32 inboxAcc) external {
+        IRollupAdmin(address(addressRegistry.rollup())).forceConfirmAssertion(
+            assertionHash,
+            parentAssertionHash,
+            confirmState,
+            inboxAcc
+        );
     }
 }
