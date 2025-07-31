@@ -112,21 +112,12 @@ abstract contract SecurityCouncilNomineeElectionGovernorTiming is
             // Calculate the timestamp of the last election
             uint256 lastElectionTimestamp = electionToTimestamp(currentElectionCount - 1);
 
+            nextElectionTimestamp = DateTimeLib.addMonths(lastElectionTimestamp, numberOfMonths);
             (uint256 year, uint256 month, uint256 day, uint256 hour,,) =
-                DateTimeLib.timestampToDateTime(lastElectionTimestamp);
-            month += numberOfMonths;
-            year += (month - 1) / 12;
-            month = ((month - 1) % 12) + 1;
+                DateTimeLib.timestampToDateTime(nextElectionTimestamp);
 
             // we emit the event here to save some stack space
-            emit CadenceChanged(
-                numberOfMonths,
-                year,
-                month,
-                day,
-                hour
-            );
-            nextElectionTimestamp = DateTimeLib.dateTimeToTimestamp(year, month, day, hour, 0, 0);
+            emit CadenceChanged(numberOfMonths, year, month, day, hour);
         }
 
         // Ensure the next election won't be moved to the past
@@ -141,19 +132,9 @@ abstract contract SecurityCouncilNomineeElectionGovernorTiming is
 
         // Work backwards from the next election timestamp
         uint256 monthsToSubtract = numberOfMonths * currentElectionCount;
-        uint256 yearsToSubtract = monthsToSubtract / 12;
-        monthsToSubtract = monthsToSubtract % 12;
-
+        uint256 offsetTimestamp = DateTimeLib.subMonths(nextElectionTimestamp, monthsToSubtract);
         (uint256 year, uint256 month, uint256 day, uint256 hour,,) =
-            DateTimeLib.timestampToDateTime(nextElectionTimestamp);
-
-        if (month > monthsToSubtract) {
-            month -= monthsToSubtract;
-        } else {
-            month = month + 12 - monthsToSubtract;
-            yearsToSubtract += 1;
-        }
-        year -= yearsToSubtract;
+            DateTimeLib.timestampToDateTime(offsetTimestamp);
 
         // Update the firstNominationStartDate and cadence
         firstNominationStartDate = Date({year: year, month: month, day: day, hour: hour});
