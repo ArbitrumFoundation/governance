@@ -102,6 +102,7 @@ abstract contract SecurityCouncilNomineeElectionGovernorTiming is
                 firstNominationStartDate.day,
                 firstNominationStartDate.hour
             );
+            return;
         }
 
         // Calculate what the next election timestamp should be (last + new cadence)
