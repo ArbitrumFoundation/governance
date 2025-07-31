@@ -298,6 +298,25 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
         // check that it correctly mutated the state
         assertTrue(governor.isContender(proposalId, _contender(1)));
         assertTrue(governor.isNominee(proposalId, _contender(1)));
+
+        // reelection member should not be able to receive votes
+        vm.roll(governor.proposalSnapshot(proposalId) + 1);
+        _mockGetPastVotes(_voter(0), governor.quorum(proposalId));
+        vm.prank(_voter(0));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                SecurityCouncilNomineeElectionGovernorCountingUpgradeable
+                    .NomineeAlreadyAdded
+                    .selector,
+                _contender(1)
+            )
+        );
+        governor.castVoteWithReasonAndParams({
+            proposalId: proposalId,
+            support: 1,
+            reason: "",
+            params: abi.encode(_contender(1), 1)
+        });
     }
 
     function testSetNomineeVetter() public {
