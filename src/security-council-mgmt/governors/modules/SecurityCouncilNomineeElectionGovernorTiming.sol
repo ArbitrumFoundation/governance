@@ -86,6 +86,7 @@ abstract contract SecurityCouncilNomineeElectionGovernorTiming is
 
     /// @notice Set the cadence for future elections
     /// @param numberOfMonths The new cadence in months (must be >= 1)
+    /// @param currentElectionCount The current number of elections
     /// @dev Internal function to be called by the main governor contract
     function _setCadence(uint256 numberOfMonths, uint256 currentElectionCount) internal {
         if (numberOfMonths == 0) {
