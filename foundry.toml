@@ -6,12 +6,7 @@ libs = ['lib']
 optimizer = true
 optimizer_runs = 20000
 via_ir = false
-
-compilation_restrictions = [
-    { paths = "src/*", version = '0.8.16' },
-    { paths = "test/*", version = '0.8.16' },
-    { paths = "node_modules/@arbitrum/nitro-contracts/src/", version = '>=0.8.17', evm_version = 'cancun', optimizer_runs = 2000 },
-]
+solc_version = '0.8.16'
 
 [profile.sec_council_mgmt]
 optimizer_runs = 750
