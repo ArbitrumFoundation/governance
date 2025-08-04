@@ -3,7 +3,7 @@ pragma solidity 0.8.16;
 
 import "../address-registries/interfaces.sol";
 
-contract ForceResolveChallengeAction {
+contract ForceConfirmAssertionAction {
     IRollupGetter public immutable addressRegistry;
 
     constructor(IRollupGetter _addressRegistry) {
