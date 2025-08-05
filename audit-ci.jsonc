@@ -99,6 +99,18 @@
         // Cross-site Scripting (XSS) in serialize-javascript
         "GHSA-76p7-773f-r4q5",
         // axios Requests Vulnerable To Possible SSRF and Credential Leakage via Absolute URL
-        "GHSA-jr5f-v2jv-69x6"
+        "GHSA-jr5f-v2jv-69x6",
+        // form-data uses unsafe random function in form-data for choosing boundary (Critical)
+        "GHSA-fjxv-7rqg-78g4",
+        // brace-expansion Regular Expression Denial of Service vulnerability
+        "GHSA-v6h2-p8h4-qcjw",
+        // undici Denial of Service attack via bad certificate data
+        "GHSA-cxrh-j4jr-qwg3",
+        // Homograph attack allows Unicode lookalike characters to bypass validation
+        "GHSA-xq7p-g2vc-g82p",
+        // pbkdf2 silently disregards Uint8Array input, returning static keys (Critical)
+        "GHSA-v62p-rq8g-8h59",
+        // pbkdf2 returns predictable uninitialized/zero-filled memory for non-normalized or unimplemented algos
+        "GHSA-h7cp-r72f-jxh6"
     ]
   }
