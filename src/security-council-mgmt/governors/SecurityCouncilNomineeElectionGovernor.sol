@@ -61,14 +61,13 @@ contract SecurityCouncilNomineeElectionGovernor is
     /// @notice Address responsible for blocking non compliant nominees
     address public nomineeVetter;
 
-    /// @notice Security council manager contract
-    /// @dev    Used to execute the election result immediately if <= 6 compliant nominees are chosen
+    /// @inheritdoc ISecurityCouncilNomineeElectionGovernor
     ISecurityCouncilManager public securityCouncilManager;
 
-    /// @notice Security council member election governor contract
+    /// @inheritdoc ISecurityCouncilNomineeElectionGovernor
     ISecurityCouncilMemberElectionGovernor public securityCouncilMemberElectionGovernor;
 
-    /// @notice Number of elections created
+    /// @inheritdoc ISecurityCouncilNomineeElectionGovernor
     uint256 public electionCount;
 
     /// @notice Maps proposalId to ElectionInfo
@@ -423,7 +422,10 @@ contract SecurityCouncilNomineeElectionGovernor is
         public
         view
         virtual
-        override
+        override(
+            ISecurityCouncilNomineeElectionGovernor,
+            SecurityCouncilNomineeElectionGovernorCountingUpgradeable
+        )
         returns (bool)
     {
         return _elections[proposalId].isContender[possibleContender];
