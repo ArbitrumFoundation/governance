@@ -5,6 +5,7 @@ import "forge-std/Test.sol";
 
 import "../../src/gov-action-contracts/AIPs/SecurityCouncilMgmt/SecurityCouncilUpgradeAction.sol";
 import "../../src/security-council-mgmt/SecurityCouncilManager.sol";
+import "../../src/security-council-mgmt/governors/SecurityCouncilNomineeElectionGovernor.sol";
 import "../../src/gov-action-contracts/address-registries/L2AddressRegistry.sol";
 
 contract SecurityCouncilUpgradeActionTest is Test {
@@ -46,6 +47,11 @@ contract SecurityCouncilUpgradeActionTest is Test {
             ISecurityCouncilNomineeElectionGovernor(0x8a1cDA8dee421cD06023470608605934c16A05a0)
         );
 
+        SecurityCouncilNomineeElectionGovernor scNomineeElectionGovernor =
+        SecurityCouncilNomineeElectionGovernor(payable(address(reg.scNomineeElectionGovernor())));
+        vm.warp(1_757_937_601); // After the 2025 Sep election
+        scNomineeElectionGovernor.createElection();
+
         address newImplementation = address(new SecurityCouncilManager());
         address newNomineeElectionGovernorImplementation =
             address(new SecurityCouncilNomineeElectionGovernor());
@@ -72,6 +78,13 @@ contract SecurityCouncilUpgradeActionTest is Test {
             "Min rotation period setter not set"
         );
         assertEq(_getImplementation(), newImplementation, "implementation not set");
+
+        uint256 electionCount = scNomineeElectionGovernor.electionCount();
+        assertEq(
+            scNomineeElectionGovernor.electionToTimestamp(electionCount),
+            1_789_473_600,
+            "not September 15, 2026 12:00:00 PM"
+        );
     }
 
     function _getImplementation() internal view returns (address) {

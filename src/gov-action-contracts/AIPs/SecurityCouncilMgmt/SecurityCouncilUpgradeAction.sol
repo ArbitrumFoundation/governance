@@ -42,6 +42,16 @@ contract SecurityCouncilUpgradeAction {
     }
 
     function perform() external {
+        SecurityCouncilNomineeElectionGovernor scNomineeElectionGovernor =
+        SecurityCouncilNomineeElectionGovernor(
+            payable(address(l2AddressRegistry.scNomineeElectionGovernor()))
+        );
+        require(
+            scNomineeElectionGovernor.electionCount() == 5,
+            "SecurityCouncilUpgradeAction: not expected timing"
+        );
+
+        // Upgrade the sec council manager to allow member rotation and sets min rotation vars
         ISecurityCouncilManager secCouncilManager = l2AddressRegistry.securityCouncilManager();
         l2AddressRegistry.govProxyAdmin().upgradeAndCall(
             TransparentUpgradeableProxy(payable(address(secCouncilManager))),
@@ -62,28 +72,36 @@ contract SecurityCouncilUpgradeAction {
             "SecurityCouncilUpgradeAction: Min rotation period setter not set"
         );
 
-        SecurityCouncilNomineeElectionGovernor scNomineeElectionGovernor =
-        SecurityCouncilNomineeElectionGovernor(
-            payable(address(l2AddressRegistry.scNomineeElectionGovernor()))
-        );
+        // Upgrade the sec council nominee election governor to allow modifying the cadence of election
+        // Allowing existing sec council members to automatically progress from the Nominee Selection phase
         l2AddressRegistry.govProxyAdmin().upgradeAndCall(
             TransparentUpgradeableProxy(payable(address(scNomineeElectionGovernor))),
             scNomineeElectionGovernorImpl,
             abi.encodeCall(scNomineeElectionGovernor.postUpgradeInit, ())
         );
 
-        scNomineeElectionGovernor.setCadence(cadenceInMonths);
+        scNomineeElectionGovernor.relay(
+            address(scNomineeElectionGovernor),
+            0,
+            abi.encodeCall(scNomineeElectionGovernor.setCadence, (cadenceInMonths))
+        );
         require(
             scNomineeElectionGovernor.cadenceInMonths() == cadenceInMonths,
             "SecurityCouncilUpgradeAction: Cadence not set"
         );
 
-        scNomineeElectionGovernor.updateQuorumNumerator(10);
+        // Adjusting the qualification threshold of the Member Election phase from 0.2% to 0.1%
+        scNomineeElectionGovernor.relay(
+            address(scNomineeElectionGovernor),
+            0,
+            abi.encodeCall(scNomineeElectionGovernor.updateQuorumNumerator, (10))
+        );
         require(
             scNomineeElectionGovernor.quorumNumerator() == 10,
             "SecurityCouncilUpgradeAction: Quorum numerator not set"
         );
 
+        // Updating the ArbitrumDAO Constitution to reflect these changes
         IArbitrumDAOConstitution arbitrumDaoConstitution =
             l2AddressRegistry.arbitrumDAOConstitution();
         arbitrumDaoConstitution.setConstitutionHash(newConstitutionHash);

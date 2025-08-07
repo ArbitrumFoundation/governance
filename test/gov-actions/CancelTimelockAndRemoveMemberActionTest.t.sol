@@ -123,6 +123,12 @@ contract CancelTimelockAndRemoveMemberActionTest is Test {
         address rotationSetter = address(1337);
         uint256 minRotationPeriod = 1 weeks;
         uint256 cadenceInMonths = 12;
+
+        SecurityCouncilNomineeElectionGovernor scNomineeElectionGovernor =
+        SecurityCouncilNomineeElectionGovernor(payable(address(reg.scNomineeElectionGovernor())));
+        vm.warp(1_757_937_601); // After the 2025 Sep election
+        scNomineeElectionGovernor.createElection();
+
         SecurityCouncilUpgradeAction action = new SecurityCouncilUpgradeAction(
             reg,
             newImplementation,
