@@ -495,22 +495,23 @@ async function deployTokenToNova(
     novaDeployer,
     L2CustomGatewayToken__factory as unknown as TypeChainContractFactoryStatic<Contract>,
     (async () => {
-      const proxy = await new TransparentUpgradeableProxy__factory(novaDeployer).deploy(
-        novaTokenLogic.address,
-        proxyAdmin.address,
-        "0x"
-      );
-      await proxy.deployed();
-      const novaToken = L2CustomGatewayToken__factory.connect(proxy.address, novaDeployer);
-      await (
-        await novaToken.initialize(
+      const initData = L2CustomGatewayToken__factory.createInterface().encodeFunctionData(
+        "initialize",
+        [
           config.NOVA_TOKEN_NAME,
           config.NOVA_TOKEN_SYMBOL,
           config.NOVA_TOKEN_DECIMALS,
           novaNetwork.tokenBridge.l2CustomGateway,
           l1Token.address
-        )
-      ).wait();
+        ]
+      );
+      const proxy = await new TransparentUpgradeableProxy__factory(novaDeployer).deploy(
+        novaTokenLogic.address,
+        proxyAdmin.address,
+        initData
+      );
+      await proxy.deployed();
+      const novaToken = L2CustomGatewayToken__factory.connect(proxy.address, novaDeployer);
 
       return novaToken as unknown as Contract;
     }) as () => Promise<Contract>
