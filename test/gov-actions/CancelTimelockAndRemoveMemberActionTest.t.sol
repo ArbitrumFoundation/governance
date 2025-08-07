@@ -118,10 +118,19 @@ contract CancelTimelockAndRemoveMemberActionTest is Test {
 
     function ensureLatestScm(L2AddressRegistry reg) internal {
         address newImplementation = address(new SecurityCouncilManager());
+        address newNomineeElectionGovernorImplementation =
+            address(new SecurityCouncilNomineeElectionGovernor());
         address rotationSetter = address(1337);
         uint256 minRotationPeriod = 1 weeks;
+        uint256 cadenceInMonths = 12;
         SecurityCouncilUpgradeAction action = new SecurityCouncilUpgradeAction(
-            reg, newImplementation, minRotationPeriod, rotationSetter
+            reg,
+            newImplementation,
+            newNomineeElectionGovernorImplementation,
+            minRotationPeriod,
+            rotationSetter,
+            cadenceInMonths,
+            bytes32(0)
         );
         vm.prank(council);
         arbOneUe.execute(address(action), abi.encodeWithSelector(action.perform.selector));
