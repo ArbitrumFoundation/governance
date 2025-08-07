@@ -23,10 +23,10 @@
     async-mutex "^0.4.0"
     ethers "^5.1.0"
 
-"@arbitrum/token-bridge-contracts@1.2.3":
-  version "1.2.3"
-  resolved "https://registry.yarnpkg.com/@arbitrum/token-bridge-contracts/-/token-bridge-contracts-1.2.3.tgz#b08b22b5dcac255149a10bd8b66b0b55be7f3329"
-  integrity sha512-Gpw0vGv7oS9tgPMb0JfWW6Ve7yOvcmTdfhuxCgvCOG6ntVoJVhB030RhhfIV9jSpDatQi0T1Jqq2RIMXJIxqyQ==
+"@arbitrum/token-bridge-contracts@1.2.5":
+  version "1.2.5"
+  resolved "https://registry.yarnpkg.com/@arbitrum/token-bridge-contracts/-/token-bridge-contracts-1.2.5.tgz#ca954e75383c8d4b1baacdc004043fc2dd5adce5"
+  integrity sha512-wIekHs2hNGt0uxlKN8NiEcAoiN1Y4rN9jhbx/BX8T6E1B6XsabrLNVRs0lbsn7uLhV5Z61OaRTy9HirGmTs5+A==
   dependencies:
     "@arbitrum/nitro-contracts" "1.1.1"
     "@offchainlabs/stablecoin-evm" "1.0.0-orbit-alpha.2"
