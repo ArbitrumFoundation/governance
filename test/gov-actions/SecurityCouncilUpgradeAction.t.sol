@@ -3,11 +3,11 @@ pragma solidity 0.8.16;
 
 import "forge-std/Test.sol";
 
-import "../../src/gov-action-contracts/AIPs/SecurityCouncilMgmt/RotateMembersUpgradeAction.sol";
+import "../../src/gov-action-contracts/AIPs/SecurityCouncilMgmt/SecurityCouncilUpgradeAction.sol";
 import "../../src/security-council-mgmt/SecurityCouncilManager.sol";
 import "../../src/gov-action-contracts/address-registries/L2AddressRegistry.sol";
 
-contract RotateMembersUpgradeActionTest is Test {
+contract SecurityCouncilUpgradeActionTest is Test {
     SecurityCouncilManager scm = SecurityCouncilManager(0xD509E5f5aEe2A205F554f36E8a7d56094494eDFC);
     address oldImplementation = 0x468dA0eE5570Bdb1Dd81bFd925BAf028A93Dce64;
     ProxyAdmin proxyAdmin = ProxyAdmin(0xdb216562328215E010F819B5aBe947bad4ca961e);
@@ -49,7 +49,7 @@ contract RotateMembersUpgradeActionTest is Test {
         address newImplementation = address(new SecurityCouncilManager());
         address rotationSetter = address(137);
         uint256 minRotationPeriod = 1 weeks;
-        RotateMembersUpgradeAction action = new RotateMembersUpgradeAction(
+        SecurityCouncilUpgradeAction action = new SecurityCouncilUpgradeAction(
             reg, newImplementation, minRotationPeriod, rotationSetter
         );
         vm.prank(council);

@@ -6,7 +6,7 @@ import "../../address-registries/L2AddressRegistryInterfaces.sol";
 import "@openzeppelin/contracts-upgradeable/access/IAccessControlUpgradeable.sol";
 
 /// @notice Upgrades the sec council manager to allow member rotation and sets min rotation vars
-contract RotateMembersUpgradeAction {
+contract SecurityCouncilUpgradeAction {
     IL2AddressRegistry public immutable l2AddressRegistry;
     address public immutable secCouncilManagerImpl;
     uint256 public immutable minRotationPeriod;

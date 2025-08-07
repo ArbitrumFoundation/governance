@@ -3,7 +3,7 @@ pragma solidity 0.8.16;
 
 import "forge-std/Test.sol";
 
-import "../../src/gov-action-contracts/AIPs/SecurityCouncilMgmt/RotateMembersUpgradeAction.sol";
+import "../../src/gov-action-contracts/AIPs/SecurityCouncilMgmt/SecurityCouncilUpgradeAction.sol";
 import "../../src/gov-action-contracts/governance/CancelTimelockAndRemoveMemberAction.sol";
 import "../../src/security-council-mgmt/SecurityCouncilManager.sol";
 import "../../src/gov-action-contracts/address-registries/L2AddressRegistry.sol";
@@ -25,7 +25,7 @@ contract CancelTimelockAndRemoveMemberActionTest is Test {
 
     function testAction() external {
         if (!_isForkTest()) {
-            console.log("not fork test, skipping RotateMembersUpgradeActionTest");
+            console.log("not fork test, skipping SecurityCouncilUpgradeActionTest");
             return;
         }
 
@@ -120,7 +120,7 @@ contract CancelTimelockAndRemoveMemberActionTest is Test {
         address newImplementation = address(new SecurityCouncilManager());
         address rotationSetter = address(1337);
         uint256 minRotationPeriod = 1 weeks;
-        RotateMembersUpgradeAction action = new RotateMembersUpgradeAction(
+        SecurityCouncilUpgradeAction action = new SecurityCouncilUpgradeAction(
             reg, newImplementation, minRotationPeriod, rotationSetter
         );
         vm.prank(council);
