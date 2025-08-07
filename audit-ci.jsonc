@@ -12,20 +12,8 @@
         "GHSA-5h3x-9wvq-w4m2",
         // OpenZeppelin Contracts using MerkleProof multiproofs may allow proving arbitrary leaves for specific trees
         "GHSA-wprv-93r4-jj2p",
-        // semver vulnerable to Regular Expression Denial of Service
-        "GHSA-c2qf-rxjj-qqgw",
-        // Regular Expression Denial of Service in Headers
-        "GHSA-r6ch-mqf9-qc9w",
-        // CRLF Injection in Nodejs ‘undici’ via host
-        "GHSA-5r9g-qh6m-jxff",
-        // word-wrap vulnerable to Regular Expression Denial of Service
-        "GHSA-j8xg-fqg3-53r7",
-        // minimatch ReDoS vulnerability
-        "GHSA-f8q6-p94x-37v3",
         // OpenZeppelin Contracts's SignatureChecker may revert on invalid EIP-1271 signers
         "GHSA-4g63-c64m-25w9",
-        // OpenZeppelin Contracts initializer reentrancy may lead to double initialization
-        "GHSA-9c22-pwxw-p6hx",
         // OpenZeppelin Contracts's GovernorVotesQuorumFraction updates to quorum may affect past defeated proposals
         "GHSA-xrc4-737v-9q75",
         // OpenZeppelin Contracts's ERC165Checker may revert instead of returning false
@@ -34,71 +22,25 @@
         "GHSA-4h98-2769-gh6h",
         // OpenZeppelin Contracts ERC165Checker unbounded gas consumption
         "GHSA-7grf-83vw-6f5x",
-        // Improper Initialization in OpenZeppelin
-        "GHSA-88g8-f5mf-f5rj",
         // tough-cookie Prototype Pollution vulnerability
         "GHSA-72xf-g2v4-qvf3",
         // Server-Side Request Forgery in Request
         "GHSA-p8p7-x288-28g6",
         // OpenZeppelin: Using ERC2771Context with a custom forwarder can yield address(0)
         "GHSA-g4vp-m682-qqmp",
-        // undici - only used in hardhat, not used in prod
-        "GHSA-wqq4-5wpv-mx2g",
-        // get-func-name - only used in chai, not used in prod
-        "GHSA-4q6p-r6v2-jvc5",
-        // follow-redirects url.parse bug. Not used in prod
-        "GHSA-jchw-25xp-jwwc",
         // OpenZeppelin Contracts base64 encoding may read from potentially dirty memory
         "GHSA-9vx6-7xxf-x967",
-        // Undici proxy-authorization header not cleared on cross-origin redirect in fetch
-        "GHSA-3787-6prv-h9w3",
-        // follow-redirects' Proxy-Authorization header kept across hosts
-        "GHSA-cxjh-pqwp-8mfp",
-        // es5-ext vulnerable to Regular Expression Denial of Service in `function#copy` and `function#toStringTokens`
-        "GHSA-4gmj-3p3h-gm8h",
-        // Express.js Open Redirect in malformed URLs
-        "GHSA-rv95-896h-c2vc",
         // vuln in tar, node doesnt validate tar before trying to untar. Supplied bad tar can cause DOS on client
         // we use node only in dev, and tar is only used by web3 which we dont use client side
         // only bad tar we could be provided is through malicious package in dev
         "GHSA-f5x3-32g6-xq36",
-        // undici proxy autho again - same as GHSA-3787-6prv-h9w3
-        "GHSA-m4v8-wqvr-p9f7",
-        // undici fetch with integrity action is too lax - again we only use undici in dev so not an issue
-        "GHSA-9qxr-qj54-h672",
-        // memory exhaustion possible in lib/parse, but we only use node in dev so not an issue for us
-        "GHSA-grv7-fg5c-xmjg",
         // ws dos too many http - we only use in dev
         "GHSA-3h5v-q93c-6h6q",
-        // Server-Side Request Forgery in axios
-        "GHSA-8hc4-vh64-cxmj",
-        // Regular Expression Denial of Service (ReDoS) in micromatch
-        "GHSA-952p-6rrq-rcjv",
-        // body-parser vulnerable to denial of service when url encoding is enabled
-        "GHSA-qwcr-r2fm-qrc7",
-        // path-to-regexp outputs backtracking regular expressions
-        "GHSA-9wv6-86v2-598j",
         // cookie accepts cookie name, path, and domain with out of bounds characters
         "GHSA-pxg6-pf52-xh8x",
-        // send vulnerable to template injection that can lead to XSS
-        "GHSA-m6fv-jmcg-4jfg",
-        // serve-static vulnerable to template injection that can lead to XSS
-        "GHSA-cm22-4g7w-348p",
-        // express vulnerable to XSS via response.redirect()
-        "GHSA-qw6h-vgh9-j6wx",
-        // Unpatched `path-to-regexp` ReDoS in 0.1.x
-        "GHSA-rhx6-c78j-4q9w",
-        // Predictable results in nanoid generation when given non-integer values
-        "GHSA-mwcw-c2x4-8c55",
-        // secp256k1-node allows private key extraction over ECDH
-        "GHSA-584q-6j8j-r5pm",
-        // Regular Expression Denial of Service (ReDoS) in cross-spawn
-        "GHSA-3xgq-45jj-v275",
-        // Use of Insufficiently Random Values in undici
-        "GHSA-c76h-2ccp-4975",
-        // Cross-site Scripting (XSS) in serialize-javascript
-        "GHSA-76p7-773f-r4q5",
-        // axios Requests Vulnerable To Possible SSRF and Credential Leakage via Absolute URL
-        "GHSA-jr5f-v2jv-69x6"
+        // form-data uses unsafe random function in form-data for choosing boundary (Critical)
+        "GHSA-fjxv-7rqg-78g4",
+        // tmp allows arbitrary temporary file / directory write via symbolic link `dir` parameter
+        "GHSA-52f5-9888-hmc6"
     ]
   }
