@@ -3,7 +3,7 @@ pragma solidity 0.8.16;
 
 import "forge-std/Test.sol";
 
-import "../../src/gov-action-contracts/AIPs/SecurityCouncilMgmt/RotateMembersUpgradeAction.sol";
+import "../../src/gov-action-contracts/AIPs/SecurityCouncilMgmt/SecurityCouncilUpgradeAction.sol";
 import "../../src/gov-action-contracts/governance/CancelTimelockAndRemoveMemberAction.sol";
 import "../../src/security-council-mgmt/SecurityCouncilManager.sol";
 import "../../src/gov-action-contracts/address-registries/L2AddressRegistry.sol";
@@ -25,7 +25,7 @@ contract CancelTimelockAndRemoveMemberActionTest is Test {
 
     function testAction() external {
         if (!_isForkTest()) {
-            console.log("not fork test, skipping RotateMembersUpgradeActionTest");
+            console.log("not fork test, skipping SecurityCouncilUpgradeActionTest");
             return;
         }
 
@@ -118,10 +118,25 @@ contract CancelTimelockAndRemoveMemberActionTest is Test {
 
     function ensureLatestScm(L2AddressRegistry reg) internal {
         address newImplementation = address(new SecurityCouncilManager());
+        address newNomineeElectionGovernorImplementation =
+            address(new SecurityCouncilNomineeElectionGovernor());
         address rotationSetter = address(1337);
         uint256 minRotationPeriod = 1 weeks;
-        RotateMembersUpgradeAction action = new RotateMembersUpgradeAction(
-            reg, newImplementation, minRotationPeriod, rotationSetter
+        uint256 cadenceInMonths = 12;
+
+        SecurityCouncilNomineeElectionGovernor scNomineeElectionGovernor =
+        SecurityCouncilNomineeElectionGovernor(payable(address(reg.scNomineeElectionGovernor())));
+        vm.warp(1_757_937_601); // After the 2025 Sep election
+        scNomineeElectionGovernor.createElection();
+
+        SecurityCouncilUpgradeAction action = new SecurityCouncilUpgradeAction(
+            reg,
+            newImplementation,
+            newNomineeElectionGovernorImplementation,
+            minRotationPeriod,
+            rotationSetter,
+            cadenceInMonths,
+            bytes32(0)
         );
         vm.prank(council);
         arbOneUe.execute(address(action), abi.encodeWithSelector(action.perform.selector));

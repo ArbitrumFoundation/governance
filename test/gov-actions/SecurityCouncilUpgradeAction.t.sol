@@ -3,11 +3,12 @@ pragma solidity 0.8.16;
 
 import "forge-std/Test.sol";
 
-import "../../src/gov-action-contracts/AIPs/SecurityCouncilMgmt/RotateMembersUpgradeAction.sol";
+import "../../src/gov-action-contracts/AIPs/SecurityCouncilMgmt/SecurityCouncilUpgradeAction.sol";
 import "../../src/security-council-mgmt/SecurityCouncilManager.sol";
+import "../../src/security-council-mgmt/governors/SecurityCouncilNomineeElectionGovernor.sol";
 import "../../src/gov-action-contracts/address-registries/L2AddressRegistry.sol";
 
-contract RotateMembersUpgradeActionTest is Test {
+contract SecurityCouncilUpgradeActionTest is Test {
     SecurityCouncilManager scm = SecurityCouncilManager(0xD509E5f5aEe2A205F554f36E8a7d56094494eDFC);
     address oldImplementation = 0x468dA0eE5570Bdb1Dd81bFd925BAf028A93Dce64;
     ProxyAdmin proxyAdmin = ProxyAdmin(0xdb216562328215E010F819B5aBe947bad4ca961e);
@@ -46,11 +47,25 @@ contract RotateMembersUpgradeActionTest is Test {
             ISecurityCouncilNomineeElectionGovernor(0x8a1cDA8dee421cD06023470608605934c16A05a0)
         );
 
+        SecurityCouncilNomineeElectionGovernor scNomineeElectionGovernor =
+        SecurityCouncilNomineeElectionGovernor(payable(address(reg.scNomineeElectionGovernor())));
+        vm.warp(1_757_937_601); // After the 2025 Sep election
+        scNomineeElectionGovernor.createElection();
+
         address newImplementation = address(new SecurityCouncilManager());
+        address newNomineeElectionGovernorImplementation =
+            address(new SecurityCouncilNomineeElectionGovernor());
         address rotationSetter = address(137);
         uint256 minRotationPeriod = 1 weeks;
-        RotateMembersUpgradeAction action = new RotateMembersUpgradeAction(
-            reg, newImplementation, minRotationPeriod, rotationSetter
+        uint256 cadenceInMonths = 12;
+        SecurityCouncilUpgradeAction action = new SecurityCouncilUpgradeAction(
+            reg,
+            newImplementation,
+            newNomineeElectionGovernorImplementation,
+            minRotationPeriod,
+            rotationSetter,
+            cadenceInMonths,
+            bytes32(0)
         );
         vm.prank(council);
         arbOneUe.execute(address(action), abi.encodeWithSelector(action.perform.selector));
@@ -63,6 +78,13 @@ contract RotateMembersUpgradeActionTest is Test {
             "Min rotation period setter not set"
         );
         assertEq(_getImplementation(), newImplementation, "implementation not set");
+
+        uint256 electionCount = scNomineeElectionGovernor.electionCount();
+        assertEq(
+            scNomineeElectionGovernor.electionToTimestamp(electionCount),
+            1_789_473_600,
+            "not September 15, 2026 12:00:00 PM"
+        );
     }
 
     function _getImplementation() internal view returns (address) {
