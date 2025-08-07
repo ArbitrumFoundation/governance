@@ -91,6 +91,7 @@ contract TopNomineesGasTest is Test {
         // vote for N nominees
         uint256 quorum = nomineeGov.quorum(proposalId);
         for (uint16 i = 0; i < N; i++) {
+            _mockCohortIncludes(Cohort.FIRST, _nominee(i), false);
             _mockCohortIncludes(Cohort.SECOND, _nominee(i), false);
 
             vm.roll(nomineeGov.proposalSnapshot(proposalId));
