@@ -113,11 +113,11 @@ abstract contract SecurityCouncilNomineeElectionGovernorTiming is
             uint256 lastElectionTimestamp = electionToTimestamp(currentElectionCount - 1);
 
             nextElectionTimestamp = DateTimeLib.addMonths(lastElectionTimestamp, numberOfMonths);
-            (uint256 year, uint256 month, uint256 day, uint256 hour,,) =
+            (uint256 _year, uint256 _month, uint256 _day, uint256 _hour,,) =
                 DateTimeLib.timestampToDateTime(nextElectionTimestamp);
 
             // we emit the event here to save some stack space
-            emit CadenceChanged(numberOfMonths, year, month, day, hour);
+            emit CadenceChanged(numberOfMonths, _year, _month, _day, _hour);
         }
 
         // Ensure the next election won't be moved to the past
