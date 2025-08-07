@@ -7,6 +7,7 @@
   "license": "Apache 2.0",
   "scripts": {
     "audit:ci": "audit-ci --config ./audit-ci.jsonc",
+    "audit:fix": "yarn-audit-fix",
     "build": "yarn build:governance && yarn build:token-bridge-types && yarn build:gnosis-safe-types",
     "build:governance": "hardhat compile",
     "build:token-bridge-types": "cd token-bridge-contracts && yarn && yarn build",
