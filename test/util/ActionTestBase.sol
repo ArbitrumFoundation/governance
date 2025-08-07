@@ -75,9 +75,10 @@ abstract contract ActionTestBase {
         rollup.transferOwnership(address(ue));
         bridge = Bridge(TestUtil.deployProxy(pa, address(new Bridge())));
         bridge.initialize(IOwnable(address(rollup)));
-        si = SequencerInbox(TestUtil.deployProxy(pa, address(new SequencerInbox(117_964))));
-        si.initialize(bridge, ISequencerInbox.MaxTimeVariation(0, 0, 0, 0));
-        inbox = Inbox(TestUtil.deployProxy(pa, address(new Inbox(117_964))));
+        // nitro-testnode's L1 is not an Arbitrum chain, so IReader4844 must be a non-zero address
+        si = SequencerInbox(TestUtil.deployProxy(address(new SequencerInbox(117964, IReader4844(address(1)), false, false))));
+        si.initialize(bridge, ISequencerInbox.MaxTimeVariation(0, 0, 0, 0), BufferConfig(0, 0, 0), IFeeTokenPricer(address(0)));
+        inbox = Inbox(TestUtil.deployProxy(address(new Inbox(117964))));
         inbox.initialize(bridge, si);
 
         l1Timelock =
