@@ -6,28 +6,54 @@ dotenv.config();
 // when changing optimizer settings, make sure to also change settings in foundry.toml
 const solidityProfiles = {
   default: {
-    version: "0.8.16",
-    settings: {
-      optimizer: {
-        enabled: true,
-        runs: 20000
+    compilers: [
+      {
+        version: "0.8.16",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 20000,
+          },
+        },
       },
-    }
+      {
+        version: "0.8.26",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 200,
+          },
+        },
+      },
+    ],
   },
   sec_council_mgmt: {
-    version: "0.8.16",
-    settings: {
-      optimizer: {
-        enabled: true,
-        runs: 750
+    compilers: [
+      {
+        version: "0.8.16",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 750,
+          },
+        },
       },
-    }
-  }
-}
+      {
+        version: "0.8.26",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 200,
+          },
+        },
+      },
+    ],
+  },
+};
 
-const solidity = solidityProfiles[process.env.FOUNDRY_PROFILE || "default"] || solidityProfiles.default
+const solidity =
+  solidityProfiles[process.env.FOUNDRY_PROFILE || "default"] || solidityProfiles.default;
 console.log("Compiling with soldity profile:", solidity);
-
 
 const config: HardhatUserConfig = {
   solidity,
