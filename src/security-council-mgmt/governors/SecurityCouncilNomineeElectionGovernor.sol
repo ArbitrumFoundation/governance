@@ -76,6 +76,7 @@ contract SecurityCouncilNomineeElectionGovernor is
     event NomineeVetterChanged(address indexed oldNomineeVetter, address indexed newNomineeVetter);
     event ContenderAdded(uint256 indexed proposalId, address indexed contender);
     event NomineeExcluded(uint256 indexed proposalId, address indexed nominee);
+    event NomineeRotated(uint256 indexed proposalId, address indexed from, address indexed to);
 
     error OnlyNomineeVetter();
     error CreateTooEarly(uint256 blockTimestamp, uint256 startTime);
@@ -84,6 +85,7 @@ contract SecurityCouncilNomineeElectionGovernor is
     error AccountInOtherCohort(Cohort cohort, address account);
     error ProposalNotSucceededState(ProposalState state);
     error ProposalNotInVettingPeriod(uint256 blockNumber, uint256 vettingDeadline);
+    error ProposalNotInRotationPeriod(uint256 blockNumber, uint256 rotationDeadline);
     error NomineeAlreadyExcluded(address nominee);
     error CompliantNomineeTargetHit(uint256 nomineeCount, uint256 expectedCount);
     error ProposalInVettingPeriod(uint256 blockNumber, uint256 vettingDeadline);
@@ -353,6 +355,50 @@ contract SecurityCouncilNomineeElectionGovernor is
         _addNominee(proposalId, account);
     }
 
+    /// @notice Allows a nominee to rotate their position to a new address
+    /// @param proposalId The id of the proposal
+    /// @param newNomineeAddress The new address to rotate to
+    /// @param signature  A signature from the new member address over the 712 rotateNominee hash
+    function rotateNominee(uint256 proposalId, address newNomineeAddress, bytes calldata signature)
+        external
+    {
+        ElectionInfo storage election = _elections[proposalId];
+
+        if (election.isExcluded[msg.sender] || !isNominee(proposalId, msg.sender)) {
+            revert NotNominee(msg.sender);
+        }
+
+        // rotation can only happen up to 3 days before the proposal vetting deadline
+        // it is known that a malicious nominee can abuse rotation to avoid vetting but the nominee vetter
+        // would always have 3 extra days after any rotation to exclude the nominee if needed
+        uint256 rotationDeadline = proposalVettingDeadline(proposalId) - 3 days;
+        if (block.number <= rotationDeadline) {
+            revert ProposalNotInRotationPeriod(block.number, rotationDeadline);
+        }
+
+        address signer = recoverRotateNomineeMessage(proposalId, signature, msg.sender);
+        if (signer != newNomineeAddress) {
+            revert InvalidSignature();
+        }
+
+        // check to make sure the new nominee is not part of the other cohort (the cohort not currently up for election)
+        // this only checks against the current the current other cohort, and against the current cohort membership
+        // in the security council, so changes to those will mean this check will be inconsistent.
+        // this check then is only a relevant check when the elections are running as expected - one at a time,
+        // every 6 months. Updates to the sec council manager using methods other than replaceCohort can effect this check
+        // and it's expected that the entity making those updates understands this.
+        if (securityCouncilManager.cohortIncludes(otherCohort(), newNomineeAddress)) {
+            revert AccountInOtherCohort(otherCohort(), newNomineeAddress);
+        }
+
+        // rotation by first excluding the nominee and then adding the new nominee
+        election.isExcluded[msg.sender] = true;
+        election.excludedNomineeCount++;
+        _addNominee(proposalId, newNomineeAddress);
+        emit NomineeExcluded(proposalId, msg.sender);
+        emit NomineeRotated(proposalId, msg.sender, newNomineeAddress);
+    }
+
     /// @dev    `GovernorUpgradeable` function to execute a proposal overridden to handle nominee elections.
     ///         Can be called by anyone via `execute` after voting and nominee vetting periods have ended.
     ///         If the number of compliant nominees is > the target number of nominees,
@@ -467,6 +513,23 @@ contract SecurityCouncilNomineeElectionGovernor is
     {
         bytes32 digest = _hashTypedDataV4(
             keccak256(abi.encode(keccak256("AddContenderMessage(uint256 proposalId)"), proposalId))
+        );
+        return ECDSAUpgradeable.recover(digest, signature);
+    }
+
+    function recoverRotateNomineeMessage(uint256 proposalId, bytes calldata signature, address from)
+        public
+        view
+        returns (address)
+    {
+        bytes32 digest = _hashTypedDataV4(
+            keccak256(
+                abi.encode(
+                    keccak256("RotateNomineeMessage(uint256 proposalId, address from)"),
+                    proposalId,
+                    from
+                )
+            )
         );
         return ECDSAUpgradeable.recover(digest, signature);
     }
