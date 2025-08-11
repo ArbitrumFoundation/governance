@@ -92,6 +92,7 @@ contract SecurityCouncilNomineeElectionGovernor is
     error InsufficientCompliantNomineeCount(uint256 compliantNomineeCount, uint256 expectedCount);
     error ProposeDisabled();
     error NotNominee(address nominee);
+    error NotCompliantNominee(address nominee);
     error ProposalIdMismatch(uint256 nomineeProposalId, uint256 memberProposalId);
     error QuorumNumeratorTooLow(uint256 quorumNumeratorValue);
     error CastVoteDisabled();
@@ -367,8 +368,8 @@ contract SecurityCouncilNomineeElectionGovernor is
     {
         ElectionInfo storage election = _elections[proposalId];
 
-        if (election.isExcluded[msg.sender] || !isNominee(proposalId, msg.sender)) {
-            revert NotNominee(msg.sender);
+        if (!isCompliantNominee(proposalId, msg.sender)) {
+            revert NotCompliantNominee(msg.sender);
         }
 
         // rotation can only happen up to 3 days before the proposal vetting deadline
