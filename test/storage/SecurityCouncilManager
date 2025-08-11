@@ -34,10 +34,8 @@
 |-------------------+--------------------------------------------------------------+------+--------+-------+-----------------------------------------------------------------------------|
 | minRotationPeriod | uint256                                                      | 160  | 0      | 32    | src/security-council-mgmt/SecurityCouncilManager.sol:SecurityCouncilManager |
 |-------------------+--------------------------------------------------------------+------+--------+-------+-----------------------------------------------------------------------------|
-| rotatingTo        | mapping(address => address)                                  | 161  | 0      | 32    | src/security-council-mgmt/SecurityCouncilManager.sol:SecurityCouncilManager |
+| rotationNonce     | mapping(address => uint256)                                  | 161  | 0      | 32    | src/security-council-mgmt/SecurityCouncilManager.sol:SecurityCouncilManager |
 |-------------------+--------------------------------------------------------------+------+--------+-------+-----------------------------------------------------------------------------|
-| rotationNonce     | mapping(address => uint256)                                  | 162  | 0      | 32    | src/security-council-mgmt/SecurityCouncilManager.sol:SecurityCouncilManager |
-|-------------------+--------------------------------------------------------------+------+--------+-------+-----------------------------------------------------------------------------|
-| __gap             | uint256[38]                                                  | 163  | 0      | 1216  | src/security-council-mgmt/SecurityCouncilManager.sol:SecurityCouncilManager |
+| __gap             | uint256[39]                                                  | 162  | 0      | 1216  | src/security-council-mgmt/SecurityCouncilManager.sol:SecurityCouncilManager |
 ╰-------------------+--------------------------------------------------------------+------+--------+-------+-----------------------------------------------------------------------------╯
 

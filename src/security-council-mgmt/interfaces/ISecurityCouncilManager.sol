@@ -51,7 +51,6 @@ interface ISecurityCouncilManager {
     error InvalidNewAddress(address newAddress);
 
     function rotatedTo(address) external view returns (address);
-    function rotatingTo(address) external view returns (address);
     function rotationNonce(address) external view returns (uint256);
 
     /// @notice There is a minimum period between when an address can be rotated
@@ -130,19 +129,6 @@ interface ISecurityCouncilManager {
         address memberElectionGovernor,
         bytes calldata signature
     ) external;
-    /// @notice Get the hash to be signed for future member rotation
-    /// @param from     The address that will be rotated out. This is included in the hash so that other members cant use this message to rotate their address
-    /// @param nonce    The message nonce. Must be the from address's current rotationNonce
-    function getSetRotatingToHash(address from, uint256 nonce) external view returns (bytes32);
-    /// @notice Set an address to be rotated to if the sender is ever elected as a member
-    ///         This enables unelected members to decide where their election address will update to. When a member is elected to the council they
-    ///         are expected to have a high level of security on their member key. Election candidates may not have set up that high level of security before
-    ///         registering their election key, so this method allows them to set up a new key that will be actually installed as the member upon election.
-    ///         If this future rotation causes a clash, the rotation will not be executed and the original address will be installed
-    ///         This rotation only applies to future replaceCohort, mainly used by the member election governor
-    /// @param newMemberAddress The new member address to be rotated to
-    /// @param signature        A signature from the new member address over the 712 setRotatingTo hash
-    function setRotatingTo(address newMemberAddress, bytes calldata signature) external;
     /// @notice Is the account a member of the first cohort
     function firstCohortIncludes(address account) external view returns (bool);
     /// @notice Is the account a member of the second cohort

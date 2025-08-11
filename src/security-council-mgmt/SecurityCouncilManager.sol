@@ -38,7 +38,6 @@ contract SecurityCouncilManager is
     event MemberRemoved(address indexed member, Cohort indexed cohort);
     event MemberReplaced(address indexed replacedMember, address indexed newMember, Cohort cohort);
     event MemberRotated(address indexed replacedAddress, address indexed newAddress, Cohort cohort);
-    event RotatingToSet(address indexed replacedAddress, address indexed newAddress);
     event SecurityCouncilAdded(
         address indexed securityCouncil,
         address indexed updateAction,
@@ -91,11 +90,7 @@ contract SecurityCouncilManager is
     /// @inheritdoc ISecurityCouncilManager
     uint256 public minRotationPeriod;
 
-    /// @notice Store the address to be rotated to for new members in the future
-    /// @dev    `rotatingTo[X] = Y` means if X is installed as a new member, Y will be installed instead
-    mapping(address => address) public rotatingTo;
-
-    /// @notice Nonce used when setting rotatingTo or rotatedTo
+    /// @notice Nonce used when setting rotatedTo
     mapping(address => uint256) public rotationNonce;
 
     /// @notice The 712 name hash
@@ -119,8 +114,6 @@ contract SecurityCouncilManager is
     );
     bytes32 public constant ROTATE_MEMBER_TYPE_HASH =
         keccak256(bytes("rotateMember(address from, uint256 nonce)"));
-    bytes32 public constant SET_ROTATING_TO_TYPE_HASH =
-        keccak256(bytes("setRotatingTo(address from, uint256 nonce)"));
 
     constructor() {
         _disableInitializers();
@@ -218,17 +211,6 @@ contract SecurityCouncilManager is
         address[] storage otherCohort = _cohort == Cohort.FIRST ? secondCohort : firstCohort;
 
         for (uint256 i = 0; i < _newCohort.length; i++) {
-            // we have to change the array so correct _newCohort can be emitted
-            address rotatingAddress = rotatingTo[_newCohort[i]];
-            if (rotatingAddress != address(0)) {
-                // only replace if there is no clash
-                if (
-                    !SecurityCouncilMgmtUtils.isInArray(rotatingAddress, _newCohort)
-                        && !SecurityCouncilMgmtUtils.isInArray(rotatingAddress, otherCohort)
-                ) {
-                    _newCohort[i] = rotatingAddress;
-                }
-            }
             _addMemberToCohortArray(_newCohort[i], _cohort);
         }
 
@@ -317,13 +299,6 @@ contract SecurityCouncilManager is
     }
 
     /// @inheritdoc ISecurityCouncilManager
-    function getSetRotatingToHash(address from, uint256 nonce) public view returns (bytes32) {
-        return ECDSAUpgradeable.toTypedDataHash(
-            _domainSeparatorV4(), keccak256(abi.encode(SET_ROTATING_TO_TYPE_HASH, from, nonce))
-        );
-    }
-
-    /// @inheritdoc ISecurityCouncilManager
     function rotateMember(
         address newMemberAddress,
         address memberElectionGovernor,
@@ -405,26 +380,6 @@ contract SecurityCouncilManager is
         rotationNonce[msg.sender] = currentRotationNonce + 1;
         Cohort cohort = _swapMembers(msg.sender, newAddress);
         emit MemberRotated({replacedAddress: msg.sender, newAddress: newAddress, cohort: cohort});
-    }
-
-    /// @inheritdoc ISecurityCouncilManager
-    function setRotatingTo(address newMemberAddress, bytes calldata signature) external {
-        uint256 currentRotationNonce = rotationNonce[msg.sender];
-        // we enforce that a the new address is an eoa in the same way do
-        // in NomineeGovernor.addContender by requiring a signature
-        address newAddress = ECDSAUpgradeable.recover(
-            getSetRotatingToHash(msg.sender, currentRotationNonce), signature
-        );
-        // we safety check the new member address is the one that we expect to replace here
-        // this isn't strictly necessary but it guards against the case where the wrong sig is accidentally used
-        if (newAddress != newMemberAddress) {
-            revert InvalidNewAddress(newAddress);
-        }
-
-        rotatingTo[msg.sender] = newAddress;
-        rotationNonce[msg.sender] = currentRotationNonce + 1;
-
-        emit RotatingToSet({replacedAddress: msg.sender, newAddress: newAddress});
     }
 
     function _swapMembers(address _addressToRemove, address _addressToAdd)
@@ -659,5 +614,5 @@ contract SecurityCouncilManager is
      * variables without shifting down storage in the inheritance chain.
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
      */
-    uint256[38] private __gap;
+    uint256[39] private __gap;
 }
