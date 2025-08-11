@@ -98,6 +98,7 @@ contract SecurityCouncilNomineeElectionGovernor is
     error LastMemberElectionNotExecuted(uint256 prevProposalId);
     error InvalidSignature();
     error Deprecated(string message);
+    error NotFromProxyAdmin();
 
     constructor() {
         _disableInitializers();
@@ -114,7 +115,9 @@ contract SecurityCouncilNomineeElectionGovernor is
     }
 
     function postUpgradeInit() external {
-        require(msg.sender == getProxyAdmin(), "NOT_FROM_ADMIN");
+        if (msg.sender != getProxyAdmin()) {
+            revert NotFromProxyAdmin();
+        }
         if (cadenceInMonths == 0) {
             cadenceInMonths = 6;
         }
@@ -583,15 +586,6 @@ contract SecurityCouncilNomineeElectionGovernor is
     ) public virtual override(GovernorUpgradeable, ElectionGovernor) returns (uint256) {
         return ElectionGovernor.castVoteWithReasonAndParamsBySig(
             proposalId, support, reason, params, v, r, s
-        );
-    }
-
-    /// @notice Deprecated, use `addContender(uint256 proposalId, bytes calldata signature)` instead
-    /// @dev    This function is deprecated because contenders should only be EOA's that can produce signatures.
-    ///         If a security council member's address is not an EOA, then they may be unable to sign on all relevant chains.
-    function addContender(uint256) external pure {
-        revert Deprecated(
-            "addContender(uint256 proposalId) has been deprecated. Use addContender(uint256 proposalId, bytes calldata signature) instead"
         );
     }
 
