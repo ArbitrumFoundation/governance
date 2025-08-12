@@ -36,6 +36,26 @@ contract SigUtils is Test {
         sig = abi.encodePacked(r, s, v);
     }
 
+    function signRotateNomineeMessage(uint256 proposalId, uint256 privKey, address from)
+        public
+        view
+        returns (bytes memory sig)
+    {
+        bytes32 digest = _hashTypedDataV4(
+            keccak256(
+                abi.encode(
+                    keccak256("RotateNomineeMessage(uint256 proposalId, address from)"),
+                    proposalId,
+                    from
+                )
+            )
+        );
+
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privKey, digest);
+
+        sig = abi.encodePacked(r, s, v);
+    }
+
     function _domainSeparatorV4() internal view returns (bytes32) {
         return _buildDomainSeparator(_TYPE_HASH, _EIP712NameHash(), _EIP712VersionHash());
     }
@@ -1154,5 +1174,79 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
             _datePlusMonthsToTimestamp(initParams.firstNominationStartDate, 36);
 
         assertEq(secondElection, expectedSecondTime, "Elections should be 36 months apart");
+    }
+
+    function testRotateNominee() public {
+        uint256 proposalId = _propose();
+
+        // create a nominee
+        vm.roll(governor.proposalSnapshot(proposalId));
+        _addContender(proposalId, 0);
+        vm.roll(governor.proposalDeadline(proposalId));
+        _mockGetPastVotes(_voter(0), governor.quorum(proposalId));
+        _castVoteForContender(proposalId, _voter(0), _contender(0), governor.quorum(proposalId));
+
+        bytes memory sig =
+            sigUtils.signRotateNomineeMessage(proposalId, _contenderPrivKey(1), _contender(0));
+        uint256 rotationDeadline = governor.proposalVettingDeadline(proposalId) - 21_600;
+
+        // cannot rotate after the deadline
+        vm.roll(rotationDeadline + 1);
+        vm.prank(_contender(0));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                SecurityCouncilNomineeElectionGovernor.ProposalNotInRotationPeriod.selector,
+                block.number,
+                rotationDeadline
+            )
+        );
+        governor.rotateNominee(proposalId, _contender(1), sig);
+        vm.roll(rotationDeadline);
+
+        // cannot rotate if not a compliant nominee
+        vm.prank(_contender(1));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                SecurityCouncilNomineeElectionGovernor.NotCompliantNominee.selector, _contender(1)
+            )
+        );
+        governor.rotateNominee(proposalId, _contender(1), sig);
+
+        // cannot rotate with invalid signature
+        vm.prank(_contender(0));
+        vm.expectRevert(
+            abi.encodeWithSelector(SecurityCouncilNomineeElectionGovernor.InvalidSignature.selector)
+        );
+        governor.rotateNominee(proposalId, _contender(2), sig);
+
+        // cannot rotate if in other cohort
+        _mockCohortIncludes(Cohort.SECOND, _contender(1), true);
+        vm.prank(_contender(0));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                SecurityCouncilNomineeElectionGovernor.AccountInOtherCohort.selector,
+                Cohort.SECOND,
+                _contender(1)
+            )
+        );
+        governor.rotateNominee(proposalId, _contender(1), sig);
+
+        // rotate the nominee
+        _mockCohortIncludes(Cohort.SECOND, _contender(1), false);
+        vm.prank(_contender(0));
+        governor.rotateNominee(proposalId, _contender(1), sig);
+
+        // cannot rotate again
+        vm.prank(_contender(0));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                SecurityCouncilNomineeElectionGovernor.NotCompliantNominee.selector, _contender(0)
+            )
+        );
+        governor.rotateNominee(proposalId, _contender(1), sig);
+
+        // make sure state is correct
+        assertTrue(governor.isCompliantNominee(proposalId, _contender(1)));
+        assertFalse(governor.isCompliantNominee(proposalId, _contender(0)));
     }
 }
