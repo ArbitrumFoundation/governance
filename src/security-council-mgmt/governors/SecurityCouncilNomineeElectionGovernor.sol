@@ -35,7 +35,7 @@ contract SecurityCouncilNomineeElectionGovernor is
     /// @param owner Owner of the governor (the Arbitrum DAO)
     /// @param quorumNumeratorValue Numerator of the quorum fraction (0.2% = 20)
     /// @param votingPeriod Duration of the voting period (expressed in blocks)
-    ///                     Note that the voting period + nominee vetting duration must be << than 6 months to ensure elections dont overlap
+    ///                     Note that the voting period + nominee vetting duration must be << than the set cadence (`cadenceInMonths`) to ensure elections dont overlap
     struct InitParams {
         Date firstNominationStartDate;
         uint256 nomineeVettingDuration;
@@ -181,7 +181,7 @@ contract SecurityCouncilNomineeElectionGovernor is
     }
 
     /// @notice Creates a new nominee election proposal.
-    ///         Can be called by anyone every 6 months.
+    ///         Can be called by anyone every `cadenceInMonths` months.
     /// @return proposalId The id of the proposal
     function createElection() external returns (uint256 proposalId) {
         // require that the last member election has executed
@@ -259,7 +259,7 @@ contract SecurityCouncilNomineeElectionGovernor is
         // this only checks against the current the current other cohort, and against the current cohort membership
         // in the security council, so changes to those will mean this check will be inconsistent.
         // this check then is only a relevant check when the elections are running as expected - one at a time,
-        // every 6 months. Updates to the sec council manager using methods other than replaceCohort can effect this check
+        // every `cadenceInMonths` months. Updates to the sec council manager using methods other than replaceCohort can effect this check
         // and it's expected that the entity making those updates understands this.
         if (securityCouncilManager.cohortIncludes(otherCohort(), signer)) {
             revert AccountInOtherCohort(otherCohort(), signer);
@@ -350,7 +350,7 @@ contract SecurityCouncilNomineeElectionGovernor is
         // this only checks against the current the current other cohort, and against the current cohort membership
         // in the security council, so changes to those will mean this check will be inconsistent.
         // this check then is only a relevant check when the elections are running as expected - one at a time,
-        // every 6 months. Updates to the sec council manager using methods other than replaceCohort can effect this check
+        // every `cadenceInMonths` months. Updates to the sec council manager using methods other than replaceCohort can effect this check
         // and it's expected that the entity making those updates understands this.
         if (securityCouncilManager.cohortIncludes(otherCohort(), account)) {
             revert AccountInOtherCohort(otherCohort(), account);
