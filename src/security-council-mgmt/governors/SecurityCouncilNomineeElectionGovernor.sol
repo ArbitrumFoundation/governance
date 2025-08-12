@@ -35,7 +35,7 @@ contract SecurityCouncilNomineeElectionGovernor is
     /// @param owner Owner of the governor (the Arbitrum DAO)
     /// @param quorumNumeratorValue Numerator of the quorum fraction (0.2% = 20)
     /// @param votingPeriod Duration of the voting period (expressed in blocks)
-    ///                     Note that the voting period + nominee vetting duration must be << than 6 months to ensure elections dont overlap
+    ///                     Note that the voting period + nominee vetting duration must be << than the set cadence (`cadenceInMonths`) to ensure elections dont overlap
     struct InitParams {
         Date firstNominationStartDate;
         uint256 nomineeVettingDuration;
@@ -101,6 +101,23 @@ contract SecurityCouncilNomineeElectionGovernor is
         _disableInitializers();
     }
 
+    function getProxyAdmin() internal view returns (address admin) {
+        // https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v3.4.0/contracts/proxy/TransparentUpgradeableProxy.sol#L48
+        // Storage slot with the admin of the proxy contract.
+        // This is the keccak-256 hash of "eip1967.proxy.admin" subtracted by 1, and is
+        bytes32 slot = 0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103;
+        assembly {
+            admin := sload(slot)
+        }
+    }
+
+    function postUpgradeInit() external {
+        require(msg.sender == getProxyAdmin(), "NOT_FROM_ADMIN");
+        if (cadenceInMonths == 0) {
+            cadenceInMonths = 6;
+        }
+    }
+
     /// @notice Initializes the governor
     function initialize(InitParams memory params) public initializer {
         __Governor_init("SecurityCouncilNomineeElectionGovernor");
@@ -158,7 +175,7 @@ contract SecurityCouncilNomineeElectionGovernor is
     }
 
     /// @notice Creates a new nominee election proposal.
-    ///         Can be called by anyone every 6 months.
+    ///         Can be called by anyone every `cadenceInMonths` months.
     /// @return proposalId The id of the proposal
     function createElection() external returns (uint256 proposalId) {
         // require that the last member election has executed
@@ -236,7 +253,7 @@ contract SecurityCouncilNomineeElectionGovernor is
         // this only checks against the current the current other cohort, and against the current cohort membership
         // in the security council, so changes to those will mean this check will be inconsistent.
         // this check then is only a relevant check when the elections are running as expected - one at a time,
-        // every 6 months. Updates to the sec council manager using methods other than replaceCohort can effect this check
+        // every `cadenceInMonths` months. Updates to the sec council manager using methods other than replaceCohort can effect this check
         // and it's expected that the entity making those updates understands this.
         if (securityCouncilManager.cohortIncludes(otherCohort(), signer)) {
             revert AccountInOtherCohort(otherCohort(), signer);
@@ -268,6 +285,12 @@ contract SecurityCouncilNomineeElectionGovernor is
         onlyOwner
     {
         AddressUpgradeable.functionCallWithValue(target, data, value);
+    }
+
+    /// @notice Set the cadence for future elections
+    /// @param numberOfMonths The new cadence in months (must be >= 1)
+    function setCadence(uint256 numberOfMonths) external onlyGovernance {
+        _setCadence(numberOfMonths, electionCount);
     }
 
     /// @notice Allows the nomineeVetter to exclude a noncompliant nominee.
@@ -321,7 +344,7 @@ contract SecurityCouncilNomineeElectionGovernor is
         // this only checks against the current the current other cohort, and against the current cohort membership
         // in the security council, so changes to those will mean this check will be inconsistent.
         // this check then is only a relevant check when the elections are running as expected - one at a time,
-        // every 6 months. Updates to the sec council manager using methods other than replaceCohort can effect this check
+        // every `cadenceInMonths` months. Updates to the sec council manager using methods other than replaceCohort can effect this check
         // and it's expected that the entity making those updates understands this.
         if (securityCouncilManager.cohortIncludes(otherCohort(), account)) {
             revert AccountInOtherCohort(otherCohort(), account);
