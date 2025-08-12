@@ -375,7 +375,8 @@ contract SecurityCouncilNomineeElectionGovernor is
         // rotation can only happen up to 3 days before the proposal vetting deadline
         // it is known that a malicious nominee can abuse rotation to avoid vetting but the nominee vetter
         // would always have 3 extra days after any rotation to exclude the nominee if needed
-        uint256 rotationDeadline = proposalVettingDeadline(proposalId) - 3 days;
+        // 21600 blocks is 3 days assuming 12 blocks per second
+        uint256 rotationDeadline = proposalVettingDeadline(proposalId) - 21600;
         if (block.number > rotationDeadline) {
             revert ProposalNotInRotationPeriod(block.number, rotationDeadline);
         }
