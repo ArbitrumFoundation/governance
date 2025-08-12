@@ -25,7 +25,7 @@ abstract contract SecurityCouncilNomineeElectionGovernorTiming is
 
     event CadenceChanged(
         uint256 newCadence,
-        uint256 nextElectionDate,
+        uint256 nextElectionYear,
         uint256 nextElectionMonth,
         uint256 nextElectionDay,
         uint256 nextElectionHour
