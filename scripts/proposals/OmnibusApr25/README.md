@@ -7,3 +7,5 @@ This proposal generation script and payload includes several different governanc
 link to forum and snapshot, brief description
 
 ## Disable USDT Gateway
+
+## SetAmortizedCostCapBips

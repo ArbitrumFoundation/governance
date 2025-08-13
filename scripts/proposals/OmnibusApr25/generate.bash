@@ -28,6 +28,16 @@ PROP2_VALUES=(
   $(cast to-wei 0.0005)
 )
 
+# SetAmortizedCostCapBips (PROP3)
+PROP3_CHAIN_IDS=(42170)
+PROP3_ADDRESSES=(
+  0x0000000000000000000000000000000000000070 # ArbOwner
+)
+PROP3_DATAS=(
+  $(cast calldata "setAmortizedCostCapBips(uint64 cap)" 0)
+)
+PROP3_ACTION_TYPES=(1) # executeCall
+PROP3_VALUES=(0)
 
 # Generate proposal data
 yarn gen:proposalData \
@@ -35,18 +45,23 @@ yarn gen:proposalData \
   --actionChainIds \
     ${PROP1_CHAIN_IDS[@]} \
     ${PROP2_CHAIN_IDS[@]} \
+    ${PROP3_CHAIN_IDS[@]} \
   --actionAddresses \
     ${PROP1_ADDRESSES[@]} \
     ${PROP2_ADDRESSES[@]} \
+    ${PROP3_ADDRESSES[@]} \
   --upgradeDatas \
     ${PROP1_DATAS[@]} \
     ${PROP2_DATAS[@]} \
+    ${PROP3_DATAS[@]} \
   --actionTypes \
     ${PROP1_ACTION_TYPES[@]} \
     ${PROP2_ACTION_TYPES[@]} \
+    ${PROP3_ACTION_TYPES[@]} \
   --upgradeValues \
     ${PROP1_VALUES[@]} \
     ${PROP2_VALUES[@]} \
+    ${PROP3_VALUES[@]} \
   --predecessor \
     0x0000000000000000000000000000000000000000000000000000000000000000 \
   --writeToJsonPath \
