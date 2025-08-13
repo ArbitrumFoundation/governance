@@ -937,6 +937,10 @@ export class L1OutboxStage implements ProposalStage {
     l1SignerOrProvider: Signer | Provider,
     arbOneProvider: ethers.providers.Provider
   ): Promise<L1OutboxStage[]> {
+    if (await arbOneProvider.getTransactionReceipt(receipt.transactionHash) === null) {
+      // this receipt is not from an arb1 transaction, skip
+      return [];
+    }
     const l2Receipt = new L2TransactionReceipt(receipt);
     const l2ToL1Events =
       (await l2Receipt.getL2ToL1Events()) as EventArgs<NitroL2ToL1TransactionEvent>[];

@@ -1,0 +1,13 @@
+diff --git a/node_modules/@arbitrum/nitro-contracts/src/challengeV2/libraries/Enums.sol b/node_modules/@arbitrum/nitro-contracts/src/challengeV2/libraries/Enums.sol
+index b5df37f..e46dad5 100644
+--- a/node_modules/@arbitrum/nitro-contracts/src/challengeV2/libraries/Enums.sol
++++ b/node_modules/@arbitrum/nitro-contracts/src/challengeV2/libraries/Enums.sol
+@@ -2,7 +2,7 @@
+ // For license information, see https://github.com/offchainlabs/bold/blob/main/LICENSE
+ // SPDX-License-Identifier: BUSL-1.1
+ //
+-pragma solidity ^0.8.17;
++pragma solidity ^0.8.0;
+ 
+ /// @notice The status of the edge
+ /// - Pending: Yet to be confirmed. Not all edges can be confirmed.

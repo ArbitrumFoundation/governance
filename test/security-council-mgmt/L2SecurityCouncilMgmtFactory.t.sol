@@ -15,7 +15,6 @@ import "../../src/security-council-mgmt/SecurityCouncilManager.sol";
 import "../../src/security-council-mgmt/interfaces/IGnosisSafe.sol";
 
 contract L2SecurityCouncilMgmtFactoryTest is Test, DeployGnosisWithModule {
-    ChainAndUpExecLocation[] upgradeExecutors;
     address govChainEmergencySecurityCouncil;
     address l1ArbitrumTimelock = address(333);
     address l2CoreGovTimelock;
