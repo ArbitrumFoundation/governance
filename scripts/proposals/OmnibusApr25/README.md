@@ -7,9 +7,3 @@ This proposal generation script and payload includes several different governanc
 link to forum and snapshot, brief description
 
 ## Disable USDT Gateway
-
-## Timeboost Beneficiary change
-
-## SC Key Rotation
-
-mention pr #315

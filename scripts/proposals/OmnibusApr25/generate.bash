@@ -28,27 +28,6 @@ PROP2_VALUES=(
   $(cast to-wei 0.0005)
 )
 
-# Timeboost Fee Split (PROP3)
-PROP3_CHAIN_IDS=(42161 42170)
-PROP3_ADDRESSES=(
-  0x5fcb496a31b7AE91e7c9078Ec662bd7A55cd3079  # Arbitrum One ELA
-  0xa5aBADAF73DFcf5261C7f55420418736707Dc0db  # Arbitrum Nova ELA
-)
-PROP3_DATAS=(
-  $(cast calldata "setBeneficiary(address)" 0xA4A8a4E2fe847Af59D340926aDCdeF6e988bB1f1) # Arbitrum One
-  $(cast calldata "setBeneficiary(address)" 0x9D537C5519B05f58CCddE6d77aEDa3B87F642Bbf) # Arbitrum Nova
-)
-PROP3_ACTION_TYPES=(1 1) # executeCall
-PROP3_VALUES=(0 0)
-
-# SC Key Rotation Upgrade (PROP4)
-PROP4_CHAIN_IDS=(42161)
-PROP4_ADDRESSES=(0x86E93E21AD108CaE7ADe482C34C230Bfd94D4A8B)
-PROP4_DATAS=(
-  $(cast calldata "perform()")
-)
-PROP4_ACTION_TYPES=(0)
-PROP4_VALUES=(0)
 
 # Generate proposal data
 yarn gen:proposalData \
@@ -56,28 +35,18 @@ yarn gen:proposalData \
   --actionChainIds \
     ${PROP1_CHAIN_IDS[@]} \
     ${PROP2_CHAIN_IDS[@]} \
-    ${PROP3_CHAIN_IDS[@]} \
-    ${PROP4_CHAIN_IDS[@]} \
   --actionAddresses \
     ${PROP1_ADDRESSES[@]} \
     ${PROP2_ADDRESSES[@]} \
-    ${PROP3_ADDRESSES[@]} \
-    ${PROP4_ADDRESSES[@]} \
   --upgradeDatas \
     ${PROP1_DATAS[@]} \
     ${PROP2_DATAS[@]} \
-    ${PROP3_DATAS[@]} \
-    ${PROP4_DATAS[@]} \
   --actionTypes \
     ${PROP1_ACTION_TYPES[@]} \
     ${PROP2_ACTION_TYPES[@]} \
-    ${PROP3_ACTION_TYPES[@]} \
-    ${PROP4_ACTION_TYPES[@]} \
   --upgradeValues \
     ${PROP1_VALUES[@]} \
     ${PROP2_VALUES[@]} \
-    ${PROP3_VALUES[@]} \
-    ${PROP4_VALUES[@]} \
   --predecessor \
     0x0000000000000000000000000000000000000000000000000000000000000000 \
   --writeToJsonPath \
