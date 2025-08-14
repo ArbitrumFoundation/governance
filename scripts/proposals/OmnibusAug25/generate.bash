@@ -67,5 +67,5 @@ yarn gen:proposalData \
   --predecessor \
     0x0000000000000000000000000000000000000000000000000000000000000000 \
   --writeToJsonPath \
-    ./scripts/proposals/OmnibusApr25/data.json
+    ./scripts/proposals/OmnibusAug25/data.json
 
