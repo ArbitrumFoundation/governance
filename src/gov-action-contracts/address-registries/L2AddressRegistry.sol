@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.16;
 
+import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 import "./L2AddressRegistryInterfaces.sol";
 
 contract L2AddressRegistry is IL2AddressRegistry {
@@ -8,12 +9,16 @@ contract L2AddressRegistry is IL2AddressRegistry {
     IL2ArbitrumGoverner public immutable treasuryGov;
     IFixedDelegateErc20Wallet public immutable treasuryWallet;
     IArbitrumDAOConstitution public immutable arbitrumDAOConstitution;
+    ProxyAdmin public immutable govProxyAdmin;
+    ISecurityCouncilNomineeElectionGovernor public immutable scNomineeElectionGovernor;
 
     constructor(
         IL2ArbitrumGoverner _coreGov,
         IL2ArbitrumGoverner _treasuryGov,
         IFixedDelegateErc20Wallet _treasuryWallet,
-        IArbitrumDAOConstitution _arbitrumDAOConstitution
+        IArbitrumDAOConstitution _arbitrumDAOConstitution,
+        ProxyAdmin _govProxyAdmin,
+        ISecurityCouncilNomineeElectionGovernor _scNomineeElectionGovernor
     ) {
         require(
             _treasuryWallet.owner() == _treasuryGov.timelock(),
@@ -27,6 +32,13 @@ contract L2AddressRegistry is IL2AddressRegistry {
         treasuryGov = _treasuryGov;
         treasuryWallet = _treasuryWallet;
         arbitrumDAOConstitution = _arbitrumDAOConstitution;
+        require(
+            _govProxyAdmin.getProxyAdmin(TransparentUpgradeableProxy(payable(address(_coreGov))))
+                == address(_govProxyAdmin),
+            "GovProxyAdmin must be proxy admin of the core governor"
+        );
+        govProxyAdmin = _govProxyAdmin;
+        scNomineeElectionGovernor = _scNomineeElectionGovernor;
     }
 
     function coreGovTimelock() external view returns (IArbitrumTimelock) {
@@ -39,5 +51,17 @@ contract L2AddressRegistry is IL2AddressRegistry {
 
     function l2ArbitrumToken() external view returns (IL2ArbitrumToken) {
         return IL2ArbitrumGoverner(address(coreGov)).token();
+    }
+
+    function scMemberElectionGovernor()
+        external
+        view
+        returns (ISecurityCouncilMemberElectionGovernor)
+    {
+        return scNomineeElectionGovernor.securityCouncilMemberElectionGovernor();
+    }
+
+    function securityCouncilManager() external view returns (ISecurityCouncilManager) {
+        return scNomineeElectionGovernor.securityCouncilManager();
     }
 }

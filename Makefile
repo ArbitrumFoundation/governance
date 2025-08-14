@@ -11,7 +11,7 @@ coverage                :; forge coverage
 gas                     :; forge test --gas-report
 gas-check               :; forge snapshot --check --tolerance 1
 snapshot                :; forge snapshot
-test-unit               :; forge test -vvv
+test-unit               :; ARB_RPC_URL=https://arb1.arbitrum.io/rpc forge test -vvv
 clean                   :; forge clean
 fmt                     :; forge fmt
 gen-network             :; yarn gen:network

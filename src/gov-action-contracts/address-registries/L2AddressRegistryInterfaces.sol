@@ -2,11 +2,15 @@
 pragma solidity 0.8.16;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
+import "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 import "../../interfaces/IArbitrumTimelock.sol";
 import "../../interfaces/IFixedDelegateErc20Wallet.sol";
 import "../../interfaces/IL2ArbitrumToken.sol";
 import "../../interfaces/IL2ArbitrumGovernor.sol";
 import "../../interfaces/IArbitrumDAOConstitution.sol";
+import "../../security-council-mgmt/interfaces/ISecurityCouncilManager.sol";
+import "../../security-council-mgmt/interfaces/ISecurityCouncilNomineeElectionGovernor.sol";
+import "../../security-council-mgmt/interfaces/ISecurityCouncilMemberElectionGovernor.sol";
 
 interface ICoreGovTimelockGetter {
     function coreGovTimelock() external view returns (IArbitrumTimelock);
@@ -36,6 +40,22 @@ interface IArbitrumDAOConstitutionGetter {
     function arbitrumDAOConstitution() external view returns (IArbitrumDAOConstitution);
 }
 
+interface IGovProxyAdminGetter {
+    function govProxyAdmin() external view returns (ProxyAdmin);
+}
+
+interface ISecurityCouncilGetters {
+    function securityCouncilManager() external view returns (ISecurityCouncilManager);
+    function scNomineeElectionGovernor()
+        external
+        view
+        returns (ISecurityCouncilNomineeElectionGovernor);
+    function scMemberElectionGovernor()
+        external
+        view
+        returns (ISecurityCouncilMemberElectionGovernor);
+}
+
 interface IL2AddressRegistry is
     ICoreGovGetter,
     ICoreGovTimelockGetter,
@@ -43,5 +63,7 @@ interface IL2AddressRegistry is
     IDaoTreasuryGetter,
     ITreasuryGovGetter,
     IL2ArbitrumTokenGetter,
-    IArbitrumDAOConstitutionGetter
+    IArbitrumDAOConstitutionGetter,
+    IGovProxyAdminGetter,
+    ISecurityCouncilGetters
 {}

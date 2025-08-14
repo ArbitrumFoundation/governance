@@ -12,6 +12,7 @@ struct SecurityCouncilManagerRoles {
     address[] memberRemovers;
     address memberRotator;
     address memberReplacer;
+    address minRotationPeriodSetter;
 }
 
 /// @notice Data for a Security Council to be managed
@@ -40,6 +41,22 @@ interface ISecurityCouncilManager {
     error SecurityCouncilNotInManager(SecurityCouncilData securiyCouncilData);
     error SecurityCouncilAlreadyInRouter(SecurityCouncilData securiyCouncilData);
 
+    // rotation errors
+    error RotationTooSoon(address rotator, uint256 rotatableWhen);
+    error GovernorNotReplacer();
+    error NewMemberIsContender(uint256 proposalId, address newMember);
+    error NewMemberIsNominee(uint256 proposalId, address newMember);
+    error InvalidNewAddress(address newAddress);
+
+    function rotatedTo(address) external view returns (address);
+    function rotationNonce(address) external view returns (uint256);
+
+    /// @notice There is a minimum period between when an address can be rotated
+    ///         This is to ensure a single member cannot do many rotations in a row
+    function minRotationPeriod() external view returns (uint256);
+    function MIN_ROTATION_PERIOD_SETTER_ROLE() external view returns (bytes32);
+    function MEMBER_REMOVER_ROLE() external view returns (bytes32);
+
     /// @notice initialize SecurityCouncilManager.
     /// @param _firstCohort addresses of first cohort
     /// @param _secondCohort addresses of second cohort
@@ -47,48 +64,66 @@ interface ISecurityCouncilManager {
     /// @param _roles permissions for triggering modifications to security councils
     /// @param  _l2CoreGovTimelock timelock for core governance / constitutional proposal
     /// @param _router UpgradeExecRouteBuilder address
+    /// @param _minRotationPeriod The minimum amount of time that must happen between address rotations by the same council member
+    ///                           Rotations are in race conditions with other actions, so care must be taken to set this parameter to be
+    ///                           greater than the time taken for other actions. An example of this is if the removal governor has the removal
+    ///                           role it may try to remove an address, but doing so requires passing a vote and in the meantime the address may
+    ///                           rotate. If the address is only allowed to rotate once during this period the manager can keep track of this and still
+    ///                           and still remove the address, however if the rotation period allows for two rotations the address will not get removed
+    ///                           A general rule for setting the min rotation period is: make sure it is longer that the amount of time taken to conduct
+    ///                           any other actions on the sec council manager.
     function initialize(
         address[] memory _firstCohort,
         address[] memory _secondCohort,
         SecurityCouncilData[] memory _securityCouncils,
         SecurityCouncilManagerRoles memory _roles,
         address payable _l2CoreGovTimelock,
-        UpgradeExecRouteBuilder _router
+        UpgradeExecRouteBuilder _router,
+        uint256 _minRotationPeriod
     ) external;
+    /// @notice Set the min rotation period. This is the minimum period that must occur
+    ///         between two consecutive rotations by the same member
+    /// @param _minRotationPeriod   The new minimum rotation period to be set
+    function setMinRotationPeriod(uint256 _minRotationPeriod) external;
     /// @notice Replaces a whole cohort.
-    /// @dev    Initiaties cross chain messages to update the individual Security Councils.
+    /// @dev    Initiates cross chain messages to update the individual Security Councils.
     /// @param _newCohort   New cohort members to replace existing cohort. Must have 6 members.
     /// @param _cohort      Cohort to replace.
     function replaceCohort(address[] memory _newCohort, Cohort _cohort) external;
     /// @notice Add a member to the specified cohort.
     ///         Cohorts cannot have more than 6 members, so the cohort must have less than 6 in order to call this.
     ///         New member cannot already be a member of either cohort.
-    /// @dev    Initiaties cross chain messages to update the individual Security Councils.
+    /// @dev    Initiates cross chain messages to update the individual Security Councils.
     ///         When adding a member, make sure that the key does not conflict with any contenders/nominees of ongoing elections.
     /// @param _newMember   New member to add
     /// @param _cohort      Cohort to add member to
     function addMember(address _newMember, Cohort _cohort) external;
     /// @notice Remove a member.
     /// @dev    Searches both cohorts for the member.
-    ///         Initiaties cross chain messages to update the individual Security Councils
+    ///         Initiates cross chain messages to update the individual Security Councils
     /// @param _member  Member to remove
     function removeMember(address _member) external;
     /// @notice Replace a member in a council - equivalent to removing a member, then adding another in its place.
-    ///         Idendities of members should be different.
-    ///         Functionality is equivalent to replaceMember,
-    ///         though emits a different event to distinguish the security council's intent (different identities).
-    /// @dev    Initiaties cross chain messages to update the individual Security Councils.
+    /// @dev    Initiates cross chain messages to update the individual Security Councils.
     ///         When replacing a member, make sure that the key does not conflict with any contenders/nominees of ongoing electoins.
     /// @param _memberToReplace Security Council member to remove
     /// @param _newMember       Security Council member to add in their place
     function replaceMember(address _memberToReplace, address _newMember) external;
-    /// @notice Security council member can rotate out their address for a new one; _currentAddress and _newAddress should be of the same identity. Functionality is equivalent to replaceMember, tho emits a different event to distinguish the security council's intent (same identity).
-    ///         Rotation must be initiated by the security council.
-    /// @dev    Initiaties cross chain messages to update the individual Security Councils.
-    ///         When rotating a member, make sure that the key does not conflict with any contenders/nominees of ongoing elections.
-    /// @param _currentAddress  Address to rotate out
-    /// @param _newAddress      Address to rotate in
-    function rotateMember(address _currentAddress, address _newAddress) external;
+    /// @notice Get the hash to be signed for an existing member rotation
+    /// @param from     The address that will be rotated out. Included in the hash so that other members cant use this message to rotate their address
+    /// @param nonce    The message nonce. Must be equal to the rotationNonce for the member being rotated out
+    function getRotateMemberHash(address from, uint256 nonce) external view returns (bytes32);
+    /// @notice Security council member can rotate out their address for a new one
+    /// @dev    Initiates cross chain messages to update the individual Security Councils.
+    ///         Cannot rotate to a contender in an ongoing election, as this could cause a clash that would stop the election result executing
+    /// @param newMemberAddress         The new member address to be rotated to
+    /// @param memberElectionGovernor   The current member election governor - must have the COHORT_REPLACER_ROLE role
+    /// @param signature                A signature from the new member address over the 712 rotateMember hash
+    function rotateMember(
+        address newMemberAddress,
+        address memberElectionGovernor,
+        bytes calldata signature
+    ) external;
     /// @notice Is the account a member of the first cohort
     function firstCohortIncludes(address account) external view returns (bool);
     /// @notice Is the account a member of the second cohort
@@ -134,4 +169,7 @@ interface ISecurityCouncilManager {
         returns (bytes32);
     /// @notice Each update increments an internal nonce that keeps updates unique, current value stored here
     function updateNonce() external returns (uint256);
+    /// @notice Upgrade an existing contract and add rotation params
+    function postUpgradeInit(uint256 _minRotationPeriod, address minRotationPeriodSetter)
+        external;
 }

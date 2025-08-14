@@ -5,9 +5,10 @@ pragma solidity 0.8.16;
 import "@openzeppelin/contracts-upgradeable/utils/StringsUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/governance/GovernorUpgradeable.sol";
 import "../../Common.sol";
+import "../../interfaces/IElectionGovernor.sol";
 
 /// @notice Common functionality used by nominee and member election governors
-abstract contract ElectionGovernor is GovernorUpgradeable {
+abstract contract ElectionGovernor is GovernorUpgradeable, IElectionGovernor {
     /// @notice When a vote is cast using a signature we store a hash of the vote data
     ///         so that the signature cannot be replayed
     mapping(bytes32 => bool) public usedNonces;
@@ -54,12 +55,7 @@ abstract contract ElectionGovernor is GovernorUpgradeable {
         return _castVote(proposalId, voter, support, reason, params);
     }
 
-    /// @notice Generate arguments to be passed to the governor propose function
-    /// @param electionIndex The index of the election to create a proposal for
-    /// @return Targets
-    /// @return Values
-    /// @return Calldatas
-    /// @return Description
+    /// @inheritdoc IElectionGovernor
     function getProposeArgs(uint256 electionIndex)
         public
         pure
