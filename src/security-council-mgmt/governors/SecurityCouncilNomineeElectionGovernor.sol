@@ -58,6 +58,12 @@ contract SecurityCouncilNomineeElectionGovernor is
         uint256 excludedNomineeCount;
     }
 
+    /// @notice Nominees can rotate their position to a new address. They are allowed to do this during the vetting period, but no later than `ROTATION_CUT_OFF_BLOCKS` L1 blocks before the vetting deadline.
+    ///         Currently this is set to 3 days, assuming 12 blocks per second.
+    /// @dev    It is known that a malicious nominee can abuse rotation to avoid vetting,
+    ///         but the nominee vetter would always have 3 extra days after any rotation to exclude the nominee if needed.
+    uint256 public constant ROTATION_CUT_OFF_BLOCKS = 21600;
+
     /// @notice Address responsible for blocking non compliant nominees
     address public nomineeVetter;
 
@@ -256,8 +262,8 @@ contract SecurityCouncilNomineeElectionGovernor is
         }
 
         // check to make sure the contender is not part of the other cohort (the cohort not currently up for election)
-        // this only checks against the current the current other cohort, and against the current cohort membership
-        // in the security council, so changes to those will mean this check will be inconsistent.
+        // this only checks against the current cohort membership of the security council, 
+        // so changes to those will mean this check will be inconsistent.
         // this check then is only a relevant check when the elections are running as expected - one at a time,
         // every `cadenceInMonths` months. Updates to the sec council manager using methods other than replaceCohort can effect this check
         // and it's expected that the entity making those updates understands this.
@@ -372,11 +378,7 @@ contract SecurityCouncilNomineeElectionGovernor is
             revert NotCompliantNominee(msg.sender);
         }
 
-        // rotation can only happen up to 3 days before the proposal vetting deadline
-        // it is known that a malicious nominee can abuse rotation to avoid vetting but the nominee vetter
-        // would always have 3 extra days after any rotation to exclude the nominee if needed
-        // 21600 blocks is 3 days assuming 12 blocks per second
-        uint256 rotationDeadline = proposalVettingDeadline(proposalId) - 21600;
+        uint256 rotationDeadline = proposalVettingDeadline(proposalId) - ROTATION_CUT_OFF_BLOCKS;
         if (block.number > rotationDeadline) {
             revert ProposalNotInRotationPeriod(block.number, rotationDeadline);
         }

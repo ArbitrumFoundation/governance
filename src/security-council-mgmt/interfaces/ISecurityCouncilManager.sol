@@ -46,8 +46,6 @@ interface ISecurityCouncilManager {
     error GovernorNotReplacer();
     error NewMemberIsContender(uint256 proposalId, address newMember);
     error NewMemberIsNominee(uint256 proposalId, address newMember);
-    error NewMemberIsRotating(address newMember);
-    error NewMemberIsRotatingTarget(address newMember);
     error InvalidNewAddress(address newAddress);
 
     function rotatedTo(address) external view returns (address);
@@ -106,9 +104,6 @@ interface ISecurityCouncilManager {
     /// @param _member  Member to remove
     function removeMember(address _member) external;
     /// @notice Replace a member in a council - equivalent to removing a member, then adding another in its place.
-    ///         Identities of members should be different.
-    ///         Functionality is equivalent to replaceMember,
-    ///         though emits a different event to distinguish the security council's intent (different identities).
     /// @dev    Initiates cross chain messages to update the individual Security Councils.
     ///         When replacing a member, make sure that the key does not conflict with any contenders/nominees of ongoing electoins.
     /// @param _memberToReplace Security Council member to remove

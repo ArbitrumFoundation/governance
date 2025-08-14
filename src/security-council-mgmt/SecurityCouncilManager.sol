@@ -208,7 +208,6 @@ contract SecurityCouncilManager is
 
         // delete the old cohort
         _cohort == Cohort.FIRST ? delete firstCohort : delete secondCohort;
-        address[] storage otherCohort = _cohort == Cohort.FIRST ? secondCohort : firstCohort;
 
         for (uint256 i = 0; i < _newCohort.length; i++) {
             _addMemberToCohortArray(_newCohort[i], _cohort);
