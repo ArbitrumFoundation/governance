@@ -35,7 +35,7 @@ contract SecurityCouncilNomineeElectionGovernor is
     /// @param owner Owner of the governor (the Arbitrum DAO)
     /// @param quorumNumeratorValue Numerator of the quorum fraction (0.2% = 20)
     /// @param votingPeriod Duration of the voting period (expressed in blocks)
-    ///                     Note that the voting period + nominee vetting duration must be << than 6 months to ensure elections dont overlap
+    ///                     Note that the voting period + nominee vetting duration must be << than the set cadence (`cadenceInMonths`) to ensure elections dont overlap
     struct InitParams {
         Date firstNominationStartDate;
         uint256 nomineeVettingDuration;
@@ -58,6 +58,12 @@ contract SecurityCouncilNomineeElectionGovernor is
         uint256 excludedNomineeCount;
     }
 
+    /// @notice Nominees can rotate their position to a new address. They are allowed to do this during the vetting period, but no later than `ROTATION_CUT_OFF_BLOCKS` L1 blocks before the vetting deadline.
+    ///         Currently this is set to 3 days, assuming 12 blocks per second.
+    /// @dev    It is known that a malicious nominee can abuse rotation to avoid vetting,
+    ///         but the nominee vetter would always have 3 extra days after any rotation to exclude the nominee if needed.
+    uint256 public constant ROTATION_CUT_OFF_BLOCKS = 21600;
+
     /// @notice Address responsible for blocking non compliant nominees
     address public nomineeVetter;
 
@@ -76,6 +82,7 @@ contract SecurityCouncilNomineeElectionGovernor is
     event NomineeVetterChanged(address indexed oldNomineeVetter, address indexed newNomineeVetter);
     event ContenderAdded(uint256 indexed proposalId, address indexed contender);
     event NomineeExcluded(uint256 indexed proposalId, address indexed nominee);
+    event NomineeRotated(uint256 indexed proposalId, address indexed from, address indexed to);
 
     error OnlyNomineeVetter();
     error CreateTooEarly(uint256 blockTimestamp, uint256 startTime);
@@ -84,21 +91,43 @@ contract SecurityCouncilNomineeElectionGovernor is
     error AccountInOtherCohort(Cohort cohort, address account);
     error ProposalNotSucceededState(ProposalState state);
     error ProposalNotInVettingPeriod(uint256 blockNumber, uint256 vettingDeadline);
+    error ProposalNotInRotationPeriod(uint256 blockNumber, uint256 rotationDeadline);
     error NomineeAlreadyExcluded(address nominee);
     error CompliantNomineeTargetHit(uint256 nomineeCount, uint256 expectedCount);
     error ProposalInVettingPeriod(uint256 blockNumber, uint256 vettingDeadline);
     error InsufficientCompliantNomineeCount(uint256 compliantNomineeCount, uint256 expectedCount);
     error ProposeDisabled();
     error NotNominee(address nominee);
+    error NotCompliantNominee(address nominee);
     error ProposalIdMismatch(uint256 nomineeProposalId, uint256 memberProposalId);
     error QuorumNumeratorTooLow(uint256 quorumNumeratorValue);
     error CastVoteDisabled();
     error LastMemberElectionNotExecuted(uint256 prevProposalId);
     error InvalidSignature();
     error Deprecated(string message);
+    error NotFromProxyAdmin();
 
     constructor() {
         _disableInitializers();
+    }
+
+    function getProxyAdmin() internal view returns (address admin) {
+        // https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v3.4.0/contracts/proxy/TransparentUpgradeableProxy.sol#L48
+        // Storage slot with the admin of the proxy contract.
+        // This is the keccak-256 hash of "eip1967.proxy.admin" subtracted by 1, and is
+        bytes32 slot = 0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103;
+        assembly {
+            admin := sload(slot)
+        }
+    }
+
+    function postUpgradeInit() external {
+        if (msg.sender != getProxyAdmin()) {
+            revert NotFromProxyAdmin();
+        }
+        if (cadenceInMonths == 0) {
+            cadenceInMonths = 6;
+        }
     }
 
     /// @notice Initializes the governor
@@ -158,7 +187,7 @@ contract SecurityCouncilNomineeElectionGovernor is
     }
 
     /// @notice Creates a new nominee election proposal.
-    ///         Can be called by anyone every 6 months.
+    ///         Can be called by anyone every `cadenceInMonths` months.
     /// @return proposalId The id of the proposal
     function createElection() external returns (uint256 proposalId) {
         // require that the last member election has executed
@@ -233,10 +262,10 @@ contract SecurityCouncilNomineeElectionGovernor is
         }
 
         // check to make sure the contender is not part of the other cohort (the cohort not currently up for election)
-        // this only checks against the current the current other cohort, and against the current cohort membership
-        // in the security council, so changes to those will mean this check will be inconsistent.
+        // this only checks against the current cohort membership of the security council, 
+        // so changes to those will mean this check will be inconsistent.
         // this check then is only a relevant check when the elections are running as expected - one at a time,
-        // every 6 months. Updates to the sec council manager using methods other than replaceCohort can effect this check
+        // every `cadenceInMonths` months. Updates to the sec council manager using methods other than replaceCohort can effect this check
         // and it's expected that the entity making those updates understands this.
         if (securityCouncilManager.cohortIncludes(otherCohort(), signer)) {
             revert AccountInOtherCohort(otherCohort(), signer);
@@ -245,6 +274,11 @@ contract SecurityCouncilNomineeElectionGovernor is
         election.isContender[signer] = true;
 
         emit ContenderAdded(proposalId, signer);
+
+        // if the signer is part of the outgoing cohort, we automatically add them as a nominee
+        if (securityCouncilManager.cohortIncludes(currentCohort(), signer)) {
+            _addNominee(proposalId, signer);
+        }
     }
 
     /// @notice Allows the owner to change the nomineeVetter
@@ -263,6 +297,12 @@ contract SecurityCouncilNomineeElectionGovernor is
         onlyOwner
     {
         AddressUpgradeable.functionCallWithValue(target, data, value);
+    }
+
+    /// @notice Set the cadence for future elections
+    /// @param numberOfMonths The new cadence in months (must be >= 1)
+    function setCadence(uint256 numberOfMonths) external onlyGovernance {
+        _setCadence(numberOfMonths, electionCount);
     }
 
     /// @notice Allows the nomineeVetter to exclude a noncompliant nominee.
@@ -316,13 +356,54 @@ contract SecurityCouncilNomineeElectionGovernor is
         // this only checks against the current the current other cohort, and against the current cohort membership
         // in the security council, so changes to those will mean this check will be inconsistent.
         // this check then is only a relevant check when the elections are running as expected - one at a time,
-        // every 6 months. Updates to the sec council manager using methods other than replaceCohort can effect this check
+        // every `cadenceInMonths` months. Updates to the sec council manager using methods other than replaceCohort can effect this check
         // and it's expected that the entity making those updates understands this.
         if (securityCouncilManager.cohortIncludes(otherCohort(), account)) {
             revert AccountInOtherCohort(otherCohort(), account);
         }
 
         _addNominee(proposalId, account);
+    }
+
+    /// @notice Allows a nominee to rotate their position to a new address
+    /// @param proposalId The id of the proposal
+    /// @param newNomineeAddress The new address to rotate to
+    /// @param signature  A signature from the new member address over the 712 rotateNominee hash
+    function rotateNominee(uint256 proposalId, address newNomineeAddress, bytes calldata signature)
+        external
+    {
+        ElectionInfo storage election = _elections[proposalId];
+
+        if (!isCompliantNominee(proposalId, msg.sender)) {
+            revert NotCompliantNominee(msg.sender);
+        }
+
+        uint256 rotationDeadline = proposalVettingDeadline(proposalId) - ROTATION_CUT_OFF_BLOCKS;
+        if (block.number > rotationDeadline) {
+            revert ProposalNotInRotationPeriod(block.number, rotationDeadline);
+        }
+
+        address signer = recoverRotateNomineeMessage(proposalId, signature, msg.sender);
+        if (signer != newNomineeAddress) {
+            revert InvalidSignature();
+        }
+
+        // check to make sure the new nominee is not part of the other cohort (the cohort not currently up for election)
+        // this only checks against the current the current other cohort, and against the current cohort membership
+        // in the security council, so changes to those will mean this check will be inconsistent.
+        // this check then is only a relevant check when the elections are running as expected - one at a time,
+        // every 6 months. Updates to the sec council manager using methods other than replaceCohort can effect this check
+        // and it's expected that the entity making those updates understands this.
+        if (securityCouncilManager.cohortIncludes(otherCohort(), newNomineeAddress)) {
+            revert AccountInOtherCohort(otherCohort(), newNomineeAddress);
+        }
+
+        // rotation by first excluding the nominee and then adding the new nominee
+        election.isExcluded[msg.sender] = true;
+        election.excludedNomineeCount++;
+        _addNominee(proposalId, newNomineeAddress);
+        emit NomineeExcluded(proposalId, msg.sender);
+        emit NomineeRotated(proposalId, msg.sender, newNomineeAddress);
     }
 
     /// @dev    `GovernorUpgradeable` function to execute a proposal overridden to handle nominee elections.
@@ -443,6 +524,23 @@ contract SecurityCouncilNomineeElectionGovernor is
         return ECDSAUpgradeable.recover(digest, signature);
     }
 
+    function recoverRotateNomineeMessage(uint256 proposalId, bytes calldata signature, address from)
+        public
+        view
+        returns (address)
+    {
+        bytes32 digest = _hashTypedDataV4(
+            keccak256(
+                abi.encode(
+                    keccak256("RotateNomineeMessage(uint256 proposalId, address from)"),
+                    proposalId,
+                    from
+                )
+            )
+        );
+        return ECDSAUpgradeable.recover(digest, signature);
+    }
+
     /// @notice Always reverts.
     /// @dev    `GovernorUpgradeable` function to create a proposal overridden to just revert.
     ///         We only want proposals to be created via `createElection`.
@@ -492,15 +590,6 @@ contract SecurityCouncilNomineeElectionGovernor is
     ) public virtual override(GovernorUpgradeable, ElectionGovernor) returns (uint256) {
         return ElectionGovernor.castVoteWithReasonAndParamsBySig(
             proposalId, support, reason, params, v, r, s
-        );
-    }
-
-    /// @notice Deprecated, use `addContender(uint256 proposalId, bytes calldata signature)` instead
-    /// @dev    This function is deprecated because contenders should only be EOA's that can produce signatures.
-    ///         If a security council member's address is not an EOA, then they may be unable to sign on all relevant chains.
-    function addContender(uint256) external pure {
-        revert Deprecated(
-            "addContender(uint256 proposalId) has been deprecated. Use addContender(uint256 proposalId, bytes calldata signature) instead"
         );
     }
 

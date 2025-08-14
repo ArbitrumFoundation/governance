@@ -36,6 +36,26 @@ contract SigUtils is Test {
         sig = abi.encodePacked(r, s, v);
     }
 
+    function signRotateNomineeMessage(uint256 proposalId, uint256 privKey, address from)
+        public
+        view
+        returns (bytes memory sig)
+    {
+        bytes32 digest = _hashTypedDataV4(
+            keccak256(
+                abi.encode(
+                    keccak256("RotateNomineeMessage(uint256 proposalId, address from)"),
+                    proposalId,
+                    from
+                )
+            )
+        );
+
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privKey, digest);
+
+        sig = abi.encodePacked(r, s, v);
+    }
+
     function _domainSeparatorV4() internal view returns (bytes32) {
         return _buildDomainSeparator(_TYPE_HASH, _EIP712NameHash(), _EIP712VersionHash());
     }
@@ -248,6 +268,7 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
         sig = sigUtils.signAddContenderMessage(proposalId, _contenderPrivKey(0));
 
         // test in other cohort
+        _mockCohortIncludes(Cohort.FIRST, _contender(0), false);
         _mockCohortIncludes(Cohort.SECOND, _contender(0), true);
         vm.expectRevert(
             abi.encodeWithSelector(
@@ -259,6 +280,7 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
         governor.addContender(proposalId, sig);
 
         // should fail if the proposal is not pending
+        _mockCohortIncludes(Cohort.FIRST, _contender(0), false);
         _mockCohortIncludes(Cohort.SECOND, _contender(0), false);
         vm.roll(governor.proposalSnapshot(proposalId) + 1);
         assertTrue(governor.state(proposalId) == IGovernorUpgradeable.ProposalState.Active);
@@ -277,6 +299,7 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
 
         // check that it correctly mutated the state
         assertTrue(governor.isContender(proposalId, _contender(0)));
+        assertFalse(governor.isNominee(proposalId, _contender(0)));
 
         // adding again should fail
         vm.expectRevert(
@@ -285,6 +308,35 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
             )
         );
         governor.addContender(proposalId, sig);
+
+        // adding a member up for reelection should succeed and automatically add them as a nominee
+        _mockCohortIncludes(Cohort.FIRST, _contender(1), true);
+        _mockCohortIncludes(Cohort.SECOND, _contender(1), false);
+        sig = sigUtils.signAddContenderMessage(proposalId, _contenderPrivKey(1));
+        governor.addContender(proposalId, sig);
+
+        // check that it correctly mutated the state
+        assertTrue(governor.isContender(proposalId, _contender(1)));
+        assertTrue(governor.isNominee(proposalId, _contender(1)));
+
+        // reelection member should not be able to receive votes
+        vm.roll(governor.proposalSnapshot(proposalId) + 1);
+        _mockGetPastVotes(_voter(0), governor.quorum(proposalId));
+        vm.prank(_voter(0));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                SecurityCouncilNomineeElectionGovernorCountingUpgradeable
+                    .NomineeAlreadyAdded
+                    .selector,
+                _contender(1)
+            )
+        );
+        governor.castVoteWithReasonAndParams({
+            proposalId: proposalId,
+            support: 1,
+            reason: "",
+            params: abi.encode(_contender(1), 1)
+        });
     }
 
     function testSetNomineeVetter() public {
@@ -838,8 +890,11 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
         pure
         returns (uint256)
     {
+        uint256 year = months / 12;
+        months = months % 12;
+
         return DateTimeLib.dateTimeToTimestamp({
-            year: date.year,
+            year: date.year + year,
             month: date.month + months,
             day: date.day,
             hour: date.hour,
@@ -917,6 +972,7 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
     function _addContender(uint256 proposalId, uint8 contender) internal {
         uint256 privKey = _contenderPrivKey(contender);
         address addr = _contender(contender);
+        _mockCohortIncludes(Cohort.FIRST, addr, false);
         _mockCohortIncludes(Cohort.SECOND, addr, false);
         bytes memory sig = sigUtils.signAddContenderMessage(proposalId, privKey);
         governor.addContender(proposalId, sig);
@@ -962,5 +1018,235 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
                 )
             )
         );
+    }
+
+    function testDefaultCadence() public {
+        assertEq(governor.cadenceInMonths(), 6, "Default cadence should be 6 months");
+    }
+
+    function testSetCadenceBeforeFirstElection() public {
+        vm.prank(initParams.owner);
+        governor.relay(
+            address(governor), 0, abi.encodeWithSelector(governor.setCadence.selector, 3)
+        );
+
+        assertEq(governor.cadenceInMonths(), 3, "Cadence should be updated to 3 months");
+    }
+
+    function testSetCadenceInvalidValue() public {
+        vm.prank(initParams.owner);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                SecurityCouncilNomineeElectionGovernorTiming.InvalidCadence.selector, 0
+            )
+        );
+        governor.relay(
+            address(governor), 0, abi.encodeWithSelector(governor.setCadence.selector, 0)
+        );
+    }
+
+    function testSetCadenceOnlyOwner() public {
+        address nonOwner = address(0x1234);
+        vm.prank(nonOwner);
+        vm.expectRevert("Governor: onlyGovernance");
+        governor.setCadence(3);
+    }
+
+    function testElectionTimestampsWithDefaultCadence() public {
+        uint256 secondElectionTime = governor.electionToTimestamp(1);
+        uint256 thirdElectionTime = governor.electionToTimestamp(2);
+
+        // Check that elections are properly spaced
+        // First election: Jan 1, 2030
+        // Second election: Jul 1, 2030 (6 months later)
+        // Third election: Jan 1, 2031 (6 months later)
+
+        // The actual timestamps depend on the exact calendar calculation
+        uint256 expectedSecondTime =
+            _datePlusMonthsToTimestamp(initParams.firstNominationStartDate, 6);
+        uint256 expectedThirdTime =
+            _datePlusMonthsToTimestamp(initParams.firstNominationStartDate, 12);
+
+        assertEq(
+            secondElectionTime, expectedSecondTime, "Second election should be 6 months after first"
+        );
+        assertEq(
+            thirdElectionTime, expectedThirdTime, "Third election should be 12 months after first"
+        );
+    }
+
+    function testSetCadenceAfterElections() public {
+        // Create first election
+        _propose();
+
+        // Fast forward and create second election
+        vm.warp(_datePlusMonthsToTimestamp(initParams.firstNominationStartDate, 6));
+        vm.prank(proposer);
+        governor.createElection();
+
+        // Now change cadence to 3 months
+        vm.prank(initParams.owner);
+        governor.relay(
+            address(governor), 0, abi.encodeWithSelector(governor.setCadence.selector, 3)
+        );
+
+        assertEq(governor.cadenceInMonths(), 3, "Cadence should be updated to 3 months");
+
+        // The next election (index 2) should be 3 months after the last one (index 1)
+        uint256 nextElectionTime = governor.electionToTimestamp(2);
+
+        // Should be approximately 3 months
+        uint256 expectedTime = _datePlusMonthsToTimestamp(
+            Date({
+                year: 2030,
+                month: 7, // January + 6 months
+                day: 1,
+                hour: 0
+            }),
+            3
+        );
+        assertEq(nextElectionTime, expectedTime, "Next election should follow new cadence");
+    }
+
+    function testSetCadenceTooSoonReverts() public {
+        // Create first election
+        _propose();
+
+        // Fast forward to near the end of the 6-month period
+        vm.warp(_datePlusMonthsToTimestamp(initParams.firstNominationStartDate, 6) - 1 days);
+
+        // Try to set cadence to 1 month - this would make next election in the past
+        vm.prank(initParams.owner);
+        vm.expectRevert();
+        governor.relay(
+            address(governor), 0, abi.encodeWithSelector(governor.setCadence.selector, 1)
+        );
+    }
+
+    function testMultipleCadenceChanges() public {
+        // Create first election with default 6-month cadence
+        _propose();
+
+        // Change to 4 months
+        vm.prank(initParams.owner);
+        governor.relay(
+            address(governor), 0, abi.encodeWithSelector(governor.setCadence.selector, 4)
+        );
+
+        // Fast forward and create second election
+        vm.warp(_datePlusMonthsToTimestamp(initParams.firstNominationStartDate, 4));
+        vm.prank(proposer);
+        governor.createElection();
+
+        // Change to 2 months
+        vm.prank(initParams.owner);
+        governor.relay(
+            address(governor), 0, abi.encodeWithSelector(governor.setCadence.selector, 2)
+        );
+
+        // Verify the third election timing
+        uint256 thirdElectionTime = governor.electionToTimestamp(2);
+
+        // Should be 2 months after the second election
+        uint256 expectedTime = _datePlusMonthsToTimestamp(
+            Date({
+                year: 2030,
+                month: 5, // January + 4 months
+                day: 1,
+                hour: 0
+            }),
+            2
+        );
+        assertEq(thirdElectionTime, expectedTime, "Third election should follow newest cadence");
+    }
+
+    function testCadenceWithLargeValues() public {
+        vm.prank(initParams.owner);
+        governor.relay(
+            address(governor), 0, abi.encodeWithSelector(governor.setCadence.selector, 36)
+        );
+
+        uint256 secondElection = governor.electionToTimestamp(1);
+
+        // First election: Jan 1, 2030
+        // Second election: Jan 1, 2033 (36 months later)
+        uint256 expectedSecondTime =
+            _datePlusMonthsToTimestamp(initParams.firstNominationStartDate, 36);
+
+        assertEq(secondElection, expectedSecondTime, "Elections should be 36 months apart");
+    }
+
+    function testRotateNominee() public {
+        uint256 proposalId = _propose();
+
+        // create a nominee
+        vm.roll(governor.proposalSnapshot(proposalId));
+        _addContender(proposalId, 0);
+        vm.roll(governor.proposalDeadline(proposalId));
+        _mockGetPastVotes(_voter(0), governor.quorum(proposalId));
+        _castVoteForContender(proposalId, _voter(0), _contender(0), governor.quorum(proposalId));
+
+        bytes memory sig =
+            sigUtils.signRotateNomineeMessage(proposalId, _contenderPrivKey(1), _contender(0));
+        uint256 rotationDeadline = governor.proposalVettingDeadline(proposalId) - 21_600;
+
+        // cannot rotate after the deadline
+        vm.roll(rotationDeadline + 1);
+        vm.prank(_contender(0));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                SecurityCouncilNomineeElectionGovernor.ProposalNotInRotationPeriod.selector,
+                block.number,
+                rotationDeadline
+            )
+        );
+        governor.rotateNominee(proposalId, _contender(1), sig);
+        vm.roll(rotationDeadline);
+
+        // cannot rotate if not a compliant nominee
+        vm.prank(_contender(1));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                SecurityCouncilNomineeElectionGovernor.NotCompliantNominee.selector, _contender(1)
+            )
+        );
+        governor.rotateNominee(proposalId, _contender(1), sig);
+
+        // cannot rotate with invalid signature
+        vm.prank(_contender(0));
+        vm.expectRevert(
+            abi.encodeWithSelector(SecurityCouncilNomineeElectionGovernor.InvalidSignature.selector)
+        );
+        governor.rotateNominee(proposalId, _contender(2), sig);
+
+        // cannot rotate if in other cohort
+        _mockCohortIncludes(Cohort.SECOND, _contender(1), true);
+        vm.prank(_contender(0));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                SecurityCouncilNomineeElectionGovernor.AccountInOtherCohort.selector,
+                Cohort.SECOND,
+                _contender(1)
+            )
+        );
+        governor.rotateNominee(proposalId, _contender(1), sig);
+
+        // rotate the nominee
+        _mockCohortIncludes(Cohort.SECOND, _contender(1), false);
+        vm.prank(_contender(0));
+        governor.rotateNominee(proposalId, _contender(1), sig);
+
+        // cannot rotate again
+        vm.prank(_contender(0));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                SecurityCouncilNomineeElectionGovernor.NotCompliantNominee.selector, _contender(0)
+            )
+        );
+        governor.rotateNominee(proposalId, _contender(1), sig);
+
+        // make sure state is correct
+        assertTrue(governor.isCompliantNominee(proposalId, _contender(1)));
+        assertFalse(governor.isCompliantNominee(proposalId, _contender(0)));
     }
 }
