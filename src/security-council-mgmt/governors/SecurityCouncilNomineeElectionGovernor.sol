@@ -373,6 +373,10 @@ contract SecurityCouncilNomineeElectionGovernor is
             revert ProposalNotInRotationPeriod(block.number, rotationDeadline);
         }
 
+        if (election.isExcluded[newNomineeAddress]) {
+            revert NomineeAlreadyExcluded(newNomineeAddress);
+        }
+
         address signer = recoverRotateNomineeMessage(proposalId, signature, msg.sender);
         if (signer != newNomineeAddress) {
             revert InvalidSignature();
