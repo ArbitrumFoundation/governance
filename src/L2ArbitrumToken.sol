@@ -123,15 +123,12 @@ contract L2ArbitrumToken is
         _mint(recipient, amount);
     }
 
-    function _afterTokenTransfer(address from, address to, uint256 amount)
-        internal
-        override(ERC20Upgradeable, ERC20VotesUpgradeable)
-    {
-        super._afterTokenTransfer(from, to, amount);
 
-        address fromDelegate = delegates(from);
-        address toDelegate = delegates(to);
-
+    function _updateDelegationHistory(
+        address fromDelegate,
+        address toDelegate,
+        uint256 amount
+    ) internal {
         if (fromDelegate != toDelegate) {
             int256 delta = 0;
             if (fromDelegate != address(0)) {
@@ -146,6 +143,27 @@ contract L2ArbitrumToken is
                 );
             }
         }
+    }
+
+    function _delegate(address delegator, address delegatee) internal virtual override {
+        super._delegate(delegator, delegatee);
+        _updateDelegationHistory(
+            delegates(delegator),
+            delegatee,
+            balanceOf(delegator)
+        );
+    }
+
+    function _afterTokenTransfer(address from, address to, uint256 amount)
+        internal
+        override(ERC20Upgradeable, ERC20VotesUpgradeable)
+    {
+        super._afterTokenTransfer(from, to, amount);
+        _updateDelegationHistory(
+            delegates(from),
+            delegates(to),
+            amount
+        );
     }
 
     function _mint(address to, uint256 amount)
