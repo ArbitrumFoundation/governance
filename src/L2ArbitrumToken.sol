@@ -57,7 +57,7 @@ contract L2ArbitrumToken is
     }
 
     /// @notice Called at proposal #2
-    /// @param  initialEstimationErrorAdjustment The amount the adjustment was off by, negated. This is added to the current total delegation.
+    /// @param  initialEstimationErrorAdjustment The amount the initialTotalDelegation was off by, negated. This is added to the current total delegation.
     function postUpgradeInit2(int256 initialEstimationErrorAdjustment) external onlyOwner {
         _totalDelegationHistory.push(
             uint256(int256(_totalDelegationHistory.latest()) + initialEstimationErrorAdjustment)
