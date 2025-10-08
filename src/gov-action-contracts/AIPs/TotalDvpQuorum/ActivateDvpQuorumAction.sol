@@ -4,75 +4,78 @@ pragma solidity 0.8.16;
 import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 import {TransparentUpgradeableProxy} from
     "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
-import {IL2AddressRegistry} from "./../../address-registries/L2AddressRegistryInterfaces.sol";
-import {L2ArbitrumGovernor} from "./../../../L2ArbitrumGovernor.sol";
+import {IL2AddressRegistry} from "../../address-registries/L2AddressRegistryInterfaces.sol";
+import {L2ArbitrumToken} from "../../../L2ArbitrumToken.sol";
+import {
+    L2ArbitrumGovernor,
+    GovernorVotesQuorumFractionUpgradeable
+} from "../../../L2ArbitrumGovernor.sol";
 
-interface IArbTokenPostUpgradeInit {
-    function postUpgradeInit1(uint256 initialTotalDelegation) external;
-}
-
-/// @notice This action is performed as a governance proposal to activate the DVP quorum mechanism.
-///         A second proposal (AdjustDvpEstimateAction) is recommended some time later to adjust the initial
-///         total delegation estimate set in this proposal.
+/// @notice Activates DVP based quorum. The ARB token contract must already be tracking total DVP delta checkpoints.
 contract ActivateDvpQuorumAction {
     address public immutable l2AddressRegistry;
-    address public immutable arbTokenProxy;
-    ProxyAdmin public immutable govProxyAdmin;
-
+    address public immutable l2ArbitrumToken;
+    address public immutable govProxyAdmin;
     address public immutable newGovernorImpl;
-    address public immutable newTokenImpl;
-
-    uint256 public immutable newCoreQuorumNumerator;
-    uint256 public immutable newTreasuryQuorumNumerator;
-    uint256 public immutable initialTotalDelegationEstimatee;
+    uint256 public immutable coreQuorumNumerator;
+    uint256 public immutable treasuryQuorumNumerator;
+    uint256 public immutable totalDelegationAnchor;
 
     constructor(
         address _l2AddressRegistry,
-        address _arbTokenProxy,
-        ProxyAdmin _govProxyAdmin,
+        address _l2ArbitrumToken,
+        address _govProxyAdmin,
         address _newGovernorImpl,
-        address _newTokenImpl,
-        uint256 _newCoreQuorumNumerator,
-        uint256 _newTreasuryQuorumNumerator,
-        uint256 _initialTotalDelegationEstimate
+        uint256 _coreQuorumNumerator,
+        uint256 _treasuryQuorumNumerator,
+        uint256 _totalDelegationAnchor
     ) {
         l2AddressRegistry = _l2AddressRegistry;
-        arbTokenProxy = _arbTokenProxy;
+        l2ArbitrumToken = _l2ArbitrumToken;
         govProxyAdmin = _govProxyAdmin;
         newGovernorImpl = _newGovernorImpl;
-        newTokenImpl = _newTokenImpl;
-        newCoreQuorumNumerator = _newCoreQuorumNumerator;
-        newTreasuryQuorumNumerator = _newTreasuryQuorumNumerator;
-        initialTotalDelegationEstimatee = _initialTotalDelegationEstimate;
+        coreQuorumNumerator = _coreQuorumNumerator;
+        treasuryQuorumNumerator = _treasuryQuorumNumerator;
+        totalDelegationAnchor = _totalDelegationAnchor;
     }
 
     /// @notice Performs the following:
-    ///         1. Upgrades the token contract
-    ///         2. Calls postUpgradeInit1 on the token contract to set the initial total delegation estimate
-    ///         3. Upgrades the core governor contract
-    ///         4. Sets the new quorum numerator for the core governor
-    ///         5. Upgrades the treasury governor contract
-    ///         6. Sets the new quorum numerator for the treasury governor
+    ///         - Sets the total delegation anchor in the ARB token
+    ///         - Upgrades the core and treasury governor
+    ///         - Sets the new quorum numerator in both governors
     function perform() external {
-        // 1. Upgrade the token contract
-        govProxyAdmin.upgrade(TransparentUpgradeableProxy(payable(arbTokenProxy)), newTokenImpl);
+        // set the total delegation anchor in the ARB token
+        L2ArbitrumToken(l2ArbitrumToken).setTotalDelegationAnchor(totalDelegationAnchor);
 
-        // 2. Call postUpgradeInit1 on the token contract
-        IArbTokenPostUpgradeInit(arbTokenProxy).postUpgradeInit1(initialTotalDelegationEstimatee);
+        // upgrade the core governor
+        address payable coreGovProxy =
+            payable(address(IL2AddressRegistry(l2AddressRegistry).coreGov()));
+        ProxyAdmin(govProxyAdmin).upgrade(
+            TransparentUpgradeableProxy(coreGovProxy), newGovernorImpl
+        );
 
-        // 3. Upgrade the core governor contract
-        address payable coreGov = payable(address(IL2AddressRegistry(l2AddressRegistry).coreGov()));
-        govProxyAdmin.upgrade(TransparentUpgradeableProxy(coreGov), newGovernorImpl);
-
-        // 4. Set the new quorum numerator for the core governor
-        L2ArbitrumGovernor(coreGov).updateQuorumNumerator(newCoreQuorumNumerator);
-
-        // 5. Upgrade the treasury governor contract
-        address payable treasuryGov =
+        // upgrade the treasury governor
+        address payable treasuryGovProxy =
             payable(address(IL2AddressRegistry(l2AddressRegistry).treasuryGov()));
-        govProxyAdmin.upgrade(TransparentUpgradeableProxy(treasuryGov), newGovernorImpl);
+        ProxyAdmin(govProxyAdmin).upgrade(
+            TransparentUpgradeableProxy(treasuryGovProxy), newGovernorImpl
+        );
 
-        // 6. Set the new quorum numerator for the treasury governor
-        L2ArbitrumGovernor(treasuryGov).updateQuorumNumerator(newTreasuryQuorumNumerator);
+        // set the new quorum numerator in both governors
+        L2ArbitrumGovernor(coreGovProxy).relay(
+            coreGovProxy,
+            0,
+            abi.encodeCall(
+                GovernorVotesQuorumFractionUpgradeable.updateQuorumNumerator, (coreQuorumNumerator)
+            )
+        );
+        L2ArbitrumGovernor(treasuryGovProxy).relay(
+            treasuryGovProxy,
+            0,
+            abi.encodeCall(
+                GovernorVotesQuorumFractionUpgradeable.updateQuorumNumerator,
+                (treasuryQuorumNumerator)
+            )
+        );
     }
 }
