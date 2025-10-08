@@ -14,6 +14,7 @@ import
     "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorTimelockControlUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {L2ArbitrumToken} from "./L2ArbitrumToken.sol";
 
 /// @title  L2ArbitrumGovernor
 /// @notice Governance controls for the Arbitrum DAO
@@ -127,6 +128,16 @@ contract L2ArbitrumGovernor is
             token.getPastTotalSupply(blockNumber) - token.getPastVotes(EXCLUDE_ADDRESS, blockNumber);
     }
 
+    /// @notice Get total delegated votes minus excluded votes
+    function getPastTotalDelegatedVotes(uint256 blockNumber) public view returns (uint256) {
+        uint256 excluded = token.getPastVotes(EXCLUDE_ADDRESS, blockNumber);
+        uint256 totalDvp = L2ArbitrumToken(address(token)).getTotalDelegationAt(blockNumber);
+
+        // it is possible (but unlikely) that excluded > totalDvp
+        // this is because getTotalDelegationAt is initially an _estimate_ of the total delegation
+        return totalDvp > excluded ? totalDvp - excluded : 0;
+    }
+
     /// @notice Calculates the quorum size, excludes token delegated to the exclude address
     function quorum(uint256 blockNumber)
         public
@@ -134,7 +145,7 @@ contract L2ArbitrumGovernor is
         override(IGovernorUpgradeable, GovernorVotesQuorumFractionUpgradeable)
         returns (uint256)
     {
-        return (getPastCirculatingSupply(blockNumber) * quorumNumerator(blockNumber))
+        return (getPastTotalDelegatedVotes(blockNumber) * quorumNumerator(blockNumber))
             / quorumDenominator();
     }
 
