@@ -64,6 +64,8 @@ contract L2ArbitrumToken is
         );
     }
 
+    /// @notice Get the current total delegation
+    /// @return The current total delegation
     function getTotalDelegation() 
         external
         view
@@ -72,6 +74,10 @@ contract L2ArbitrumToken is
         return _totalDelegationHistory.latest();
     }
 
+    /// @notice Get the total delegation at a specific block number
+    ///         If the blockNumber is prior to the first checkpoint, returns 0
+    /// @param blockNumber The block number to get the total delegation at
+    /// @return The total delegation at the given block number
     function getTotalDelegationAt(uint256 blockNumber)
         external
         view
