@@ -11,10 +11,7 @@ contract AdjustDvpEstimateAction {
     address public immutable arbTokenProxy;
     int256 public immutable initialEstimationErrorAdjustment;
 
-    constructor(
-        address _arbTokenProxy,
-        int256 _initialEstimationErrorAdjustment
-    ) {
+    constructor(address _arbTokenProxy, int256 _initialEstimationErrorAdjustment) {
         arbTokenProxy = _arbTokenProxy;
         initialEstimationErrorAdjustment = _initialEstimationErrorAdjustment;
     }
