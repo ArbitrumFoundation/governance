@@ -11,6 +11,9 @@ interface IArbTokenPostUpgradeInit {
     function postUpgradeInit1(uint256 initialTotalDelegation) external;
 }
 
+/// @notice This action is performed as a governance proposal to activate the DVP quorum mechanism.
+///         A second proposal (AdjustDvpEstimateAction) is recommended some time later to adjust the initial
+///         total delegation estimate set in this proposal.
 contract ActivateDvpQuorumAction {
     address public immutable l2AddressRegistry;
     address public immutable arbTokenProxy;
