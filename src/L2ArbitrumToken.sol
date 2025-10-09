@@ -147,8 +147,9 @@ contract L2ArbitrumToken is
                 delta += int256(amount);
             }
             if (delta != 0) {
+                int256 newValue = int256(_totalDelegationHistory.latest()) + delta;
                 _totalDelegationHistory.push(
-                    uint256(int256(_totalDelegationHistory.latest()) + delta)
+                    uint256(newValue < 0 ? int256(0) : newValue)
                 );
             }
         }
