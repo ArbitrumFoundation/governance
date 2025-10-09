@@ -44,11 +44,47 @@ contract L2ArbitrumToken is
     /// @notice The time at which the next mint is allowed - timestamp
     uint256 public nextMint;
 
-    /// @dev History of the change in total amount of delegated tokens
-    ///      Tracks the delta between total delegation at a given block and the anchor
-    ///      The anchor is set via setTotalDelegationAnchor as a standalone one-time operation
-    Checkpoints.History private _totalDelegationDeltaHistory;
-    uint256 private _totalDelegationAnchor;
+    /// @dev History of the total amount of delegated tokens
+    ///      The initial value is an estimate of the total delegation at the time of upgrade proposal creation.
+    ///      Another proposal can be made later to update this value if needed.
+    Checkpoints.History private _totalDelegationHistory;
+
+    /// @notice Called at proposal #1
+    /// @param  initialTotalDelegation The initial total delegation at the time of upgrade proposal creation.
+    ///         This is an estimate since it is chosen at proposal creation time and not effective until the proposal is executed.
+    function postUpgradeInit1(uint256 initialTotalDelegation) external onlyOwner {
+        _totalDelegationHistory.push(initialTotalDelegation);
+    }
+
+    /// @notice Called at proposal #2
+    /// @param  initialEstimationErrorAdjustment The amount the initialTotalDelegation was off by, negated. This is added to the current total delegation.
+    function postUpgradeInit2(int256 initialEstimationErrorAdjustment) external onlyOwner {
+        _totalDelegationHistory.push(
+            uint256(int256(_totalDelegationHistory.latest()) + initialEstimationErrorAdjustment)
+        );
+    }
+
+    /// @notice Get the current total delegation
+    /// @return The current total delegation
+    function getTotalDelegation() 
+        external
+        view
+        returns (uint256)
+    {
+        return _totalDelegationHistory.latest();
+    }
+
+    /// @notice Get the total delegation at a specific block number
+    ///         If the blockNumber is prior to the first checkpoint, returns 0
+    /// @param blockNumber The block number to get the total delegation at
+    /// @return The total delegation at the given block number
+    function getTotalDelegationAt(uint256 blockNumber)
+        external
+        view
+        returns (uint256)
+    {
+        return _totalDelegationHistory.getAtBlock(blockNumber);
+    }
 
     constructor() {
         _disableInitializers();
@@ -78,11 +114,6 @@ contract L2ArbitrumToken is
         _transferOwnership(_owner);
     }
 
-    function setTotalDelegationAnchor(uint256 totalDelegationAnchor) external onlyOwner {
-        require(_totalDelegationAnchor == 0, "ARB: ANCHOR_ALREADY_SET");
-        _totalDelegationAnchor = totalDelegationAnchor;
-    }
-
     /// @notice Allows the owner to mint new tokens
     /// @dev    Only allows minting below an inflation cap.
     ///         Set to once per year, and a maximum of 2%.
@@ -98,48 +129,12 @@ contract L2ArbitrumToken is
         _mint(recipient, amount);
     }
 
-    /// @notice Get the current total delegation
-    /// @dev    If the anchor is unset, returns 0
-    /// @return The current total delegation
-    function getTotalDelegation() external view returns (uint256) {
-        uint256 __totalDelegationAnchor = _totalDelegationAnchor;
-        if (__totalDelegationAnchor == 0) {
-            return 0;
-        }
-        return _adjustByAnchor(_totalDelegationDeltaHistory.latest(), __totalDelegationAnchor);
-    }
 
-    /// @notice Get the total delegation at a specific block number
-    /// @dev    If the anchor is unset, or the block number is before the first checkpoint, returns 0
-    /// @param  blockNumber The block number to get the total delegation at
-    /// @return The total delegation at the given block number
-    function getTotalDelegationAt(uint256 blockNumber) external view returns (uint256) {
-        uint256 __totalDelegationAnchor = _totalDelegationAnchor;
-        if (
-            __totalDelegationAnchor == 0
-                || blockNumber < _totalDelegationDeltaHistory._checkpoints[0]._blockNumber
-        ) {
-            return 0;
-        }
-        return _adjustByAnchor(
-            _totalDelegationDeltaHistory.getAtBlock(blockNumber), __totalDelegationAnchor
-        );
-    }
-
-    /// @dev Helper function to adjust a delegation delta checkpoint return value by an anchor
-    ///      The checkpoint return value is stored as a uint224, but we treat it as a signed int224.
-    ///      This is why the casting is a bit complex.
-    function _adjustByAnchor(uint256 checkpointReturnValue, uint256 anchor)
-        internal
-        pure
-        returns (uint256)
-    {
-        return uint256(int224(uint224(checkpointReturnValue)) + int256(anchor));
-    }
-
-    function _updateDelegationHistory(address fromDelegate, address toDelegate, uint256 amount)
-        internal
-    {
+    function _updateDelegationHistory(
+        address fromDelegate,
+        address toDelegate,
+        uint256 amount
+    ) internal {
         if (fromDelegate != toDelegate) {
             int256 delta = 0;
             if (fromDelegate != address(0)) {
@@ -149,15 +144,20 @@ contract L2ArbitrumToken is
                 delta += int256(amount);
             }
             if (delta != 0) {
-                int224 latestDelta = int224(uint224(_totalDelegationDeltaHistory.latest()));
-                _totalDelegationDeltaHistory.push(uint256(latestDelta + delta));
+                _totalDelegationHistory.push(
+                    uint256(int256(_totalDelegationHistory.latest()) + delta)
+                );
             }
         }
     }
 
     function _delegate(address delegator, address delegatee) internal virtual override {
         super._delegate(delegator, delegatee);
-        _updateDelegationHistory(delegates(delegator), delegatee, balanceOf(delegator));
+        _updateDelegationHistory(
+            delegates(delegator),
+            delegatee,
+            balanceOf(delegator)
+        );
     }
 
     function _afterTokenTransfer(address from, address to, uint256 amount)
@@ -165,7 +165,11 @@ contract L2ArbitrumToken is
         override(ERC20Upgradeable, ERC20VotesUpgradeable)
     {
         super._afterTokenTransfer(from, to, amount);
-        _updateDelegationHistory(delegates(from), delegates(to), amount);
+        _updateDelegationHistory(
+            delegates(from),
+            delegates(to),
+            amount
+        );
     }
 
     function _mint(address to, uint256 amount)
