@@ -23,7 +23,11 @@ contract ActivateDvpQuorumAction {
     address public immutable newTokenImpl;
 
     uint256 public immutable newCoreQuorumNumerator;
+    uint256 public immutable coreMinimumQuorum;
+    uint256 public immutable coreMaximumQuorum;
     uint256 public immutable newTreasuryQuorumNumerator;
+    uint256 public immutable treasuryMinimumQuorum;
+    uint256 public immutable treasuryMaximumQuorum;
     uint256 public immutable initialTotalDelegationEstimatee;
 
     constructor(
@@ -33,7 +37,11 @@ contract ActivateDvpQuorumAction {
         address _newGovernorImpl,
         address _newTokenImpl,
         uint256 _newCoreQuorumNumerator,
+        uint256 _coreMinimumQuorum,
+        uint256 _coreMaximumQuorum,
         uint256 _newTreasuryQuorumNumerator,
+        uint256 _treasuryMinimumQuorum,
+        uint256 _treasuryMaximumQuorum,
         uint256 _initialTotalDelegationEstimate
     ) {
         l2AddressRegistry = _l2AddressRegistry;
@@ -42,7 +50,11 @@ contract ActivateDvpQuorumAction {
         newGovernorImpl = _newGovernorImpl;
         newTokenImpl = _newTokenImpl;
         newCoreQuorumNumerator = _newCoreQuorumNumerator;
+        coreMinimumQuorum = _coreMinimumQuorum;
+        coreMaximumQuorum = _coreMaximumQuorum;
         newTreasuryQuorumNumerator = _newTreasuryQuorumNumerator;
+        treasuryMinimumQuorum = _treasuryMinimumQuorum;
+        treasuryMaximumQuorum = _treasuryMaximumQuorum;
         initialTotalDelegationEstimatee = _initialTotalDelegationEstimate;
     }
 
@@ -51,8 +63,10 @@ contract ActivateDvpQuorumAction {
     ///         2. Calls postUpgradeInit1 on the token contract to set the initial total delegation estimate
     ///         3. Upgrades the core governor contract
     ///         4. Sets the new quorum numerator for the core governor
-    ///         5. Upgrades the treasury governor contract
-    ///         6. Sets the new quorum numerator for the treasury governor
+    ///         5. Sets the quorum min/max for the core governor
+    ///         6. Upgrades the treasury governor contract
+    ///         7. Sets the new quorum numerator for the treasury governor
+    ///         8. Sets the quorum min/max for the treasury governor
     function perform() external {
         // 1. Upgrade the token contract
         govProxyAdmin.upgrade(TransparentUpgradeableProxy(payable(arbTokenProxy)), newTokenImpl);
@@ -67,12 +81,20 @@ contract ActivateDvpQuorumAction {
         // 4. Set the new quorum numerator for the core governor
         L2ArbitrumGovernor(coreGov).updateQuorumNumerator(newCoreQuorumNumerator);
 
-        // 5. Upgrade the treasury governor contract
+        // 5. Set the quorum min/max for the core governor
+        L2ArbitrumGovernor(coreGov).setQuorumMinAndMax(coreMinimumQuorum, coreMaximumQuorum);
+
+        // 6. Upgrade the treasury governor contract
         address payable treasuryGov =
             payable(address(IL2AddressRegistry(l2AddressRegistry).treasuryGov()));
         govProxyAdmin.upgrade(TransparentUpgradeableProxy(treasuryGov), newGovernorImpl);
 
-        // 6. Set the new quorum numerator for the treasury governor
+        // 7. Set the new quorum numerator for the treasury governor
         L2ArbitrumGovernor(treasuryGov).updateQuorumNumerator(newTreasuryQuorumNumerator);
+
+        // 8. Set the quorum min/max for the treasury governor
+        L2ArbitrumGovernor(treasuryGov).setQuorumMinAndMax(
+            treasuryMinimumQuorum, treasuryMaximumQuorum
+        );
     }
 }
