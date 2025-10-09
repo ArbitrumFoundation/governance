@@ -130,8 +130,12 @@ contract L2ArbitrumGovernor is
 
     /// @notice Get total delegated votes minus excluded votes
     function getPastTotalDelegatedVotes(uint256 blockNumber) public view returns (uint256) {
-        return L2ArbitrumToken(address(token)).getTotalDelegationAt(blockNumber)
-            - token.getPastVotes(EXCLUDE_ADDRESS, blockNumber);
+        uint256 excluded = token.getPastVotes(EXCLUDE_ADDRESS, blockNumber);
+        uint256 totalDvp = L2ArbitrumToken(address(token)).getTotalDelegationAt(blockNumber);
+
+        // it is possible (but unlikely) that excluded > totalDvp
+        // this is because getTotalDelegationAt is initially an _estimate_ of the total delegation
+        return totalDvp > excluded ? totalDvp - excluded : 0;
     }
 
     /// @notice Calculates the quorum size, excludes token delegated to the exclude address
