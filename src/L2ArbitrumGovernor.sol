@@ -129,9 +129,16 @@ contract L2ArbitrumGovernor is
     }
 
     /// @notice Get total delegated votes minus excluded votes
+    /// @dev    If the block number is prior to the first total delegation checkpoint, returns 0
     function getPastTotalDelegatedVotes(uint256 blockNumber) public view returns (uint256) {
-        uint256 excluded = token.getPastVotes(EXCLUDE_ADDRESS, blockNumber);
         uint256 totalDvp = L2ArbitrumToken(address(token)).getTotalDelegationAt(blockNumber);
+
+        // getTotalDelegationAt may return 0 if the requested block is before the first checkpoint
+        if (totalDvp == 0) {
+            return 0;
+        }
+
+        uint256 excluded = token.getPastVotes(EXCLUDE_ADDRESS, blockNumber);
 
         // it is possible (but unlikely) that excluded > totalDvp
         // this is because getTotalDelegationAt is initially an _estimate_ of the total delegation
@@ -145,8 +152,17 @@ contract L2ArbitrumGovernor is
         override(IGovernorUpgradeable, GovernorVotesQuorumFractionUpgradeable)
         returns (uint256)
     {
-        return (getPastTotalDelegatedVotes(blockNumber) * quorumNumerator(blockNumber))
-            / quorumDenominator();
+        uint256 pastTotalDelegatedVotes = getPastTotalDelegatedVotes(blockNumber);
+
+        // if pastTotalDelegatedVotes is 0, then blockNumber is prior to the first totalDelegatedVotes checkpoint
+        // in this case we should use getPastCirculatingSupply to ensure quorum of pre-existing proposals is unchanged
+        return (
+            (
+                pastTotalDelegatedVotes == 0
+                    ? getPastCirculatingSupply(blockNumber)
+                    : pastTotalDelegatedVotes
+            ) * quorumNumerator(blockNumber)
+        ) / quorumDenominator();
     }
 
     /// @inheritdoc GovernorVotesQuorumFractionUpgradeable
