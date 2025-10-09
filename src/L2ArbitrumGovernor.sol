@@ -42,6 +42,15 @@ contract L2ArbitrumGovernor is
     ///         Note that Excluded Address is a readable name with no code of PK associated with it, and thus can't vote.
     address public constant EXCLUDE_ADDRESS = address(0xA4b86);
 
+    /// @notice Maximum quorum allowed for a proposal
+    /// @dev    Since the setting is not checkpointed, it is possible that an existing proposal
+    ///         with quorum greater than the maximum can have its quorum suddenly jump to equal maximumQuorum
+    uint256 public maximumQuorum;
+    /// @notice Minimum quorum allowed for a proposal
+    /// @dev    Since the setting is not checkpointed, it is possible that an existing proposal
+    ///         with quorum lesser than the minimum can have its quorum suddenly jump to equal minimumQuorum
+    uint256 public minimumQuorum;
+
     constructor() {
         _disableInitializers();
     }
@@ -122,6 +131,15 @@ contract L2ArbitrumGovernor is
         return address(this);
     }
 
+    function setQuorumMinAndMax(uint256 _minimumQuorum, uint256 _maximumQuorum)
+        external
+        onlyGovernance
+    {
+        require(_minimumQuorum < _maximumQuorum, "L2ArbitrumGovernor: MIN_GT_MAX");
+        minimumQuorum = _minimumQuorum;
+        maximumQuorum = _maximumQuorum;
+    }
+
     /// @notice Get "circulating" votes supply; i.e., total minus excluded vote exclude address.
     function getPastCirculatingSupply(uint256 blockNumber) public view virtual returns (uint256) {
         return
@@ -129,9 +147,16 @@ contract L2ArbitrumGovernor is
     }
 
     /// @notice Get total delegated votes minus excluded votes
+    /// @dev    If the block number is prior to the first total delegation checkpoint, returns 0
     function getPastTotalDelegatedVotes(uint256 blockNumber) public view returns (uint256) {
-        uint256 excluded = token.getPastVotes(EXCLUDE_ADDRESS, blockNumber);
         uint256 totalDvp = L2ArbitrumToken(address(token)).getTotalDelegationAt(blockNumber);
+
+        // getTotalDelegationAt may return 0 if the requested block is before the first checkpoint
+        if (totalDvp == 0) {
+            return 0;
+        }
+
+        uint256 excluded = token.getPastVotes(EXCLUDE_ADDRESS, blockNumber);
 
         // it is possible (but unlikely) that excluded > totalDvp
         // this is because getTotalDelegationAt is initially an _estimate_ of the total delegation
@@ -145,8 +170,26 @@ contract L2ArbitrumGovernor is
         override(IGovernorUpgradeable, GovernorVotesQuorumFractionUpgradeable)
         returns (uint256)
     {
-        return (getPastTotalDelegatedVotes(blockNumber) * quorumNumerator(blockNumber))
-            / quorumDenominator();
+        uint256 pastTotalDelegatedVotes = getPastTotalDelegatedVotes(blockNumber);
+
+        // if pastTotalDelegatedVotes is 0, then blockNumber is prior to the first totalDelegatedVotes checkpoint
+        // in this case we should use getPastCirculatingSupply to ensure quorum of pre-existing proposals is unchanged
+        uint256 calculatedQuorum = (
+            (
+                pastTotalDelegatedVotes == 0
+                    ? getPastCirculatingSupply(blockNumber)
+                    : pastTotalDelegatedVotes
+            ) * quorumNumerator(blockNumber)
+        ) / quorumDenominator();
+
+        // clamp the calculated quorum between minimumQuorum and maximumQuorum
+        if (calculatedQuorum < minimumQuorum) {
+            return minimumQuorum;
+        } else if (calculatedQuorum > maximumQuorum) {
+            return maximumQuorum;
+        } else {
+            return calculatedQuorum;
+        }
     }
 
     /// @inheritdoc GovernorVotesQuorumFractionUpgradeable
@@ -246,5 +289,5 @@ contract L2ArbitrumGovernor is
      * variables without shifting down storage in the inheritance chain.
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
      */
-    uint256[50] private __gap;
+    uint256[48] private __gap;
 }
