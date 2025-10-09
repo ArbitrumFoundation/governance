@@ -50,6 +50,9 @@ contract L2ArbitrumToken is
     Checkpoints.History private _totalDelegationHistory;
 
     /// @notice Called at proposal #1
+    ///         The initial estimate may be manipulable with artificial delegation/undelegation prior to the upgrade.
+    ///         Since this value is only used for quorum calculation, and the quroum is clamped by the governors to an acceptable range,
+    ///         the risk/impact of manipulation is low.
     /// @param  initialTotalDelegation The initial total delegation at the time of upgrade proposal creation.
     ///         This is an estimate since it is chosen at proposal creation time and not effective until the proposal is executed.
     function postUpgradeInit1(uint256 initialTotalDelegation) external onlyOwner {
