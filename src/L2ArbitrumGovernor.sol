@@ -131,6 +131,10 @@ contract L2ArbitrumGovernor is
         return address(this);
     }
 
+    /// @notice Set the quorum minimum and maximum
+    /// @dev    Since the setting is not checkpointed, it is possible that an existing proposal
+    ///         with quorum outside the new min/max can have its quorum suddenly jump to equal
+    ///         the new min or max
     function setQuorumMinAndMax(uint256 _minimumQuorum, uint256 _maximumQuorum)
         external
         onlyGovernance
