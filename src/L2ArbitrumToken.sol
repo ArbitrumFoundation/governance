@@ -147,8 +147,12 @@ contract L2ArbitrumToken is
                 delta += int256(amount);
             }
             if (delta != 0) {
+                // if the initial estimate is too low, and a large amount of tokens are undelegated
+                // it is technically possible that the newValue is negative
+                // if this happens, we clamp it to zero
+                int256 newValue = int256(_totalDelegationHistory.latest()) + delta;
                 _totalDelegationHistory.push(
-                    uint256(int256(_totalDelegationHistory.latest()) + delta)
+                    uint256(newValue < 0 ? int256(0) : newValue)
                 );
             }
         }
