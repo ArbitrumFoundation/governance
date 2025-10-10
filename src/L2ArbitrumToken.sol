@@ -83,15 +83,17 @@ contract L2ArbitrumToken is
     ///         the risk/impact of manipulation is low.
     /// @param  initialTotalDelegation The initial total delegation at the time of upgrade proposal creation.
     ///         This is an estimate since it is chosen at proposal creation time and not effective until the proposal is executed.
-    function postUpgradeInit1(uint256 initialTotalDelegation) external onlyOwner {
+    function postUpgradeInit(uint256 initialTotalDelegation) external onlyOwner {
         _totalDelegationHistory.push(initialTotalDelegation);
     }
 
     /// @notice Called at proposal #2
     /// @param  initialEstimationErrorAdjustment The amount the initialTotalDelegation was off by, negated. This is added to the current total delegation.
-    function postUpgradeInit2(int256 initialEstimationErrorAdjustment) external onlyOwner {
+    function adjustInitialTotalDelegationEstimate(int256 initialEstimationErrorAdjustment) external onlyOwner {
+        int256 newValue = int256(_totalDelegationHistory.latest()) + initialEstimationErrorAdjustment;
+        
         _totalDelegationHistory.push(
-            uint256(int256(_totalDelegationHistory.latest()) + initialEstimationErrorAdjustment)
+            uint256(newValue < 0 ? int256(0) : newValue)
         );
     }
 
@@ -158,12 +160,12 @@ contract L2ArbitrumToken is
     }
 
     function _delegate(address delegator, address delegatee) internal virtual override {
-        super._delegate(delegator, delegatee);
         _updateDelegationHistory(
             delegates(delegator),
             delegatee,
             balanceOf(delegator)
         );
+        super._delegate(delegator, delegatee);
     }
 
     function _afterTokenTransfer(address from, address to, uint256 amount)
