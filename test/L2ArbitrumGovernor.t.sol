@@ -50,6 +50,7 @@ contract L2ArbitrumGovernorTest is Test {
             proposalThreshold,
             initialVoteExtension
         );
+        _setQuorumMinAndMax(l2ArbitrumGovernor, 0, type(uint256).max);
         return (l2ArbitrumGovernor, token, timelock);
     }
 
@@ -207,5 +208,57 @@ contract L2ArbitrumGovernorTest is Test {
         );
 
         vm.stopPrank();
+    }
+
+    function testDVPQuorumAndClamping() external {
+        (L2ArbitrumGovernor l2ArbitrumGovernor, L2ArbitrumToken token,) = deployAndInit();
+
+        vm.roll(2);
+
+        // since total DVP is zero, the governor should fallback to circulating supply
+        // in this case quorum should be 2500
+        assertEq(l2ArbitrumGovernor.quorum(1), 2500, "quorum should be 2500");
+
+        // test clamping in circ supply mode
+        _setQuorumMinAndMax(l2ArbitrumGovernor, 3000, 4000);
+        assertEq(l2ArbitrumGovernor.quorum(1), 3000, "quorum should be clamped to min 3000");
+        _setQuorumMinAndMax(l2ArbitrumGovernor, 1, 2000);
+        assertEq(l2ArbitrumGovernor.quorum(1), 2000, "quorum should be clamped to max 2000");
+
+        // delegate some tokens to get into DVP mode
+        vm.prank(tokenOwner);
+        token.delegate(someRando);
+        vm.prank(tokenOwner);
+        token.transfer(address(1), 100);
+        vm.roll(3);
+
+        assertEq(token.getTotalDelegationAt(2), initialTokenSupply - 100, "DVP error");
+
+        // make sure quorum is calculated based on DVP now
+        _setQuorumMinAndMax(l2ArbitrumGovernor, 0, type(uint256).max);
+        assertEq(
+            l2ArbitrumGovernor.quorum(2),
+            2495, // ((initialTokenSupply - 100) * quorumNumerator) / 10_000,
+            "quorum should be based on DVP"
+        );
+
+        // test clamping in DVP mode
+        _setQuorumMinAndMax(l2ArbitrumGovernor, 2500, 3000);
+        assertEq(l2ArbitrumGovernor.quorum(2), 2500, "quorum should be clamped to min 2500");
+        _setQuorumMinAndMax(l2ArbitrumGovernor, 1, 2000);
+        assertEq(l2ArbitrumGovernor.quorum(2), 2000, "quorum should be clamped to max 2000");
+    }
+
+    function _setQuorumMinAndMax(
+        L2ArbitrumGovernor l2ArbitrumGovernor,
+        uint256 min,
+        uint256 max
+    ) internal {
+        vm.prank(executor);
+        l2ArbitrumGovernor.relay(
+            address(l2ArbitrumGovernor),
+            0,
+            abi.encodeWithSelector(l2ArbitrumGovernor.setQuorumMinAndMax.selector, min, max)
+        );
     }
 }
