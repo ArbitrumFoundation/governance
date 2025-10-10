@@ -152,6 +152,8 @@ contract L2ArbitrumGovernor is
 
     /// @notice Get total delegated votes minus excluded votes
     /// @dev    If the block number is prior to the first total delegation checkpoint, returns 0
+    ///         Can also return 0 if excluded > total delegation, which is extremely unlikely but possible
+    ///         since L2ArbitrumToken.getTotalDelegationAt is initially an estimate
     function getPastTotalDelegatedVotes(uint256 blockNumber) public view returns (uint256) {
         uint256 totalDvp = L2ArbitrumToken(address(token)).getTotalDelegationAt(blockNumber);
 
@@ -168,6 +170,7 @@ contract L2ArbitrumGovernor is
     }
 
     /// @notice Calculates the quorum size, excludes token delegated to the exclude address
+    /// @dev    The calculated quorum is clamped between minimumQuorum and maximumQuorum
     function quorum(uint256 blockNumber)
         public
         view
@@ -176,7 +179,7 @@ contract L2ArbitrumGovernor is
     {
         uint256 pastTotalDelegatedVotes = getPastTotalDelegatedVotes(blockNumber);
 
-        // if pastTotalDelegatedVotes is 0, then blockNumber is prior to the first totalDelegatedVotes checkpoint
+        // if pastTotalDelegatedVotes is 0, then blockNumber is almost certainly prior to the first totalDelegatedVotes checkpoint
         // in this case we should use getPastCirculatingSupply to ensure quorum of pre-existing proposals is unchanged
         uint256 calculatedQuorum = (
             (
