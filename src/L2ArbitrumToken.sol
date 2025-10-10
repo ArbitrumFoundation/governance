@@ -49,46 +49,6 @@ contract L2ArbitrumToken is
     ///      Another proposal can be made later to update this value if needed.
     Checkpoints.History private _totalDelegationHistory;
 
-    /// @notice Called at proposal #1
-    ///         The initial estimate may be manipulable with artificial delegation/undelegation prior to the upgrade.
-    ///         Since this value is only used for quorum calculation, and the quroum is clamped by the governors to an acceptable range,
-    ///         the risk/impact of manipulation is low.
-    /// @param  initialTotalDelegation The initial total delegation at the time of upgrade proposal creation.
-    ///         This is an estimate since it is chosen at proposal creation time and not effective until the proposal is executed.
-    function postUpgradeInit1(uint256 initialTotalDelegation) external onlyOwner {
-        _totalDelegationHistory.push(initialTotalDelegation);
-    }
-
-    /// @notice Called at proposal #2
-    /// @param  initialEstimationErrorAdjustment The amount the initialTotalDelegation was off by, negated. This is added to the current total delegation.
-    function postUpgradeInit2(int256 initialEstimationErrorAdjustment) external onlyOwner {
-        _totalDelegationHistory.push(
-            uint256(int256(_totalDelegationHistory.latest()) + initialEstimationErrorAdjustment)
-        );
-    }
-
-    /// @notice Get the current total delegation
-    /// @return The current total delegation
-    function getTotalDelegation() 
-        external
-        view
-        returns (uint256)
-    {
-        return _totalDelegationHistory.latest();
-    }
-
-    /// @notice Get the total delegation at a specific block number
-    ///         If the blockNumber is prior to the first checkpoint, returns 0
-    /// @param blockNumber The block number to get the total delegation at
-    /// @return The total delegation at the given block number
-    function getTotalDelegationAt(uint256 blockNumber)
-        external
-        view
-        returns (uint256)
-    {
-        return _totalDelegationHistory.getAtBlock(blockNumber);
-    }
-
     constructor() {
         _disableInitializers();
     }
@@ -117,6 +77,24 @@ contract L2ArbitrumToken is
         _transferOwnership(_owner);
     }
 
+    /// @notice Called at proposal #1
+    ///         The initial estimate may be manipulable with artificial delegation/undelegation prior to the upgrade.
+    ///         Since this value is only used for quorum calculation, and the quroum is clamped by the governors to an acceptable range,
+    ///         the risk/impact of manipulation is low.
+    /// @param  initialTotalDelegation The initial total delegation at the time of upgrade proposal creation.
+    ///         This is an estimate since it is chosen at proposal creation time and not effective until the proposal is executed.
+    function postUpgradeInit1(uint256 initialTotalDelegation) external onlyOwner {
+        _totalDelegationHistory.push(initialTotalDelegation);
+    }
+
+    /// @notice Called at proposal #2
+    /// @param  initialEstimationErrorAdjustment The amount the initialTotalDelegation was off by, negated. This is added to the current total delegation.
+    function postUpgradeInit2(int256 initialEstimationErrorAdjustment) external onlyOwner {
+        _totalDelegationHistory.push(
+            uint256(int256(_totalDelegationHistory.latest()) + initialEstimationErrorAdjustment)
+        );
+    }
+
     /// @notice Allows the owner to mint new tokens
     /// @dev    Only allows minting below an inflation cap.
     ///         Set to once per year, and a maximum of 2%.
@@ -132,6 +110,27 @@ contract L2ArbitrumToken is
         _mint(recipient, amount);
     }
 
+    /// @notice Get the current total delegation
+    /// @return The current total delegation
+    function getTotalDelegation() 
+        external
+        view
+        returns (uint256)
+    {
+        return _totalDelegationHistory.latest();
+    }
+
+    /// @notice Get the total delegation at a specific block number
+    ///         If the blockNumber is prior to the first checkpoint, returns 0
+    /// @param blockNumber The block number to get the total delegation at
+    /// @return The total delegation at the given block number
+    function getTotalDelegationAt(uint256 blockNumber)
+        external
+        view
+        returns (uint256)
+    {
+        return _totalDelegationHistory.getAtBlock(blockNumber);
+    }
 
     function _updateDelegationHistory(
         address fromDelegate,
@@ -149,7 +148,7 @@ contract L2ArbitrumToken is
             if (delta != 0) {
                 // if the initial estimate is too low, and a large amount of tokens are undelegated
                 // it is technically possible that the newValue is negative
-                // if this happens, we clamp it to zero
+                // if this happens, we clamp it to zero to avoid underflow
                 int256 newValue = int256(_totalDelegationHistory.latest()) + delta;
                 _totalDelegationHistory.push(
                     uint256(newValue < 0 ? int256(0) : newValue)
