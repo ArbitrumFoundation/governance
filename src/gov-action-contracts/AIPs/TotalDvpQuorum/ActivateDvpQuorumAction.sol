@@ -8,7 +8,7 @@ import {IL2AddressRegistry} from "./../../address-registries/L2AddressRegistryIn
 import {L2ArbitrumGovernor} from "./../../../L2ArbitrumGovernor.sol";
 
 interface IArbTokenPostUpgradeInit {
-    function postUpgradeInit1(uint256 initialTotalDelegation) external;
+    function postUpgradeInit(uint256 initialTotalDelegation) external;
 }
 
 /// @notice This action is performed as a governance proposal to activate the DVP quorum mechanism.
@@ -71,8 +71,8 @@ contract ActivateDvpQuorumAction {
         // 1. Upgrade the token contract
         govProxyAdmin.upgrade(TransparentUpgradeableProxy(payable(arbTokenProxy)), newTokenImpl);
 
-        // 2. Call postUpgradeInit1 on the token contract
-        IArbTokenPostUpgradeInit(arbTokenProxy).postUpgradeInit1(initialTotalDelegationEstimatee);
+        // 2. Call postUpgradeInit on the token contract
+        IArbTokenPostUpgradeInit(arbTokenProxy).postUpgradeInit(initialTotalDelegationEstimatee);
 
         // 3. Upgrade the core governor contract
         address payable coreGov = payable(address(IL2AddressRegistry(l2AddressRegistry).coreGov()));
