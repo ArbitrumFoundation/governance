@@ -2,7 +2,8 @@
 pragma solidity 0.8.16;
 
 interface IArbTokenPostUpgradeInit {
-    function adjustInitialTotalDelegationEstimate(int256 initialEstimationErrorAdjustment) external;
+    function adjustInitialTotalDelegationEstimate(int256 initialEstimationErrorAdjustment)
+        external;
 }
 
 /// @notice This action is performed some time after ActivateDvpQuorumAction as a separate governance proposal.
@@ -18,6 +19,8 @@ contract AdjustDvpEstimateAction {
 
     /// @notice Calls adjustInitialTotalDelegationEstimate on the token contract to adjust the total delegation estimate
     function perform() external {
-        IArbTokenPostUpgradeInit(arbTokenProxy).adjustInitialTotalDelegationEstimate(initialEstimationErrorAdjustment);
+        IArbTokenPostUpgradeInit(arbTokenProxy).adjustInitialTotalDelegationEstimate(
+            initialEstimationErrorAdjustment
+        );
     }
 }

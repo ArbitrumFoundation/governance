@@ -6,6 +6,8 @@ import {TransparentUpgradeableProxy} from
     "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {IL2AddressRegistry} from "./../../address-registries/L2AddressRegistryInterfaces.sol";
 import {L2ArbitrumGovernor} from "./../../../L2ArbitrumGovernor.sol";
+import {GovernorVotesQuorumFractionUpgradeable} from
+    "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorVotesQuorumFractionUpgradeable.sol";
 
 interface IArbTokenPostUpgradeInit {
     function postUpgradeInit(uint256 initialTotalDelegation) external;
@@ -28,7 +30,7 @@ contract ActivateDvpQuorumAction {
     uint256 public immutable newTreasuryQuorumNumerator;
     uint256 public immutable treasuryMinimumQuorum;
     uint256 public immutable treasuryMaximumQuorum;
-    uint256 public immutable initialTotalDelegationEstimatee;
+    uint256 public immutable initialTotalDelegationEstimate;
 
     constructor(
         address _l2AddressRegistry,
@@ -55,7 +57,7 @@ contract ActivateDvpQuorumAction {
         newTreasuryQuorumNumerator = _newTreasuryQuorumNumerator;
         treasuryMinimumQuorum = _treasuryMinimumQuorum;
         treasuryMaximumQuorum = _treasuryMaximumQuorum;
-        initialTotalDelegationEstimatee = _initialTotalDelegationEstimate;
+        initialTotalDelegationEstimate = _initialTotalDelegationEstimate;
     }
 
     /// @notice Performs the following:
@@ -72,17 +74,30 @@ contract ActivateDvpQuorumAction {
         govProxyAdmin.upgrade(TransparentUpgradeableProxy(payable(arbTokenProxy)), newTokenImpl);
 
         // 2. Call postUpgradeInit on the token contract
-        IArbTokenPostUpgradeInit(arbTokenProxy).postUpgradeInit(initialTotalDelegationEstimatee);
+        IArbTokenPostUpgradeInit(arbTokenProxy).postUpgradeInit(initialTotalDelegationEstimate);
 
         // 3. Upgrade the core governor contract
         address payable coreGov = payable(address(IL2AddressRegistry(l2AddressRegistry).coreGov()));
         govProxyAdmin.upgrade(TransparentUpgradeableProxy(coreGov), newGovernorImpl);
 
         // 4. Set the new quorum numerator for the core governor
-        L2ArbitrumGovernor(coreGov).updateQuorumNumerator(newCoreQuorumNumerator);
+        L2ArbitrumGovernor(coreGov).relay(
+            coreGov,
+            0,
+            abi.encodeCall(
+                GovernorVotesQuorumFractionUpgradeable.updateQuorumNumerator,
+                (newCoreQuorumNumerator)
+            )
+        );
 
         // 5. Set the quorum min/max for the core governor
-        L2ArbitrumGovernor(coreGov).setQuorumMinAndMax(coreMinimumQuorum, coreMaximumQuorum);
+        L2ArbitrumGovernor(coreGov).relay(
+            coreGov,
+            0,
+            abi.encodeCall(
+                L2ArbitrumGovernor.setQuorumMinAndMax, (coreMinimumQuorum, coreMaximumQuorum)
+            )
+        );
 
         // 6. Upgrade the treasury governor contract
         address payable treasuryGov =
@@ -90,11 +105,23 @@ contract ActivateDvpQuorumAction {
         govProxyAdmin.upgrade(TransparentUpgradeableProxy(treasuryGov), newGovernorImpl);
 
         // 7. Set the new quorum numerator for the treasury governor
-        L2ArbitrumGovernor(treasuryGov).updateQuorumNumerator(newTreasuryQuorumNumerator);
+        L2ArbitrumGovernor(treasuryGov).relay(
+            treasuryGov,
+            0,
+            abi.encodeCall(
+                GovernorVotesQuorumFractionUpgradeable.updateQuorumNumerator,
+                (newTreasuryQuorumNumerator)
+            )
+        );
 
         // 8. Set the quorum min/max for the treasury governor
-        L2ArbitrumGovernor(treasuryGov).setQuorumMinAndMax(
-            treasuryMinimumQuorum, treasuryMaximumQuorum
+        L2ArbitrumGovernor(treasuryGov).relay(
+            treasuryGov,
+            0,
+            abi.encodeCall(
+                L2ArbitrumGovernor.setQuorumMinAndMax,
+                (treasuryMinimumQuorum, treasuryMaximumQuorum)
+            )
         );
     }
 }
