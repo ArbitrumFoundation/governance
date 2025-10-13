@@ -55,9 +55,6 @@ contract L2ArbitrumTokenTest is Test {
         int64 adjustment
     ) public {
         int256 expected = int256(uint256(initialEstimate)) + int256(adjustment);
-        if (expected < 0) {
-            expected = 0;
-        }
 
         L2ArbitrumToken l2Token = deployAndInit();
 
@@ -67,7 +64,13 @@ contract L2ArbitrumTokenTest is Test {
 
         // adjust the estimate
         vm.prank(owner);
+        if (expected < 0) {
+            vm.expectRevert("ARB: NEGATIVE_TOTAL_DELEGATION");
+        }
         l2Token.adjustInitialTotalDelegationEstimate(adjustment);
+        if (expected < 0) {
+            return;
+        }
 
         assertEq(
             l2Token.getTotalDelegation(),
