@@ -87,7 +87,7 @@ contract L2ArbitrumToken is
         _totalDelegationHistory.push(initialTotalDelegation);
     }
 
-    /// @notice Called at proposal #2
+    /// @notice Adjusts total delegation value by the given amount
     /// @param  initialEstimationErrorAdjustment The amount the initialTotalDelegation was off by, negated. This is added to the current total delegation.
     function adjustInitialTotalDelegationEstimate(int256 initialEstimationErrorAdjustment) external onlyOwner {
         int256 newValue = int256(_totalDelegationHistory.latest()) + initialEstimationErrorAdjustment;
