@@ -181,6 +181,8 @@ contract L2ArbitrumGovernor is
 
         // if pastTotalDelegatedVotes is 0, then blockNumber is almost certainly prior to the first totalDelegatedVotes checkpoint
         // in this case we should use getPastCirculatingSupply to ensure quorum of pre-existing proposals is unchanged
+        // in the unlikely event that totalDvp is 0 for a block _after_ the dvp update, getPastCirculatingSupply will be used with a larger quorumNumerator, 
+        // resulting in a much higher calculated quorum. This is okay because quorum is clamped.
         uint256 calculatedQuorum = (
             (
                 pastTotalDelegatedVotes == 0
