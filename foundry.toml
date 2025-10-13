@@ -15,6 +15,3 @@ optimizer_runs = 750
 number_underscore = 'thousands'
 line_length = 100
 # See more config options https://github.com/foundry-rs/foundry/tree/master/config
-
-[lint]
-lint_on_build = false
