@@ -91,10 +91,12 @@ contract L2ArbitrumToken is
     /// @param  initialEstimationErrorAdjustment The amount the initialTotalDelegation was off by, negated. This is added to the current total delegation.
     function adjustInitialTotalDelegationEstimate(int256 initialEstimationErrorAdjustment) external onlyOwner {
         int256 newValue = int256(_totalDelegationHistory.latest()) + initialEstimationErrorAdjustment;
-        
-        _totalDelegationHistory.push(
-            uint256(newValue < 0 ? int256(0) : newValue)
-        );
+
+        // negative newValue should be impossible
+        // since the adjustment should bring the value to true total delegation
+        // which is at minimum zero
+        require(newValue >= 0, "ARB: NEGATIVE_TOTAL_DELEGATION");
+        _totalDelegationHistory.push(uint256(newValue));
     }
 
     /// @notice Allows the owner to mint new tokens
