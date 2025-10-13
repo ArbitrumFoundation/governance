@@ -89,8 +89,12 @@ contract L2ArbitrumToken is
 
     /// @notice Adjusts total delegation value by the given amount
     /// @param  initialEstimationErrorAdjustment The amount the initialTotalDelegation was off by, negated. This is added to the current total delegation.
-    function adjustInitialTotalDelegationEstimate(int256 initialEstimationErrorAdjustment) external onlyOwner {
-        int256 newValue = int256(_totalDelegationHistory.latest()) + initialEstimationErrorAdjustment;
+    function adjustInitialTotalDelegationEstimate(int256 initialEstimationErrorAdjustment)
+        external
+        onlyOwner
+    {
+        int256 newValue =
+            int256(_totalDelegationHistory.latest()) + initialEstimationErrorAdjustment;
 
         // negative newValue should be impossible
         // since the adjustment should bring the value to true total delegation
@@ -116,11 +120,7 @@ contract L2ArbitrumToken is
 
     /// @notice Get the current total delegation
     /// @return The current total delegation
-    function getTotalDelegation() 
-        external
-        view
-        returns (uint256)
-    {
+    function getTotalDelegation() external view returns (uint256) {
         return _totalDelegationHistory.latest();
     }
 
@@ -128,19 +128,13 @@ contract L2ArbitrumToken is
     ///         If the blockNumber is prior to the first checkpoint, returns 0
     /// @param blockNumber The block number to get the total delegation at
     /// @return The total delegation at the given block number
-    function getTotalDelegationAt(uint256 blockNumber)
-        external
-        view
-        returns (uint256)
-    {
+    function getTotalDelegationAt(uint256 blockNumber) external view returns (uint256) {
         return _totalDelegationHistory.getAtBlock(blockNumber);
     }
 
-    function _updateDelegationHistory(
-        address fromDelegate,
-        address toDelegate,
-        uint256 amount
-    ) internal {
+    function _updateDelegationHistory(address fromDelegate, address toDelegate, uint256 amount)
+        internal
+    {
         if (fromDelegate != toDelegate) {
             int256 delta = 0;
             if (fromDelegate != address(0)) {
@@ -154,19 +148,13 @@ contract L2ArbitrumToken is
                 // it is technically possible that the newValue is negative
                 // if this happens, we clamp it to zero to avoid underflow
                 int256 newValue = int256(_totalDelegationHistory.latest()) + delta;
-                _totalDelegationHistory.push(
-                    uint256(newValue < 0 ? int256(0) : newValue)
-                );
+                _totalDelegationHistory.push(uint256(newValue < 0 ? int256(0) : newValue));
             }
         }
     }
 
     function _delegate(address delegator, address delegatee) internal virtual override {
-        _updateDelegationHistory(
-            delegates(delegator),
-            delegatee,
-            balanceOf(delegator)
-        );
+        _updateDelegationHistory(delegates(delegator), delegatee, balanceOf(delegator));
         super._delegate(delegator, delegatee);
     }
 
@@ -175,11 +163,7 @@ contract L2ArbitrumToken is
         override(ERC20Upgradeable, ERC20VotesUpgradeable)
     {
         super._afterTokenTransfer(from, to, amount);
-        _updateDelegationHistory(
-            delegates(from),
-            delegates(to),
-            amount
-        );
+        _updateDelegationHistory(delegates(from), delegates(to), amount);
     }
 
     function _mint(address to, uint256 amount)
