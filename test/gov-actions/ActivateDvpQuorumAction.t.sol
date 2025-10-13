@@ -3,12 +3,12 @@ pragma solidity 0.8.16;
 
 import "forge-std/Test.sol";
 import {ActivateDvpQuorumAction} from
-    "../../../src/gov-action-contracts/AIPs/TotalDvpQuorum/ActivateDvpQuorumAction.sol";
-import {L2ArbitrumGovernor} from "../../../src/L2ArbitrumGovernor.sol";
-import {L2ArbitrumToken} from "../../../src/L2ArbitrumToken.sol";
+    "../../src/gov-action-contracts/AIPs/TotalDvpQuorum/ActivateDvpQuorumAction.sol";
+import {L2ArbitrumGovernor} from "../../src/L2ArbitrumGovernor.sol";
+import {L2ArbitrumToken} from "../../src/L2ArbitrumToken.sol";
 import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 
-// forge test --fork-url $ARB_URL --fork-block-number 389149842 test/gov-actions/TotalDvpQuorum/ActivateDvpQuorumAction.t.sol -vvvv
+// forge test --fork-url $ARB_URL --fork-block-number 389149842 test/gov-actions/ActivateDvpQuorumAction.t.sol -vvvv
 contract ActivateDvpQuorumActionTest is Test {
     function testAction() external {
         if (!isFork()) {
