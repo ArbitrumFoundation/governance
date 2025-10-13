@@ -132,6 +132,11 @@ contract L2ArbitrumToken is
         return _totalDelegationHistory.getAtBlock(blockNumber);
     }
 
+    /// @dev Checks if total delegation needs to be updated, and updates it if so
+    ///      by adding a new checkpoint.
+    /// @param fromDelegate The address of the delegate the tokens are being moved from
+    /// @param toDelegate The address of the delegate the tokens are being moved to
+    /// @param amount The amount of tokens being moved
     function _updateDelegationHistory(address fromDelegate, address toDelegate, uint256 amount)
         internal
     {
@@ -153,6 +158,7 @@ contract L2ArbitrumToken is
         }
     }
 
+    /// @dev Override ERC20VotesUpgradeable to update total delegation history when delegation changes
     function _delegate(address delegator, address delegatee) internal virtual override {
         _updateDelegationHistory(delegates(delegator), delegatee, balanceOf(delegator));
         super._delegate(delegator, delegatee);
