@@ -49,6 +49,20 @@ contract L2ArbitrumTokenTest is Test {
         );
     }
 
+    // test no double init
+    function testNoDoublePostUpgradeInit() public {
+        L2ArbitrumToken l2Token = deployAndInit();
+
+        // set an initial estimate
+        vm.prank(owner);
+        l2Token.postUpgradeInit(10);
+
+        // try to set it again
+        vm.prank(owner);
+        vm.expectRevert("ARB: POST_UPGRADE_INIT_ALREADY_CALLED");
+        l2Token.postUpgradeInit(20);
+    }
+
     // test adjustment
     function testDvpAdjustment(
         uint64 initialEstimate,
