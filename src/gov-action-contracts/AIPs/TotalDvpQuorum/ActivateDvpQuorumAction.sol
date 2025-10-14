@@ -62,7 +62,7 @@ contract ActivateDvpQuorumAction {
 
     /// @notice Performs the following:
     ///         1. Upgrades the token contract
-    ///         2. Calls postUpgradeInit1 on the token contract to set the initial total delegation estimate
+    ///         2. Calls postUpgradeInit on the token contract to set the initial total delegation estimate
     ///         3. Upgrades the core governor contract
     ///         4. Sets the new quorum numerator for the core governor
     ///         5. Sets the quorum min/max for the core governor
