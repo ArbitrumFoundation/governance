@@ -49,6 +49,8 @@ contract L2ArbitrumToken is
     ///      Another proposal can be made later to update this value if needed.
     Checkpoints.History private _totalDelegationHistory;
 
+    event TotalDelegationAdjusted(uint256 previousTotalDelegation, uint256 newTotalDelegation);
+
     constructor() {
         _disableInitializers();
     }
@@ -92,19 +94,21 @@ contract L2ArbitrumToken is
     }
 
     /// @notice Adjusts total delegation value by the given amount
-    /// @param  initialEstimationErrorAdjustment The amount the initialTotalDelegation was off by, negated. This is added to the current total delegation.
-    function adjustInitialTotalDelegationEstimate(int256 initialEstimationErrorAdjustment)
+    /// @param  adjustment The amount that the total delegation is off by, negated. This is added to the current total delegation.
+    function adjustTotalDelegation(int256 adjustment)
         external
         onlyOwner
     {
-        int256 newValue =
-            int256(_totalDelegationHistory.latest()) + initialEstimationErrorAdjustment;
+        uint256 latest = _totalDelegationHistory.latest();
+        int256 newValue = int256(latest) + adjustment;
 
         // negative newValue should be impossible
         // since the adjustment should bring the value to true total delegation
         // which is at minimum zero
         require(newValue >= 0, "ARB: NEGATIVE_TOTAL_DELEGATION");
         _totalDelegationHistory.push(uint256(newValue));
+
+        emit TotalDelegationAdjusted(latest, uint256(newValue));
     }
 
     /// @notice Allows the owner to mint new tokens
