@@ -4,8 +4,8 @@ pragma solidity 0.8.16;
 import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
 import {TransparentUpgradeableProxy} from
     "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
-import {IL2AddressRegistry} from "./../../address-registries/L2AddressRegistryInterfaces.sol";
-import {L2ArbitrumGovernor} from "./../../../L2ArbitrumGovernor.sol";
+import {IL2AddressRegistry} from "./../address-registries/L2AddressRegistryInterfaces.sol";
+import {L2ArbitrumGovernor} from "./../../L2ArbitrumGovernor.sol";
 import {GovernorVotesQuorumFractionUpgradeable} from
     "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorVotesQuorumFractionUpgradeable.sol";
 

@@ -3,7 +3,7 @@ pragma solidity 0.8.16;
 
 import "forge-std/Test.sol";
 import {ActivateDvpQuorumAction} from
-    "../../src/gov-action-contracts/AIPs/TotalDvpQuorum/ActivateDvpQuorumAction.sol";
+    "../../src/gov-action-contracts/AIPs/ActivateDvpQuorumAction.sol";
 import {L2ArbitrumGovernor} from "../../src/L2ArbitrumGovernor.sol";
 import {L2ArbitrumToken} from "../../src/L2ArbitrumToken.sol";
 import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
