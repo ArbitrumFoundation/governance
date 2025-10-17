@@ -81,7 +81,7 @@ contract L2ArbitrumTokenTest is Test {
         if (expected < 0) {
             vm.expectRevert("ARB: NEGATIVE_TOTAL_DELEGATION");
         }
-        l2Token.adjustInitialTotalDelegationEstimate(adjustment);
+        l2Token.adjustTotalDelegation(adjustment);
         if (expected < 0) {
             return;
         }
@@ -185,7 +185,7 @@ contract L2ArbitrumTokenTest is Test {
 
         // lower the estimate by some
         vm.prank(owner);
-        l2Token.adjustInitialTotalDelegationEstimate(-10);
+        l2Token.adjustTotalDelegation(-10);
 
         // create a snapshot so we can test transfer and undelegate
         uint256 snap = vm.snapshot();
