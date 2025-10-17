@@ -35,6 +35,290 @@ contract L2ArbitrumTokenTest is Test {
         l2Token.initialize(l1Token, initialSupply, owner);
     }
 
+    // test initial estimate
+    function testInitialDvpEstimate(uint64 initialEstimate) public {
+        L2ArbitrumToken l2Token = deployAndInit();
+
+        // set an initial estimate
+        vm.prank(owner);
+        l2Token.postUpgradeInit(initialEstimate);
+
+        assertEq(
+            l2Token.getTotalDelegation(),
+            initialEstimate
+        );
+    }
+
+    // test no double init
+    function testNoDoublePostUpgradeInit() public {
+        L2ArbitrumToken l2Token = deployAndInit();
+
+        // set an initial estimate
+        vm.prank(owner);
+        l2Token.postUpgradeInit(10);
+
+        // try to set it again
+        vm.prank(owner);
+        vm.expectRevert("ARB: POST_UPGRADE_INIT_ALREADY_CALLED");
+        l2Token.postUpgradeInit(20);
+    }
+
+    // test adjustment
+    function testDvpAdjustment(
+        uint64 initialEstimate,
+        int64 adjustment
+    ) public {
+        int256 expected = int256(uint256(initialEstimate)) + int256(adjustment);
+
+        L2ArbitrumToken l2Token = deployAndInit();
+
+        // set an initial estimate
+        vm.prank(owner);
+        l2Token.postUpgradeInit(initialEstimate);
+
+        // adjust the estimate
+        vm.prank(owner);
+        if (expected < 0) {
+            vm.expectRevert("ARB: NEGATIVE_TOTAL_DELEGATION");
+        }
+        l2Token.adjustTotalDelegation(adjustment);
+        if (expected < 0) {
+            return;
+        }
+
+        assertEq(
+            l2Token.getTotalDelegation(),
+            uint256(expected)
+        );
+    }
+
+    // test goes up when self delegating
+    function testIncreaseDVPOnSelfDelegate() public {
+        L2ArbitrumToken l2Token = deployAndInit();
+        vm.prank(owner);
+        l2Token.postUpgradeInit(10);
+
+        // delegate some tokens
+        vm.prank(owner);
+        l2Token.delegate(owner);
+
+        assertEq(
+            l2Token.getTotalDelegation(), 10 + initialSupply
+        );
+    }
+
+    // test goes up when delegating to another
+    function testIncreaseDVPOnDelegateToAnother() public {
+        L2ArbitrumToken l2Token = deployAndInit();
+        vm.prank(owner);
+        l2Token.postUpgradeInit(10);
+
+        vm.prank(owner);
+        l2Token.delegate(address(1));
+
+        assertEq(
+            l2Token.getTotalDelegation(), 10 + initialSupply
+        );
+    }
+
+    // test does not change when redelegating to same or another
+    function testNoChangeDVPOnRedelegateToSame() public {
+        L2ArbitrumToken l2Token = deployAndInit();
+        vm.prank(owner);
+        l2Token.postUpgradeInit(0);
+
+        // delegate some tokens
+        vm.prank(owner);
+        l2Token.delegate(owner);
+        assertEq(
+            l2Token.getTotalDelegation(), initialSupply
+        );
+
+        // redelegate to self again
+        vm.prank(owner);
+        l2Token.delegate(owner);
+        assertEq(
+            l2Token.getTotalDelegation(), initialSupply
+        );
+
+        // redelegate to another
+        vm.prank(owner);
+        l2Token.delegate(address(1));
+        assertEq(
+            l2Token.getTotalDelegation(), initialSupply
+        );
+
+        // redelegate to another again
+        vm.prank(owner);
+        l2Token.delegate(address(1));
+        assertEq(
+            l2Token.getTotalDelegation(), initialSupply
+        );
+    }
+
+    // test goes down when undelegating
+    function testDecreaseDVPOnUndelegate() public {
+        L2ArbitrumToken l2Token = deployAndInit();
+        vm.prank(owner);
+        l2Token.postUpgradeInit(10);
+
+        // delegate some tokens
+        vm.prank(owner);
+        l2Token.delegate(owner);
+        assertEq(
+            l2Token.getTotalDelegation(), 10 + initialSupply
+        );
+
+        // undelegate
+        vm.prank(owner);
+        l2Token.delegate(address(0));
+        assertEq(l2Token.getTotalDelegation(), 10);
+    }
+
+    // test does not revert on underflow
+    function testDvpNoRevertOnUnderflow() public {
+        L2ArbitrumToken l2Token = deployAndInit();
+
+        // delegate some tokens
+        vm.prank(owner);
+        l2Token.delegate(owner);
+
+        // lower the estimate by some
+        vm.prank(owner);
+        l2Token.adjustTotalDelegation(-10);
+
+        // create a snapshot so we can test transfer and undelegate
+        uint256 snap = vm.snapshot();
+
+        // undelegate should NOT REVERT
+        vm.prank(owner);
+        l2Token.delegate(address(0));
+
+        // final value should be zero
+        assertEq(l2Token.getTotalDelegation(), 0);
+
+        // transfer should NOT REVERT
+        vm.revertTo(snap);
+        assertEq(
+            l2Token.getTotalDelegation(), initialSupply - 10
+        );
+        vm.prank(owner);
+        l2Token.transfer(address(1234), initialSupply);
+        assertEq(l2Token.getTotalDelegation(), 0);
+    }
+
+    function testDvpIncreaseOnTransferToDelegator() public {
+        L2ArbitrumToken l2Token = deployAndInit();
+
+        address recipient = address(1234);
+
+        // delegate some tokens
+        vm.prank(recipient);
+        l2Token.delegate(address(1));
+
+        uint256 transferAmount = 105;
+
+        vm.prank(owner);
+        l2Token.transfer(recipient, transferAmount);
+
+        assertEq(
+            l2Token.getTotalDelegation(),
+            transferAmount
+        );
+    }
+
+    function testDvpNoChangeOnTransferToNonDelegator() public {
+        L2ArbitrumToken l2Token = deployAndInit();
+
+        address recipient = address(1234);
+
+        vm.prank(owner);
+        l2Token.transfer(recipient, 105);
+
+        assertEq(l2Token.getTotalDelegation(), 0);
+    }
+
+    function testDvpNoChangeOnTransferToDelegator() public {
+        L2ArbitrumToken l2Token = deployAndInit();
+
+        address recipient = address(1234);
+
+        // delegate some tokens
+        vm.prank(recipient);
+        l2Token.delegate(address(1));
+        vm.prank(owner);
+        l2Token.delegate(address(2));
+
+        assertEq(l2Token.getTotalDelegation(), initialSupply);
+
+        uint256 transferAmount = 105;
+
+        vm.prank(owner);
+        l2Token.transfer(recipient, transferAmount);
+
+        assertEq(l2Token.getTotalDelegation(), initialSupply);
+    }
+
+    function testDvpNoChangeOnSelfTransfer() public {
+        L2ArbitrumToken l2Token = deployAndInit();
+
+        // delegate some tokens
+        vm.prank(owner);
+        l2Token.delegate(address(1));
+
+        assertEq(l2Token.getTotalDelegation(), initialSupply);
+
+        uint256 transferAmount = 105;
+
+        vm.prank(owner);
+        l2Token.transfer(owner, transferAmount);
+
+        assertEq(l2Token.getTotalDelegation(), initialSupply);
+
+        vm.prank(owner);
+        l2Token.transfer(address(2), transferAmount);
+        assertEq(
+            l2Token.getTotalDelegation(), initialSupply - transferAmount
+        );
+        vm.prank(address(2));
+        l2Token.transfer(address(2), transferAmount);
+        assertEq(
+            l2Token.getTotalDelegation(), initialSupply - transferAmount
+        );
+    }
+
+    function testDvpDecreaseOnTransferFromDelegator() public {
+        L2ArbitrumToken l2Token = deployAndInit();
+
+        uint256 transferAmount = 105;
+
+        vm.prank(owner);
+        l2Token.delegate(address(1));
+
+        assertEq(l2Token.getTotalDelegation(), initialSupply);
+
+        vm.prank(owner);
+        l2Token.transfer(address(2), transferAmount);
+        assertEq(
+            l2Token.getTotalDelegation(), initialSupply - transferAmount
+        );
+    }
+
+    // test when block is before first checkpoint
+    function testDvpAtBlockBeforeFirstCheckpoint() public {
+        L2ArbitrumToken l2Token = deployAndInit();
+        vm.prank(owner);
+        l2Token.postUpgradeInit(10);
+
+        uint256 blockNum = block.number;
+
+        vm.roll(blockNum + 1);
+
+        assertEq(l2Token.getTotalDelegationAt(blockNum - 1), 0);
+        assertEq(l2Token.getTotalDelegationAt(blockNum), 10);
+        assertEq(l2Token.getTotalDelegation(), 10);
+    }
+
     function testNoLogicContractInit() public {
         L2ArbitrumToken token = new L2ArbitrumToken();
 
