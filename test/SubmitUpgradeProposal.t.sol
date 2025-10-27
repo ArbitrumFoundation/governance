@@ -16,9 +16,15 @@ import {ProxyAdmin} from "@openzeppelin/contracts/proxy/transparent/ProxyAdmin.s
 import {
     TransparentUpgradeableProxy
 } from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {L2ArbitrumGovernorV2Test} from "test/L2ArbitrumGovernorV2.t.sol";
 
-contract SubmitUpgradeProposalTest is SetupNewGovernors {
+contract SubmitUpgradeProposalTest is SetupNewGovernors, L2ArbitrumGovernorV2Test {
     event Upgraded(address indexed implementation);
+
+    function setUp() public virtual override(SetupNewGovernors, L2ArbitrumGovernorV2Test) {
+        SetupNewGovernors.setUp();
+        _setMajorDelegates();
+    }
 
     function test_SuccessfullyExecuteUpgradeProposal() public {
         MultiProxyUpgradeAction multiProxyUpgradeAction = new MultiProxyUpgradeAction(
@@ -123,6 +129,7 @@ contract SubmitUpgradeProposalTest is SetupNewGovernors {
 
         // Propose
         (
+
             /*address[] memory _targets*/,
             /*uint256[] memory _values*/,
             /*bytes[] memory _calldatas*/,

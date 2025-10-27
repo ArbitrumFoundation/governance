@@ -36,7 +36,6 @@ abstract contract SetupNewGovernors is DeployConstants, Test {
     L2ArbitrumGovernorV2 newGovernorImplementation;
 
     uint256 constant FORK_BLOCK = 245_608_716; // Arbitrary recent block
-    address[] public _majorDelegates;
 
     enum ProposalState {
         Pending,
@@ -90,27 +89,6 @@ abstract contract SetupNewGovernors is DeployConstants, Test {
             new DeployMultiProxyUpgradeAction();
         multiProxyUpgradeAction =
             deployMultiProxyUpgradeAction.run(address(newGovernorImplementation));
-
-        // Set the major delegates for testing
-        _majorDelegates = new address[](18);
-        _majorDelegates[0] = 0x1B686eE8E31c5959D9F5BBd8122a58682788eeaD; // L2BEAT
-        _majorDelegates[1] = 0xF4B0556B9B6F53E00A1FDD2b0478Ce841991D8fA; // olimpio
-        _majorDelegates[2] = 0x11cd09a0c5B1dc674615783b0772a9bFD53e3A8F; // Gauntlet
-        _majorDelegates[3] = 0xB933AEe47C438f22DE0747D57fc239FE37878Dd1; // Wintermute
-        _majorDelegates[4] = 0x0eB5B03c0303f2F47cD81d7BE4275AF8Ed347576; // Treasure
-        _majorDelegates[5] = 0xF92F185AbD9E00F56cb11B0b709029633d1E37B4; //
-        _majorDelegates[6] = 0x186e505097BFA1f3cF45c2C9D7a79dE6632C3cdc;
-        _majorDelegates[7] = 0x5663D01D8109DDFC8aACf09fBE51F2d341bb3643;
-        _majorDelegates[8] = 0x2ef27b114917dD53f8633440A7C0328fef132e2F; // MUX Protocol
-        _majorDelegates[9] = 0xE48C655276C23F1534AE2a87A2bf8A8A6585Df70; // ercwl
-        _majorDelegates[10] = 0x8A3e9846df0CDc723C06e4f0C642ffFF82b54610;
-        _majorDelegates[11] = 0xAD16ebE6FfC7d96624A380F394cD64395B0C6144; // DK (Premia)
-        _majorDelegates[12] = 0xA5dF0cf3F95C6cd97d998b9D990a86864095d9b0; // Blockworks Research
-        _majorDelegates[13] = 0x839395e20bbB182fa440d08F850E6c7A8f6F0780; // Griff Green
-        _majorDelegates[14] = 0x2e3BEf6830Ae84bb4225D318F9f61B6b88C147bF; // Camelot
-        _majorDelegates[15] = 0x8F73bE66CA8c79382f72139be03746343Bf5Faa0; // mihal.eth
-        _majorDelegates[16] = 0xb5B069370Ef24BC67F114e185D185063CE3479f8; // Frisson
-        _majorDelegates[17] = 0xdb5781a835b60110298fF7205D8ef9678Ff1f800; // yoav.eth
     }
 }
 
@@ -146,7 +124,9 @@ contract MockArbSys is DeployConstants, Test {
         assertEq(_upgradeExecutor, L2_UPGRADE_EXECUTOR);
 
         vm.prank(L2_SECURITY_COUNCIL_9);
-        (bool success,/*bytes memory data*/) = _upgradeExecutor.call(_upgradeExecutorCallData);
+        (
+            bool success, /*bytes memory data*/
+        ) = _upgradeExecutor.call(_upgradeExecutorCallData);
         assertEq(success, true);
     }
 }
