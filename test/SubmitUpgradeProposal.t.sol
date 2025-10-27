@@ -129,11 +129,7 @@ contract SubmitUpgradeProposalTest is SetupNewGovernors, L2ArbitrumGovernorV2Tes
 
         // Propose
         (
-
-            /*address[] memory _targets*/,
-            /*uint256[] memory _values*/,
-            /*bytes[] memory _calldatas*/,
-            /*string memory _description*/,
+            ,/*address[] memory _targets*/ /*uint256[] memory _values*/ /*bytes[] memory _calldatas*/ /*string memory _description*/,,,
             uint256 _proposalId
         ) = submitUpgradeProposalScript.run(address(multiProxyUpgradeAction), L1_TIMELOCK_MIN_DELAY);
         assertEq(
@@ -172,6 +168,129 @@ contract SubmitUpgradeProposalTest is SetupNewGovernors, L2ArbitrumGovernorV2Tes
                 ),
             initialTreasuryGovernorImplementation
         );
+    }
+
+    function testFuzz_RevertIf_ProxyAdminOwnerMismatch(address _wrongOwner) public {
+        vm.assume(_wrongOwner != L2_UPGRADE_EXECUTOR);
+        vm.assume(_wrongOwner != address(0));
+
+        MultiProxyUpgradeAction multiProxyUpgradeAction = new MultiProxyUpgradeAction(
+            L2_PROXY_ADMIN_CONTRACT,
+            L2_CORE_GOVERNOR,
+            L2_TREASURY_GOVERNOR,
+            address(newGovernorImplementation)
+        );
+
+        vm.prank(L2_UPGRADE_EXECUTOR);
+        ProxyAdmin(L2_PROXY_ADMIN_CONTRACT).transferOwnership(_wrongOwner);
+
+        vm.expectRevert("ProxyAdmin owner mismatch");
+        submitUpgradeProposalScript.run(address(multiProxyUpgradeAction), L1_TIMELOCK_MIN_DELAY);
+    }
+
+    function testFuzz_RevertIf_CoreGovernorProxyAdminMismatch(address _wrongProxyAdmin) public {
+        vm.assume(_wrongProxyAdmin != L2_PROXY_ADMIN_CONTRACT);
+        vm.assume(_wrongProxyAdmin != address(0));
+
+        address[] memory targets = new address[](1);
+        targets[0] = L2_ARB_SYS;
+        uint256[] memory values = new uint256[](1);
+        values[0] = 0;
+        bytes[] memory calldatas = new bytes[](1);
+        calldatas[0] = "";
+
+        vm.mockCall(
+            L2_PROXY_ADMIN_CONTRACT,
+            abi.encodeWithSelector(
+                ProxyAdmin.getProxyAdmin.selector,
+                TransparentUpgradeableProxy(payable(L2_CORE_GOVERNOR))
+            ),
+            abi.encode(_wrongProxyAdmin)
+        );
+
+        vm.expectRevert("Core Governor proxy admin mismatch");
+        submitUpgradeProposalScript.checkConfigurationAndPayload(targets, values, calldatas);
+    }
+
+    function testFuzz_RevertIf_TreasuryGovernorProxyAdminMismatch(address _wrongProxyAdmin) public {
+        vm.assume(_wrongProxyAdmin != L2_PROXY_ADMIN_CONTRACT);
+        vm.assume(_wrongProxyAdmin != address(0));
+
+        address[] memory targets = new address[](1);
+        targets[0] = L2_ARB_SYS;
+        uint256[] memory values = new uint256[](1);
+        values[0] = 0;
+        bytes[] memory calldatas = new bytes[](1);
+        calldatas[0] = "";
+
+        vm.mockCall(
+            L2_PROXY_ADMIN_CONTRACT,
+            abi.encodeWithSelector(
+                ProxyAdmin.getProxyAdmin.selector,
+                TransparentUpgradeableProxy(payable(L2_TREASURY_GOVERNOR))
+            ),
+            abi.encode(_wrongProxyAdmin)
+        );
+
+        vm.expectRevert("Treasury Governor proxy admin mismatch");
+        submitUpgradeProposalScript.checkConfigurationAndPayload(targets, values, calldatas);
+    }
+
+    function test_RevertIf_MultipleTargets() public {
+        address[] memory targets = new address[](2);
+        targets[0] = L2_ARB_SYS;
+        targets[1] = L2_ARB_SYS;
+        uint256[] memory values = new uint256[](2);
+        values[0] = 0;
+        values[1] = 0;
+        bytes[] memory calldatas = new bytes[](2);
+        calldatas[0] = "";
+        calldatas[1] = "";
+
+        vm.expectRevert("Invalid proposal arrays");
+        submitUpgradeProposalScript.checkConfigurationAndPayload(targets, values, calldatas);
+    }
+
+    function testFuzz_RevertIf_WrongTarget(address _wrongTarget) public {
+        vm.assume(_wrongTarget != L2_ARB_SYS);
+        vm.assume(_wrongTarget != address(0));
+
+        address[] memory targets = new address[](1);
+        targets[0] = _wrongTarget;
+        uint256[] memory values = new uint256[](1);
+        values[0] = 0;
+        bytes[] memory calldatas = new bytes[](1);
+        calldatas[0] = "";
+
+        vm.expectRevert("Invalid proposal arrays");
+        submitUpgradeProposalScript.checkConfigurationAndPayload(targets, values, calldatas);
+    }
+
+    function testFuzz_RevertIf_NonZeroValue(uint256 _wrongValue) public {
+        vm.assume(_wrongValue != 0);
+
+        address[] memory targets = new address[](1);
+        targets[0] = L2_ARB_SYS;
+        uint256[] memory values = new uint256[](1);
+        values[0] = _wrongValue;
+        bytes[] memory calldatas = new bytes[](1);
+        calldatas[0] = "";
+
+        vm.expectRevert("Invalid proposal arrays");
+        submitUpgradeProposalScript.checkConfigurationAndPayload(targets, values, calldatas);
+    }
+
+    function test_RevertIf_MultipleCalldatas() public {
+        address[] memory targets = new address[](1);
+        targets[0] = L2_ARB_SYS;
+        uint256[] memory values = new uint256[](1);
+        values[0] = 0;
+        bytes[] memory calldatas = new bytes[](2);
+        calldatas[0] = "";
+        calldatas[1] = "";
+
+        vm.expectRevert("Invalid proposal arrays");
+        submitUpgradeProposalScript.checkConfigurationAndPayload(targets, values, calldatas);
     }
 }
 
