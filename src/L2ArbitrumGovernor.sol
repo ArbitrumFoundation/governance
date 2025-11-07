@@ -27,15 +27,6 @@ contract L2ArbitrumGovernor is
     GovernorPreventLateQuorumUpgradeable,
     OwnableUpgradeable
 {
-    /// @notice Error thrown when attempting to cancel a proposal that is not in Pending state.
-    /// @param  state The current state of the proposal.
-    error ProposalNotPending(GovernorUpgradeable.ProposalState state);
-
-    /// @notice Error thrown when a non-proposer attempts to cancel a proposal.
-    /// @param  sender The address attempting to cancel the proposal.
-    /// @param  proposer The address of the actual proposer.
-    error NotProposer(address sender, address proposer);
-
     /// @notice address for which votes will not be counted toward quorum
     /// @dev    A portion of the Arbitrum tokens will be held by entities (eg the treasury) that
     ///         are not eligible to vote. However, even if their voting/delegation is restricted their
@@ -139,7 +130,8 @@ contract L2ArbitrumGovernor is
         string memory description
     ) public virtual override(IGovernorUpgradeable, GovernorUpgradeable) returns (uint256) {
         require(
-            _isValidDescriptionForProposer(msg.sender, description), "Governor: proposer restricted"
+            _isValidDescriptionForProposer(msg.sender, description),
+            "L2ArbitrumGovernor: PROPOSER_RESTRICTED"
         );
         uint256 _proposalId = GovernorUpgradeable.propose(targets, values, calldatas, description);
         proposers[_proposalId] = msg.sender;
@@ -160,14 +152,12 @@ contract L2ArbitrumGovernor is
     ) public virtual returns (uint256) {
         uint256 _proposalId = hashProposal(targets, values, calldatas, descriptionHash);
 
-        if (state(_proposalId) != ProposalState.Pending) {
-            revert ProposalNotPending(state(_proposalId));
-        }
+        require(
+            state(_proposalId) == ProposalState.Pending, "L2ArbitrumGovernor: PROPOSAL_NOT_PENDING"
+        );
 
         address _proposer = proposers[_proposalId];
-        if (msg.sender != _proposer) {
-            revert NotProposer(msg.sender, _proposer);
-        }
+        require(msg.sender == _proposer, "L2ArbitrumGovernor: NOT_PROPOSER");
 
         delete proposers[_proposalId];
 
