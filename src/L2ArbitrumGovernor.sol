@@ -126,7 +126,7 @@ contract L2ArbitrumGovernor is
     }
 
     /// @inheritdoc IGovernorUpgradeable
-    /// @dev See {IGovernor-propose}. This function has opt-in frontrunning protection, described in {_isValidDescriptionForProposer}.
+    /// @dev See {IGovernorUpgradeable-propose}. This function has opt-in frontrunning protection, described in {_isValidDescriptionForProposer}.
     function propose(
         address[] memory targets,
         uint256[] memory values,
