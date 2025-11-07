@@ -3,11 +3,15 @@ pragma solidity 0.8.16;
 
 import "@openzeppelin/contracts-upgradeable/governance/GovernorUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorSettingsUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorVotesQuorumFractionUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorPreventLateQuorumUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorCountingSimpleUpgradeable.sol";
+import
+    "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorVotesQuorumFractionUpgradeable.sol";
+import
+    "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorPreventLateQuorumUpgradeable.sol";
+import
+    "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorCountingSimpleUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorVotesUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorTimelockControlUpgradeable.sol";
+import
+    "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorTimelockControlUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {L2ArbitrumToken} from "./L2ArbitrumToken.sol";
@@ -224,13 +228,15 @@ contract L2ArbitrumGovernor is
 
         // if pastTotalDelegatedVotes is 0, then blockNumber is almost certainly prior to the first totalDelegatedVotes checkpoint
         // in this case we should use getPastCirculatingSupply to ensure quorum of pre-existing proposals is unchanged
-        // in the unlikely event that totalDvp is 0 for a block _after_ the dvp update, getPastCirculatingSupply will be used with a larger quorumNumerator,
+        // in the unlikely event that totalDvp is 0 for a block _after_ the dvp update, getPastCirculatingSupply will be used with a larger quorumNumerator, 
         // resulting in a much higher calculated quorum. This is okay because quorum is clamped.
-        uint256 calculatedQuorum =
-            ((pastTotalDelegatedVotes == 0
-                            ? getPastCirculatingSupply(blockNumber)
-                            : pastTotalDelegatedVotes)
-                    * quorumNumerator(blockNumber)) / quorumDenominator();
+        uint256 calculatedQuorum = (
+            (
+                pastTotalDelegatedVotes == 0
+                    ? getPastCirculatingSupply(blockNumber)
+                    : pastTotalDelegatedVotes
+            ) * quorumNumerator(blockNumber)
+        ) / quorumDenominator();
 
         // clamp the calculated quorum between minimumQuorum and maximumQuorum
         if (calculatedQuorum < minimumQuorum) {
@@ -316,7 +322,11 @@ contract L2ArbitrumGovernor is
         uint256[] memory values,
         bytes[] memory calldatas,
         bytes32 descriptionHash
-    ) internal override(GovernorUpgradeable, GovernorTimelockControlUpgradeable) returns (uint256) {
+    )
+        internal
+        override(GovernorUpgradeable, GovernorTimelockControlUpgradeable)
+        returns (uint256)
+    {
         return
             GovernorTimelockControlUpgradeable._cancel(targets, values, calldatas, descriptionHash);
     }
