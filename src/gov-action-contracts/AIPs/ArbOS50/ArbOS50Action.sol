@@ -1,0 +1,91 @@
+// SPDX-License-Identifier: Apache-2.0
+pragma solidity 0.8.16;
+
+import "@openzeppelin/contracts/utils/Address.sol";
+
+// Interfaces
+interface IArbOwner {
+    function setMinimumL2BaseFee(uint256 minBaseFeeWei) external;
+    function setParentGasFloorPerToken(uint64 floorPerToken) external;
+    function addChainOwner(address newOwner) external;
+    function isChainOwner(address addr) external view returns (bool);
+}
+
+interface IArbOwnerPublic {
+    function getParentGasFloorPerToken() external view returns (uint64);
+}
+
+interface IArbGasInfo {
+    function getMinimumGasPrice() external view returns (uint256);
+}
+
+interface IArbSys {
+    function arbOSVersion() external view returns (uint256);
+}
+
+/// @notice Settings to be applied on Arbitrum One are Arbitrum Nova after the ArbOS 50 upgrade
+///         These settings include:
+///         - Setting a new minimum L2 base fee in wei
+///         - Setting the new gas floor per token
+///         - Adding the ResourceConstraintManager as a chain owner
+/// @dev    Identical copies of this contract will be deployed on Arbitrum One and Arbitrum Nova
+/// @dev    This contract is to be used after the chain has been successfully upgraded to ArbOS 50,
+///         otherwise the call to setParentGasFloorPerToken will fail and the transaction will revert.
+contract ArbOS50SettingsAction {
+    uint256 public constant NEW_MIN_BASE_FEE = 0.02 gwei;
+    uint64 public constant NEW_FLOOR_PER_TOKEN = 10;
+    address public immutable resourceConstraintManagerAddress;
+
+    // Precompile addresses
+    address public constant ARB_OWNER_ADDRESS = 0x0000000000000000000000000000000000000070;
+    address public constant ARB_OWNER_PUBLIC_ADDRESS = 0x000000000000000000000000000000000000006b;
+    address public constant ARB_GAS_INFO_ADDRESS = 0x000000000000000000000000000000000000006C;
+    address public constant ARBSYS_ADDRESS = 0x0000000000000000000000000000000000000064;
+
+    constructor(address _resourceConstraintManagerAddress) {
+        require(
+            Address.isContract(address(_resourceConstraintManagerAddress)),
+            "ArbOS50SettingsAction: _resourceConstraintManagerAddress is not a contract"
+        );
+        resourceConstraintManagerAddress = _resourceConstraintManagerAddress;
+    }
+
+    /// @notice Gets the current ArbOS version
+    /// @dev    The ArbOS version returned by ArbSys includes an offset of 55
+    ///         (https://github.com/OffchainLabs/nitro/blob/v3.8.0/precompiles/ArbSys.go#L65-L69)
+    function getArbOSVersion() public view returns (uint256) {
+        IArbSys arbSys = IArbSys(ARBSYS_ADDRESS);
+        return arbSys.arbOSVersion() - 55;
+    }
+
+    function perform() public {
+        // Verify that the chain is running ArbOS 50
+        require(getArbOSVersion() >= 50, "ArbOS50SettingsAction: ArbOS version is less than 50");
+
+        // Create precompile interfaces
+        IArbOwner arbOwner = IArbOwner(ARB_OWNER_ADDRESS);
+        IArbOwnerPublic arbOwnerPublic = IArbOwnerPublic(ARB_OWNER_PUBLIC_ADDRESS);
+        IArbGasInfo arbGasInfo = IArbGasInfo(ARB_GAS_INFO_ADDRESS);
+
+        // Set the minimum L2 base fee
+        arbOwner.setMinimumL2BaseFee(NEW_MIN_BASE_FEE);
+        require(
+            arbGasInfo.getMinimumGasPrice() == NEW_MIN_BASE_FEE,
+            "ArbOS50SettingsAction: Minimum L2 base fee not set correctly"
+        );
+
+        // Set the new gas floor per token
+        arbOwner.setParentGasFloorPerToken(NEW_FLOOR_PER_TOKEN);
+        require(
+            arbOwnerPublic.getParentGasFloorPerToken() == NEW_FLOOR_PER_TOKEN,
+            "ArbOS50SettingsAction: Gas floor per token not set correctly"
+        );
+
+        // Add the ResourceConstraintManager as a chain owner
+        arbOwner.addChainOwner(resourceConstraintManagerAddress);
+        require(
+            arbOwner.isChainOwner(resourceConstraintManagerAddress),
+            "ArbOS50SettingsAction: ResourceConstraintManager not added as chain owner"
+        );
+    }
+}
