@@ -41,6 +41,8 @@
         // form-data uses unsafe random function in form-data for choosing boundary (Critical)
         "GHSA-fjxv-7rqg-78g4",
         // tmp allows arbitrary temporary file / directory write via symbolic link `dir` parameter
-        "GHSA-52f5-9888-hmc6"
+        "GHSA-52f5-9888-hmc6",
+        // web3-core-subscriptions has a Prototype Pollution vulnerability
+        "GHSA-hhf6-3xpg-pggx"
     ]
   }
