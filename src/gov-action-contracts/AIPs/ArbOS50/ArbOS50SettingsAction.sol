@@ -8,15 +8,6 @@ interface IArbOwner {
     function setMinimumL2BaseFee(uint256 minBaseFeeWei) external;
     function setParentGasFloorPerToken(uint64 floorPerToken) external;
     function addChainOwner(address newOwner) external;
-    function isChainOwner(address addr) external view returns (bool);
-}
-
-interface IArbOwnerPublic {
-    function getParentGasFloorPerToken() external view returns (uint64);
-}
-
-interface IArbGasInfo {
-    function getMinimumGasPrice() external view returns (uint256);
 }
 
 interface IArbSys {
@@ -38,8 +29,6 @@ contract ArbOS50SettingsAction {
 
     // Precompile addresses
     address public constant ARB_OWNER_ADDRESS = 0x0000000000000000000000000000000000000070;
-    address public constant ARB_OWNER_PUBLIC_ADDRESS = 0x000000000000000000000000000000000000006b;
-    address public constant ARB_GAS_INFO_ADDRESS = 0x000000000000000000000000000000000000006C;
     address public constant ARBSYS_ADDRESS = 0x0000000000000000000000000000000000000064;
 
     constructor(address _resourceConstraintManagerAddress) {
@@ -62,30 +51,16 @@ contract ArbOS50SettingsAction {
         // Verify that the chain is running ArbOS 50
         require(getArbOSVersion() >= 50, "ArbOS50SettingsAction: ArbOS version is less than 50");
 
-        // Create precompile interfaces
+        // Create ArbOwner precompile interface
         IArbOwner arbOwner = IArbOwner(ARB_OWNER_ADDRESS);
-        IArbOwnerPublic arbOwnerPublic = IArbOwnerPublic(ARB_OWNER_PUBLIC_ADDRESS);
-        IArbGasInfo arbGasInfo = IArbGasInfo(ARB_GAS_INFO_ADDRESS);
 
         // Set the minimum L2 base fee
         arbOwner.setMinimumL2BaseFee(NEW_MIN_BASE_FEE);
-        require(
-            arbGasInfo.getMinimumGasPrice() == NEW_MIN_BASE_FEE,
-            "ArbOS50SettingsAction: Minimum L2 base fee not set correctly"
-        );
 
         // Set the new gas floor per token
         arbOwner.setParentGasFloorPerToken(NEW_FLOOR_PER_TOKEN);
-        require(
-            arbOwnerPublic.getParentGasFloorPerToken() == NEW_FLOOR_PER_TOKEN,
-            "ArbOS50SettingsAction: Gas floor per token not set correctly"
-        );
 
         // Add the ResourceConstraintManager as a chain owner
         arbOwner.addChainOwner(resourceConstraintManagerAddress);
-        require(
-            arbOwner.isChainOwner(resourceConstraintManagerAddress),
-            "ArbOS50SettingsAction: ResourceConstraintManager not added as chain owner"
-        );
     }
 }
