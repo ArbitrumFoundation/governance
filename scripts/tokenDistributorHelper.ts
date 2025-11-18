@@ -200,11 +200,13 @@ export async function getRecipientsDataFromContractEvents(
   // in 100 blocks there can be 100 recipient batches => 10k events at most
   const blocksToSearch = config.GET_LOGS_BLOCK_RANGE;
   while (currentBlock <= endBlock) {
+    const blockTo = currentBlock + blocksToSearch > endBlock ? endBlock : currentBlock + blocksToSearch;
+
     // query 100 blocks
     const canClaimEvents = await tokenDistributor.queryFilter(
       canClaimFilter,
       currentBlock,
-      currentBlock + blocksToSearch
+      blockTo
     );
 
     // collect recipient-amount pairs
