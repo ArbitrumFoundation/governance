@@ -43,6 +43,8 @@
         // tmp allows arbitrary temporary file / directory write via symbolic link `dir` parameter
         "GHSA-52f5-9888-hmc6",
         // web3-core-subscriptions has a Prototype Pollution vulnerability
-        "GHSA-hhf6-3xpg-pggx"
+        "GHSA-hhf6-3xpg-pggx",
+        // js-yaml has prototype pollution in merge (<<)
+        "GHSA-mh29-5h37-fv8m"
     ]
   }
