@@ -201,6 +201,7 @@ jobs:
       - uses: OffchainLabs/actions/run-nitro-test-node@main
         with:
           no-token-bridge: true
+          nitro-testnode-ref: improve-bold-config
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
