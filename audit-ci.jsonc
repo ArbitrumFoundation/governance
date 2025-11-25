@@ -45,6 +45,8 @@
         // web3-core-subscriptions has a Prototype Pollution vulnerability
         "GHSA-hhf6-3xpg-pggx",
         // js-yaml has prototype pollution in merge (<<)
-        "GHSA-mh29-5h37-fv8m"
+        "GHSA-mh29-5h37-fv8m",
+        // body-parser is vulnerable to denial of service when url encoding is used
+        "GHSA-wqch-xfxh-vrr4"
     ]
   }
