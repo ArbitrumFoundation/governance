@@ -8,12 +8,11 @@ import "../../src/gov-action-contracts/nonemergency/SwitchManagerRolesAction.sol
 contract SwitchManagerRolesActionTest is Test {
     UpgradeExecutor arbOneUe = UpgradeExecutor(0xCF57572261c7c2BCF21ffD220ea7d1a27D40A827);
 
-    function testAction() external {
-        if (!isFork()) {
-            console.log("not fork test, skipping SwitchManagerRolesActionTest");
-            return;
-        }
+    function setUp() external {
+        vm.createSelectFork(vm.envString("ARB_URL"), 221131972);
+    }
 
+    function testAction() external {
         SwitchManagerRolesAction gac = new SwitchManagerRolesAction();
 
         address emergencyCouncil = gac.emergencyCouncil();
