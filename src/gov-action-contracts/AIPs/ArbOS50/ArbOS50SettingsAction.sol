@@ -5,7 +5,6 @@ import "@openzeppelin/contracts/utils/Address.sol";
 
 // Interfaces
 interface IArbOwner {
-    function setMinimumL2BaseFee(uint256 minBaseFeeWei) external;
     function setParentGasFloorPerToken(uint64 floorPerToken) external;
     function addChainOwner(address newOwner) external;
 }
@@ -16,14 +15,12 @@ interface IArbSys {
 
 /// @notice Settings to be applied on Arbitrum One are Arbitrum Nova after the ArbOS 50 upgrade
 ///         These settings include:
-///         - Setting a new minimum L2 base fee in wei
 ///         - Setting the new gas floor per token
 ///         - Adding the ResourceConstraintManager as a chain owner
 /// @dev    Identical copies of this contract will be deployed on Arbitrum One and Arbitrum Nova
 /// @dev    This contract is to be used after the chain has been successfully upgraded to ArbOS 50,
 ///         otherwise the call to setParentGasFloorPerToken will fail and the transaction will revert.
 contract ArbOS50SettingsAction {
-    uint256 public constant NEW_MIN_BASE_FEE = 0.02 gwei;
     uint64 public constant NEW_FLOOR_PER_TOKEN = 10;
     address public immutable resourceConstraintManagerAddress;
 
@@ -53,9 +50,6 @@ contract ArbOS50SettingsAction {
 
         // Create ArbOwner precompile interface
         IArbOwner arbOwner = IArbOwner(ARB_OWNER_ADDRESS);
-
-        // Set the minimum L2 base fee
-        arbOwner.setMinimumL2BaseFee(NEW_MIN_BASE_FEE);
 
         // Set the new gas floor per token
         arbOwner.setParentGasFloorPerToken(NEW_FLOOR_PER_TOKEN);
