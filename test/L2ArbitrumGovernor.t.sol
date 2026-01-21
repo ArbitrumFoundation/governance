@@ -113,6 +113,14 @@ contract L2ArbitrumGovernorTest is Test {
             proposalThreshold,
             initialVoteExtension
         );
+
+        // Grant roles to the governor if address prediction was wrong (e.g., when using --gas-report)
+        if (address(l2ArbitrumGovernor) != governorAddress) {
+            timelock.grantRole(timelock.PROPOSER_ROLE(), address(l2ArbitrumGovernor));
+            timelock.grantRole(timelock.CANCELLER_ROLE(), address(l2ArbitrumGovernor));
+            timelock.grantRole(timelock.EXECUTOR_ROLE(), address(l2ArbitrumGovernor));
+        }
+
         _setQuorumMinAndMax(l2ArbitrumGovernor, 0, type(uint256).max);
         governorProxyAdmin = abi.decode(
             abi.encodePacked(
@@ -141,6 +149,7 @@ contract L2ArbitrumGovernorTest is Test {
         address proposer = address(uint160(_randomSeed));
         vm.assume(
             proposer != address(0) && proposer != governorProxyAdmin && proposer != tokenProxyAdmin
+                && proposer != governor.EXCLUDE_ADDRESS()
         );
         vm.warp(300_000_000_000_000_000);
         vm.startPrank(tokenOwner);
