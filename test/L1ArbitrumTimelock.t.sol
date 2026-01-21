@@ -215,8 +215,6 @@ contract L1ArbitrumTimelockTest is Test {
         sender.transfer(execVal);
 
         // l2value has to come from the timelock itself
-        // Use vm.deal instead of .transfer() because the proxy's receive() function
-        // requires more gas than the 2300 gas stipend, especially with --gas-report
         vm.deal(address(l1Timelock), rData.l2Value);
 
         vm.prank(sender);
@@ -299,8 +297,6 @@ contract L1ArbitrumTimelockTest is Test {
         sender.transfer(execVal);
 
         // l2value has to come from the timelock itself
-        // Use vm.deal instead of .transfer() because the proxy's receive() function
-        // requires more gas than the 2300 gas stipend, especially with --gas-report
         vm.deal(address(l1Timelock), rData.l2Value + rData2.l2Value);
 
         vm.prank(sender);
@@ -349,8 +345,6 @@ contract L1ArbitrumTimelockTest is Test {
         sender.transfer(execVal);
 
         // l2value has to come from the timelock itself
-        // Use vm.deal instead of .transfer() because the proxy's receive() function
-        // requires more gas than the 2300 gas stipend, especially with --gas-report
         vm.deal(address(l1Timelock), rData.l2Value);
 
         vm.expectRevert();
