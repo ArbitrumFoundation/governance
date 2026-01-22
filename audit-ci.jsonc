@@ -59,6 +59,8 @@
         // Elliptic Uses a Cryptographic Primitive with a Risky Implementation
         "GHSA-848j-6mx2-7j84",
         // Undici has an unbounded decompression chain in HTTP responses on Node.js Fetch API via Content-Encoding leads to resource exhaustion
-        "GHSA-g9mf-h72j-4rw9"
+        "GHSA-g9mf-h72j-4rw9",
+        // Lodash has Prototype Pollution Vulnerability in `_.unset` and `_.omit` functions
+        "GHSA-xxjr-mmjv-4gpg"
     ]
   }
