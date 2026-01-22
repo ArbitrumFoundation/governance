@@ -33,11 +33,11 @@ contract L2ArbitrumGovernorTest is Test {
     address someRando = address(741);
     address executor = address(842);
 
-    L2ArbitrumGovernor governor;
-    L2ArbitrumToken token;
-    ArbitrumTimelock timelock;
-    address governorProxyAdmin;
-    address tokenProxyAdmin;
+    L2ArbitrumGovernor _governor;
+    L2ArbitrumToken _token;
+    ArbitrumTimelock _timelock;
+    address _governorProxyAdmin;
+    address _tokenProxyAdmin;
 
     event ProposalCreated(
         uint256 proposalId,
@@ -70,7 +70,7 @@ contract L2ArbitrumGovernorTest is Test {
     }
 
     function setUp() public {
-        (governor, token, timelock, governorProxyAdmin, tokenProxyAdmin) = deployAndInit();
+        (_governor, _token, _timelock, _governorProxyAdmin, _tokenProxyAdmin) = deployAndInit();
     }
 
     function deployAndInit()
@@ -80,7 +80,7 @@ contract L2ArbitrumGovernorTest is Test {
         L2ArbitrumToken token =
             L2ArbitrumToken(TestUtil.deployProxy(address(new L2ArbitrumToken())));
         token.initialize(l1TokenAddress, initialTokenSupply, tokenOwner);
-        tokenProxyAdmin = abi.decode(
+        _tokenProxyAdmin = abi.decode(
             abi.encodePacked(
                 vm.load(
                     address(token),
@@ -122,7 +122,7 @@ contract L2ArbitrumGovernorTest is Test {
         }
 
         _setQuorumMinAndMax(l2ArbitrumGovernor, 0, type(uint256).max);
-        governorProxyAdmin = abi.decode(
+        _governorProxyAdmin = abi.decode(
             abi.encodePacked(
                 vm.load(
                     address(l2ArbitrumGovernor),
@@ -131,7 +131,7 @@ contract L2ArbitrumGovernorTest is Test {
             ),
             (address)
         );
-        return (l2ArbitrumGovernor, token, timelock, governorProxyAdmin, tokenProxyAdmin);
+        return (l2ArbitrumGovernor, token, timelock, _governorProxyAdmin, _tokenProxyAdmin);
     }
 
     function _setQuorumMinAndMax(L2ArbitrumGovernor l2ArbitrumGovernor, uint256 min, uint256 max)
@@ -148,15 +148,15 @@ contract L2ArbitrumGovernorTest is Test {
     function createAndMintToProposer(uint256 _randomSeed) internal returns (address) {
         address proposer = address(uint160(_randomSeed));
         vm.assume(
-            proposer != address(0) && proposer != governorProxyAdmin && proposer != tokenProxyAdmin
-                && proposer != governor.EXCLUDE_ADDRESS()
+            proposer != address(0) && proposer != _governorProxyAdmin && proposer != _tokenProxyAdmin
+                && proposer != _governor.EXCLUDE_ADDRESS()
         );
         vm.warp(300_000_000_000_000_000);
         vm.startPrank(tokenOwner);
-        token.mint(proposer, governor.proposalThreshold());
+        _token.mint(proposer, _governor.proposalThreshold());
         vm.stopPrank();
         vm.prank(proposer);
-        token.delegate(proposer);
+        _token.delegate(proposer);
         vm.roll(3);
         return proposer;
     }
@@ -177,9 +177,9 @@ contract L2ArbitrumGovernorTest is Test {
         string memory _description
     ) public returns (uint256 _proposalId) {
         vm.prank(_proposer);
-        _proposalId = governor.propose(_targets, _values, _calldatas, _description);
+        _proposalId = _governor.propose(_targets, _values, _calldatas, _description);
 
-        vm.roll(block.number + governor.votingDelay() + 1);
+        vm.roll(block.number + _governor.votingDelay() + 1);
     }
 
     function _submitAndQueueProposal(
@@ -192,12 +192,12 @@ contract L2ArbitrumGovernorTest is Test {
         _proposalId = _submitProposal(_proposer, _targets, _values, _calldatas, _description);
 
         vm.prank(_proposer);
-        governor.castVote(_proposalId, uint8(VoteType.For));
-        vm.roll(block.number + governor.votingPeriod() + 1);
+        _governor.castVote(_proposalId, uint8(VoteType.For));
+        vm.roll(block.number + _governor.votingPeriod() + 1);
         assertEq(
-            uint8(governor.state(_proposalId)), uint8(IGovernorUpgradeable.ProposalState.Succeeded)
+            uint8(_governor.state(_proposalId)), uint8(IGovernorUpgradeable.ProposalState.Succeeded)
         );
-        governor.queue(_targets, _values, _calldatas, keccak256(bytes(_description)));
+        _governor.queue(_targets, _values, _calldatas, keccak256(bytes(_description)));
         return _proposalId;
     }
 
@@ -212,8 +212,8 @@ contract L2ArbitrumGovernorTest is Test {
             _proposer, _targets, _values, _calldatas, _description
         );
 
-        vm.warp(block.timestamp + timelock.getMinDelay() + 1);
-        governor.execute(_targets, _values, _calldatas, keccak256(bytes(_description)));
+        vm.warp(block.timestamp + _timelock.getMinDelay() + 1);
+        _governor.execute(_targets, _values, _calldatas, keccak256(bytes(_description)));
         return _proposalId;
     }
 }
@@ -429,18 +429,18 @@ contract Cancel is L2ArbitrumGovernorTest {
         ) = _basicProposal();
 
         vm.prank(_proposer);
-        uint256 proposalId = governor.propose(targets, values, calldatas, description);
+        uint256 proposalId = _governor.propose(targets, values, calldatas, description);
 
         assertEq(
-            uint256(governor.state(proposalId)), uint256(IGovernorUpgradeable.ProposalState.Pending)
+            uint256(_governor.state(proposalId)), uint256(IGovernorUpgradeable.ProposalState.Pending)
         );
 
         vm.prank(_proposer);
         uint256 canceledId =
-            governor.cancel(targets, values, calldatas, keccak256(bytes(description)));
+            _governor.cancel(targets, values, calldatas, keccak256(bytes(description)));
         assertEq(canceledId, proposalId);
         assertEq(
-            uint256(governor.state(proposalId)),
+            uint256(_governor.state(proposalId)),
             uint256(IGovernorUpgradeable.ProposalState.Canceled)
         );
     }
@@ -457,15 +457,15 @@ contract Cancel is L2ArbitrumGovernorTest {
         ) = _basicProposal();
 
         vm.prank(_proposer);
-        uint256 proposalId = governor.propose(targets, values, calldatas, description);
+        uint256 proposalId = _governor.propose(targets, values, calldatas, description);
 
         assertEq(
-            uint256(governor.state(proposalId)), uint256(IGovernorUpgradeable.ProposalState.Pending)
+            uint256(_governor.state(proposalId)), uint256(IGovernorUpgradeable.ProposalState.Pending)
         );
 
         vm.expectRevert("L2ArbitrumGovernor: NOT_PROPOSER");
         vm.prank(_actor);
-        governor.cancel(targets, values, calldatas, keccak256(bytes(description)));
+        _governor.cancel(targets, values, calldatas, keccak256(bytes(description)));
     }
 
     function testFuzz_RevertIf_ProposalIsActive(uint256 _randomSeed) public {
@@ -478,16 +478,16 @@ contract Cancel is L2ArbitrumGovernorTest {
         ) = _basicProposal();
 
         vm.prank(_proposer);
-        uint256 proposalId = governor.propose(targets, values, calldatas, description);
+        uint256 proposalId = _governor.propose(targets, values, calldatas, description);
 
-        vm.roll(block.number + governor.votingDelay() + 1);
+        vm.roll(block.number + _governor.votingDelay() + 1);
         assertEq(
-            uint256(governor.state(proposalId)), uint256(IGovernorUpgradeable.ProposalState.Active)
+            uint256(_governor.state(proposalId)), uint256(IGovernorUpgradeable.ProposalState.Active)
         );
 
         vm.prank(_proposer);
         vm.expectRevert("L2ArbitrumGovernor: PROPOSAL_NOT_PENDING");
-        governor.cancel(targets, values, calldatas, keccak256(bytes(description)));
+        _governor.cancel(targets, values, calldatas, keccak256(bytes(description)));
     }
 
     function testFuzz_RevertIf_AlreadyCanceled(uint256 _randomSeed) public {
@@ -500,22 +500,22 @@ contract Cancel is L2ArbitrumGovernorTest {
         ) = _basicProposal();
 
         vm.prank(_proposer);
-        uint256 proposalId = governor.propose(targets, values, calldatas, description);
+        uint256 proposalId = _governor.propose(targets, values, calldatas, description);
         assertEq(
-            uint256(governor.state(proposalId)), uint256(IGovernorUpgradeable.ProposalState.Pending)
+            uint256(_governor.state(proposalId)), uint256(IGovernorUpgradeable.ProposalState.Pending)
         );
 
         // First cancel
         vm.prank(_proposer);
-        governor.cancel(targets, values, calldatas, keccak256(bytes(description)));
+        _governor.cancel(targets, values, calldatas, keccak256(bytes(description)));
         assertEq(
-            uint256(governor.state(proposalId)),
+            uint256(_governor.state(proposalId)),
             uint256(IGovernorUpgradeable.ProposalState.Canceled)
         );
 
         vm.prank(_proposer);
         vm.expectRevert("L2ArbitrumGovernor: PROPOSAL_NOT_PENDING");
-        governor.cancel(targets, values, calldatas, keccak256(bytes(description)));
+        _governor.cancel(targets, values, calldatas, keccak256(bytes(description)));
     }
 }
 
@@ -531,7 +531,7 @@ contract Propose is L2ArbitrumGovernorTest {
         address _proposer = createAndMintToProposer(_randomSeed);
         uint256 _proposalId = _submitProposal(_proposer, targets, values, calldatas, description);
         assertEq(
-            uint8(governor.state(_proposalId)), uint8(IGovernorUpgradeable.ProposalState.Active)
+            uint8(_governor.state(_proposalId)), uint8(IGovernorUpgradeable.ProposalState.Active)
         );
     }
 
@@ -545,9 +545,9 @@ contract Propose is L2ArbitrumGovernorTest {
 
         address _proposer = createAndMintToProposer(_randomSeed);
         uint256 _expectedProposalId =
-            governor.hashProposal(targets, values, calldatas, keccak256(bytes(description)));
-        uint256 _startBlock = block.number + governor.votingDelay();
-        uint256 _endBlock = _startBlock + governor.votingPeriod();
+            _governor.hashProposal(targets, values, calldatas, keccak256(bytes(description)));
+        uint256 _startBlock = block.number + _governor.votingDelay();
+        uint256 _endBlock = _startBlock + _governor.votingPeriod();
 
         vm.expectEmit();
         emit ProposalCreated(
@@ -565,8 +565,8 @@ contract Propose is L2ArbitrumGovernorTest {
     }
 
     function testFuzz_ProposerBelowThresholdCannotPropose(address _proposer) public {
-        vm.assume(governor.getVotes(_proposer, block.number - 1) < governor.proposalThreshold());
-        vm.assume(_proposer != governorProxyAdmin);
+        vm.assume(_governor.getVotes(_proposer, block.number - 1) < _governor.proposalThreshold());
+        vm.assume(_proposer != _governorProxyAdmin);
         (
             address[] memory targets,
             uint256[] memory values,
@@ -576,7 +576,7 @@ contract Propose is L2ArbitrumGovernorTest {
 
         vm.expectRevert("Governor: proposer votes below proposal threshold");
         vm.prank(_proposer);
-        governor.propose(targets, values, calldatas, description);
+        _governor.propose(targets, values, calldatas, description);
     }
 }
 
@@ -593,7 +593,7 @@ contract Queue is L2ArbitrumGovernorTest {
         uint256 _proposalId =
             _submitAndQueueProposal(_proposer, targets, values, calldatas, description);
         assertEq(
-            uint8(governor.state(_proposalId)), uint8(IGovernorUpgradeable.ProposalState.Queued)
+            uint8(_governor.state(_proposalId)), uint8(IGovernorUpgradeable.ProposalState.Queued)
         );
     }
 
@@ -606,16 +606,16 @@ contract Queue is L2ArbitrumGovernorTest {
         ) = _basicProposal();
 
         address _proposer = createAndMintToProposer(_randomSeed);
-        uint256 _eta = block.timestamp + timelock.getMinDelay();
+        uint256 _eta = block.timestamp + _timelock.getMinDelay();
         uint256 _proposalId = _submitProposal(_proposer, targets, values, calldatas, description);
 
         vm.prank(_proposer);
-        governor.castVote(_proposalId, uint8(VoteType.For));
-        vm.roll(block.number + governor.votingPeriod() + 1);
+        _governor.castVote(_proposalId, uint8(VoteType.For));
+        vm.roll(block.number + _governor.votingPeriod() + 1);
 
         vm.expectEmit();
         emit ProposalQueued(_proposalId, _eta);
-        governor.queue(targets, values, calldatas, keccak256(bytes(description)));
+        _governor.queue(targets, values, calldatas, keccak256(bytes(description)));
     }
 
     function testFuzz_RevertIf_ProposalIsNotSucceeded(uint256 _randomSeed) public {
@@ -630,11 +630,11 @@ contract Queue is L2ArbitrumGovernorTest {
         uint256 _proposalId = _submitProposal(_proposer, targets, values, calldatas, description);
 
         vm.prank(_proposer);
-        governor.castVote(_proposalId, uint8(VoteType.Against));
-        vm.roll(block.number + governor.votingPeriod() + 1);
+        _governor.castVote(_proposalId, uint8(VoteType.Against));
+        vm.roll(block.number + _governor.votingPeriod() + 1);
 
         vm.expectRevert("Governor: proposal not successful");
-        governor.queue(targets, values, calldatas, keccak256(bytes(description)));
+        _governor.queue(targets, values, calldatas, keccak256(bytes(description)));
     }
 }
 
@@ -651,12 +651,12 @@ contract Execute is L2ArbitrumGovernorTest {
         uint256 _proposalId =
             _submitQueueAndExecuteProposal(_proposer, targets, values, calldatas, description);
         assertEq(
-            uint8(governor.state(_proposalId)), uint8(IGovernorUpgradeable.ProposalState.Executed)
+            uint8(_governor.state(_proposalId)), uint8(IGovernorUpgradeable.ProposalState.Executed)
         );
     }
 
     function testFuzz_EmitsExecuteEvent(uint256 _randomSeed, address _actor) public {
-        vm.assume(_actor != governorProxyAdmin);
+        vm.assume(_actor != _governorProxyAdmin);
         (
             address[] memory targets,
             uint256[] memory values,
@@ -667,16 +667,16 @@ contract Execute is L2ArbitrumGovernorTest {
         address _proposer = createAndMintToProposer(_randomSeed);
         uint256 _proposalId =
             _submitAndQueueProposal(_proposer, targets, values, calldatas, description);
-        vm.warp(block.timestamp + timelock.getMinDelay() + 1);
+        vm.warp(block.timestamp + _timelock.getMinDelay() + 1);
 
         vm.expectEmit();
         emit ProposalExecuted(_proposalId);
         vm.prank(_actor);
-        governor.execute(targets, values, calldatas, keccak256(bytes(description)));
+        _governor.execute(targets, values, calldatas, keccak256(bytes(description)));
     }
 
     function testFuzz_RevertIf_OperationNotReady(uint256 _randomSeed, address _actor) public {
-        vm.assume(_actor != governorProxyAdmin);
+        vm.assume(_actor != _governorProxyAdmin);
         (
             address[] memory targets,
             uint256[] memory values,
@@ -689,6 +689,6 @@ contract Execute is L2ArbitrumGovernorTest {
 
         vm.prank(_actor);
         vm.expectRevert(bytes("TimelockController: operation is not ready"));
-        governor.execute(targets, values, calldatas, keccak256(bytes(description)));
+        _governor.execute(targets, values, calldatas, keccak256(bytes(description)));
     }
 }
