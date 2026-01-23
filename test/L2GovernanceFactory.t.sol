@@ -144,6 +144,9 @@ contract L2GovernanceFactoryTest is Test {
             l2GovernanceFactory.deployStep1(deployCoreParams);
         vm.stopPrank();
 
+        vm.prank(address(contracts.coreGov));
+        contracts.coreGov.setQuorumMinAndMax(0, type(uint224).max);
+
         // owner shoud successfully carrout out step 3
         vm.startPrank(owner);
         l2GovernanceFactory.deployStep3(aliasedL1Timelock);

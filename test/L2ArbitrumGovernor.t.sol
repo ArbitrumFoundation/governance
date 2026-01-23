@@ -121,7 +121,7 @@ contract L2ArbitrumGovernorTest is Test {
             timelock.grantRole(timelock.EXECUTOR_ROLE(), address(l2ArbitrumGovernor));
         }
 
-        _setQuorumMinAndMax(l2ArbitrumGovernor, 0, type(uint256).max);
+        _setQuorumMinAndMax(l2ArbitrumGovernor, 0, type(uint224).max);
         _governorProxyAdmin = abi.decode(
             abi.encodePacked(
                 vm.load(
@@ -261,8 +261,8 @@ contract MiscTests is L2ArbitrumGovernorTest {
         );
         assertEq(
             l2ArbitrumGovernor.quorum(2),
-            ((initialTokenSupply + 200) * quorumNumerator) / 10_000,
-            "Mint should be reflected in quorum"
+            0,
+            "Mint should not be reflected in quorum"
         );
     }
 
@@ -289,8 +289,8 @@ contract MiscTests is L2ArbitrumGovernorTest {
         );
         assertEq(
             l2ArbitrumGovernor.quorum(3),
-            (initialTokenSupply * quorumNumerator) / 10_000,
-            "votes at exlcude-address member shouldn't affect quorum"
+            0,
+            "should have 0 because all votes are delegated to exclude-address"
         );
     }
 
@@ -382,39 +382,38 @@ contract MiscTests is L2ArbitrumGovernorTest {
         (L2ArbitrumGovernor l2ArbitrumGovernor, L2ArbitrumToken token,,,) = deployAndInit();
 
         vm.roll(2);
+        _setQuorumMinAndMax(l2ArbitrumGovernor, 2000, 4000);
+        vm.roll(3);
 
-        // since total DVP is zero, the governor should fallback to circulating supply
-        // in this case quorum should be 2500
-        assertEq(l2ArbitrumGovernor.quorum(1), 2500, "quorum should be 2500");
-
-        // test clamping in circ supply mode
-        _setQuorumMinAndMax(l2ArbitrumGovernor, 3000, 4000);
-        assertEq(l2ArbitrumGovernor.quorum(1), 3000, "quorum should be clamped to min 3000");
-        _setQuorumMinAndMax(l2ArbitrumGovernor, 1, 2000);
-        assertEq(l2ArbitrumGovernor.quorum(1), 2000, "quorum should be clamped to max 2000");
+        // we have 0 delegation, and 0 min, so quorum should be 0
+        assertEq(l2ArbitrumGovernor.quorum(1), 0, "quorum should be 0 with no delegation");
+        
+        // we have 0 delegation, and min 2000, so quorum should be clamped to min
+        assertEq(l2ArbitrumGovernor.quorum(2), 2000, "quorum should be clamped to min 2000");
 
         // delegate some tokens to get into DVP mode
         vm.prank(tokenOwner);
         token.delegate(someRando);
         vm.prank(tokenOwner);
         token.transfer(address(1), 100);
-        vm.roll(3);
+        vm.roll(4);
 
-        assertEq(token.getTotalDelegationAt(2), initialTokenSupply - 100, "DVP error");
+        assertEq(token.getTotalDelegationAt(3), initialTokenSupply - 100, "DVP error");
 
         // make sure quorum is calculated based on DVP now
-        _setQuorumMinAndMax(l2ArbitrumGovernor, 0, type(uint256).max);
         assertEq(
-            l2ArbitrumGovernor.quorum(2),
+            l2ArbitrumGovernor.quorum(3),
             2495, // ((initialTokenSupply - 100) * quorumNumerator) / 10_000,
             "quorum should be based on DVP"
         );
 
         // test clamping in DVP mode
-        _setQuorumMinAndMax(l2ArbitrumGovernor, 2500, 3000);
-        assertEq(l2ArbitrumGovernor.quorum(2), 2500, "quorum should be clamped to min 2500");
+        _setQuorumMinAndMax(l2ArbitrumGovernor, 10000, 20000);
+        vm.roll(5);
+        assertEq(l2ArbitrumGovernor.quorum(4), 10000, "quorum should be clamped to min 10000");
         _setQuorumMinAndMax(l2ArbitrumGovernor, 1, 2000);
-        assertEq(l2ArbitrumGovernor.quorum(2), 2000, "quorum should be clamped to max 2000");
+        vm.roll(6);
+        assertEq(l2ArbitrumGovernor.quorum(5), 2000, "quorum should be clamped to max 2000");
     }
 }
 
