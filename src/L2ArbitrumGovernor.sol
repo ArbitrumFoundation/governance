@@ -178,9 +178,8 @@ contract L2ArbitrumGovernor is
     }
 
     /// @notice Set the quorum minimum and maximum
-    /// @dev    Since the setting is not checkpointed, it is possible that an existing proposal
-    ///         with quorum outside the new min/max can have its quorum suddenly jump to equal
-    ///         the new min or max
+    /// @dev    This setting is checkpointed, so it will only take effect for proposals
+    ///         whose snapshot block is after the current block.
     function setQuorumMinAndMax(uint256 _minimumQuorum, uint256 _maximumQuorum)
         external
         onlyGovernance
@@ -264,7 +263,7 @@ contract L2ArbitrumGovernor is
 
     /// @notice Get the maximum quorum at a specific block number
     /// @param  blockNumber The block number to get the maximum quorum at
-    /// @dev    May return 0 if queried at a block before any maximum quorum was set
+    /// @dev    Returns 0 if blockNumber < dvpQuorumStartBlock()
     function maximumQuorum(uint256 blockNumber) external view returns (uint256) {
         return _maximumQuorumHistory.getAtBlock(blockNumber);
     }
@@ -276,7 +275,7 @@ contract L2ArbitrumGovernor is
 
     /// @notice Get the minimum quorum at a specific block number
     /// @param  blockNumber The block number to get the minimum quorum at
-    /// @dev    May return 0 if queried at a block before any minimum quorum was set
+    /// @dev    Returns 0 if blockNumber < dvpQuorumStartBlock()
     function minimumQuorum(uint256 blockNumber) external view returns (uint256) {
         return _minimumQuorumHistory.getAtBlock(blockNumber);
     }
