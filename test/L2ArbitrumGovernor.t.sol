@@ -105,6 +105,8 @@ contract L2ArbitrumGovernorTest is Test {
 
         L2ArbitrumGovernor l2ArbitrumGovernor =
             L2ArbitrumGovernor(payable(TestUtil.deployProxy(address(new L2ArbitrumGovernor()))));
+
+        vm.roll(dvpStartingBlock);
         l2ArbitrumGovernor.initialize(
             token,
             timelock,
@@ -123,7 +125,6 @@ contract L2ArbitrumGovernorTest is Test {
             timelock.grantRole(timelock.EXECUTOR_ROLE(), address(l2ArbitrumGovernor));
         }
 
-        vm.roll(dvpStartingBlock);
         _setQuorumMinAndMax(l2ArbitrumGovernor, 1, type(uint224).max);
         _governorProxyAdmin = abi.decode(
             abi.encodePacked(
@@ -462,19 +463,6 @@ contract MiscTests is L2ArbitrumGovernorTest {
             5678,
             "current maximum quorum not set correctly"
         );
-    }
-
-    // this test in addition to the fork test of the DVP upgrade action ensure legacy quorum is unaffected
-    function testLegacyQuorum() external {
-        vm.expectCall(
-            address(_token),
-            abi.encodeCall(_token.getPastTotalSupply, (dvpStartingBlock - 1))
-        );
-        vm.expectCall(
-            address(_token),
-            abi.encodeCall(_token.getPastVotes, (address(0xA4b86), dvpStartingBlock - 1))
-        );
-        assertEq(_governor.quorum(dvpStartingBlock - 1), 2500, "legacy quorum mismatch");
     }
 }
 

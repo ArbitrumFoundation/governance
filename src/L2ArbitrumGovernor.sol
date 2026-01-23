@@ -84,6 +84,7 @@ contract L2ArbitrumGovernor is
         __GovernorVotesQuorumFraction_init(_quorumNumerator);
         __GovernorPreventLateQuorum_init(_minPeriodAfterQuorum);
         _transferOwnership(_owner);
+        this.setQuorumMinAndMax(0, type(uint224).max);
     }
 
     /// @notice Allows the owner to make calls from the governor
