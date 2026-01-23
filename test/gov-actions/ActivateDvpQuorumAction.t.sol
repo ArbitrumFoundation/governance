@@ -132,6 +132,13 @@ contract ActivateDvpQuorumActionTest is Test {
             expectedTreasuryQuorum,
             "treasury governor quorum not calculated correctly at next block"
         );
+
+        // ensure dvpQuorumStartBlock is set correctly
+        assertEq(
+            coreGovernor.dvpQuorumStartBlock(),
+            23_569_916,
+            "core governor dvpQuorumStartBlock not set correctly"
+        );
     }
 }
 
