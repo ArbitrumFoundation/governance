@@ -33,6 +33,8 @@ contract L2ArbitrumGovernorTest is Test {
     address someRando = address(741);
     address executor = address(842);
 
+    uint256 dvpStartingBlock = 100;
+
     L2ArbitrumGovernor _governor;
     L2ArbitrumToken _token;
     ArbitrumTimelock _timelock;
@@ -121,6 +123,7 @@ contract L2ArbitrumGovernorTest is Test {
             timelock.grantRole(timelock.EXECUTOR_ROLE(), address(l2ArbitrumGovernor));
         }
 
+        vm.roll(dvpStartingBlock);
         _setQuorumMinAndMax(l2ArbitrumGovernor, 0, type(uint224).max);
         _governorProxyAdmin = abi.decode(
             abi.encodePacked(
@@ -157,7 +160,7 @@ contract L2ArbitrumGovernorTest is Test {
         vm.stopPrank();
         vm.prank(proposer);
         _token.delegate(proposer);
-        vm.roll(3);
+        vm.roll(dvpStartingBlock + 3);
         return proposer;
     }
 
@@ -249,18 +252,18 @@ contract MiscTests is L2ArbitrumGovernorTest {
         (L2ArbitrumGovernor l2ArbitrumGovernor, L2ArbitrumToken token,,,) = deployAndInit();
 
         vm.warp(200_000_000_000_000_000);
-        vm.roll(2);
+        vm.roll(dvpStartingBlock + 2);
 
         vm.prank(tokenOwner);
         token.mint(someRando, 200);
-        vm.roll(3);
+        vm.roll(dvpStartingBlock + 3);
         assertEq(
-            l2ArbitrumGovernor.getPastCirculatingSupply(2),
+            l2ArbitrumGovernor.getPastCirculatingSupply(dvpStartingBlock + 2),
             initialTokenSupply + 200,
             "Mint should be reflected in getPastCirculatingSupply"
         );
         assertEq(
-            l2ArbitrumGovernor.quorum(2),
+            l2ArbitrumGovernor.quorum(dvpStartingBlock + 2),
             0,
             "Mint should not be reflected in quorum"
         );
@@ -270,25 +273,25 @@ contract MiscTests is L2ArbitrumGovernorTest {
         (L2ArbitrumGovernor l2ArbitrumGovernor, L2ArbitrumToken token,,,) = deployAndInit();
         address excludeAddress = l2ArbitrumGovernor.EXCLUDE_ADDRESS();
 
-        vm.roll(3);
+        vm.roll(dvpStartingBlock + 3);
         vm.warp(300_000_000_000_000_000);
         vm.prank(tokenOwner);
         token.mint(excludeListMember, 300);
 
         vm.prank(excludeListMember);
         token.delegate(excludeAddress);
-        vm.roll(4);
+        vm.roll(dvpStartingBlock + 4);
         assertEq(
-            token.getPastVotes(excludeAddress, 3), 300, "didn't delegate to votes exclude address"
+            token.getPastVotes(excludeAddress, dvpStartingBlock + 3), 300, "didn't delegate to votes exclude address"
         );
 
         assertEq(
-            l2ArbitrumGovernor.getPastCirculatingSupply(3),
+            l2ArbitrumGovernor.getPastCirculatingSupply(dvpStartingBlock + 3),
             initialTokenSupply,
             "votes at exlcude-address member shouldn't affect circulating supply"
         );
         assertEq(
-            l2ArbitrumGovernor.quorum(3),
+            l2ArbitrumGovernor.quorum(dvpStartingBlock + 3),
             0,
             "should have 0 because all votes are delegated to exclude-address"
         );
@@ -298,9 +301,9 @@ contract MiscTests is L2ArbitrumGovernorTest {
         (L2ArbitrumGovernor l2ArbitrumGovernor,,,,) = deployAndInit();
 
         vm.warp(200_000_000_000_000_000);
-        vm.roll(2);
+        vm.roll(dvpStartingBlock + 2);
         assertEq(
-            l2ArbitrumGovernor.getPastCirculatingSupply(1),
+            l2ArbitrumGovernor.getPastCirculatingSupply(dvpStartingBlock + 1),
             initialTokenSupply,
             "Inital supply error"
         );
@@ -381,39 +384,50 @@ contract MiscTests is L2ArbitrumGovernorTest {
     function testDVPQuorumAndClamping() external {
         (L2ArbitrumGovernor l2ArbitrumGovernor, L2ArbitrumToken token,,,) = deployAndInit();
 
-        vm.roll(2);
+        vm.roll(dvpStartingBlock + 2);
         _setQuorumMinAndMax(l2ArbitrumGovernor, 2000, 4000);
-        vm.roll(3);
-
-        // we have 0 delegation, and 0 min, so quorum should be 0
-        assertEq(l2ArbitrumGovernor.quorum(1), 0, "quorum should be 0 with no delegation");
-        
-        // we have 0 delegation, and min 2000, so quorum should be clamped to min
-        assertEq(l2ArbitrumGovernor.quorum(2), 2000, "quorum should be clamped to min 2000");
+        vm.roll(dvpStartingBlock + 3);
 
         // delegate some tokens to get into DVP mode
         vm.prank(tokenOwner);
         token.delegate(someRando);
         vm.prank(tokenOwner);
         token.transfer(address(1), 100);
-        vm.roll(4);
-
-        assertEq(token.getTotalDelegationAt(3), initialTokenSupply - 100, "DVP error");
-
-        // make sure quorum is calculated based on DVP now
-        assertEq(
-            l2ArbitrumGovernor.quorum(3),
-            2495, // ((initialTokenSupply - 100) * quorumNumerator) / 10_000,
-            "quorum should be based on DVP"
-        );
+        vm.roll(dvpStartingBlock + 4);
 
         // test clamping in DVP mode
         _setQuorumMinAndMax(l2ArbitrumGovernor, 10000, 20000);
-        vm.roll(5);
-        assertEq(l2ArbitrumGovernor.quorum(4), 10000, "quorum should be clamped to min 10000");
+        vm.roll(dvpStartingBlock + 5);
         _setQuorumMinAndMax(l2ArbitrumGovernor, 1, 2000);
-        vm.roll(6);
-        assertEq(l2ArbitrumGovernor.quorum(5), 2000, "quorum should be clamped to max 2000");
+        vm.roll(dvpStartingBlock + 6);
+        // we have 0 delegation, and 0 min, so quorum should be 0
+        assertEq(l2ArbitrumGovernor.quorum(dvpStartingBlock + 1), 0, "quorum should be 0 with no delegation");
+        
+        // we have 0 delegation, and min 2000, so quorum should be clamped to min
+        assertEq(l2ArbitrumGovernor.quorum(dvpStartingBlock + 2), 2000, "quorum should be clamped to min 2000");
+        assertEq(token.getTotalDelegationAt(dvpStartingBlock + 3), initialTokenSupply - 100, "DVP error");
+
+        // make sure quorum is calculated based on DVP now
+        assertEq(
+            l2ArbitrumGovernor.quorum(dvpStartingBlock + 3),
+            2495, // ((initialTokenSupply - 100) * quorumNumerator) / 10_000,
+            "quorum should be based on DVP"
+        );
+        assertEq(l2ArbitrumGovernor.quorum(dvpStartingBlock + 4), 10000, "quorum should be clamped to min 10000");
+        assertEq(l2ArbitrumGovernor.quorum(dvpStartingBlock + 5), 2000, "quorum should be clamped to max 2000");
+    }
+
+    // this test in addition to the fork test of the DVP upgrade action ensure legacy quorum is unaffected
+    function testLegacyQuorum() external {
+        vm.expectCall(
+            address(_token),
+            abi.encodeCall(_token.getPastTotalSupply, (dvpStartingBlock - 1))
+        );
+        vm.expectCall(
+            address(_token),
+            abi.encodeCall(_token.getPastVotes, (address(0xA4b86), dvpStartingBlock - 1))
+        );
+        assertEq(_governor.quorum(dvpStartingBlock - 1), 2500, "legacy quorum mismatch");
     }
 }
 
