@@ -236,7 +236,7 @@ contract L2ArbitrumGovernor is
         uint256 calculatedQuorum =
             (pastTotalDelegatedVotes * quorumNumerator(blockNumber)) / quorumDenominator();
 
-        if (_maximumQuorumHistory.latest() == 0) {
+        if (_minimumQuorumHistory.length() == 0) {
             return calculatedQuorum;
         }
         // get min and max quorum at the given block
