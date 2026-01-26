@@ -454,12 +454,12 @@ contract MiscTests is L2ArbitrumGovernorTest {
             "maximum quorum not set correctly"
         );
         assertEq(
-            l2ArbitrumGovernor.minimumQuorum(),
+            l2ArbitrumGovernor.minimumQuorum(block.number - 1),
             1234,
             "current minimum quorum not set correctly"
         );
         assertEq(
-            l2ArbitrumGovernor.maximumQuorum(),
+            l2ArbitrumGovernor.maximumQuorum(block.number - 1),
             5678,
             "current maximum quorum not set correctly"
         );

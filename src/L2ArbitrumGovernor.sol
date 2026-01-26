@@ -257,21 +257,11 @@ contract L2ArbitrumGovernor is
         return _minimumQuorumHistory._checkpoints[0]._blockNumber;
     }
 
-    /// @notice Get the current maximum quorum setting
-    function maximumQuorum() external view returns (uint256) {
-        return _maximumQuorumHistory.latest();
-    }
-
     /// @notice Get the maximum quorum at a specific block number
     /// @param  blockNumber The block number to get the maximum quorum at
     /// @dev    Returns 0 if blockNumber < dvpQuorumStartBlock()
     function maximumQuorum(uint256 blockNumber) external view returns (uint256) {
         return _maximumQuorumHistory.getAtBlock(blockNumber);
-    }
-
-    /// @notice Get the current minimum quorum setting
-    function minimumQuorum() external view returns (uint256) {
-        return _minimumQuorumHistory.latest();
     }
 
     /// @notice Get the minimum quorum at a specific block number
