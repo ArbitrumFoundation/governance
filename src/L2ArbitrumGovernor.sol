@@ -181,6 +181,8 @@ contract L2ArbitrumGovernor is
     /// @notice Set the quorum minimum and maximum
     /// @dev    This setting is checkpointed, so it will only take effect for proposals
     ///         whose snapshot block is after the current block.
+    ///         If this contract is upgraded from a prior version without these min and max quorum settings,
+    ///         setQuorumMinAndMax MUST BE CALLED to set initial values. Otherwise, quorum() will revert.
     function setQuorumMinAndMax(uint256 _minimumQuorum, uint256 _maximumQuorum)
         external
         onlyGovernance
