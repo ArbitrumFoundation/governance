@@ -84,7 +84,14 @@ contract L2ArbitrumGovernor is
         __GovernorVotesQuorumFraction_init(_quorumNumerator);
         __GovernorPreventLateQuorum_init(_minPeriodAfterQuorum);
         _transferOwnership(_owner);
-        this.setQuorumMinAndMax(0, type(uint224).max);
+        _setQuorumMinAndMax(0, type(uint224).max);
+    }
+
+    /// @notice Initializes the quorum min/max and numerator after an upgrade to DVP based quorum
+    function postUpgradeInit(uint256 _minimumQuorum, uint256 _maximumQuorum, uint256 _newQuorumNumerator) external onlyOwner {
+        require(_minimumQuorumHistory._checkpoints.length == 0, "L2ArbitrumGovernor: ALREADY_INITIALIZED");
+        _setQuorumMinAndMax(_minimumQuorum, _maximumQuorum);
+        _updateQuorumNumerator(_newQuorumNumerator);
     }
 
     /// @notice Allows the owner to make calls from the governor
@@ -181,11 +188,15 @@ contract L2ArbitrumGovernor is
     /// @notice Set the quorum minimum and maximum
     /// @dev    This setting is checkpointed, so it will only take effect for proposals
     ///         whose snapshot block is after the current block.
-    ///         If this contract is upgraded from a prior version without these min and max quorum settings,
-    ///         setQuorumMinAndMax MUST BE CALLED to set initial values. Otherwise, quorum() will revert.
     function setQuorumMinAndMax(uint256 _minimumQuorum, uint256 _maximumQuorum)
         external
         onlyGovernance
+    {
+        _setQuorumMinAndMax(_minimumQuorum, _maximumQuorum);
+    }
+
+    function _setQuorumMinAndMax(uint256 _minimumQuorum, uint256 _maximumQuorum)
+        internal
     {
         require(_minimumQuorum < _maximumQuorum, "L2ArbitrumGovernor: MIN_GT_MAX");
         _minimumQuorumHistory.push(_minimumQuorum);

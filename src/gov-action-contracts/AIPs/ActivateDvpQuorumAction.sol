@@ -80,48 +80,23 @@ contract ActivateDvpQuorumAction {
         address payable coreGov = payable(address(IL2AddressRegistry(l2AddressRegistry).coreGov()));
         govProxyAdmin.upgrade(TransparentUpgradeableProxy(coreGov), newGovernorImpl);
 
-        // 4. Set the new quorum numerator for the core governor
-        L2ArbitrumGovernor(coreGov).relay(
-            coreGov,
-            0,
-            abi.encodeCall(
-                GovernorVotesQuorumFractionUpgradeable.updateQuorumNumerator,
-                (newCoreQuorumNumerator)
-            )
+        // 4. postUpgradeInit on core governor
+        L2ArbitrumGovernor(coreGov).postUpgradeInit(
+            coreMinimumQuorum,
+            coreMaximumQuorum,
+            newCoreQuorumNumerator
         );
 
-        // 5. Set the quorum min/max for the core governor
-        L2ArbitrumGovernor(coreGov).relay(
-            coreGov,
-            0,
-            abi.encodeCall(
-                L2ArbitrumGovernor.setQuorumMinAndMax, (coreMinimumQuorum, coreMaximumQuorum)
-            )
-        );
-
-        // 6. Upgrade the treasury governor contract
+        // 5. Upgrade the treasury governor contract
         address payable treasuryGov =
             payable(address(IL2AddressRegistry(l2AddressRegistry).treasuryGov()));
         govProxyAdmin.upgrade(TransparentUpgradeableProxy(treasuryGov), newGovernorImpl);
 
-        // 7. Set the new quorum numerator for the treasury governor
-        L2ArbitrumGovernor(treasuryGov).relay(
-            treasuryGov,
-            0,
-            abi.encodeCall(
-                GovernorVotesQuorumFractionUpgradeable.updateQuorumNumerator,
-                (newTreasuryQuorumNumerator)
-            )
-        );
-
-        // 8. Set the quorum min/max for the treasury governor
-        L2ArbitrumGovernor(treasuryGov).relay(
-            treasuryGov,
-            0,
-            abi.encodeCall(
-                L2ArbitrumGovernor.setQuorumMinAndMax,
-                (treasuryMinimumQuorum, treasuryMaximumQuorum)
-            )
+        // 6. postUpgradeInit on treasury governor
+        L2ArbitrumGovernor(treasuryGov).postUpgradeInit(
+            treasuryMinimumQuorum,
+            treasuryMaximumQuorum,
+            newTreasuryQuorumNumerator
         );
     }
 }
