@@ -19,7 +19,7 @@ yarn gen:proposalData \
         0 \
     --upgradeDatas \
         "$(cast sig "perform()")" \
-        "$(cast calldata "setConstitutionHash(bytes32)" 0x0000000000000000000000000000000000000000000000000000000000000000)" \
+        "$(cast calldata "setConstitutionHash(bytes32)" 0x0000000000000000000000000000000000000000000000000000000000112233)" \
     --predecessor \
         0x0000000000000000000000000000000000000000000000000000000000000000 \
     --writeToJsonPath ./scripts/proposals/ActivateDvpQuorum/data.json
