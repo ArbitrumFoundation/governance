@@ -11,7 +11,7 @@ import {L2ArbitrumToken} from "src/L2ArbitrumToken.sol";
 import {ActivateDvpQuorumAction} from "src/gov-action-contracts/AIPs/ActivateDvpQuorumAction.sol";
 
 /// @notice Deploys the ActivateDvpQuorumAction contract with the appropriate parameters.
-///         Uses CREATE2 with a salt of 0 for deterministic address and easy verification.
+///         Uses CREATE2 for deterministic address and easy verification.
 contract DeployActivateDvpQuorumUpgrade is Script{
     function run() external {
         vm.startBroadcast();
