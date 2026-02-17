@@ -13,7 +13,7 @@ yarn gen:proposalData \
         42161 \
         42161 \
     --actionAddresses \
-        0x4a3126bfAaF7B657C591988963EB32d8bd398c04 \
+        0xbeA14C43EE8324B764D699B4E1B5dD9d1f1825c9 \
         0x1D62fFeB72e4c360CcBbacf7c965153b00260417 \
     --upgradeValues \
         0 \

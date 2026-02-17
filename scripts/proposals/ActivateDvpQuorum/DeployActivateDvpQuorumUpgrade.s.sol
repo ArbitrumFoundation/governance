@@ -16,7 +16,7 @@ contract DeployActivateDvpQuorumUpgrade is Script{
     function run() external {
         vm.startBroadcast();
 
-        bytes32 salt = bytes32(0);
+        bytes32 salt = bytes32(uint256(1));
 
         address l2GovernorImpl = address(new L2ArbitrumGovernor{salt: salt}());
         address l2TokenImpl = address(new L2ArbitrumToken{salt: salt}());
@@ -33,9 +33,7 @@ contract DeployActivateDvpQuorumUpgrade is Script{
             _newTreasuryQuorumNumerator: 4000, // 40%
             _treasuryMinimumQuorum: 100_000_000 ether,
             _treasuryMaximumQuorum: 300_000_000 ether,
-
-            // TODO: Update this value before proposal submission
-            _initialTotalDelegationEstimate: 5_500_500_000 ether // include EXCLUDED tokens
+            _initialTotalDelegationEstimate: 5477825566840547165171692750 // include EXCLUDED tokens
         });
         
         console.log("ActivateDvpQuorumAction deployed at:", address(action));

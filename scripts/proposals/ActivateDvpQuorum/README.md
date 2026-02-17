@@ -1,6 +1,6 @@
 # Activate DVP Quorum Proposal Payload
 
-NOTE THAT THE CURRENTLY DEPLOYED ACTION LIKELY HAS A STALE TOTAL DELEGATION ESTIMATE.
+Total DVP is calculated using this Dune Query: https://dune.com/queries/6707930
 
 How to verify:
 
