@@ -1,7 +1,8 @@
 #!/bin/bash
 
-# todo: replace with actual constitution hash once available
 # todo: redeploy action contract with better estimate and replace address below
+
+# constitution hash comes from: https://github.com/ArbitrumFoundation/docs/pull/1164/changes/001d57cfc17a2fd6c7f23a01ff99c351480c3e69
 
 yarn gen:proposalData \
     --govChainProviderRPC https://arb1.arbitrum.io/rpc \
@@ -19,7 +20,7 @@ yarn gen:proposalData \
         0 \
     --upgradeDatas \
         "$(cast sig "perform()")" \
-        "$(cast calldata "setConstitutionHash(bytes32)" 0x0000000000000000000000000000000000000000000000000000000000112233)" \
+        "$(cast calldata "setConstitutionHash(bytes32)" 0x263080bed3962d0476fa84fbb32ab81dfff1244e2b145f9864da24353b2f3b05)" \
     --predecessor \
         0x0000000000000000000000000000000000000000000000000000000000000000 \
     --writeToJsonPath ./scripts/proposals/ActivateDvpQuorum/data.json
