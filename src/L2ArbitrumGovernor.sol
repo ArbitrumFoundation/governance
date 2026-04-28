@@ -14,6 +14,7 @@ import
     "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorTimelockControlUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/CheckpointsUpgradeable.sol";
 import {L2ArbitrumToken} from "./L2ArbitrumToken.sol";
 
 /// @title  L2ArbitrumGovernor
@@ -31,6 +32,8 @@ contract L2ArbitrumGovernor is
     GovernorPreventLateQuorumUpgradeable,
     OwnableUpgradeable
 {
+    using CheckpointsUpgradeable for CheckpointsUpgradeable.History;
+
     /// @notice address for which votes will not be counted toward quorum
     /// @dev    A portion of the Arbitrum tokens will be held by entities (eg the treasury) that
     ///         are not eligible to vote. However, even if their voting/delegation is restricted their
@@ -43,13 +46,9 @@ contract L2ArbitrumGovernor is
     address public constant EXCLUDE_ADDRESS = address(0xA4b86);
 
     /// @notice Maximum quorum allowed for a proposal
-    /// @dev    Since the setting is not checkpointed, it is possible that an existing proposal
-    ///         with quorum greater than the maximum can have its quorum suddenly jump to equal maximumQuorum
-    uint256 public maximumQuorum;
+    CheckpointsUpgradeable.History private _maximumQuorumHistory;
     /// @notice Minimum quorum allowed for a proposal
-    /// @dev    Since the setting is not checkpointed, it is possible that an existing proposal
-    ///         with quorum lesser than the minimum can have its quorum suddenly jump to equal minimumQuorum
-    uint256 public minimumQuorum;
+    CheckpointsUpgradeable.History private _minimumQuorumHistory;
 
     /// @notice Mapping from proposal ID to the address of the proposer.
     /// @dev    Used in cancel() to ensure only the proposer can cancel the proposal.
@@ -85,6 +84,14 @@ contract L2ArbitrumGovernor is
         __GovernorVotesQuorumFraction_init(_quorumNumerator);
         __GovernorPreventLateQuorum_init(_minPeriodAfterQuorum);
         _transferOwnership(_owner);
+        _setQuorumMinAndMax(0, type(uint224).max);
+    }
+
+    /// @notice Initializes the quorum min/max and numerator after an upgrade to DVP based quorum
+    function postUpgradeInit(uint256 _minimumQuorum, uint256 _maximumQuorum, uint256 _newQuorumNumerator) external onlyOwner {
+        require(_minimumQuorumHistory._checkpoints.length == 0, "L2ArbitrumGovernor: ALREADY_INITIALIZED");
+        _setQuorumMinAndMax(_minimumQuorum, _maximumQuorum);
+        _updateQuorumNumerator(_newQuorumNumerator);
     }
 
     /// @notice Allows the owner to make calls from the governor
@@ -179,16 +186,21 @@ contract L2ArbitrumGovernor is
     }
 
     /// @notice Set the quorum minimum and maximum
-    /// @dev    Since the setting is not checkpointed, it is possible that an existing proposal
-    ///         with quorum outside the new min/max can have its quorum suddenly jump to equal
-    ///         the new min or max
+    /// @dev    This setting is checkpointed, so it will only take effect for proposals
+    ///         whose snapshot block is after the current block.
     function setQuorumMinAndMax(uint256 _minimumQuorum, uint256 _maximumQuorum)
         external
         onlyGovernance
     {
+        _setQuorumMinAndMax(_minimumQuorum, _maximumQuorum);
+    }
+
+    function _setQuorumMinAndMax(uint256 _minimumQuorum, uint256 _maximumQuorum)
+        internal
+    {
         require(_minimumQuorum < _maximumQuorum, "L2ArbitrumGovernor: MIN_GT_MAX");
-        minimumQuorum = _minimumQuorum;
-        maximumQuorum = _maximumQuorum;
+        _minimumQuorumHistory.push(_minimumQuorum);
+        _maximumQuorumHistory.push(_maximumQuorum);
     }
 
     /// @notice Get "circulating" votes supply; i.e., total minus excluded vote exclude address.
@@ -224,28 +236,52 @@ contract L2ArbitrumGovernor is
         override(IGovernorUpgradeable, GovernorVotesQuorumFractionUpgradeable)
         returns (uint256)
     {
+        // if we are pre dvp quorum, use the old quorum calculation
+        // otherwise, proceed to DVP-based calculation
+        if (blockNumber < dvpQuorumStartBlock()) {
+            return (getPastCirculatingSupply(blockNumber) * quorumNumerator(blockNumber))
+                / quorumDenominator();
+        }
+
+        // get past total delegated votes (excluding EXCLUDE_ADDRESS)
         uint256 pastTotalDelegatedVotes = getPastTotalDelegatedVotes(blockNumber);
 
-        // if pastTotalDelegatedVotes is 0, then blockNumber is almost certainly prior to the first totalDelegatedVotes checkpoint
-        // in this case we should use getPastCirculatingSupply to ensure quorum of pre-existing proposals is unchanged
-        // in the unlikely event that totalDvp is 0 for a block _after_ the dvp update, getPastCirculatingSupply will be used with a larger quorumNumerator, 
-        // resulting in a much higher calculated quorum. This is okay because quorum is clamped.
-        uint256 calculatedQuorum = (
-            (
-                pastTotalDelegatedVotes == 0
-                    ? getPastCirculatingSupply(blockNumber)
-                    : pastTotalDelegatedVotes
-            ) * quorumNumerator(blockNumber)
-        ) / quorumDenominator();
+        // calculate quorum based on delegated votes
+        uint256 calculatedQuorum =
+            (pastTotalDelegatedVotes * quorumNumerator(blockNumber)) / quorumDenominator();
+
+        // get min and max quorum at the given block
+        uint256 _minimumQuorum = _minimumQuorumHistory.getAtBlock(blockNumber);
+        uint256 _maximumQuorum = _maximumQuorumHistory.getAtBlock(blockNumber);
 
         // clamp the calculated quorum between minimumQuorum and maximumQuorum
-        if (calculatedQuorum < minimumQuorum) {
-            return minimumQuorum;
-        } else if (calculatedQuorum > maximumQuorum) {
-            return maximumQuorum;
+        if (calculatedQuorum < _minimumQuorum) {
+            return _minimumQuorum;
+        } else if (calculatedQuorum > _maximumQuorum) {
+            return _maximumQuorum;
         } else {
             return calculatedQuorum;
         }
+    }
+
+    /// @notice Get the block number at which DVP quorum calculation started
+    /// @dev    Returns the block number at which the minimum quorum was first set
+    function dvpQuorumStartBlock() public view returns (uint256) {
+        return _minimumQuorumHistory._checkpoints[0]._blockNumber;
+    }
+
+    /// @notice Get the maximum quorum at a specific block number
+    /// @param  blockNumber The block number to get the maximum quorum at
+    /// @dev    Returns 0 if blockNumber < dvpQuorumStartBlock()
+    function maximumQuorum(uint256 blockNumber) external view returns (uint256) {
+        return _maximumQuorumHistory.getAtBlock(blockNumber);
+    }
+
+    /// @notice Get the minimum quorum at a specific block number
+    /// @param  blockNumber The block number to get the minimum quorum at
+    /// @dev    Returns 0 if blockNumber < dvpQuorumStartBlock()
+    function minimumQuorum(uint256 blockNumber) external view returns (uint256) {
+        return _minimumQuorumHistory.getAtBlock(blockNumber);
     }
 
     /// @inheritdoc GovernorVotesQuorumFractionUpgradeable

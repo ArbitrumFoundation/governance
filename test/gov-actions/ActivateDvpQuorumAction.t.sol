@@ -84,24 +84,27 @@ contract ActivateDvpQuorumActionTest is Test {
             "initial total delegation estimate not set correctly"
         );
 
+        // roll forward one block so we can call minimumQuorum and maximumQuorum
+        vm.roll(block.number + 1);
+
         // verify the governors were upgraded by checking minimum and maximum quorum values
         assertEq(
-            coreGovernor.minimumQuorum(),
+            coreGovernor.minimumQuorum(block.number - 1),
             250 ether,
             "core governor minimum quorum not set correctly"
         );
         assertEq(
-            coreGovernor.maximumQuorum(),
+            coreGovernor.maximumQuorum(block.number - 1),
             250_000_000 ether,
             "core governor maximum quorum not set correctly"
         );
         assertEq(
-            treasuryGovernor.minimumQuorum(),
+            treasuryGovernor.minimumQuorum(block.number - 1),
             240 ether,
             "treasury governor minimum quorum not set correctly"
         );
         assertEq(
-            treasuryGovernor.maximumQuorum(),
+            treasuryGovernor.maximumQuorum(block.number - 1),
             240_000_000 ether,
             "treasury governor maximum quorum not set correctly"
         );
@@ -131,6 +134,13 @@ contract ActivateDvpQuorumActionTest is Test {
             treasuryGovernor.quorum(23_569_916),
             expectedTreasuryQuorum,
             "treasury governor quorum not calculated correctly at next block"
+        );
+
+        // ensure dvpQuorumStartBlock is set correctly
+        assertEq(
+            coreGovernor.dvpQuorumStartBlock(),
+            23_569_916,
+            "core governor dvpQuorumStartBlock not set correctly"
         );
     }
 }
