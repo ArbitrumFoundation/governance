@@ -30,7 +30,7 @@ yarn gen:proposalData \
             0x554723262467F125Ac9e1cDFa9Ce15cc53822dbD \
             0x4Dbd4fc535Ac27206064B68FfCf827b0A60BAB3f \
             100000 \
-            100000000000 \
+            10000000000000 \
             0 \
             $L2_RECIPIENT_ADDRESS \
             30765667401709008927568 \
