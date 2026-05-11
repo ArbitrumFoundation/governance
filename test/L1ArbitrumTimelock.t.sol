@@ -203,6 +203,9 @@ contract L1ArbitrumTimelockTest is Test {
         scheduleAndRoll(l1Timelock, magic, val, data, salt);
 
         vm.fee(21 gwei);
+        // Set defaultBaseFee to match vm.fee since block.basefee doesn't persist
+        // across call contexts when --gas-report is enabled
+        inbox.setDefaultBaseFee(21 gwei);
         uint256 submissionFee = inbox.calculateRetryableSubmissionFee(rData.data.length, 0);
 
         // set up the sender
@@ -212,7 +215,7 @@ contract L1ArbitrumTimelockTest is Test {
         sender.transfer(execVal);
 
         // l2value has to come from the timelock itself
-        payable(address(l1Timelock)).transfer(rData.l2Value);
+        vm.deal(address(l1Timelock), rData.l2Value);
 
         vm.prank(sender);
         l1Timelock.execute{value: execVal}(magic, val, data, 0, salt);
@@ -282,6 +285,9 @@ contract L1ArbitrumTimelockTest is Test {
         vm.warp(block.timestamp + minDelay);
 
         vm.fee(21 gwei);
+        // Set defaultBaseFee to match vm.fee since block.basefee doesn't persist
+        // across call contexts when --gas-report is enabled
+        inbox.setDefaultBaseFee(21 gwei);
         uint256 submissionFee = inbox.calculateRetryableSubmissionFee(rData.data.length, 0);
 
         // set up the sender
@@ -291,8 +297,7 @@ contract L1ArbitrumTimelockTest is Test {
         sender.transfer(execVal);
 
         // l2value has to come from the timelock itself
-        payable(address(l1Timelock)).transfer(rData.l2Value);
-        payable(address(l1Timelock)).transfer(rData2.l2Value);
+        vm.deal(address(l1Timelock), rData.l2Value + rData2.l2Value);
 
         vm.prank(sender);
         l1Timelock.executeBatch{value: execVal}(tos, vals, payloads, 0, salt);
@@ -328,6 +333,9 @@ contract L1ArbitrumTimelockTest is Test {
         scheduleAndRoll(l1Timelock, magic, val, data, salt);
 
         vm.fee(21 gwei);
+        // Set defaultBaseFee to match vm.fee since block.basefee doesn't persist
+        // across call contexts when --gas-report is enabled
+        inbox.setDefaultBaseFee(21 gwei);
         uint256 submissionFee = inbox.calculateRetryableSubmissionFee(rData.data.length, 0);
 
         // set up the sender
@@ -337,7 +345,7 @@ contract L1ArbitrumTimelockTest is Test {
         sender.transfer(execVal);
 
         // l2value has to come from the timelock itself
-        payable(address(l1Timelock)).transfer(rData.l2Value);
+        vm.deal(address(l1Timelock), rData.l2Value);
 
         vm.expectRevert();
         vm.prank(sender);
@@ -367,6 +375,9 @@ contract L1ArbitrumTimelockTest is Test {
         scheduleAndRoll(l1Timelock, magic, val, data, salt);
 
         vm.fee(21 gwei);
+        // Set defaultBaseFee to match vm.fee since block.basefee doesn't persist
+        // across call contexts when --gas-report is enabled
+        inbox.setDefaultBaseFee(21 gwei);
         uint256 submissionFee = inbox.calculateRetryableSubmissionFee(rData.data.length, 0);
 
         // set up the sender

@@ -14,6 +14,8 @@ import
     "@openzeppelin/contracts-upgradeable/governance/extensions/GovernorTimelockControlUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/CheckpointsUpgradeable.sol";
+import {L2ArbitrumToken} from "./L2ArbitrumToken.sol";
 
 /// @title  L2ArbitrumGovernor
 /// @notice Governance controls for the Arbitrum DAO
@@ -30,6 +32,8 @@ contract L2ArbitrumGovernor is
     GovernorPreventLateQuorumUpgradeable,
     OwnableUpgradeable
 {
+    using CheckpointsUpgradeable for CheckpointsUpgradeable.History;
+
     /// @notice address for which votes will not be counted toward quorum
     /// @dev    A portion of the Arbitrum tokens will be held by entities (eg the treasury) that
     ///         are not eligible to vote. However, even if their voting/delegation is restricted their
@@ -40,6 +44,15 @@ contract L2ArbitrumGovernor is
     ///         burned tokens and swept (see TokenDistributor) tokens.
     ///         Note that Excluded Address is a readable name with no code of PK associated with it, and thus can't vote.
     address public constant EXCLUDE_ADDRESS = address(0xA4b86);
+
+    /// @notice Maximum quorum allowed for a proposal
+    CheckpointsUpgradeable.History private _maximumQuorumHistory;
+    /// @notice Minimum quorum allowed for a proposal
+    CheckpointsUpgradeable.History private _minimumQuorumHistory;
+
+    /// @notice Mapping from proposal ID to the address of the proposer.
+    /// @dev    Used in cancel() to ensure only the proposer can cancel the proposal.
+    mapping(uint256 => address) internal proposers;
 
     constructor() {
         _disableInitializers();
@@ -71,6 +84,14 @@ contract L2ArbitrumGovernor is
         __GovernorVotesQuorumFraction_init(_quorumNumerator);
         __GovernorPreventLateQuorum_init(_minPeriodAfterQuorum);
         _transferOwnership(_owner);
+        _setQuorumMinAndMax(0, type(uint224).max);
+    }
+
+    /// @notice Initializes the quorum min/max and numerator after an upgrade to DVP based quorum
+    function postUpgradeInit(uint256 _minimumQuorum, uint256 _maximumQuorum, uint256 _newQuorumNumerator) external onlyOwner {
+        require(_minimumQuorumHistory._checkpoints.length == 0, "L2ArbitrumGovernor: ALREADY_INITIALIZED");
+        _setQuorumMinAndMax(_minimumQuorum, _maximumQuorum);
+        _updateQuorumNumerator(_newQuorumNumerator);
     }
 
     /// @notice Allows the owner to make calls from the governor
@@ -111,6 +132,49 @@ contract L2ArbitrumGovernor is
         AddressUpgradeable.functionCallWithValue(target, data, value);
     }
 
+    /// @inheritdoc IGovernorUpgradeable
+    /// @dev See {IGovernorUpgradeable-propose}. This function has opt-in frontrunning protection, described in {_isValidDescriptionForProposer}.
+    function propose(
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        string memory description
+    ) public virtual override(IGovernorUpgradeable, GovernorUpgradeable) returns (uint256) {
+        require(
+            _isValidDescriptionForProposer(msg.sender, description),
+            "L2ArbitrumGovernor: PROPOSER_RESTRICTED"
+        );
+        uint256 _proposalId = GovernorUpgradeable.propose(targets, values, calldatas, description);
+        proposers[_proposalId] = msg.sender;
+        return _proposalId;
+    }
+
+    /// @notice Allows a proposer to cancel a proposal when it is pending.
+    /// @param targets The proposal's targets.
+    /// @param values The proposal's values.
+    /// @param calldatas The proposal's calldatas.
+    /// @param descriptionHash The hash of the proposal's description.
+    /// @return The id of the proposal.
+    function cancel(
+        address[] memory targets,
+        uint256[] memory values,
+        bytes[] memory calldatas,
+        bytes32 descriptionHash
+    ) public virtual returns (uint256) {
+        uint256 _proposalId = hashProposal(targets, values, calldatas, descriptionHash);
+
+        require(
+            state(_proposalId) == ProposalState.Pending, "L2ArbitrumGovernor: PROPOSAL_NOT_PENDING"
+        );
+
+        address _proposer = proposers[_proposalId];
+        require(msg.sender == _proposer, "L2ArbitrumGovernor: NOT_PROPOSER");
+
+        delete proposers[_proposalId];
+
+        return GovernorUpgradeable._cancel(targets, values, calldatas, descriptionHash);
+    }
+
     /// @notice returns l2 executor address; used internally for onlyGovernance check
     function _executor()
         internal
@@ -121,21 +185,103 @@ contract L2ArbitrumGovernor is
         return address(this);
     }
 
+    /// @notice Set the quorum minimum and maximum
+    /// @dev    This setting is checkpointed, so it will only take effect for proposals
+    ///         whose snapshot block is after the current block.
+    function setQuorumMinAndMax(uint256 _minimumQuorum, uint256 _maximumQuorum)
+        external
+        onlyGovernance
+    {
+        _setQuorumMinAndMax(_minimumQuorum, _maximumQuorum);
+    }
+
+    function _setQuorumMinAndMax(uint256 _minimumQuorum, uint256 _maximumQuorum)
+        internal
+    {
+        require(_minimumQuorum < _maximumQuorum, "L2ArbitrumGovernor: MIN_GT_MAX");
+        _minimumQuorumHistory.push(_minimumQuorum);
+        _maximumQuorumHistory.push(_maximumQuorum);
+    }
+
     /// @notice Get "circulating" votes supply; i.e., total minus excluded vote exclude address.
     function getPastCirculatingSupply(uint256 blockNumber) public view virtual returns (uint256) {
         return
             token.getPastTotalSupply(blockNumber) - token.getPastVotes(EXCLUDE_ADDRESS, blockNumber);
     }
 
+    /// @notice Get total delegated votes minus excluded votes
+    /// @dev    If the block number is prior to the first total delegation checkpoint, returns 0
+    ///         Can also return 0 if excluded > total delegation, which is extremely unlikely but possible
+    ///         since L2ArbitrumToken.getTotalDelegationAt is initially an estimate
+    function getPastTotalDelegatedVotes(uint256 blockNumber) public view returns (uint256) {
+        uint256 totalDvp = L2ArbitrumToken(address(token)).getTotalDelegationAt(blockNumber);
+
+        // getTotalDelegationAt may return 0 if the requested block is before the first checkpoint
+        if (totalDvp == 0) {
+            return 0;
+        }
+
+        uint256 excluded = token.getPastVotes(EXCLUDE_ADDRESS, blockNumber);
+
+        // it is possible (but unlikely) that excluded > totalDvp
+        // this is because getTotalDelegationAt is initially an _estimate_ of the total delegation
+        return totalDvp > excluded ? totalDvp - excluded : 0;
+    }
+
     /// @notice Calculates the quorum size, excludes token delegated to the exclude address
+    /// @dev    The calculated quorum is clamped between minimumQuorum and maximumQuorum
     function quorum(uint256 blockNumber)
         public
         view
         override(IGovernorUpgradeable, GovernorVotesQuorumFractionUpgradeable)
         returns (uint256)
     {
-        return (getPastCirculatingSupply(blockNumber) * quorumNumerator(blockNumber))
-            / quorumDenominator();
+        // if we are pre dvp quorum, use the old quorum calculation
+        // otherwise, proceed to DVP-based calculation
+        if (blockNumber < dvpQuorumStartBlock()) {
+            return (getPastCirculatingSupply(blockNumber) * quorumNumerator(blockNumber))
+                / quorumDenominator();
+        }
+
+        // get past total delegated votes (excluding EXCLUDE_ADDRESS)
+        uint256 pastTotalDelegatedVotes = getPastTotalDelegatedVotes(blockNumber);
+
+        // calculate quorum based on delegated votes
+        uint256 calculatedQuorum =
+            (pastTotalDelegatedVotes * quorumNumerator(blockNumber)) / quorumDenominator();
+
+        // get min and max quorum at the given block
+        uint256 _minimumQuorum = _minimumQuorumHistory.getAtBlock(blockNumber);
+        uint256 _maximumQuorum = _maximumQuorumHistory.getAtBlock(blockNumber);
+
+        // clamp the calculated quorum between minimumQuorum and maximumQuorum
+        if (calculatedQuorum < _minimumQuorum) {
+            return _minimumQuorum;
+        } else if (calculatedQuorum > _maximumQuorum) {
+            return _maximumQuorum;
+        } else {
+            return calculatedQuorum;
+        }
+    }
+
+    /// @notice Get the block number at which DVP quorum calculation started
+    /// @dev    Returns the block number at which the minimum quorum was first set
+    function dvpQuorumStartBlock() public view returns (uint256) {
+        return _minimumQuorumHistory._checkpoints[0]._blockNumber;
+    }
+
+    /// @notice Get the maximum quorum at a specific block number
+    /// @param  blockNumber The block number to get the maximum quorum at
+    /// @dev    Returns 0 if blockNumber < dvpQuorumStartBlock()
+    function maximumQuorum(uint256 blockNumber) external view returns (uint256) {
+        return _maximumQuorumHistory.getAtBlock(blockNumber);
+    }
+
+    /// @notice Get the minimum quorum at a specific block number
+    /// @param  blockNumber The block number to get the minimum quorum at
+    /// @dev    Returns 0 if blockNumber < dvpQuorumStartBlock()
+    function minimumQuorum(uint256 blockNumber) external view returns (uint256) {
+        return _minimumQuorumHistory.getAtBlock(blockNumber);
     }
 
     /// @inheritdoc GovernorVotesQuorumFractionUpgradeable
@@ -231,9 +377,96 @@ contract L2ArbitrumGovernor is
     }
 
     /**
+     * @dev Check if the proposer is authorized to submit a proposal with the given description.
+     *
+     * If the proposal description ends with `#proposer=0x???`, where `0x???` is an address written as a hex string
+     * (case insensitive), then the submission of this proposal will only be authorized to said address.
+     *
+     * This is used for frontrunning protection. By adding this pattern at the end of their proposal, one can ensure
+     * that no other address can submit the same proposal. An attacker would have to either remove or change that part,
+     * which would result in a different proposal id.
+     *
+     * If the description does not match this pattern, it is unrestricted and anyone can submit it. This includes:
+     * - If the `0x???` part is not a valid hex string.
+     * - If the `0x???` part is a valid hex string, but does not contain exactly 40 hex digits.
+     * - If it ends with the expected suffix followed by newlines or other whitespace.
+     * - If it ends with some other similar suffix, e.g. `#other=abc`.
+     * - If it does not end with any such suffix.
+     */
+    function _isValidDescriptionForProposer(address proposer, string memory description)
+        internal
+        view
+        virtual
+        returns (bool)
+    {
+        uint256 len = bytes(description).length;
+
+        // Length is too short to contain a valid proposer suffix
+        if (len < 52) {
+            return true;
+        }
+
+        // Extract what would be the `#proposer=0x` marker beginning the suffix
+        bytes12 marker;
+        assembly {
+            // - Start of the string contents in memory = description + 32
+            // - First character of the marker = len - 52
+            //   - Length of "#proposer=0x0000000000000000000000000000000000000000" = 52
+            // - We read the memory word starting at the first character of the marker:
+            //   - (description + 32) + (len - 52) = description + (len - 20)
+            // - Note: Solidity will ignore anything past the first 12 bytes
+            marker := mload(add(description, sub(len, 20)))
+        }
+
+        // If the marker is not found, there is no proposer suffix to check
+        if (marker != bytes12("#proposer=0x")) {
+            return true;
+        }
+
+        // Parse the 40 characters following the marker as uint160
+        uint160 recovered = 0;
+        for (uint256 i = len - 40; i < len; ++i) {
+            (bool isHex, uint8 value) = _tryHexToUint(bytes(description)[i]);
+            // If any of the characters is not a hex digit, ignore the suffix entirely
+            if (!isHex) {
+                return true;
+            }
+            recovered = (recovered << 4) | value;
+        }
+
+        return recovered == uint160(proposer);
+    }
+
+    /**
+     * @dev Try to parse a character from a string as a hex value. Returns `(true, value)` if the char is in
+     * `[0-9a-fA-F]` and `(false, 0)` otherwise. Value is guaranteed to be in the range `0 <= value < 16`
+     */
+    function _tryHexToUint(bytes1 char) private pure returns (bool, uint8) {
+        uint8 c = uint8(char);
+        unchecked {
+            // Case 0-9
+            if (47 < c && c < 58) {
+                return (true, c - 48);
+            }
+            // Case A-F
+            else if (64 < c && c < 71) {
+                return (true, c - 55);
+            }
+            // Case a-f
+            else if (96 < c && c < 103) {
+                return (true, c - 87);
+            }
+            // Else: not a hex char
+            else {
+                return (false, 0);
+            }
+        }
+    }
+
+    /**
      * @dev This empty reserved space is put in place to allow future versions to add new
      * variables without shifting down storage in the inheritance chain.
      * See https://docs.openzeppelin.com/contracts/4.x/upgradeable#storage_gaps
      */
-    uint256[50] private __gap;
+    uint256[47] private __gap;
 }
