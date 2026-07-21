@@ -277,12 +277,6 @@ contract SecurityCouncilNomineeElectionGovernor is
         election.isContender[signer] = true;
 
         emit ContenderAdded(proposalId, signer);
-
-        // if the signer is part of the outgoing cohort, we automatically add them as a nominee
-        if (securityCouncilManager.cohortIncludes(currentCohort(), signer)) {
-            // no need to check for duplicate nominees as we already checked
-            _addNominee(proposalId, signer);
-        }
     }
 
     /// @notice Allows the owner to change the nomineeVetter
