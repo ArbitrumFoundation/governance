@@ -86,6 +86,9 @@ contract ArbitrumVestingWalletTest is Test {
         vm.prank(owner);
         td.setRecipients(recipients, claims);
 
+        vm.prank(address(gov));
+        gov.setQuorumMinAndMax(0, type(uint224).max);
+
         return (wallet, token, gov, td);
     }
 
