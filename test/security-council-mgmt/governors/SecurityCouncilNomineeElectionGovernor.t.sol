@@ -1231,6 +1231,24 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
         );
         governor.rotateNominee(proposalId, _contender(1), sig);
 
+        // cannot rotate to existing nominee
+        bytes memory sig2 =
+            sigUtils.signRotateNomineeMessage(proposalId, _contenderPrivKey(2), _contender(0));
+        vm.prank(initParams.nomineeVetter);
+        _mockCohortIncludes(Cohort.SECOND, _contender(2), false);
+        governor.includeNominee(proposalId, _contender(2));
+        _mockCohortIncludes(Cohort.SECOND, _contender(2), false);
+        vm.prank(_contender(0));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                SecurityCouncilNomineeElectionGovernorCountingUpgradeable
+                    .NomineeAlreadyAdded
+                    .selector,
+                _contender(2)
+            )
+        );
+        governor.rotateNominee(proposalId, _contender(2), sig2);
+
         // rotate the nominee
         _mockCohortIncludes(Cohort.SECOND, _contender(1), false);
         vm.prank(_contender(0));

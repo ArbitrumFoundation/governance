@@ -121,6 +121,9 @@ abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is
 
     /// @dev Transitions an account to being a nominee
     function _addNominee(uint256 proposalId, address account) internal {
+        if (isNominee(proposalId, account)) {
+            revert NomineeAlreadyAdded(account);
+        }
         _elections[proposalId].nominees.push(account);
         _elections[proposalId].isNominee[account] = true;
         emit NewNominee(proposalId, account);

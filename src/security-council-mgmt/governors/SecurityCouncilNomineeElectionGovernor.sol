@@ -62,7 +62,7 @@ contract SecurityCouncilNomineeElectionGovernor is
     ///         Currently this is set to 3 days, assuming 12 blocks per second.
     /// @dev    It is known that a malicious nominee can abuse rotation to avoid vetting,
     ///         but the nominee vetter would always have 3 extra days after any rotation to exclude the nominee if needed.
-    uint256 public constant ROTATION_CUT_OFF_BLOCKS = 21600;
+    uint256 public constant ROTATION_CUT_OFF_BLOCKS = 21_600;
 
     /// @notice Address responsible for blocking non compliant nominees
     address public nomineeVetter;
@@ -211,6 +211,18 @@ contract SecurityCouncilNomineeElectionGovernor is
         electionCount++;
     }
 
+    function _requireNotInOtherCohort(address account) internal view {
+        // check to make sure the contender is not part of the other cohort (the cohort not currently up for election)
+        // this only checks against the current cohort membership of the security council,
+        // so changes to those will mean this check will be inconsistent.
+        // this check then is only a relevant check when the elections are running as expected - one at a time,
+        // every `cadenceInMonths` months. Updates to the sec council manager using methods other than replaceCohort can effect this check
+        // and it's expected that the entity making those updates understands this.
+        if (securityCouncilManager.cohortIncludes(otherCohort(), account)) {
+            revert AccountInOtherCohort(otherCohort(), account);
+        }
+    }
+
     /// @dev Revert if the previous member election has not executed.
     ///      Ensures that there are no unexpected behaviors from multiple elections running at the same time.
     ///      If, for some reason, the previous member election is blocked,
@@ -261,22 +273,14 @@ contract SecurityCouncilNomineeElectionGovernor is
             revert ProposalNotPending(state_);
         }
 
-        // check to make sure the contender is not part of the other cohort (the cohort not currently up for election)
-        // this only checks against the current cohort membership of the security council, 
-        // so changes to those will mean this check will be inconsistent.
-        // this check then is only a relevant check when the elections are running as expected - one at a time,
-        // every `cadenceInMonths` months. Updates to the sec council manager using methods other than replaceCohort can effect this check
-        // and it's expected that the entity making those updates understands this.
-        if (securityCouncilManager.cohortIncludes(otherCohort(), signer)) {
-            revert AccountInOtherCohort(otherCohort(), signer);
-        }
-
+        _requireNotInOtherCohort(signer);
         election.isContender[signer] = true;
 
         emit ContenderAdded(proposalId, signer);
 
         // if the signer is part of the outgoing cohort, we automatically add them as a nominee
         if (securityCouncilManager.cohortIncludes(currentCohort(), signer)) {
+            // no need to check for duplicate nominees as we already checked
             _addNominee(proposalId, signer);
         }
     }
@@ -342,26 +346,13 @@ contract SecurityCouncilNomineeElectionGovernor is
             revert ProposalNotSucceededState(state_);
         }
 
-        if (isNominee(proposalId, account)) {
-            revert NomineeAlreadyAdded(account);
-        }
-
         uint256 cnCount = compliantNomineeCount(proposalId);
         uint256 cohortSize = securityCouncilManager.cohortSize();
         if (cnCount >= cohortSize) {
             revert CompliantNomineeTargetHit(cnCount, cohortSize);
         }
 
-        // can't include nominees from the other cohort (the cohort not currently up for election)
-        // this only checks against the current the current other cohort, and against the current cohort membership
-        // in the security council, so changes to those will mean this check will be inconsistent.
-        // this check then is only a relevant check when the elections are running as expected - one at a time,
-        // every `cadenceInMonths` months. Updates to the sec council manager using methods other than replaceCohort can effect this check
-        // and it's expected that the entity making those updates understands this.
-        if (securityCouncilManager.cohortIncludes(otherCohort(), account)) {
-            revert AccountInOtherCohort(otherCohort(), account);
-        }
-
+        _requireNotInOtherCohort(account);
         _addNominee(proposalId, account);
     }
 
@@ -383,24 +374,19 @@ contract SecurityCouncilNomineeElectionGovernor is
             revert ProposalNotInRotationPeriod(block.number, rotationDeadline);
         }
 
+        if (election.isExcluded[newNomineeAddress]) {
+            revert NomineeAlreadyExcluded(newNomineeAddress);
+        }
+
         address signer = recoverRotateNomineeMessage(proposalId, signature, msg.sender);
         if (signer != newNomineeAddress) {
             revert InvalidSignature();
         }
 
-        // check to make sure the new nominee is not part of the other cohort (the cohort not currently up for election)
-        // this only checks against the current the current other cohort, and against the current cohort membership
-        // in the security council, so changes to those will mean this check will be inconsistent.
-        // this check then is only a relevant check when the elections are running as expected - one at a time,
-        // every 6 months. Updates to the sec council manager using methods other than replaceCohort can effect this check
-        // and it's expected that the entity making those updates understands this.
-        if (securityCouncilManager.cohortIncludes(otherCohort(), newNomineeAddress)) {
-            revert AccountInOtherCohort(otherCohort(), newNomineeAddress);
-        }
-
         // rotation by first excluding the nominee and then adding the new nominee
         election.isExcluded[msg.sender] = true;
         election.excludedNomineeCount++;
+        _requireNotInOtherCohort(newNomineeAddress);
         _addNominee(proposalId, newNomineeAddress);
         emit NomineeExcluded(proposalId, msg.sender);
         emit NomineeRotated(proposalId, msg.sender, newNomineeAddress);
