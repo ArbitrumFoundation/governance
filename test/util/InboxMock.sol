@@ -31,13 +31,26 @@ contract InboxMock is IInboxSubmissionFee {
         bytes data
     );
 
+    // Default basefee to use when block.basefee is 0 (e.g., during --gas-report)
+    // Tests that rely on vm.fee() should set this explicitly as vm.fee() doesn't
+    // persist across call contexts when --gas-report is enabled
+    uint256 public defaultBaseFee = 0;
+
+    function setDefaultBaseFee(uint256 _baseFee) external {
+        defaultBaseFee = _baseFee;
+    }
+
     function calculateRetryableSubmissionFee(uint256 dataLength, uint256 baseFee)
         public
         view
         returns (uint256)
     {
         // Use current block basefee if baseFee parameter is 0
-        return (1400 + 6 * dataLength) * (baseFee == 0 ? block.basefee : baseFee);
+        // Fall back to defaultBaseFee if block.basefee is also 0 (happens with --gas-report)
+        uint256 effectiveBaseFee = baseFee != 0
+            ? baseFee
+            : (block.basefee != 0 ? block.basefee : defaultBaseFee);
+        return (1400 + 6 * dataLength) * effectiveBaseFee;
     }
 
     struct RetryableTicket {

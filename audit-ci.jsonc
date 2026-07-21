@@ -41,6 +41,26 @@
         // form-data uses unsafe random function in form-data for choosing boundary (Critical)
         "GHSA-fjxv-7rqg-78g4",
         // tmp allows arbitrary temporary file / directory write via symbolic link `dir` parameter
-        "GHSA-52f5-9888-hmc6"
+        "GHSA-52f5-9888-hmc6",
+        // web3-core-subscriptions has a Prototype Pollution vulnerability
+        "GHSA-hhf6-3xpg-pggx",
+        // js-yaml has prototype pollution in merge (<<)
+        "GHSA-mh29-5h37-fv8m",
+        // body-parser is vulnerable to denial of service when url encoding is used
+        "GHSA-wqch-xfxh-vrr4",
+        // qs's arrayLimit bypass in its bracket notation allows DoS via memory exhaustion
+        "GHSA-6rw7-vpxm-498p",
+        // node-tar is Vulnerable to Arbitrary File Overwrite and Symlink Poisoning via Insufficient Path Sanitization
+        "GHSA-8qq5-rm4j-mr97",
+        // Race Condition in node-tar Path Reservations via Unicode Ligature Collisions on macOS APFS
+        "GHSA-r6q2-hw4h-h46w",
+        // jsdiff has a Denial of Service vulnerability in parsePatch and applyPatch
+        "GHSA-73rr-hh4g-fpgx",
+        // Elliptic Uses a Cryptographic Primitive with a Risky Implementation
+        "GHSA-848j-6mx2-7j84",
+        // Undici has an unbounded decompression chain in HTTP responses on Node.js Fetch API via Content-Encoding leads to resource exhaustion
+        "GHSA-g9mf-h72j-4rw9",
+        // Lodash has Prototype Pollution Vulnerability in `_.unset` and `_.omit` functions
+        "GHSA-xxjr-mmjv-4gpg"
     ]
   }
