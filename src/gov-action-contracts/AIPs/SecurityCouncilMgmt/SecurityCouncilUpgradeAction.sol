@@ -12,7 +12,6 @@ import "../../../security-council-mgmt/governors/SecurityCouncilNomineeElectionG
 /// - Upgrade the sec council manager to allow member rotation and sets min rotation vars
 /// - Upgrade the sec council nominee election governor to allow modifying the cadence of election
 /// - Adjusting the qualification threshold of the Member Election phase from 0.2% to 0.1%
-/// - Allowing existing sec council members to automatically progress from the Nominee Selection phase
 /// - Updating the ArbitrumDAO Constitution to reflect these changes
 contract SecurityCouncilUpgradeAction {
     IL2AddressRegistry public immutable l2AddressRegistry;
@@ -47,7 +46,7 @@ contract SecurityCouncilUpgradeAction {
             payable(address(l2AddressRegistry.scNomineeElectionGovernor()))
         );
         require(
-            scNomineeElectionGovernor.electionCount() == 5,
+            scNomineeElectionGovernor.electionCount() == 6,
             "SecurityCouncilUpgradeAction: not expected timing"
         );
 
@@ -73,7 +72,6 @@ contract SecurityCouncilUpgradeAction {
         );
 
         // Upgrade the sec council nominee election governor to allow modifying the cadence of election
-        // Allowing existing sec council members to automatically progress from the Nominee Selection phase
         l2AddressRegistry.govProxyAdmin().upgradeAndCall(
             TransparentUpgradeableProxy(payable(address(scNomineeElectionGovernor))),
             scNomineeElectionGovernorImpl,
