@@ -49,8 +49,6 @@ contract SecurityCouncilUpgradeActionTest is Test {
 
         SecurityCouncilNomineeElectionGovernor scNomineeElectionGovernor =
         SecurityCouncilNomineeElectionGovernor(payable(address(reg.scNomineeElectionGovernor())));
-        vm.warp(1_757_937_601); // After the 2025 Sep election
-        scNomineeElectionGovernor.createElection();
 
         address newImplementation = address(new SecurityCouncilManager());
         address newNomineeElectionGovernorImplementation =
@@ -82,8 +80,8 @@ contract SecurityCouncilUpgradeActionTest is Test {
         uint256 electionCount = scNomineeElectionGovernor.electionCount();
         assertEq(
             scNomineeElectionGovernor.electionToTimestamp(electionCount),
-            1_789_473_600,
-            "not September 15, 2026 12:00:00 PM"
+            1_805_112_000,
+            "not March 15, 2027 12:00:00 PM"
         );
     }
 
