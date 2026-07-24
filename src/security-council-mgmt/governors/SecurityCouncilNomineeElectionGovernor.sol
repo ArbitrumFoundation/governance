@@ -93,6 +93,8 @@ contract SecurityCouncilNomineeElectionGovernor is
     error ProposalNotInVettingPeriod(uint256 blockNumber, uint256 vettingDeadline);
     error ProposalNotInRotationPeriod(uint256 blockNumber, uint256 rotationDeadline);
     error NomineeAlreadyExcluded(address nominee);
+    error OnlyContenderNomineeCanRotate();
+    error NewNomineeIsContender(address newNominee);
     error CompliantNomineeTargetHit(uint256 nomineeCount, uint256 expectedCount);
     error ProposalInVettingPeriod(uint256 blockNumber, uint256 vettingDeadline);
     error InsufficientCompliantNomineeCount(uint256 compliantNomineeCount, uint256 expectedCount);
@@ -375,6 +377,14 @@ contract SecurityCouncilNomineeElectionGovernor is
         address signer = recoverRotateNomineeMessage(proposalId, signature, msg.sender);
         if (signer != newNomineeAddress) {
             revert InvalidSignature();
+        }
+
+        if (!isContender(proposalId, msg.sender)) {
+            revert OnlyContenderNomineeCanRotate();
+        }
+
+        if (isContender(proposalId, newNomineeAddress)) {
+            revert NewNomineeIsContender(newNomineeAddress);
         }
 
         // rotation by first excluding the nominee and then adding the new nominee
