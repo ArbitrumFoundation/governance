@@ -86,7 +86,7 @@ _Comparison Table_
 
 #### Quorum
 
-Quorum is based on the total delegated voting power of $ARB (excluding tokens delegated to the exclude address), not on total or circulating supply. For each governor, quorum is a fraction of the delegated voting power, clamped between a fixed minimum and maximum:
+Quorum is based on the total delegated voting power of $ARB (excluding tokens delegated to the exclude address). For each governor, quorum is a fraction of the delegated voting power, clamped between a fixed minimum and maximum:
 
 | Governor | Fraction of delegated votes | Min quorum | Max quorum |
 | -------- | --------------------------- | ---------- | ---------- |
