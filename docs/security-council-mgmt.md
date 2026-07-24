@@ -31,7 +31,7 @@ Process for selecting and voting for the new cohort of Security council members.
 Process to install the newly elected cohort of Security Council members into the Arbitrum smart contracts.
 
 1. **Security Council manager update (0 days).** The manager is the source of truth for specifying who are the current council members. It processes the election result and takes note on who will be the new security council members.
-2. **L2 timelock + withdrawal + L1 timelock (3 + 7 + 3 days).** All actions that directly affect the core Arbitrum contracts must go through a series of timelocks to protect the right for all users to exit. This is a built-in safety mechanism for users who are unhappy with the approved changes.
+2. **L2 timelock + withdrawal + L1 timelock (8 + 7 + 3 days).** All actions that directly affect the core Arbitrum contracts must go through a series of timelocks to protect the right for all users to exit. This is a built-in safety mechanism for users who are unhappy with the approved changes.
 3. **Individual council update (0 days).** Once the updates have passed through the relevant timelocks, the Security Council manager can install the security council members. This requires updating 4 Gnosis Safe smart contracts that are controlled by the Security Council members.
 
 ![](./security-council-election-flow.png)
@@ -138,7 +138,7 @@ Calling the `UpgradeExecutor`s on each of the chains requires navigating withdra
 
 Constitutional DAO proposals all pass through:
 
-- L2 timelock (3 days),
+- L2 timelock (8 days),
 - L2 → L1 withdrawal (~7 days),
 - L1 timelock (3 days).
 
@@ -155,7 +155,7 @@ The `SecurityCouncilManager` is given the `PROPOSER` role on the L2 timelock ena
 The new Security Council members need to be installed into 4 Gnosis safes:
 
 - Arbitrum One 9 of 12 Emergency Security Council
-- Arbitrum One 7 of 12 Non-Emergency Security Council
+- Arbitrum One 9 of 12 Non-Emergency Security Council
 - Ethereum 9 of 12 Emergency Security Council
 - Nova 9 of 12 Emergency Security Council
 

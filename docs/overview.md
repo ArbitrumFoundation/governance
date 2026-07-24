@@ -5,7 +5,7 @@
 Arbitrum governance has two main bodies:
 
 - **The DAO** - represented by holders of the $ARB token, and votes to pass proposals.
-- **The Security Council** - is made up of a 9 of 12 multisig that can take quick action in case of an emergency and a 7 of 12 multisig that can take slow action for routine upgrades that bypass the DAO vote.
+- **The Security Council** - is made up of a 9 of 12 multisig that can take quick action in case of an emergency and a 9 of 12 multisig that can take slow action for routine upgrades that bypass the DAO vote.
 
 You can read more about these bodies and their powers in the [Arbitrum DAO Constitution](https://docs.arbitrum.foundation/dao-constitution).
 
@@ -35,13 +35,13 @@ Governance has the ability to upgrade both Arbitrum One and Arbitrum Nova, which
 
 The exception to this is proposals that are deemed _non-constitutional_. This type of proposal shouldn't affect the behavior of the chain, or should do so in limited well understood ways. At inception the only type of non-constitutional proposal is the spending of treasury funds.
 
-To differentiate between these two types of proposal, Arbitrum governance uses two Governor contracts. A _constitutional_ one which requires at least 5% of all votable tokens to vote “in favor” and more votable tokens to vote “in favor” than to vote “against” in order to pass, and a _non-constitutional_ one which requires at least 3% of all votable tokens to vote “in favor” and more votable tokens to vote “in favor” than to vote “against” in order to pass. The ability to upgrade Arbitrum contracts is held by the 5% governor, so no proposals made from the 3% governor can cause a change to contract code, or to a set of chain “owner” parameters.
+To differentiate between these two types of proposal, Arbitrum governance uses two Governor contracts. A _constitutional_ one (the Core governor) and a _non-constitutional_ one (the Treasury governor). Both require more votable tokens to vote “in favor” than to vote “against”, and both require a quorum to be reached; the constitutional governor uses a higher quorum than the non-constitutional one (see [Quorum](#quorum)). The ability to upgrade Arbitrum contracts is held by the Core (constitutional) governor, so no proposals made from the Treasury (non-constitutional) governor can cause a change to contract code, or to a set of chain “owner” parameters.
 
 ## Proposal delays
 
 All governance activities occur on Arbitrum One. Proposals are made there, as well as delegation and voting. A proposal made to the constitutional governor experiences enough delay to ensure that users can safely exit the chain before the proposal is executed, should they deem it malicious.
 
-1. **Arbitrum One timelock** - 3 days delay. After passing, a proposal is delivered to a timelock on Arbitrum One. The purpose of this delay is to allow users to initiate withdrawals from the chain should they wish to.
+1. **Arbitrum One timelock** - 8 days delay. After passing, a proposal is delivered to a timelock on Arbitrum One. The purpose of this delay is to allow users to initiate withdrawals from the chain should they wish to.
 2. **L2->L1 message delay** - ~1 week. All proposals must be withdrawn to L1 before being executed (even if they will eventually execute back on an L2). This ensures that any exits made by users in the previous delay can be processed before the upgrade will, since both go through this delay.
 3. **Ethereum mainnet delay** - 3 days. Withdrawals are delayed by any open challenges in the Arbitrum One rollup. This can cause many withdrawals to become eligible for execution on L1 at the same time. This would mean that although a user initiated their withdrawal before the L2->L1 upgrade message, they could both become eligible for execution on the L1 at roughly the same time, causing users to race on L1 against the upgrade. To prevent this, the upgrade proposal goes through a further delay after reaching the L1, ensuring that any withdrawals initiated before the upgrade proposal will be eligible for execution first.
 
@@ -69,24 +69,33 @@ Token holders have the ability to exclude their votes from the governance quorum
 
 Lets dive a bit deeper into each of the individual contracts, and describe more specifically the role each of the plays in the system.
 
-#### Arbitrum One 3% Governor
+#### Arbitrum One Treasury Governor
 
-The _non-constitutional_ governor, proposals made require at least 3% of all votable tokens to vote “in favor” and more votable tokens to vote "in favor" than to vote "against" in order to pass. Currently only has the power to spend funds in the treasury.
+The _non-constitutional_ governor. Proposals require more votable tokens to vote “in favor” than to vote "against", and must reach quorum (see [Quorum](#quorum)). Currently only has the power to spend funds in the treasury.
 
-#### Arbitrum One 5% Governor
+#### Arbitrum One Core Governor
 
-The _constitutional_ governor, proposals made require at least 5% of all votable tokens to vote "in favor" and more votable tokens to vote “in favor" than to vote "against" in order to pass.
+The _constitutional_ governor. Proposals require more votable tokens to vote "in favor" than to vote "against", and must reach quorum (see [Quorum](#quorum)). The Core governor uses a higher quorum than the Treasury governor.
 <br/>
 
 _Comparison Table_
 | Contract | Proposal Type | Limits |
 | -------- | ------------- | ------ |
-| Arb One 3% Governor | non-constitutional | only treasury-related proposals |
-| Arb One 5% Governor | constitutional | - |
+| Arb One Treasury Governor | non-constitutional | only treasury-related proposals |
+| Arb One Core Governor | constitutional | - |
+
+#### Quorum
+
+Quorum is based on the total delegated voting power of $ARB (excluding tokens delegated to the exclude address), not on total or circulating supply. For each governor, quorum is a fraction of the delegated voting power, clamped between a fixed minimum and maximum:
+
+| Governor | Fraction of delegated votes | Min quorum | Max quorum |
+| -------- | --------------------------- | ---------- | ---------- |
+| Core (constitutional) | 50% | 150,000,000 ARB | 450,000,000 ARB |
+| Treasury (non-constitutional) | 40% | 100,000,000 ARB | 300,000,000 ARB |
 
 #### Arbitrum One L2 Timelock
 
-Proposals can be scheduled here by the 5% governor, or by a 7-of-12 agreement in the Security Council. This timelock enforces a 3-day delay before the proposal can then be executed by anybody.
+Proposals can be scheduled here by the Core governor, or by a 9-of-12 agreement in the Security Council. This timelock enforces an 8-day delay before the proposal can then be executed by anybody.
 
 #### L1 Timelock
 
@@ -97,7 +106,7 @@ This timelock receives proposals that were executed in the Arb One L2 Timelock. 
 _Comparison Table_
 | Contract | Receive proposals scheduled by | Timelock |
 | -------- | ------------------------------ | ----------------- |
-| Arb One L2 Timelock<br/>(Arb1TL) | the 5% governor / 7-12 in Security Council | 3 days |
+| Arb One L2 Timelock<br/>(Arb1TL) | the Core governor / 9-12 in Security Council | 8 days |
 | L1 Timelock | proposals executed in the Arb1TL | 3 days |
 
 #### L1 Upgrade Executor

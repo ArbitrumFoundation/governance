@@ -16,7 +16,7 @@ Once a temperature check has passed, the following things can be done:
     a. Create a new directory under ./scripts/proposals/ for your proposal data, e.g.
 
     ```
-    mkdir ./scipts/proposals/AIPMyProp
+    mkdir ./scripts/proposals/AIPMyProp
     ```
     b. Generate proposal data using `yarn gen:proposalData` using the addresses of the deloyed action contracts, and providing a path to store the new JSON file.
 
@@ -26,7 +26,7 @@ Once a temperature check has passed, the following things can be done:
         --govChainProviderRPC https://arb1.arbitrum.io/rpc \
         --actionChainIds 1 42161 \
         --actionAddresses 0xAddressA 0xAddressB   \
-        --writeToJsonPath ./scipts/proposals/AIPMyProp/my-prop-data.json  
+        --writeToJsonPath ./scripts/proposals/AIPMyProp/my-prop-data.json  
     ```
     Note that the indices for the chain ids correspond  with those of the action contracts. E.g., in the example, 0xAddressA should be deployed on chain 1 (Ethereum) and 0xAddressB should be deployed on chain 42161 (Arbitrum One.)
 
