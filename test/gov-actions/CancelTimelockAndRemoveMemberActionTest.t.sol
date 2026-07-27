@@ -117,17 +117,20 @@ contract CancelTimelockAndRemoveMemberActionTest is Test {
     }
 
     function ensureLatestScm(L2AddressRegistry reg) internal {
+        ISecurityCouncilManager scm = reg.securityCouncilManager();
+        if (
+            proxyAdmin.getProxyImplementation(TransparentUpgradeableProxy(payable(address(scm))))
+                != oldImplementation
+        ) {
+            return; // already upgraded on-chain
+        }
+        
         address newImplementation = address(new SecurityCouncilManager());
         address newNomineeElectionGovernorImplementation =
             address(new SecurityCouncilNomineeElectionGovernor());
         address rotationSetter = address(1337);
         uint256 minRotationPeriod = 1 weeks;
         uint256 cadenceInMonths = 12;
-
-        SecurityCouncilNomineeElectionGovernor scNomineeElectionGovernor =
-        SecurityCouncilNomineeElectionGovernor(payable(address(reg.scNomineeElectionGovernor())));
-        vm.warp(1_757_937_601); // After the 2025 Sep election
-        scNomineeElectionGovernor.createElection();
 
         SecurityCouncilUpgradeAction action = new SecurityCouncilUpgradeAction(
             reg,

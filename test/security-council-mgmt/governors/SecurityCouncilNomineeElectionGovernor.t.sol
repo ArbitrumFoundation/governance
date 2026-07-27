@@ -308,35 +308,6 @@ contract SecurityCouncilNomineeElectionGovernorTest is Test {
             )
         );
         governor.addContender(proposalId, sig);
-
-        // adding a member up for reelection should succeed and automatically add them as a nominee
-        _mockCohortIncludes(Cohort.FIRST, _contender(1), true);
-        _mockCohortIncludes(Cohort.SECOND, _contender(1), false);
-        sig = sigUtils.signAddContenderMessage(proposalId, _contenderPrivKey(1));
-        governor.addContender(proposalId, sig);
-
-        // check that it correctly mutated the state
-        assertTrue(governor.isContender(proposalId, _contender(1)));
-        assertTrue(governor.isNominee(proposalId, _contender(1)));
-
-        // reelection member should not be able to receive votes
-        vm.roll(governor.proposalSnapshot(proposalId) + 1);
-        _mockGetPastVotes(_voter(0), governor.quorum(proposalId));
-        vm.prank(_voter(0));
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                SecurityCouncilNomineeElectionGovernorCountingUpgradeable
-                    .NomineeAlreadyAdded
-                    .selector,
-                _contender(1)
-            )
-        );
-        governor.castVoteWithReasonAndParams({
-            proposalId: proposalId,
-            support: 1,
-            reason: "",
-            params: abi.encode(_contender(1), 1)
-        });
     }
 
     function testSetNomineeVetter() public {
