@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.16;
 
+import "../../interfaces/ISecurityCouncilNomineeElectionGovernor.sol";
 import "@openzeppelin/contracts-upgradeable/governance/GovernorUpgradeable.sol";
 
 /// @title  SecurityCouncilNomineeElectionGovernorCountingUpgradeable
@@ -9,7 +10,8 @@ import "@openzeppelin/contracts-upgradeable/governance/GovernorUpgradeable.sol";
 ///         Voters can spread votes across multiple contenders
 abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is
     Initializable,
-    GovernorUpgradeable
+    GovernorUpgradeable,
+    ISecurityCouncilNomineeElectionGovernorCountingUpgradeable
 {
     /// @param votesUsed The amount of votes a voter has used
     /// @param votesReceived The amount of votes a contender has received
@@ -119,6 +121,9 @@ abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is
 
     /// @dev Transitions an account to being a nominee
     function _addNominee(uint256 proposalId, address account) internal {
+        if (isNominee(proposalId, account)) {
+            revert NomineeAlreadyAdded(account);
+        }
         _elections[proposalId].nominees.push(account);
         _elections[proposalId].isNominee[account] = true;
         emit NewNominee(proposalId, account);
@@ -134,7 +139,7 @@ abstract contract SecurityCouncilNomineeElectionGovernorCountingUpgradeable is
         return _elections[proposalId].votesUsed[account] > 0;
     }
 
-    /// @notice Whether the contender has enough votes to be a nominee
+    /// @inheritdoc ISecurityCouncilNomineeElectionGovernorCountingUpgradeable
     function isNominee(uint256 proposalId, address contender) public view returns (bool) {
         return _elections[proposalId].isNominee[contender];
     }

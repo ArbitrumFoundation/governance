@@ -41,6 +41,8 @@ struct DeployParams {
     uint256 nomineeVotingPeriod;
     uint256 memberVotingPeriod;
     uint256 fullWeightDuration;
+    uint256 minRotationPeriod;
+    address minRotationPeriodSetter;
 }
 
 struct ContractImplementations {
@@ -152,7 +154,8 @@ contract L2SecurityCouncilMgmtFactory is Ownable {
             memberAdder: dp.govChainEmergencySecurityCouncil,
             memberRemovers: memberRemovers,
             memberRotator: dp.govChainEmergencySecurityCouncil,
-            memberReplacer: dp.govChainEmergencySecurityCouncil
+            memberReplacer: dp.govChainEmergencySecurityCouncil,
+            minRotationPeriodSetter: dp.minRotationPeriodSetter
         });
 
         deployedContracts.upgradeExecRouteBuilder = new UpgradeExecRouteBuilder({
@@ -175,7 +178,8 @@ contract L2SecurityCouncilMgmtFactory is Ownable {
             _securityCouncils: dp.securityCouncils,
             _roles: roles,
             _l2CoreGovTimelock: payable(dp.l2CoreGovTimelock),
-            _router: deployedContracts.upgradeExecRouteBuilder
+            _router: deployedContracts.upgradeExecRouteBuilder,
+            _minRotationPeriod: dp.minRotationPeriod
         });
 
         _initRemovalGov(

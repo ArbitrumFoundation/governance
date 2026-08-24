@@ -51,8 +51,11 @@ contract L2SecurityCouncilMgmtFactoryTest is Test, DeployGnosisWithModule {
     address firstCohortMember = address(3456);
     address secondCohortMember = address(7654);
 
+    uint256 minRotationPeriod = 1 weeks;
+    address minRotationPeriodSetter = address(7655);
+
     function getDeployParams() public returns (DeployParams memory deployParams) {
-        ChainAndUpExecLocation[] memory upgradeExecutors;
+        ChainAndUpExecLocation[] memory _upgradeExecutors;
 
         address[] memory scOwners = new address[](2);
         scOwners[0] = firstCohortMember;
@@ -70,7 +73,7 @@ contract L2SecurityCouncilMgmtFactoryTest is Test, DeployGnosisWithModule {
         vm.prank(owner);
         fac = new L2SecurityCouncilMgmtFactory();
         return DeployParams({
-            upgradeExecutors: upgradeExecutors,
+            upgradeExecutors: _upgradeExecutors,
             govChainEmergencySecurityCouncil: govChainEmergencySecurityCouncil,
             l1ArbitrumTimelock: l1ArbitrumTimelock,
             l2CoreGovTimelock: l2CoreGovTimelock,
@@ -94,7 +97,9 @@ contract L2SecurityCouncilMgmtFactoryTest is Test, DeployGnosisWithModule {
             nomineeQuorumNumerator: nomineeQuorumNumerator,
             nomineeVotingPeriod: nomineeVotingPeriod,
             memberVotingPeriod: memberVotingPeriod,
-            fullWeightDuration: fullWeightDuration
+            fullWeightDuration: fullWeightDuration,
+            minRotationPeriod: minRotationPeriod,
+            minRotationPeriodSetter: minRotationPeriodSetter
         });
     }
 
@@ -156,6 +161,9 @@ contract L2SecurityCouncilMgmtFactoryTest is Test, DeployGnosisWithModule {
                 address(deployed.memberElectionGovernor)
             ),
             "memberElectionGovernor has replacer role"
+        );
+        assertEq(
+            securityCouncilManager.minRotationPeriod(), minRotationPeriod, "Min rotation period"
         );
 
         assertTrue(

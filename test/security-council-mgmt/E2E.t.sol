@@ -113,8 +113,6 @@ contract E2E is Test, DeployGnosisWithModule {
     address member17 = vm.addr(653);
     address member18 = vm.addr(654);
 
-    
-
     address[] members = [
         member1,
         member2,
@@ -194,7 +192,9 @@ contract E2E is Test, DeployGnosisWithModule {
     uint256 nomineeVotingPeriod = 51;
     uint256 memberVotingPeriod = 53;
     uint256 fullWeightDuration = 39;
+    uint256 minRotationPeriod = 1 weeks;
     Date nominationStart = Date(1988, 1, 1, 1);
+    address minRotationPeriodSetter = address(7766);
 
     uint256 chain1Id = 937;
     uint256 chain2Id = 837;
@@ -252,11 +252,7 @@ contract E2E is Test, DeployGnosisWithModule {
         UpgradeExecutor novaExecutorLogic = new UpgradeExecutor();
         UpgradeExecutor novaExecutor = UpgradeExecutor(
             address(
-                new TransparentUpgradeableProxy(
-                address(novaExecutorLogic),
-                address(novaAdmin),
-                ""
-                )
+                new TransparentUpgradeableProxy(address(novaExecutorLogic), address(novaAdmin), "")
             )
         );
         address[] memory executors = new address[](2);
@@ -309,13 +305,6 @@ contract E2E is Test, DeployGnosisWithModule {
         vars.novaExecutor = deployNova(address(vars.l1Timelock));
 
         // deploy sec council
-        vars.l2AddressRegistry = new L2AddressRegistry(
-            IL2ArbitrumGoverner(address(l2DeployedCoreContracts.coreGov)),
-            IL2ArbitrumGoverner(address(l2DeployedTreasuryContracts.treasuryGov)),
-            IFixedDelegateErc20Wallet(address(l2DeployedTreasuryContracts.arbTreasury)),
-            IArbitrumDAOConstitution(address(l2DeployedCoreContracts.arbitrumDAOConstitution))
-        );
-
         vars.secFac = new L2SecurityCouncilMgmtFactory();
 
         vars.moduleL2Safe = GnosisSafeL2(
@@ -387,7 +376,9 @@ contract E2E is Test, DeployGnosisWithModule {
                 nomineeQuorumNumerator: nomineeQuorumNumerator,
                 nomineeVotingPeriod: nomineeVotingPeriod,
                 memberVotingPeriod: memberVotingPeriod,
-                fullWeightDuration: fullWeightDuration
+                fullWeightDuration: fullWeightDuration,
+                minRotationPeriod: minRotationPeriod,
+                minRotationPeriodSetter: minRotationPeriodSetter
             });
 
             ContractImplementations memory contractImpls = ContractImplementations({
@@ -399,6 +390,15 @@ contract E2E is Test, DeployGnosisWithModule {
 
             vars.secDeployedContracts = vars.secFac.deploy(secDeployParams, contractImpls);
         }
+
+        vars.l2AddressRegistry = new L2AddressRegistry(
+            IL2ArbitrumGoverner(address(l2DeployedCoreContracts.coreGov)),
+            IL2ArbitrumGoverner(address(l2DeployedTreasuryContracts.treasuryGov)),
+            IFixedDelegateErc20Wallet(address(l2DeployedTreasuryContracts.arbTreasury)),
+            IArbitrumDAOConstitution(address(l2DeployedCoreContracts.arbitrumDAOConstitution)),
+            l2DeployedCoreContracts.proxyAdmin,
+            vars.secDeployedContracts.nomineeElectionGovernor
+        );
 
         L1SCMgmtActivationAction installL1 = new L1SCMgmtActivationAction(
             IGnosisSafe(address(vars.moduleL1Safe)),
@@ -454,7 +454,9 @@ contract E2E is Test, DeployGnosisWithModule {
         SigUtils sigUtils = new SigUtils(address(vars.secDeployedContracts.nomineeElectionGovernor));
         for (uint256 i = 0; i < newCohort1.length; i++) {
             uint256 pk = 649 + i; // member 13 - 18 priv keys
-            vars.secDeployedContracts.nomineeElectionGovernor.addContender(propId, sigUtils.signAddContenderMessage(propId, pk));
+            vars.secDeployedContracts.nomineeElectionGovernor.addContender(
+                propId, sigUtils.signAddContenderMessage(propId, pk)
+            );
         }
 
         // vote for them
