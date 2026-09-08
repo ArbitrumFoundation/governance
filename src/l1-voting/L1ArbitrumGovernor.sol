@@ -25,9 +25,9 @@ import {IVotingTokenMirror} from "./VotingTokenMirror.sol";
 ///         a proposal's snapshot block to a new block within the voting period. These two
 ///         functions allow delegates to fix the snapshots to blocks with known checkpoints in
 ///         the L2 state mirror.
-///         
+///
 ///         Inherited doc comments saying a lookup "returns 0" may not apply here: the
-///         VotingTokenMirror reverts on zero/unproven values instead of returning 0.
+///         VotingTokenMirror reverts on unproven values instead of returning 0.
 ///
 ///         {getPastCirculatingSupply} always reverts: the VotingTokenMirror has no
 ///         getPastTotalSupply. It is only reached by {quorum} for blocks before

@@ -28,8 +28,10 @@ contract L2StateMirror is EIP712 {
         uint256 l2BlockNumber;
         bytes32 l2TokenStorageRoot;
         bytes32 l2DelegateMappingStorageRoot;
-        uint256 totalDelegation;
-        mapping(address => uint256) votesOf;
+        /// @dev Raw last checkpoint words from the L2 token, fromBlock in the low 32 bits and
+        ///      value in the high 224. Nonzero iff proven, since fromBlock is never zero.
+        uint256 totalDelegationCheckpoint;
+        mapping(address => uint256) votesCheckpointOf;
         mapping(address => address) l1AddressOf;
     }
 
@@ -230,22 +232,22 @@ contract L2StateMirror is EIP712 {
         bytes[] memory lastCheckpointStorageProof
     ) external {
         L2Snapshot storage snapshot = snapshotOf[assertionHash];
-        if (snapshot.totalDelegation != 0) {
+        if (snapshot.totalDelegationCheckpoint != 0) {
             revert AlreadyProven();
         }
         if (snapshot.l2TokenStorageRoot == 0) {
             revert StorageRootNotProven();
         }
 
-        uint256 totalDelegation = _proveLastItemInCheckpointsArray(
+        uint256 checkpoint = _proveLastCheckpoint(
             snapshot.l2TokenStorageRoot,
             l2TokenTotalDelegationSlot,
             checkpointLenStorageProof,
             lastCheckpointStorageProof
         );
-        snapshot.totalDelegation = totalDelegation;
+        snapshot.totalDelegationCheckpoint = checkpoint;
 
-        emit TotalDelegationProven(assertionHash, totalDelegation);
+        emit TotalDelegationProven(assertionHash, _checkpointValue(checkpoint));
     }
 
     /// @notice Prove the votes of an account
@@ -256,7 +258,7 @@ contract L2StateMirror is EIP712 {
         bytes[] memory lastCheckpointStorageProof
     ) external {
         L2Snapshot storage snapshot = snapshotOf[assertionHash];
-        if (snapshot.votesOf[account] != 0) {
+        if (snapshot.votesCheckpointOf[account] != 0) {
             revert AlreadyProven();
         }
         if (snapshot.l2TokenStorageRoot == 0) {
@@ -264,15 +266,15 @@ contract L2StateMirror is EIP712 {
         }
 
         uint256 checkpointArrSlot = proofHelper.mappingSlot(l2DelegateCheckpointsSlot, account);
-        uint256 votes = _proveLastItemInCheckpointsArray(
+        uint256 checkpoint = _proveLastCheckpoint(
             snapshot.l2TokenStorageRoot,
             checkpointArrSlot,
             checkpointLenStorageProof,
             lastCheckpointStorageProof
         );
-        snapshot.votesOf[account] = votes;
+        snapshot.votesCheckpointOf[account] = checkpoint;
 
-        emit VotesProven(assertionHash, account, votes);
+        emit VotesProven(assertionHash, account, _checkpointValue(checkpoint));
     }
 
     /// @notice Prove the L1 voting address an L2 delegate has claimed in the L2 DelegateMapping
@@ -343,14 +345,13 @@ contract L2StateMirror is EIP712 {
         return _domainSeparatorV4();
     }
 
-    /// @dev Proves the value held in the last checkpoint of an ARB token checkpoints array, given the
-    ///      slot holding the array length. Shared by votes and total delegation, which use the same OZ
-    ///      checkpoint layout: fromBlock in the low 32 bits, value in the high 224, so the value is
-    ///      recovered by shifting off the low 32 bits.
+    /// @dev Proves the raw last checkpoint word of an ARB token checkpoints array, given the slot
+    ///      holding the array length. Shared by votes and total delegation, which use the same OZ
+    ///      checkpoint layout.
     /// @dev An empty array is unprovable and reverts: the OP trie verifies inclusion only, so the zero
     ///      length slot is an exclusion proof. A non-empty array's last checkpoint slot is always
     ///      nonzero (fromBlock is nonzero) even when the value is 0, so it stays provable.
-    function _proveLastItemInCheckpointsArray(
+    function _proveLastCheckpoint(
         bytes32 storageRoot,
         uint256 checkpointArrSlot,
         bytes[] memory checkpointLenStorageProof,
@@ -359,12 +360,15 @@ contract L2StateMirror is EIP712 {
         uint256 checkpointsLen =
             proofHelper.checkStorageProof(storageRoot, checkpointArrSlot, checkpointLenStorageProof);
         uint256 lastCheckpointSlot = proofHelper.arraySlot(checkpointArrSlot, checkpointsLen - 1);
-        uint256 lastCheckpoint = proofHelper.checkStorageProof(
-            storageRoot, lastCheckpointSlot, lastCheckpointStorageProof
-        );
+        return
+            proofHelper.checkStorageProof(
+                storageRoot, lastCheckpointSlot, lastCheckpointStorageProof
+            );
+    }
 
-        // right shift to drop the fromBlock, leaving the checkpoint value
-        return lastCheckpoint >> 32;
+    /// @dev Drops the fromBlock from a raw checkpoint word, leaving the value
+    function _checkpointValue(uint256 checkpoint) private pure returns (uint256) {
+        return checkpoint >> 32;
     }
 
     /// @notice Get the confirmed assertion hash committed to an L1 block number
@@ -378,23 +382,24 @@ contract L2StateMirror is EIP712 {
     }
 
     /// @notice Get the total delegation of the L2 ARB token proven for the assertion committed as of an L1 block
-    /// @dev    If the total delegation is zero, the proof has not been provided and the function will revert
+    /// @dev    Reverts if unproven
     function getTotalDelegationAt(uint256 blockNumber) external view returns (uint256) {
-        uint256 _totalDelegation = snapshotOf[getAssertionHashAt(blockNumber)].totalDelegation;
-        if (_totalDelegation == 0) {
+        uint256 checkpoint = snapshotOf[getAssertionHashAt(blockNumber)].totalDelegationCheckpoint;
+        if (checkpoint == 0) {
             revert TotalDelegationNotProven();
         }
-        return _totalDelegation;
+        return _checkpointValue(checkpoint);
     }
 
     /// @notice Get the voting power proven for an L2 account as of an L1 block
-    /// @dev    If the voting power is zero or unproven the function will revert
+    /// @dev    Reverts if unproven
     function getVotesAt(address l2Account, uint256 blockNumber) external view returns (uint256) {
-        uint256 votes = snapshotOf[getAssertionHashAt(blockNumber)].votesOf[l2Account];
-        if (votes == 0) {
+        uint256 checkpoint =
+            snapshotOf[getAssertionHashAt(blockNumber)].votesCheckpointOf[l2Account];
+        if (checkpoint == 0) {
             revert VotesNotProven();
         }
-        return votes;
+        return _checkpointValue(checkpoint);
     }
 
     /// @notice Get the L1 voting address proven for an L2 delegate as of an L1 block

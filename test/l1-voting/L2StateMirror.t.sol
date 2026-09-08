@@ -131,6 +131,21 @@ contract L2StateMirrorTest is Test {
         mirror.proveTokenStorageRoot(assertionHash, vm.parseJsonBytesArray(json, ".accountProof"));
     }
 
+    /// @dev Mocks the proof of a checkpoints array's last item to a checkpoint holding value 0
+    ///      and a nonzero fromBlock, which the fixture's live data cannot supply
+    function _mockZeroLastCheckpoint(uint256 arrSlot, string memory lenProofKey) internal {
+        (,,, bytes32 storageRoot,,) = mirror.snapshotOf(assertionHash);
+        uint256 len = helper.checkStorageProof(
+            storageRoot, arrSlot, vm.parseJsonBytesArray(json, lenProofKey)
+        );
+        uint256 lastSlot = helper.arraySlot(arrSlot, len - 1);
+        vm.mockCall(
+            address(helper),
+            abi.encodeWithSelector(ProofHelper.checkStorageProof.selector, storageRoot, lastSlot),
+            abi.encode(uint256(uint32(block.number)))
+        );
+    }
+
     function _proveDelegateMappingStorageRoot() internal {
         _proveHeader();
         mirror.proveDelegateMappingStorageRoot(
@@ -380,6 +395,23 @@ contract L2StateMirrorTest is Test {
         );
     }
 
+    function testProveTotalDelegationZeroValue() public {
+        _proveTokenStorageRoot();
+        _mockZeroLastCheckpoint(
+            vm.parseJsonUint(json, ".totalDelegationSlot"), ".totalDelegationLenProof"
+        );
+        vm.expectEmit();
+        emit TotalDelegationProven(assertionHash, 0);
+        mirror.proveTotalDelegation(
+            assertionHash,
+            vm.parseJsonBytesArray(json, ".totalDelegationLenProof"),
+            vm.parseJsonBytesArray(json, ".totalDelegationLastCheckpointProof")
+        );
+        assertEq(mirror.getTotalDelegationAt(block.number), 0);
+        vm.expectRevert(L2StateMirror.AlreadyProven.selector);
+        mirror.proveTotalDelegation(assertionHash, new bytes[](0), new bytes[](0));
+    }
+
     function testProveTotalDelegationTwiceReverts() public {
         _proveTokenStorageRoot();
         mirror.proveTotalDelegation(
@@ -426,6 +458,25 @@ contract L2StateMirrorTest is Test {
             mirror.getVotesAt(delegateL2, block.number),
             vm.parseJsonUint(json, ".expectedDelegateVotes")
         );
+    }
+
+    function testProveVotesZeroValue() public {
+        _proveTokenStorageRoot();
+        _mockZeroLastCheckpoint(
+            helper.mappingSlot(vm.parseJsonUint(json, ".delegateCheckpointsSlot"), excludeL2),
+            ".checkpointLenProof"
+        );
+        vm.expectEmit();
+        emit VotesProven(assertionHash, excludeL2, 0);
+        mirror.proveVotes(
+            assertionHash,
+            excludeL2,
+            vm.parseJsonBytesArray(json, ".checkpointLenProof"),
+            vm.parseJsonBytesArray(json, ".lastCheckpointProof")
+        );
+        assertEq(mirror.getVotesAt(excludeL2, block.number), 0);
+        vm.expectRevert(L2StateMirror.AlreadyProven.selector);
+        mirror.proveVotes(assertionHash, excludeL2, new bytes[](0), new bytes[](0));
     }
 
     function testProveVotesTwiceReverts() public {
