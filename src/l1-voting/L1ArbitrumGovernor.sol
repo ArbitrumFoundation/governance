@@ -29,6 +29,11 @@ import {IVotingTokenMirror} from "./VotingTokenMirror.sol";
 ///         Inherited doc comments saying a lookup "returns 0" may not apply here: the
 ///         VotingTokenMirror reverts on zero/unproven values instead of returning 0.
 ///
+///         {getPastCirculatingSupply} always reverts: the VotingTokenMirror has no
+///         getPastTotalSupply. It is only reached by {quorum} for blocks before
+///         {dvpQuorumStartBlock}, which is the initialization block here, so no proposal
+///         snapshot can take that branch.
+///
 ///         Since {state} depends on quorum, which depends on values being proven in the
 ///         L2 state mirror, {state} may revert if the necessary values are not yet proven.
 ///         If the necessary values are never proven, {state} will revert forever.
