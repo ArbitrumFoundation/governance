@@ -4,7 +4,7 @@ _The following is a list of quirks and/or potentially unexpected behaviors in th
 
 
 - **Abstain Vote** 
-Voting “abstain” on a core-governor or treasury governor proposal does not count as either a “for” or “against” vote, but does count towards reaching quorum (5% or 3% of votable tokens, respectively). Voting abstain on a security council member removal proposal is disallowed.
+Voting “abstain” on a core-governor or treasury governor proposal does not count as either a “for” or “against” vote, but does count towards reaching quorum. Voting abstain on a security council member removal proposal is disallowed.
 
 - **Late Quorum Extension**
 The core, treasury, and security-council-member-removal governors all have a minimum 14-day voting period, and use open zeppelin's "late quorum" module to add a late-quorum extension of 2 days. This ensures that there are always at least 2 days of voting after a proposal's quorum is reached; i.e., the maximum total voting period would be 16 days, when/if quorum is reached at the very end of the initial 14-day period. 

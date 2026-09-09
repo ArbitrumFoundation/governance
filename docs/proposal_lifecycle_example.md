@@ -166,4 +166,4 @@ The security council with a 9 of 12 multisig threshold can directly call the L1 
 
 ### Security Council: Non-time-sensitive Critical Upgrade
 
-The security council with a 7 of 12 multisig threshold can call `ArbitrumTimelock.schedule` on the Arbitrum One timelock, without requiring a governance vote.
+The security council with a 9 of 12 multisig threshold can call `ArbitrumTimelock.schedule` on the Arbitrum One timelock, without requiring a governance vote.
