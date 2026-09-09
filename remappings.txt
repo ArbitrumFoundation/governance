@@ -7,3 +7,4 @@ solady/=lib/solady/src/
 @gnosis.pm/safe-contracts/=node_modules/@gnosis.pm/safe-contracts/
 @offchainlabs/upgrade-executor=node_modules/@offchainlabs/upgrade-executor/
 ds-test/=lib/forge-std/lib/ds-test/src/
+excessively-safe-call/=lib/ExcessivelySafeCall/src/
