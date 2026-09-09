@@ -7,6 +7,7 @@ optimizer = true
 optimizer_runs = 10000
 via_ir = false
 solc_version = '0.8.16'
+fs_permissions = [{ access = "read", path = "./test/l1-voting/fixtures" }]
 
 [profile.sec_council_mgmt]
 optimizer_runs = 750

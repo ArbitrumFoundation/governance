@@ -1,5 +1,6 @@
 cache/
 out/
+broadcast/**/dry-run/
 .vscode
 .idea
 node_modules/
@@ -28,3 +29,4 @@ proposalState.json
 /test/storage/*-old
 /test/signatures/*-old
 .DS_Store
+l1-voting-prototype
