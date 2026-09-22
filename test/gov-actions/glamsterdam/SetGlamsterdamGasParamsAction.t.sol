@@ -23,7 +23,7 @@ contract SetGlamsterdamGasParamsActionTest is Test {
     }
 
     function test_setsBothValues() public {
-        SetGlamsterdamGasParamsAction action = new SetGlamsterdamGasParamsAction(16, 400_000);
+        SetGlamsterdamGasParamsAction action = new SetGlamsterdamGasParamsAction(16, 530_000);
         action.perform();
 
         assertEq(
@@ -33,7 +33,7 @@ contract SetGlamsterdamGasParamsActionTest is Test {
         );
         assertEq(
             IArbGasInfoGlamsterdam(ARB_GAS_INFO).getPerBatchGasCharge(),
-            400_000,
+            530_000,
             "perBatchGasCharge"
         );
     }
@@ -41,45 +41,45 @@ contract SetGlamsterdamGasParamsActionTest is Test {
     function test_arbOneChildUsesExpectedValues() public {
         ArbOneSetGlamsterdamGasParamsAction action = new ArbOneSetGlamsterdamGasParamsAction();
         assertEq(action.newParentGasFloorPerToken(), 16, "arb one floor");
-        assertEq(action.newPerBatchGasCharge(), 400_000, "arb one per batch");
+        assertEq(action.newPerBatchGasCharge(), 530_000, "arb one per batch");
 
         action.perform();
         assertEq(
             IArbOwnerPublicGlamsterdam(ARB_OWNER_PUBLIC).getParentGasFloorPerToken(), 16, "floor"
         );
-        assertEq(IArbGasInfoGlamsterdam(ARB_GAS_INFO).getPerBatchGasCharge(), 400_000, "per batch");
+        assertEq(IArbGasInfoGlamsterdam(ARB_GAS_INFO).getPerBatchGasCharge(), 530_000, "per batch");
     }
 
     function test_novaChildUsesExpectedValues() public {
         NovaSetGlamsterdamGasParamsAction action = new NovaSetGlamsterdamGasParamsAction();
         assertEq(action.newParentGasFloorPerToken(), 16, "nova floor");
-        assertEq(action.newPerBatchGasCharge(), 400_000, "nova per batch");
+        assertEq(action.newPerBatchGasCharge(), 530_000, "nova per batch");
 
         action.perform();
         assertEq(
             IArbOwnerPublicGlamsterdam(ARB_OWNER_PUBLIC).getParentGasFloorPerToken(), 16, "floor"
         );
-        assertEq(IArbGasInfoGlamsterdam(ARB_GAS_INFO).getPerBatchGasCharge(), 400_000, "per batch");
+        assertEq(IArbGasInfoGlamsterdam(ARB_GAS_INFO).getPerBatchGasCharge(), 530_000, "per batch");
     }
 
     /// @notice Running twice must be a no-op rather than a revert. A batch that reverts on the fork
     ///         gate is re-executed later, so perform() can be reached more than once.
     function test_isIdempotent() public {
-        SetGlamsterdamGasParamsAction action = new SetGlamsterdamGasParamsAction(16, 400_000);
+        SetGlamsterdamGasParamsAction action = new SetGlamsterdamGasParamsAction(16, 530_000);
         action.perform();
         action.perform();
 
         assertEq(
             IArbOwnerPublicGlamsterdam(ARB_OWNER_PUBLIC).getParentGasFloorPerToken(), 16, "floor"
         );
-        assertEq(IArbGasInfoGlamsterdam(ARB_GAS_INFO).getPerBatchGasCharge(), 400_000, "per batch");
+        assertEq(IArbGasInfoGlamsterdam(ARB_GAS_INFO).getPerBatchGasCharge(), 530_000, "per batch");
     }
 
     /// @notice The post-state assertions have to actually fire. Etch an ArbOwner whose setters do
     ///         nothing and check perform() refuses to report success.
     function test_revertsIfFloorDoesNotTakeEffect() public {
         vm.etch(ARB_OWNER, address(new ArbOwnerMockThatIgnoresWrites()).code);
-        SetGlamsterdamGasParamsAction action = new SetGlamsterdamGasParamsAction(16, 400_000);
+        SetGlamsterdamGasParamsAction action = new SetGlamsterdamGasParamsAction(16, 530_000);
 
         vm.expectRevert("SetGlamsterdamGasParamsAction: parent gas floor per token");
         action.perform();
@@ -91,7 +91,7 @@ contract SetGlamsterdamGasParamsActionTest is Test {
         // the one that fires.
         vm.etch(ARB_OWNER, address(new ArbOwnerMockThatIgnoresWrites()).code);
         SetGlamsterdamGasParamsAction action =
-            new SetGlamsterdamGasParamsAction(CURRENT_PARENT_GAS_FLOOR_PER_TOKEN, 400_000);
+            new SetGlamsterdamGasParamsAction(CURRENT_PARENT_GAS_FLOOR_PER_TOKEN, 530_000);
 
         vm.expectRevert("SetGlamsterdamGasParamsAction: per batch gas charge");
         action.perform();
@@ -107,7 +107,7 @@ contract SetGlamsterdamGasParamsActionTest is Test {
         assertEq(
             IArbOwnerPublicGlamsterdam(ARB_OWNER_PUBLIC).getParentGasFloorPerToken(), 16, "floor"
         );
-        assertEq(IArbGasInfoGlamsterdam(ARB_GAS_INFO).getPerBatchGasCharge(), 400_000, "per batch");
+        assertEq(IArbGasInfoGlamsterdam(ARB_GAS_INFO).getPerBatchGasCharge(), 530_000, "per batch");
     }
 }
 

@@ -11,8 +11,8 @@ live on Ethereum, gated so that they cannot execute before it is.
 | `OpcodeForkGateAction` | Ethereum | Reverts unless the probe call succeeds |
 | `GlamsterdamForkGateAction` | Ethereum | The above, wired to the deployed probe |
 | `SetGlamsterdamGasParamsAction` | Arb One / Nova | Sets `parentGasFloorPerToken` and `perBatchGasCharge` |
-| `ArbOneSetGlamsterdamGasParamsAction` | Arb One | 16 and 400,000 |
-| `NovaSetGlamsterdamGasParamsAction` | Nova | 16 and 400,000 |
+| `ArbOneSetGlamsterdamGasParamsAction` | Arb One | 16 and 530,000 |
+| `NovaSetGlamsterdamGasParamsAction` | Nova | 16 and 530,000 |
 
 ## How the gating works
 
@@ -96,11 +96,11 @@ and the overridden one, which shows what executes. Say plainly which override wa
 - **EIP-7843 is scheduled for inclusion, not frozen.** Re-check EIP-7773 before deploying. If
   SLOTNUM is dropped, deploy a probe for a different fork-introduced opcode and point the gate at
   it; the gate itself needs no change.
-- **`perBatchGasCharge` of 400,000 is a placeholder.** See the TODO in
+- **`perBatchGasCharge` is set to 530,000.** Validate batch posting costs on a devnet; see the TODO in
   `ArbOneSetGlamsterdamGasParamsAction`.
 - **`parentGasFloorPerToken` will not bind while the chains post blob batches only.** It is set
   anyway so the chains mirror the parent chain rule. The economically live change is
   `perBatchGasCharge`.
 - **The L2 tests run against etched mocks, not ArbOS.** They check the action calls the right
-  precompile methods with the right arguments; they cannot tell you ArbOS accepts 16, or that 400,000
+  precompile methods with the right arguments; they cannot tell you ArbOS accepts 16, or that 530,000
   prices batches correctly. That needs a nitro devnet.

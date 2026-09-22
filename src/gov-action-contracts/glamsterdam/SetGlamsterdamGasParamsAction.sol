@@ -84,13 +84,10 @@ contract ArbOneSetGlamsterdamGasParamsAction is SetGlamsterdamGasParamsAction {
             16,
             // perBatchGasCharge, currently 210,000.
             //
-            // TODO: hone this in. 400,000 is a placeholder chosen to cover the EIP-8037 state gas
-            // that batch posting will newly incur: 210,000 + 195,840 = 405,840. That derivation
-            // assumes exactly two new storage slots per batch and CPSB of 1530, both of which should
-            // be confirmed against the final EIP-8037 text and measured on a devnet before this
-            // goes to a vote. Measuring is worth the effort in both directions: too low and the
+            // TODO: validate this charge against the final EIP-8037 text and measure batch posting
+            // costs on a devnet before this goes to a vote. Too low and the
             // pricer under-recovers batch posting costs, too high and users overpay.
-            400_000
+            530_000
         )
     {}
 }
@@ -103,9 +100,9 @@ contract NovaSetGlamsterdamGasParamsAction is SetGlamsterdamGasParamsAction {
     constructor()
         SetGlamsterdamGasParamsAction(
             16,
-            // TODO: see ArbOneSetGlamsterdamGasParamsAction. If Arbitrum One's value is tightened,
-            // check whether Nova's batch shape justifies the same number rather than copying it.
-            400_000
+            // TODO: see ArbOneSetGlamsterdamGasParamsAction. Confirm that Nova's batch shape
+            // justifies the same charge.
+            530_000
         )
     {}
 }
