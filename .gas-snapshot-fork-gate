@@ -1,0 +1,6 @@
+ForkGateActionTest:test_constructorDeploysProbe() (gas: 7673)
+ForkGateActionTest:test_failingProbeBurnsBoundedGas() (gas: 21465)
+ForkGateActionTest:test_gatePassesAfterFork() (gas: 9809)
+ForkGateActionTest:test_gatePassesWhenProbeSucceeds() (gas: 16266)
+ForkGateActionTest:test_gateRevertsWhenProbeFails() (gas: 21680)
+ForkGateActionTest:test_worksUnderDelegatecall() (gas: 965644)

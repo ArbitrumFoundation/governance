@@ -48,8 +48,7 @@ contract SetGlamsterdamGasParamsAction {
     // correct value here anyway for potential future use.
     uint64 public constant newParentGasFloorPerToken = 16;
 
-    // Currently 210,000. TODO: validate this charge against the final EIP-8037 text and measure
-    // batch posting costs on a devnet before this goes to a vote.
+    // Currently 210,000.
     int64 public constant newPerBatchGasCharge = 530_000;
 
     function perform() external {

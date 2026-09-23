@@ -28,15 +28,25 @@ back the entire batch, which can be retried after the fork.
 
 ## Testing
 
-Run the tests under both pre-fork and post-fork rules:
+Run the full suite, including the gate tests under Amsterdam:
 
 ```
-forge test --match-path 'test/gov-actions/glamsterdam/*' --evm-version osaka
-forge test --match-path 'test/gov-actions/glamsterdam/*' --evm-version amsterdam
+make test
 ```
 
-Foundry runs the selected EVM rules while passing a compatible target to solc 0.8.16.
-`test_gateFollowsTheProbe` checks that the gate follows the real probe's result under either version.
+To run just the gate tests under post-fork or pre-fork rules:
+
+```
+make test-fork-gate
+make test-fork-gate-osaka
+```
+
+`test_gatePassesAfterFork` calls the gate and expects success. The Osaka target succeeds only if
+that test fails with `ForkNotActive()` and every other test in the file passes. CI runs both targets.
+
+Foundry runs the selected EVM rules while passing a compatible target to solc 0.8.16. `make snapshot`
+and `make gas-check` use `.gas-snapshot-fork-gate` for the Amsterdam gate tests and `.gas-snapshot`
+for the remaining tests under the default EVM rules.
 
 ## Showing a simulation before the fork
 

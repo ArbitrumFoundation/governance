@@ -35,6 +35,9 @@ jobs:
       - name: Run tests
         run: make test
 
+      - name: Check fork gate rejects Osaka
+        run: make test-fork-gate-osaka
+
   test-contract-size:
     name: Test contract size
     runs-on: ubuntu-latest

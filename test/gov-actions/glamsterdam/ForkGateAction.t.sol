@@ -4,7 +4,7 @@ pragma solidity 0.8.16;
 import "forge-std/Test.sol";
 import "../../../src/gov-action-contracts/glamsterdam/ForkGateAction.sol";
 
-/// @notice Run under both --evm-version osaka and --evm-version amsterdam.
+/// @notice Passes under Amsterdam; the real probe test must fail with ForkNotActive under Osaka.
 contract ForkGateActionTest is Test {
     GlamsterdamForkGateAction gate;
     address probe;
@@ -18,14 +18,8 @@ contract ForkGateActionTest is Test {
         assertEq(probe.code, hex"4b5000", "probe runtime");
     }
 
-    function test_gateFollowsTheProbe() public {
-        (bool slotNumIsAvailable,) = probe.staticcall{gas: 5000}("");
-        if (slotNumIsAvailable) {
-            gate.perform();
-        } else {
-            vm.expectRevert(GlamsterdamForkGateAction.ForkNotActive.selector);
-            gate.perform();
-        }
+    function test_gatePassesAfterFork() public {
+        gate.perform();
     }
 
     /// @notice The bytecode override used to simulate the post-fork path.
