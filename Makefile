@@ -14,8 +14,7 @@ gas                     :; forge test --gas-report
 gas-check               :; forge snapshot --check --tolerance 1
 snapshot                :; forge snapshot
 test-unit               :; forge test -vvv
-test-fork-gate           :; forge test -vvv --match-path $(FORK_GATE_TEST)
-test-fork-gate-osaka     :; bash test/gov-actions/glamsterdam/test-fork-gate-osaka.bash
+test-fork-gate-osaka     :; ! results=$$(forge test --match-path $(FORK_GATE_TEST) --evm-version osaka --json) && printf '%s\n' "$$results" | jq -es '.[0]["$(FORK_GATE_TEST):ForkGateActionTest"].test_results | .["test_gatePassesAfterFork()"].status == "Failure" and .["test_gatePassesAfterFork()"].reason == "ForkNotActive()" and (to_entries | all(.key == "test_gatePassesAfterFork()" or .value.status == "Success"))'
 clean                   :; forge clean
 fmt                     :; forge fmt
 gen-network             :; yarn gen:network

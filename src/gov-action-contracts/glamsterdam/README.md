@@ -34,10 +34,9 @@ The default EVM version in `foundry.toml` is Amsterdam. Run the full suite with:
 make test
 ```
 
-To run just the gate tests under post-fork or pre-fork rules:
+The gate tests are included in that run. To check the expected pre-fork failure separately:
 
 ```
-make test-fork-gate
 make test-fork-gate-osaka
 ```
 
