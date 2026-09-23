@@ -9,6 +9,14 @@ contract GlamsterdamForkGateAction {
 
     constructor() {
         // Deploy runtime SLOTNUM; POP; STOP (0x4b5000), which solc 0.8.16 cannot emit directly.
+        // Initcode (instruction bytes -> operation):
+        //   62 4b5000  PUSH3 0x4b5000 - push the three runtime bytes as a word.
+        //   60 00      PUSH1 0x00     - push the memory offset for MSTORE.
+        //   52         MSTORE         - store the word at 0x00; runtime occupies 0x1d..0x1f.
+        //   60 03      PUSH1 0x03     - push the runtime length (3 bytes).
+        //   60 1d      PUSH1 0x1d     - push the runtime's starting memory offset (29).
+        //   f3         RETURN         - return those 3 bytes as the deployed contract's code.
+        // Runtime: 4b = SLOTNUM (push slot number), 50 = POP (discard it), 00 = STOP (succeed).
         bytes memory initcode = hex"624b50006000526003601df3";
         address deployedProbe;
         assembly {
