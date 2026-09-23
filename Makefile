@@ -6,6 +6,11 @@
 install                 :; yarn
 
 FORK_GATE_TEST = test/gov-actions/glamsterdam/ForkGateAction.t.sol
+FORK_GATE_OSAKA_CHECK = \
+	.[0]["$(FORK_GATE_TEST):ForkGateActionTest"].test_results \
+	| .["test_gatePassesAfterFork()"] as $$gate \
+	| $$gate.status == "Failure" and $$gate.reason == "ForkNotActive()" \
+	  and (to_entries | all(.key == "test_gatePassesAfterFork()" or .value.status == "Success"))
 
 # Build & test
 build                   :; forge build
@@ -14,7 +19,9 @@ gas                     :; forge test --gas-report
 gas-check               :; forge snapshot --check --tolerance 1
 snapshot                :; forge snapshot
 test-unit               :; forge test -vvv
-test-fork-gate-osaka     :; ! results=$$(forge test --match-path $(FORK_GATE_TEST) --evm-version osaka --json) && printf '%s\n' "$$results" | jq -es '.[0]["$(FORK_GATE_TEST):ForkGateActionTest"].test_results | .["test_gatePassesAfterFork()"].status == "Failure" and .["test_gatePassesAfterFork()"].reason == "ForkNotActive()" and (to_entries | all(.key == "test_gatePassesAfterFork()" or .value.status == "Success"))'
+test-fork-gate-osaka     :
+	! results=$$(forge test --match-path $(FORK_GATE_TEST) --evm-version osaka --json) && \
+	printf '%s\n' "$$results" | jq -es '$(FORK_GATE_OSAKA_CHECK)'
 clean                   :; forge clean
 fmt                     :; forge fmt
 gen-network             :; yarn gen:network
