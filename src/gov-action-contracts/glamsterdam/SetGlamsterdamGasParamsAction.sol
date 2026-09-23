@@ -1,10 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity 0.8.16;
 
-// ArbOwner.setParentGasFloorPerToken is available from ArbOS 50 and is not present in the ArbOwner
-// interface shipped with the pinned nitro-contracts 3.1.1, so the methods this action needs are
-// declared locally rather than bumping the dependency. Same approach as ArbOneSetAtlasFeesAction,
-// which declares its own IArbGasInfo.
 interface IArbOwnerGlamsterdam {
     /// @notice Set how much the parent chain charges per calldata token. Mirrors
     ///         TOTAL_COST_FLOOR_PER_TOKEN from EIP-7623 / EIP-7976. ArbOS 50+.
@@ -48,7 +44,14 @@ contract SetGlamsterdamGasParamsAction {
     // correct value here anyway for potential future use.
     uint64 public constant newParentGasFloorPerToken = 16;
 
-    // Currently 210,000.
+    /// @dev Assumes blob batches with a gas refunder and unchanged L1 pricing.
+    ///      Measured batch gas rises from ~171k to ~386k (2.26x) [1]. Scale the existing
+    ///      margin (210k + 42k - 171k) proportionally to preserve the break-even
+    ///      base-fee/tip ratio, then subtract the ~42k from LegacyCostForStats [2]:
+    ///      386k + (81k * 2.26) - 42k ≈ 527k, rounded to 530k.
+    ///
+    ///      [1] https://effective-spork-5wwmq3e.pages.github.io/harness/viewer.html
+    ///      [2] https://github.com/OffchainLabs/nitro/blob/0e18b1f3696c201c0d40396cf6d258916e0a647a/arbos/arbostypes/incomingmessage.go#L182-L189
     int64 public constant newPerBatchGasCharge = 530_000;
 
     function perform() external {

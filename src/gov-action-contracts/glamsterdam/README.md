@@ -60,4 +60,3 @@ with a bare `STOP` (`0x00`):
 ```
 
 Both `STOP` and the post-fork probe succeed and return no data. The gate itself runs unmodified.
-Publish the unmodified and overridden simulations, identifying the override used.
