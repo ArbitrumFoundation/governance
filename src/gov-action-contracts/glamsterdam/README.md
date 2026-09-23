@@ -62,13 +62,3 @@ with a bare `STOP` (`0x00`):
 
 Both `STOP` and the post-fork probe succeed and return no data. The gate itself runs unmodified.
 Publish the unmodified and overridden simulations, identifying the override used.
-
-## Caveats to re-check before this goes to a vote
-
-- Re-check EIP-7773 to confirm SLOTNUM is included in Glamsterdam. If it is dropped, update the
-  probe bytecode before deploying the gate.
-- Validate the 530,000 per-batch charge against the final EIP-8037 text and devnet measurements
-  for both chains.
-- `parentGasFloorPerToken` is set to 16 for potential future use on chains using blob or Alt DA.
-- The L2 tests use mocked precompiles. They check calls and post-state assertions, but real ArbOS
-  execution and batch pricing still need devnet validation.
