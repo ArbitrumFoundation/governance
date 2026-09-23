@@ -28,7 +28,7 @@ back the entire batch, which can be retried after the fork.
 
 ## Testing
 
-Run the full suite, including the gate tests under Amsterdam:
+The default EVM version in `foundry.toml` is Amsterdam. Run the full suite with:
 
 ```
 make test
@@ -42,11 +42,13 @@ make test-fork-gate-osaka
 ```
 
 `test_gatePassesAfterFork` calls the gate and expects success. The Osaka target succeeds only if
-that test fails with `ForkNotActive()` and every other test in the file passes. CI runs both targets.
+that test fails with `ForkNotActive()` and every other test in the file passes. CI runs `make test`
+followed by `make test-fork-gate-osaka`.
 
-Foundry runs the selected EVM rules while passing a compatible target to solc 0.8.16. `make snapshot`
-and `make gas-check` use `.gas-snapshot-fork-gate` for the Amsterdam gate tests and `.gas-snapshot`
-for the remaining tests under the default EVM rules.
+Foundry runs the selected EVM rules while passing a compatible target to solc 0.8.16. Coverage and
+gas snapshots run the full suite under Amsterdam: use `make coverage`, `make snapshot`, and
+`make gas-check`. All gas snapshots are stored in `.gas-snapshot`. The expected Osaka failure is
+checked separately and does not need a coverage run.
 
 ## Showing a simulation before the fork
 

@@ -6,26 +6,15 @@
 install                 :; yarn
 
 FORK_GATE_TEST = test/gov-actions/glamsterdam/ForkGateAction.t.sol
-FORK_GATE_SNAPSHOT = .gas-snapshot-fork-gate
 
 # Build & test
 build                   :; forge build
-coverage                :
-	forge coverage --no-match-path $(FORK_GATE_TEST)
-	forge coverage --match-path $(FORK_GATE_TEST) --evm-version amsterdam
-gas                     :
-	forge test --gas-report --no-match-path $(FORK_GATE_TEST)
-	forge test --gas-report --match-path $(FORK_GATE_TEST) --evm-version amsterdam
-gas-check               :
-	forge snapshot --check --tolerance 1 --no-match-path $(FORK_GATE_TEST)
-	forge snapshot --check $(FORK_GATE_SNAPSHOT) --tolerance 1 --match-path $(FORK_GATE_TEST) --evm-version amsterdam
-snapshot                :
-	forge snapshot --no-match-path $(FORK_GATE_TEST)
-	forge snapshot --snap $(FORK_GATE_SNAPSHOT) --match-path $(FORK_GATE_TEST) --evm-version amsterdam
-test-unit               :
-	forge test -vvv --no-match-path $(FORK_GATE_TEST)
-	$(MAKE) test-fork-gate
-test-fork-gate           :; forge test -vvv --match-path $(FORK_GATE_TEST) --evm-version amsterdam
+coverage                :; forge coverage
+gas                     :; forge test --gas-report
+gas-check               :; forge snapshot --check --tolerance 1
+snapshot                :; forge snapshot
+test-unit               :; forge test -vvv
+test-fork-gate           :; forge test -vvv --match-path $(FORK_GATE_TEST)
 test-fork-gate-osaka     :; bash test/gov-actions/glamsterdam/test-fork-gate-osaka.bash
 clean                   :; forge clean
 fmt                     :; forge fmt
