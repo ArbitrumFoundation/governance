@@ -44,7 +44,7 @@ contract SetGlamsterdamGasParamsAction {
     // correct value here anyway for potential future use.
     uint64 public constant newParentGasFloorPerToken = 16;
 
-    /// @dev Assumes blob batches with a gas refunder and unchanged L1 pricing.
+    /// @dev Currently 210,000. Assumes blob batches with a gas refunder and unchanged L1 pricing.
     ///      Measured batch gas rises from ~171k to ~386k (2.26x) [1]. Scale the existing
     ///      margin (210k + 42k - 171k) proportionally to preserve the break-even
     ///      base-fee/tip ratio, then subtract the ~42k from LegacyCostForStats [2]:
