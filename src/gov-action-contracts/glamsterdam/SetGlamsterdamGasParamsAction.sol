@@ -47,13 +47,13 @@ contract SetGlamsterdamGasParamsAction {
     IArbGasInfoGlamsterdam public constant arbGasInfo =
         IArbGasInfoGlamsterdam(0x000000000000000000000000000000000000006C);
 
-    uint64 public immutable newParentGasFloorPerToken;
-    int64 public immutable newPerBatchGasCharge;
+    // Currently 10. Although this value will not be used on a blob or Alt DA chain, it is set to the
+    // correct value here anyway for potential future use.
+    uint64 public constant newParentGasFloorPerToken = 16;
 
-    constructor(uint64 _newParentGasFloorPerToken, int64 _newPerBatchGasCharge) {
-        newParentGasFloorPerToken = _newParentGasFloorPerToken;
-        newPerBatchGasCharge = _newPerBatchGasCharge;
-    }
+    // Currently 210,000. TODO: validate this charge against the final EIP-8037 text and measure
+    // batch posting costs on a devnet before this goes to a vote.
+    int64 public constant newPerBatchGasCharge = 530_000;
 
     function perform() external {
         arbOwner.setParentGasFloorPerToken(newParentGasFloorPerToken);
@@ -68,41 +68,4 @@ contract SetGlamsterdamGasParamsAction {
             "SetGlamsterdamGasParamsAction: per batch gas charge"
         );
     }
-}
-
-/// @notice Glamsterdam parent chain pricing parameters for Arbitrum One.
-contract ArbOneSetGlamsterdamGasParamsAction is SetGlamsterdamGasParamsAction {
-    constructor()
-        SetGlamsterdamGasParamsAction(
-            // parentGasFloorPerToken, currently 10. EIP-7976 sets TOTAL_COST_FLOOR_PER_TOKEN to 16.
-            //
-            // Note this will not bind in practice while Arbitrum One posts blob batches only: the
-            // floor branch in ArbOS computes roughly 16 * 172 + 21000 = 23,752 gas for a blob batch,
-            // against a gasSpent already well above 250,000 from perBatchGasCharge alone. It is set
-            // anyway so the chain mirrors the parent chain rule, and so the value is right if a
-            // small calldata batch is ever posted.
-            16,
-            // perBatchGasCharge, currently 210,000.
-            //
-            // TODO: validate this charge against the final EIP-8037 text and measure batch posting
-            // costs on a devnet before this goes to a vote. Too low and the
-            // pricer under-recovers batch posting costs, too high and users overpay.
-            530_000
-        )
-    {}
-}
-
-/// @notice Glamsterdam parent chain pricing parameters for Nova.
-/// @dev    Nova currently runs the same values as Arbitrum One (ArbOS 61, perBatchGasCharge
-///         210,000, parentGasFloorPerToken 10) and posts blob batches in the same shape, so it takes
-///         the same new values. Re-check before deploying in case the chains diverge.
-contract NovaSetGlamsterdamGasParamsAction is SetGlamsterdamGasParamsAction {
-    constructor()
-        SetGlamsterdamGasParamsAction(
-            16,
-            // TODO: see ArbOneSetGlamsterdamGasParamsAction. Confirm that Nova's batch shape
-            // justifies the same charge.
-            530_000
-        )
-    {}
 }

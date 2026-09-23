@@ -23,7 +23,9 @@ contract SetGlamsterdamGasParamsActionTest is Test {
     }
 
     function test_setsBothValues() public {
-        SetGlamsterdamGasParamsAction action = new SetGlamsterdamGasParamsAction(16, 530_000);
+        SetGlamsterdamGasParamsAction action = new SetGlamsterdamGasParamsAction();
+        assertEq(action.newParentGasFloorPerToken(), 16, "floor");
+        assertEq(action.newPerBatchGasCharge(), 530_000, "per batch");
         action.perform();
 
         assertEq(
@@ -38,34 +40,9 @@ contract SetGlamsterdamGasParamsActionTest is Test {
         );
     }
 
-    function test_arbOneChildUsesExpectedValues() public {
-        ArbOneSetGlamsterdamGasParamsAction action = new ArbOneSetGlamsterdamGasParamsAction();
-        assertEq(action.newParentGasFloorPerToken(), 16, "arb one floor");
-        assertEq(action.newPerBatchGasCharge(), 530_000, "arb one per batch");
-
-        action.perform();
-        assertEq(
-            IArbOwnerPublicGlamsterdam(ARB_OWNER_PUBLIC).getParentGasFloorPerToken(), 16, "floor"
-        );
-        assertEq(IArbGasInfoGlamsterdam(ARB_GAS_INFO).getPerBatchGasCharge(), 530_000, "per batch");
-    }
-
-    function test_novaChildUsesExpectedValues() public {
-        NovaSetGlamsterdamGasParamsAction action = new NovaSetGlamsterdamGasParamsAction();
-        assertEq(action.newParentGasFloorPerToken(), 16, "nova floor");
-        assertEq(action.newPerBatchGasCharge(), 530_000, "nova per batch");
-
-        action.perform();
-        assertEq(
-            IArbOwnerPublicGlamsterdam(ARB_OWNER_PUBLIC).getParentGasFloorPerToken(), 16, "floor"
-        );
-        assertEq(IArbGasInfoGlamsterdam(ARB_GAS_INFO).getPerBatchGasCharge(), 530_000, "per batch");
-    }
-
-    /// @notice Running twice must be a no-op rather than a revert. A batch that reverts on the fork
-    ///         gate is re-executed later, so perform() can be reached more than once.
+    /// @notice Repeated execution leaves the parameters unchanged.
     function test_isIdempotent() public {
-        SetGlamsterdamGasParamsAction action = new SetGlamsterdamGasParamsAction(16, 530_000);
+        SetGlamsterdamGasParamsAction action = new SetGlamsterdamGasParamsAction();
         action.perform();
         action.perform();
 
@@ -79,19 +56,17 @@ contract SetGlamsterdamGasParamsActionTest is Test {
     ///         nothing and check perform() refuses to report success.
     function test_revertsIfFloorDoesNotTakeEffect() public {
         vm.etch(ARB_OWNER, address(new ArbOwnerMockThatIgnoresWrites()).code);
-        SetGlamsterdamGasParamsAction action = new SetGlamsterdamGasParamsAction(16, 530_000);
+        SetGlamsterdamGasParamsAction action = new SetGlamsterdamGasParamsAction();
 
         vm.expectRevert("SetGlamsterdamGasParamsAction: parent gas floor per token");
         action.perform();
     }
 
     function test_revertsIfPerBatchChargeDoesNotTakeEffect() public {
-        // vm.etch replaces code but not storage, so the values written in setUp survive. Target the
-        // floor that is already stored, so the floor assertion passes and the per batch assertion is
-        // the one that fires.
+        // Set the expected floor before disabling writes to isolate the per-batch assertion.
+        ArbOwnerMock(ARB_OWNER).setParentGasFloorPerToken(16);
         vm.etch(ARB_OWNER, address(new ArbOwnerMockThatIgnoresWrites()).code);
-        SetGlamsterdamGasParamsAction action =
-            new SetGlamsterdamGasParamsAction(CURRENT_PARENT_GAS_FLOOR_PER_TOKEN, 530_000);
+        SetGlamsterdamGasParamsAction action = new SetGlamsterdamGasParamsAction();
 
         vm.expectRevert("SetGlamsterdamGasParamsAction: per batch gas charge");
         action.perform();
@@ -100,7 +75,7 @@ contract SetGlamsterdamGasParamsActionTest is Test {
     /// @notice The action is delegatecalled by the L2 UpgradeExecutor, so it must hold no storage
     ///         and read its parameters out of its own bytecode.
     function test_worksUnderDelegatecall() public {
-        ArbOneSetGlamsterdamGasParamsAction action = new ArbOneSetGlamsterdamGasParamsAction();
+        SetGlamsterdamGasParamsAction action = new SetGlamsterdamGasParamsAction();
         GasParamsDelegateCaller caller = new GasParamsDelegateCaller();
         caller.performVia(address(action));
 
