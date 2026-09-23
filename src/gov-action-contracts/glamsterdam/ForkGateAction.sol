@@ -28,6 +28,7 @@ contract GlamsterdamForkGateAction {
 
     function perform() external view {
         // An undefined opcode consumes all forwarded gas before the fork.
+        // Forward only 5,000 gas to limit how much a failed probe burns.
         (bool forkIsActive,) = probe.staticcall{gas: 5000}("");
         if (!forkIsActive) revert ForkNotActive();
     }
