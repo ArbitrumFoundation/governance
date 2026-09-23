@@ -30,10 +30,7 @@ interface IArbGasInfoGlamsterdam {
 ///            TOTAL_COST_FLOOR_PER_TOKEN to 16 (a uniform 64 gas per calldata byte).
 ///
 ///         2. perBatchGasCharge, covering the increase in what a batch actually costs to post under
-///            EIP-8037, which prices new state at 1530 gas per byte. Each batch creates two new
-///            storage slots, sequencerInboxAccs.push in the bridge and delayedInboxAccs.push from
-///            the batch spending report, at 64 bytes each (key hash plus value). That is
-///            2 * 64 * 1530 = 195,840 gas per batch that the pricer does not currently account for.
+///            EIP-8037.
 ///
 /// @dev    This action must not execute before the fork is live on Ethereum: until then these
 ///         values describe parent chain rules that do not yet apply. Pair it with
