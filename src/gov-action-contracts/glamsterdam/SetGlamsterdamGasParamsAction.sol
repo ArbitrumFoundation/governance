@@ -40,8 +40,8 @@ contract SetGlamsterdamGasParamsAction {
     IArbGasInfoGlamsterdam public constant arbGasInfo =
         IArbGasInfoGlamsterdam(0x000000000000000000000000000000000000006C);
 
-    // Currently 10. Although this value will not be used on a blob or Alt DA chain, it is set to the
-    // correct value here anyway for potential future use.
+    // Store EIP-7976's floor coefficient (16 gas per token) for potential use by a future
+    // Nitro pricing algorithm. Arb1 will not post calldata batches after Glamsterdam.
     uint64 public constant newParentGasFloorPerToken = 16;
 
     /// @dev Currently 210,000. Assumes blob batches with a gas refunder and unchanged L1 pricing.
