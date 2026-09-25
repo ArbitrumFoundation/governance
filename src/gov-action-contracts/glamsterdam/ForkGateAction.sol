@@ -16,8 +16,7 @@ contract GlamsterdamForkGateAction {
         //   60 02    PUSH1 0x02   - push the runtime length (2 bytes).
         //   60 1e    PUSH1 0x1e   - push the runtime's starting memory offset (30).
         //   f3       RETURN       - return those 2 bytes as the deployed contract's code.
-        // Runtime: 4b = SLOTNUM (push slot number), 00 = STOP (succeed). STOP discards the
-        // leftover stack item along with the rest of the call frame, so no POP is needed.
+        // Runtime: 4b = SLOTNUM (push slot number), 00 = STOP (succeed).
         bytes memory initcode = hex"614b006000526002601ef3";
         address deployedProbe;
         assembly {
