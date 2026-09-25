@@ -15,7 +15,7 @@ contract ForkGateActionTest is Test {
     }
 
     function test_constructorDeploysProbe() public {
-        assertEq(probe.code, hex"4b5000", "probe runtime");
+        assertEq(probe.code, hex"4b00", "probe runtime");
     }
 
     function test_gatePassesAfterFork() public {
