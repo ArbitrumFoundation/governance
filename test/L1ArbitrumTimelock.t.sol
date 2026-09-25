@@ -212,7 +212,7 @@ contract L1ArbitrumTimelockTest is Test {
         address payable sender = payable(address(678));
         uint256 extra = 150;
         uint256 execVal = submissionFee + (rData.maxFeePerGas * rData.gasLimit) + extra;
-        sender.transfer(execVal);
+        vm.deal(sender, execVal);
 
         // l2value has to come from the timelock itself
         vm.deal(address(l1Timelock), rData.l2Value);
@@ -294,7 +294,7 @@ contract L1ArbitrumTimelockTest is Test {
         address payable sender = payable(address(678));
         uint256 execVal = (submissionFee * 2) + (rData.maxFeePerGas * rData.gasLimit)
             + (rData2.maxFeePerGas * rData2.gasLimit) + 13;
-        sender.transfer(execVal);
+        vm.deal(sender, execVal);
 
         // l2value has to come from the timelock itself
         vm.deal(address(l1Timelock), rData.l2Value + rData2.l2Value);
@@ -342,7 +342,7 @@ contract L1ArbitrumTimelockTest is Test {
         address payable sender = payable(address(678));
         uint256 extra = 150;
         uint256 execVal = submissionFee + (rData.maxFeePerGas * rData.gasLimit) + extra;
-        sender.transfer(execVal);
+        vm.deal(sender, execVal);
 
         // l2value has to come from the timelock itself
         vm.deal(address(l1Timelock), rData.l2Value);
@@ -385,7 +385,7 @@ contract L1ArbitrumTimelockTest is Test {
         uint256 extra = 150;
         uint256 execVal =
             submissionFee + rData.l2Value + (rData.maxFeePerGas * rData.gasLimit) + extra;
-        sender.transfer(execVal);
+        vm.deal(sender, execVal);
 
         vm.expectRevert();
         vm.prank(sender);

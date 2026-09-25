@@ -133,7 +133,8 @@ contract TopNomineesGasTest is Test {
         memberGov.topNominees(proposalId);
         g -= gasleft();
 
-        assertLt(g, uint256(N) * 10_000);
+        // Amsterdam gas budget: 12,000 gas per nominee.
+        assertLt(g, uint256(N) * 12_000);
     }
 
     function _nomineePrivKey(uint16 i) internal pure returns (uint256) {
