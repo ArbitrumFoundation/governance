@@ -8,7 +8,7 @@ on Ethereum.
 | Contract | Chain | What it does |
 | --- | --- | --- |
 | `GlamsterdamForkGateAction` | Ethereum | Deploys its opcode probe in the constructor; `perform()` reverts unless SLOTNUM is available |
-| `SetGlamsterdamGasParamsAction` | Arb One / Nova | Sets `parentGasFloorPerToken` to 16 and `perBatchGasCharge` to 530,000 |
+| `SetGlamsterdamGasParamsAction` | Arb One / Nova | Sets `parentGasFloorPerToken` to 16 and `perBatchGasCharge` to 480,000 |
 
 The gate deploys a two-byte runtime, `SLOTNUM; STOP` (`0x4b00`), and stores its address
 in the immutable `probe`. The repo's pinned solc 0.8.16 cannot emit SLOTNUM directly.

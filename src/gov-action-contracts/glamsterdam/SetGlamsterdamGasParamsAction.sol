@@ -44,15 +44,15 @@ contract SetGlamsterdamGasParamsAction {
     // Nitro pricing algorithm. Arb1 will not post calldata batches after Glamsterdam.
     uint64 public constant newParentGasFloorPerToken = 16;
 
-    /// @dev Currently 210,000. Assumes blob batches with a gas refunder and unchanged L1 pricing.
-    ///      Measured batch gas rises from ~171k to ~386k (2.26x) [1]. Scale the existing
-    ///      margin (210k + 42k - 171k) proportionally to preserve the break-even
-    ///      base-fee/tip ratio, then subtract the ~42k from LegacyCostForStats [2]:
-    ///      386k + (81k * 2.26) - 42k ≈ 527k, rounded to 530k.
+    /// @dev Currently 210,000. Assumes blob batches, no gas refunder, and unchanged L1 pricing.
+    ///      Measured batch gas rises from ~171k today (Arb1, with a gas refunder) to ~353k after
+    ///      Glamsterdam without one (2.07x) [1]. Scale the existing margin (210k + 42k - 171k)
+    ///      proportionally to preserve the break-even base-fee/tip ratio, then subtract the ~42k
+    ///      from LegacyCostForStats [2]: 353k + (81k * 2.07) - 42k ≈ 479k, rounded to 480k.
     ///
     ///      [1] https://effective-spork-5wwmq3e.pages.github.io/harness/viewer.html
     ///      [2] https://github.com/OffchainLabs/nitro/blob/0e18b1f3696c201c0d40396cf6d258916e0a647a/arbos/arbostypes/incomingmessage.go#L182-L189
-    int64 public constant newPerBatchGasCharge = 530_000;
+    int64 public constant newPerBatchGasCharge = 480_000;
 
     function perform() external {
         arbOwner.setParentGasFloorPerToken(newParentGasFloorPerToken);

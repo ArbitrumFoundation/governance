@@ -25,7 +25,7 @@ contract SetGlamsterdamGasParamsActionTest is Test {
     function test_setsBothValues() public {
         SetGlamsterdamGasParamsAction action = new SetGlamsterdamGasParamsAction();
         assertEq(action.newParentGasFloorPerToken(), 16, "floor");
-        assertEq(action.newPerBatchGasCharge(), 530_000, "per batch");
+        assertEq(action.newPerBatchGasCharge(), 480_000, "per batch");
         action.perform();
 
         assertEq(
@@ -35,7 +35,7 @@ contract SetGlamsterdamGasParamsActionTest is Test {
         );
         assertEq(
             IArbGasInfoGlamsterdam(ARB_GAS_INFO).getPerBatchGasCharge(),
-            530_000,
+            480_000,
             "perBatchGasCharge"
         );
     }
@@ -70,7 +70,7 @@ contract SetGlamsterdamGasParamsActionTest is Test {
         assertEq(
             IArbOwnerPublicGlamsterdam(ARB_OWNER_PUBLIC).getParentGasFloorPerToken(), 16, "floor"
         );
-        assertEq(IArbGasInfoGlamsterdam(ARB_GAS_INFO).getPerBatchGasCharge(), 530_000, "per batch");
+        assertEq(IArbGasInfoGlamsterdam(ARB_GAS_INFO).getPerBatchGasCharge(), 480_000, "per batch");
     }
 }
 
