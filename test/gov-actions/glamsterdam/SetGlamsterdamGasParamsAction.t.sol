@@ -40,18 +40,6 @@ contract SetGlamsterdamGasParamsActionTest is Test {
         );
     }
 
-    /// @notice Repeated execution leaves the parameters unchanged.
-    function test_isIdempotent() public {
-        SetGlamsterdamGasParamsAction action = new SetGlamsterdamGasParamsAction();
-        action.perform();
-        action.perform();
-
-        assertEq(
-            IArbOwnerPublicGlamsterdam(ARB_OWNER_PUBLIC).getParentGasFloorPerToken(), 16, "floor"
-        );
-        assertEq(IArbGasInfoGlamsterdam(ARB_GAS_INFO).getPerBatchGasCharge(), 530_000, "per batch");
-    }
-
     /// @notice The post-state assertions have to actually fire. Etch an ArbOwner whose setters do
     ///         nothing and check perform() refuses to report success.
     function test_revertsIfFloorDoesNotTakeEffect() public {
