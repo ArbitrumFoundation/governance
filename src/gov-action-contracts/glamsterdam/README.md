@@ -17,11 +17,9 @@ after the fork the call succeeds.
 
 ## Deployment
 
-1. Deploy `GlamsterdamForkGateAction` on Ethereum. Its constructor deploys the probe automatically.
-   Read `probe()` and check its runtime is `0x4b00`.
-2. Deploy `SetGlamsterdamGasParamsAction` on both Arbitrum One and Nova. It takes no constructor
-   arguments.
-3. Build the proposal with the gate as a chain-1 action alongside the two L2 actions.
+Deploy and build the proposal with
+[scripts/proposals/Glamsterdam](../../../scripts/proposals/Glamsterdam/README.md). The gate is a
+chain-1 action alongside the two L2 actions.
 
 The L1 timelock executes the gate and creates the L2 retryables in one batch. A gate revert rolls
 back the entire batch, which can be retried after the fork.
