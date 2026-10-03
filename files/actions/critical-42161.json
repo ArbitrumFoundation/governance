@@ -1,0 +1,11 @@
+{
+    "l1AddressRegistry": "0xd514C2b3aaBDBfa10800B9C96dc1eB25427520A0",
+    "pauseInboxAction": "0x2DC1a2d23d741Cc43fE1e95C904137551D7c33F4",
+    "unpauseInboxAction": "0x4ac407ebA00B2Be46a685b81e5f0405c576a727E",
+    "pauseRollupAction": "0x8213d67dBca4F485FceA3F3A00436327c8833214",
+    "unpauseRollupAction": "0x02C74a956d4E50D4219240869db89780B5baA989",
+    "bridgeRemoveAllOutboxesAction": "0x6506229cfDFCd414cA648f9a1B720Ed0008B0F48",
+    "bridgeAddOutboxesAction": "0x2fF2F228784C4407C80D158c0db775034A762d62",
+    "sequencerAddAction": "0xF8f44E7DA5eC978F69d34F6a566E5836d6107D95",
+    "sequencerRemoveAction": "0xD46b90c540c52F4e02F57fA3A59A3dff045f0191"
+}
