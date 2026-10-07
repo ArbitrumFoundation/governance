@@ -31,6 +31,11 @@ Typically, for a timelocked OZ governror, the `onlyGovernance` modifier ensures 
 
 Affordances are always given to the DAO via an UpgradeExecutor contract, which grants affordance to both the core governor proposal path and the Emergency Security Councils. This includes abilities that are intended only for the Security Council; for example, proposal cancellation, practically speaking, could/would only ever be preformed by the Security Council (since the DAO wouldn't have time to vote on and execute a cancellation). Still, for this case, the affordance is given to the UpgradeExecutor; this is done for clarity, consistency, and to ensure that the UpgradeExecutor is the single source of truth for execution rights.
 
+- **Special L1 UpgradeExecutor Affordance** 
+
+The L1 UpgradeExecutor is the only UpgradeExecutor that has a third EXECUTOR_ROLE affordance beyond the DAO and the Security Council, namely, the PauseExecutor, for permissionlessly pausing the Rollup contract if a vulnerability in the one-step proof protocol is proven.
+
+
 - **Non Emergency Security Council Affordances**
 In addition to proposing to the L2 Timlock, the only affordances granted directly to the Non Emergency Security Council are the "MEMBER_ADDER", "MEMBER_REPLACER", "MEMBER_ROTATOR", and "MEMBER_REMOVER" roles on the SecurityCouncilManager contract. If the Non Emergency Security Council on Arbitrum One is ever either removed or deployed to a new address, these roles should be modified accordingly.
 
