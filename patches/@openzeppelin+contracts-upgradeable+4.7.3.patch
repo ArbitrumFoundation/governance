@@ -1,0 +1,13 @@
+diff --git a/node_modules/@openzeppelin/contracts-upgradeable/governance/GovernorUpgradeable.sol b/node_modules/@openzeppelin/contracts-upgradeable/governance/GovernorUpgradeable.sol
+index eec8e9b..769d77e 100644
+--- a/node_modules/@openzeppelin/contracts-upgradeable/governance/GovernorUpgradeable.sol
++++ b/node_modules/@openzeppelin/contracts-upgradeable/governance/GovernorUpgradeable.sol
+@@ -45,7 +45,7 @@ abstract contract GovernorUpgradeable is Initializable, ContextUpgradeable, ERC1
+ 
+     string private _name;
+ 
+-    mapping(uint256 => ProposalCore) private _proposals;
++    mapping(uint256 => ProposalCore) internal _proposals;
+ 
+     // This queue keeps track of the governor operating on itself. Calls to functions protected by the
+     // {onlyGovernance} modifier needs to be whitelisted in this queue. Whitelisting is set in {_beforeExecute},

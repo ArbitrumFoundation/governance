@@ -75,7 +75,7 @@ contract L2ArbitrumGovernor is
         uint256 _quorumNumerator,
         uint256 _proposalThreshold,
         uint64 _minPeriodAfterQuorum
-    ) external initializer {
+    ) external virtual initializer {
         __Governor_init("L2ArbitrumGovernor");
         __GovernorSettings_init(_votingDelay, _votingPeriod, _proposalThreshold);
         __GovernorCountingSimple_init();
@@ -203,10 +203,14 @@ contract L2ArbitrumGovernor is
         _maximumQuorumHistory.push(_maximumQuorum);
     }
 
+    /// @notice Votes delegated to the exclude address as of a block number.
+    function _getExcludeVotes(uint256 blockNumber) internal view virtual returns (uint256) {
+        return token.getPastVotes(EXCLUDE_ADDRESS, blockNumber);
+    }
+
     /// @notice Get "circulating" votes supply; i.e., total minus excluded vote exclude address.
     function getPastCirculatingSupply(uint256 blockNumber) public view virtual returns (uint256) {
-        return
-            token.getPastTotalSupply(blockNumber) - token.getPastVotes(EXCLUDE_ADDRESS, blockNumber);
+        return token.getPastTotalSupply(blockNumber) - _getExcludeVotes(blockNumber);
     }
 
     /// @notice Get total delegated votes minus excluded votes
@@ -221,7 +225,7 @@ contract L2ArbitrumGovernor is
             return 0;
         }
 
-        uint256 excluded = token.getPastVotes(EXCLUDE_ADDRESS, blockNumber);
+        uint256 excluded = _getExcludeVotes(blockNumber);
 
         // it is possible (but unlikely) that excluded > totalDvp
         // this is because getTotalDelegationAt is initially an _estimate_ of the total delegation
@@ -324,6 +328,7 @@ contract L2ArbitrumGovernor is
         bytes memory params
     )
         internal
+        virtual
         override(GovernorUpgradeable, GovernorPreventLateQuorumUpgradeable)
         returns (uint256)
     {
