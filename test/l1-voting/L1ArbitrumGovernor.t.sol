@@ -18,7 +18,9 @@ contract MockVotingTokenMirror is IVotingTokenMirror {
     mapping(address => address) public claimed; // L1 account -> claimed L2 delegate
     mapping(address => mapping(uint256 => address)) public l1AddressAt; // L2 delegate's proven claim
     mapping(address => mapping(uint256 => uint256)) public votesAt; // L2 account's proven votes
+    mapping(address => mapping(uint256 => bool)) public votesProven;
     mapping(uint256 => uint256) public totalDelegation;
+    mapping(uint256 => bool) public totalDelegationProven;
 
     function setClaimed(address l1Account, address l2Delegate) external {
         claimed[l1Account] = l2Delegate;
@@ -30,10 +32,12 @@ contract MockVotingTokenMirror is IVotingTokenMirror {
 
     function setVotesAt(address l2Account, uint256 blockNumber, uint256 votes) external {
         votesAt[l2Account][blockNumber] = votes;
+        votesProven[l2Account][blockNumber] = true;
     }
 
     function setTotalDelegationAt(uint256 blockNumber, uint256 amount) external {
         totalDelegation[blockNumber] = amount;
+        totalDelegationProven[blockNumber] = true;
     }
 
     /// @notice One-call voter setup: l1Account claims l2Delegate, whose claim-back and votes are
@@ -44,6 +48,7 @@ contract MockVotingTokenMirror is IVotingTokenMirror {
         claimed[l1Account] = l2Delegate;
         l1AddressAt[l2Delegate][blockNumber] = l1Account;
         votesAt[l2Delegate][blockNumber] = votes;
+        votesProven[l2Delegate][blockNumber] = true;
     }
 
     function getPastVotes(address account, uint256 blockNumber) external view returns (uint256) {
@@ -70,19 +75,17 @@ contract MockVotingTokenMirror is IVotingTokenMirror {
     }
 
     function getTotalDelegationAt(uint256 blockNumber) external view returns (uint256) {
-        uint256 amount = totalDelegation[blockNumber];
-        if (amount == 0) {
+        if (!totalDelegationProven[blockNumber]) {
             revert L2StateMirror.TotalDelegationNotProven();
         }
-        return amount;
+        return totalDelegation[blockNumber];
     }
 
     function _votes(address l2Account, uint256 blockNumber) private view returns (uint256) {
-        uint256 votes = votesAt[l2Account][blockNumber];
-        if (votes == 0) {
+        if (!votesProven[l2Account][blockNumber]) {
             revert L2StateMirror.VotesNotProven();
         }
-        return votes;
+        return votesAt[l2Account][blockNumber];
     }
 }
 
@@ -669,6 +672,14 @@ contract L1ArbitrumGovernorTest is Test {
             gov.quorum(blockNumber), (TOTAL_DELEGATION - EXCLUDE_VOTES) * QUORUM_NUMERATOR / 10_000
         );
         assertEq(gov.quorum(blockNumber), QUORUM);
+    }
+
+    function testQuorumZeroInputsClampToMin() public {
+        uint256 blockNumber = block.number;
+        vm.roll(block.number + 1);
+        mirror.setTotalDelegationAt(blockNumber, 0);
+        mirror.setVotesAt(exclude, blockNumber, 0);
+        assertEq(gov.quorum(blockNumber), MIN_QUORUM);
     }
 
     function testQuorumExcludeVotesUseL2NativePath() public {
