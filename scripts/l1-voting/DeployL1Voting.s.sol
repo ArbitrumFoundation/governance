@@ -70,38 +70,21 @@ function predictL2DelegateMappingProxy() pure returns (address) {
     return Create2.computeAddress(SALT, keccak256(initCode), CREATE2_DEPLOYER);
 }
 
-/// @notice Deploys and wires the full L1 side of the L1 voting system.
+function deployProxy(address impl) returns (address) {
+    return address(new TransparentUpgradeableProxy{salt: SALT}(impl, L1_PROXY_ADMIN, ""));
+}
+
+/// @notice Deploys the governor and timelock proxies and initializes them atomically.
 contract L1VotingFactory {
-    address public immutable proofHelper;
-    address public immutable delegateMapping;
-    address public immutable stateMirror;
-    address public immutable votingTokenMirror;
     address public immutable timelock;
     address public immutable governor;
 
-    constructor(address l2DelegateMapping) {
-        proofHelper = _proxy(address(new ProofHelper()));
-        delegateMapping = _proxy(address(new DelegateMapping()));
-        stateMirror = _proxy(
-            address(
-                new L2StateMirror(
-                    proofHelper,
-                    L2_ARB_TOKEN,
-                    DELEGATE_CHECKPOINTS_SLOT,
-                    TOTAL_DELEGATION_SLOT,
-                    l2DelegateMapping,
-                    DELEGATE_MAPPING_CLAIMED_SLOT,
-                    ARB1_ROLLUP
-                )
-            )
-        );
-        votingTokenMirror = _proxy(address(new VotingTokenMirror(stateMirror, delegateMapping)));
-
-        governor = _proxy(address(new L1ArbitrumGovernor()));
+    constructor(address votingTokenMirror, address governorImpl, address timelockImpl) {
+        governor = deployProxy(governorImpl);
 
         address[] memory proposers = new address[](1);
         proposers[0] = governor;
-        timelock = _proxy(address(new ArbitrumTimelock()));
+        timelock = deployProxy(timelockImpl);
         ArbitrumTimelock(payable(timelock)).initialize(
             TIMELOCK_MIN_DELAY, proposers, new address[](1)
         );
@@ -130,10 +113,6 @@ contract L1VotingFactory {
         tl.revokeRole(adminRole, timelock);
         tl.revokeRole(adminRole, address(this));
     }
-
-    function _proxy(address impl) private returns (address) {
-        return address(new TransparentUpgradeableProxy(impl, L1_PROXY_ADMIN, ""));
-    }
 }
 
 /// Usage:
@@ -142,7 +121,7 @@ contract L1VotingFactory {
 /// The two runs are independent; DeployL1 references the L2 DelegateMapping by its predicted
 /// CREATE2 address. After deployment the DAO must:
 /// - Grant EXECUTOR_ROLE on the L1 UpgradeExecutor to the new timelock.
-/// - Grant EXECUTOR_ROLE on the L2 UpgradeExecutor to the alias of the new timelock.
+/// - Grant EXECUTOR_ROLE on the Arb One and Nova UpgradeExecutors to the alias of the new timelock.
 /// The L2 side mapping should be deployed and populated well before the L1 side of the
 /// system is live. This prevents a situation where a malicious proposal is created on
 /// L1 which forces delegates to scramble to update their claims.
@@ -163,14 +142,35 @@ contract DeployL1 is Script {
     function run() external {
         require(CREATE2_DEPLOYER == CREATE2_FACTORY, "CREATE2 deployer mismatch");
         vm.startBroadcast();
-        L1VotingFactory factory = new L1VotingFactory{salt: SALT}(predictL2DelegateMappingProxy());
+        address proofHelper = deployProxy(address(new ProofHelper{salt: SALT}()));
+        address delegateMapping = deployProxy(address(new DelegateMapping{salt: SALT}()));
+        address stateMirror = deployProxy(
+            address(
+                new L2StateMirror{salt: SALT}(
+                    proofHelper,
+                    L2_ARB_TOKEN,
+                    DELEGATE_CHECKPOINTS_SLOT,
+                    TOTAL_DELEGATION_SLOT,
+                    predictL2DelegateMappingProxy(),
+                    DELEGATE_MAPPING_CLAIMED_SLOT,
+                    ARB1_ROLLUP
+                )
+            )
+        );
+        address votingTokenMirror =
+            deployProxy(address(new VotingTokenMirror{salt: SALT}(stateMirror, delegateMapping)));
+        L1VotingFactory factory = new L1VotingFactory{salt: SALT}(
+            votingTokenMirror,
+            address(new L1ArbitrumGovernor{salt: SALT}()),
+            address(new ArbitrumTimelock{salt: SALT}())
+        );
         vm.stopBroadcast();
 
         console.log("L1VotingFactory:    ", address(factory));
-        console.log("ProofHelper:        ", factory.proofHelper());
-        console.log("L1 DelegateMapping: ", factory.delegateMapping());
-        console.log("L2StateMirror:      ", factory.stateMirror());
-        console.log("VotingTokenMirror:  ", factory.votingTokenMirror());
+        console.log("ProofHelper:        ", proofHelper);
+        console.log("L1 DelegateMapping: ", delegateMapping);
+        console.log("L2StateMirror:      ", stateMirror);
+        console.log("VotingTokenMirror:  ", votingTokenMirror);
         console.log("Timelock:           ", factory.timelock());
         console.log("L1ArbitrumGovernor: ", factory.governor());
         console.log("L2 DelegateMapping (predicted):", predictL2DelegateMappingProxy());
