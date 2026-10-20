@@ -12,9 +12,7 @@ jobs:
           submodules: recursive
 
       - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@v1
-        with:
-          version: v1.8.3
+        uses: ./.github/actions/install-foundry
       
       - name: Setup node/yarn
         uses: actions/setup-node@v3
@@ -44,9 +42,7 @@ jobs:
           submodules: recursive
 
       - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@v1
-        with:
-          version: v1.8.3
+        uses: ./.github/actions/install-foundry
       
       - name: Setup node/yarn
         uses: actions/setup-node@v3
@@ -77,9 +73,7 @@ jobs:
           cache-dependency-path: '**/yarn.lock'
 
       - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@v1
-        with:
-          version: v1.8.3
+        uses: ./.github/actions/install-foundry
       
       - name: Install packages
         run: yarn
@@ -103,9 +97,7 @@ jobs:
           cache-dependency-path: '**/yarn.lock'
 
       - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@v1
-        with:
-          version: v1.8.3
+        uses: ./.github/actions/install-foundry
       
       - name: Install packages
         run: yarn
@@ -139,9 +131,7 @@ jobs:
           no-token-bridge: true
 
       - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@v1
-        with:
-          version: v1.8.3
+        uses: ./.github/actions/install-foundry
 
       - name: Setup node/yarn
         uses: actions/setup-node@v3
@@ -202,9 +192,7 @@ jobs:
           no-token-bridge: true
 
       - name: Install Foundry
-        uses: foundry-rs/foundry-toolchain@v1
-        with:
-          version: v1.8.3
+        uses: ./.github/actions/install-foundry
 
       - name: Setup node/yarn
         uses: actions/setup-node@v3
