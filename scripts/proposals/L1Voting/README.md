@@ -1,6 +1,6 @@
 # L1 Voting Proposal Payload
 
-Grants `EXECUTOR_ROLE` to the L1 voting timelock on the L1 UpgradeExecutor and to its alias on the Arb One and Nova UpgradeExecutors.
+Grants `EXECUTOR_ROLE` to the L1 voting timelock on the L1 UpgradeExecutor and to its alias on the Arb One and Nova UpgradeExecutors, and sets the constitution hash.
 
 How to verify:
 
