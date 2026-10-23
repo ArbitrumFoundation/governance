@@ -17,4 +17,4 @@ jobs:
       fix-up: |
         yarn test:storage || true
         yarn test:signatures || true
-        forge snapshot
+        forge snapshot || true
