@@ -15,6 +15,7 @@
     "gen:network": "ts-node ./scripts/genNetwork.ts",
     "gen:nova:network": "ts-node ./scripts/genNetworkNova.ts",
     "gen:recipients": "ts-node ./scripts/genRecipients.ts",
+    "gen:l1-voting-fixtures": "ts-node ./test/l1-voting/fixtures/genProofFixture.ts && ts-node ./test/l1-voting/fixtures/genL2StateMirrorFixture.ts",
     "deploy:governance": "ts-node ./scripts/governanceDeployer.ts",
     "deploy:note-store": "ts-node ./scripts/deployNoteStore.ts",
     "deploy:vested-wallets": "ts-node ./scripts/vestedWalletsDeployer.ts",

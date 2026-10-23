@@ -1,0 +1,41 @@
+diff --git a/src/l1-voting/vendor/optimism/rlp/RLPReader.sol b/src/l1-voting/vendor/optimism/rlp/RLPReader.sol
+index f342658..6f39941 100644
+--- a/src/l1-voting/vendor/optimism/rlp/RLPReader.sol
++++ b/src/l1-voting/vendor/optimism/rlp/RLPReader.sol
+@@ -9,7 +9,7 @@ import {
+     ContentLengthMismatch,
+     InvalidHeader,
+     UnexpectedList
+-} from "src/libraries/rlp/RLPErrors.sol";
++} from "./RLPErrors.sol";
+ 
+ /// @custom:attribution https://github.com/hamdiallam/Solidity-RLP
+ /// @title RLPReader
+diff --git a/src/l1-voting/vendor/optimism/trie/MerkleTrie.sol b/src/l1-voting/vendor/optimism/trie/MerkleTrie.sol
+index cbbf9fd..7634d97 100644
+--- a/src/l1-voting/vendor/optimism/trie/MerkleTrie.sol
++++ b/src/l1-voting/vendor/optimism/trie/MerkleTrie.sol
+@@ -2,8 +2,8 @@
+ pragma solidity ^0.8.0;
+ 
+ // Libraries
+-import { Bytes } from "src/libraries/Bytes.sol";
+-import { RLPReader } from "src/libraries/rlp/RLPReader.sol";
++import { Bytes } from "../Bytes.sol";
++import { RLPReader } from "../rlp/RLPReader.sol";
+ 
+ /// @title MerkleTrie
+ /// @notice MerkleTrie is a small library for verifying standard Ethereum Merkle-Patricia trie
+diff --git a/src/l1-voting/vendor/optimism/trie/SecureMerkleTrie.sol b/src/l1-voting/vendor/optimism/trie/SecureMerkleTrie.sol
+index 56992fb..9b885cc 100644
+--- a/src/l1-voting/vendor/optimism/trie/SecureMerkleTrie.sol
++++ b/src/l1-voting/vendor/optimism/trie/SecureMerkleTrie.sol
+@@ -2,7 +2,7 @@
+ pragma solidity ^0.8.0;
+ 
+ // Libraries
+-import { MerkleTrie } from "src/libraries/trie/MerkleTrie.sol";
++import { MerkleTrie } from "./MerkleTrie.sol";
+ 
+ /// @title SecureMerkleTrie
+ /// @notice SecureMerkleTrie is a thin wrapper around the MerkleTrie library that hashes the input
