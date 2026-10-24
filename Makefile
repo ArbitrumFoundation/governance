@@ -12,6 +12,7 @@ gas                     :; forge test --gas-report
 gas-check               :; forge snapshot --check --tolerance 1
 snapshot                :; forge snapshot
 test-unit               :; forge test -vvv
+test-fork-gate-osaka     :; bash test/gov-actions/glamsterdam/test-fork-gate-osaka.bash
 clean                   :; forge clean
 fmt                     :; forge fmt
 gen-network             :; yarn gen:network
@@ -19,4 +20,3 @@ test                    :  test-unit
 test-action-storage     :; ./scripts/test-action-storage.sh
 sc-election-test		:; FOUNDRY_MATCH_PATH='test/security-council-mgmt/**/*.t.sol' make test
 test-integration        :; yarn test:integration
-
