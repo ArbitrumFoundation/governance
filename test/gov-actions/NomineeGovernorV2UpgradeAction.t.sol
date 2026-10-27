@@ -16,23 +16,16 @@ contract NomineeGovernorV2UpgradeActionTest is Test {
     // see https://github.com/ArbitrumFoundation/docs/pull/731/commits/0837520dccc12e56a25f62de90ff9e3869196d05
     bytes32 newConstitutionHash = 0xe794b7d0466ffd4a33321ea14c307b2de987c3229cf858727052a6f4b8a19cc1;
 
-    address newImplementation = address(new SecurityCouncilNomineeElectionGovernor());
-    uint256 votingDelay = 7 days;
-    NomineeGovernorV2UpgradeActionTemplate action = new NomineeGovernorV2UpgradeActionTemplate(
-        address(proxyAdmin),
-        address(gov),
-        newImplementation,
-        votingDelay,
-        address(constitution),
-        newConstitutionHash
-    );
+    uint256 votingDelay = 50400;
+    NomineeGovernorV2UpgradeAction action;
+
+    function setUp() external {
+        vm.createSelectFork(vm.envString("ARB_URL"), 173727923);
+
+        action = new NomineeGovernorV2UpgradeAction();
+    }
 
     function testAction() external {
-        if (!_isForkTest()) {
-            console.log("not fork test, skipping NomineeGovernorV2UpgradeActionTest");
-            return;
-        }
-
         if (_getImplementation() != oldImplementation) {
             console.log("implementation not set to old implementation, skipping NomineeGovernorV2UpgradeActionTest");
             return;
@@ -49,7 +42,7 @@ contract NomineeGovernorV2UpgradeActionTest is Test {
 
         assertEq(
             _getImplementation(),
-            newImplementation,
+            action.newNomineeElectionGovernorImplementation(),
             "implementation not set"
         );
 
@@ -62,14 +55,5 @@ contract NomineeGovernorV2UpgradeActionTest is Test {
 
     function _getImplementation() internal view returns (address) {
         return proxyAdmin.getProxyImplementation(TransparentUpgradeableProxy(payable(gov)));
-    }
-
-    function _isForkTest() internal view returns (bool) {
-        bool isForkTest;
-        address _gov = address(gov);
-        assembly {
-            isForkTest := gt(extcodesize(_gov), 0)
-        }
-        return isForkTest;
     }
 }
