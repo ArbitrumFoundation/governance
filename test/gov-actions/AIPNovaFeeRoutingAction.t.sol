@@ -11,11 +11,11 @@ import "@offchainlabs/upgrade-executor/src/UpgradeExecutor.sol";
 contract AIPNovaFeeRoutingActionTest is Test {
     UpgradeExecutor constant upExec = UpgradeExecutor(0x86a02dD71363c440b21F4c0E5B2Ad01Ffe1A7482);
 
-    function testAction() public {
-        if (!isFork()) {
-            return;
-        }
+    function setUp() public {
+        vm.createSelectFork(vm.envString("NOVA_URL"), 74298960);
+    }
 
+    function testAction() public {
         AIPNovaFeeRoutingAction action = new AIPNovaFeeRoutingAction();
 
         // before we run the action, we need to make sure the upgrade executor has at least this much ETH
@@ -26,7 +26,7 @@ contract AIPNovaFeeRoutingActionTest is Test {
 
         // make sure the new recipients are set
 
-        address[1] memory expectedL1SurplusRecipients = [0xd9a2e0E5d7509F0BF1B2d33884F8C1b4D4490879];
+        address[1] memory expectedL1SurplusRecipients = [0x36D0170D92F66e8949eB276C3AC4FEA64f83704d];
         uint256[1] memory expectedL1SurplusWeights = [uint(10_000)];
 
         assertEq(IRewardDistributor(action.novaL1SurplusFeeDistr()).currentRecipientGroup(), keccak256(abi.encodePacked(expectedL1SurplusRecipients)));
@@ -36,7 +36,7 @@ contract AIPNovaFeeRoutingActionTest is Test {
 
 
         address[7] memory expectedBaseFeeRecipients = [
-            0xd9a2e0E5d7509F0BF1B2d33884F8C1b4D4490879, // nova to l1 router
+            0x36D0170D92F66e8949eB276C3AC4FEA64f83704d, // nova to l1 router
             0xD0749b3e537Ed52DE4e6a3Ae1eB6fc26059d0895, // rest are same as current
             0x41C327d5fc9e29680CcD45e5E52446E0DB3DAdFd,
             0x02C2599aa929e2509741b44F3a13029745aB1AB2,
