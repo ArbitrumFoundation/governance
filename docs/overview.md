@@ -111,7 +111,11 @@ _Comparison Table_
 
 #### L1 Upgrade Executor
 
-The L1 Upgrade Executor is the owner of Arbitrum One and Nova related contracts that exist on Ethereum mainnet. It has the rights to upgrade these contracts, as well as some special ownership powers. All upgrades to these contracts must be executed through the L1 upgrade Executor. Only the Security Council and the L1 Timelock have the rights to call the Upgrade Executor.
+The L1 Upgrade Executor is the owner of Arbitrum One and Nova related contracts that exist on Ethereum mainnet. It has the rights to upgrade these contracts, as well as some special ownership powers. All upgrades to these contracts must be executed through the L1 Upgrade Executor. Only the Security Council and the L1 Timelock have the rights to make generic calls through the Upgrade Executor. The Pause Executor can also call the L1 Upgrade Executor but only in one restricted case.
+
+#### The Pause Executor
+The Pause Executor can call the L1 Upgrade Executor to pause the Rollup contract — the contract responsible for handling assertion confirmations and challenges — for Arbitrum One or Nova. Any party can permissionlessly trigger a pause by proving to the One Step Proof Soundness Guard contract that conflicting one-step proofs exist for a given challenge (i.e., proving that a vulnerability exists). The One Step Proof Soundness Guard has the affordance to call the Pause Executor, which in turn can pause the Rollup via the L1 Upgrade Executor.
+
 
 #### Arbitrum One Upgrade Executor
 
